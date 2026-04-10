@@ -1,0 +1,5 @@
+[15-Feb-2026 17:27:39 UTC] PHP Fatal error:  Uncaught Error: Class "CodeIgniter\Config\BaseConfig" not found in /home/webapppr/public_html/project/app/Config/Email.php:7
+Stack trace:
+#0 /home/webapppr/public_html/project/tools/check_smtp_env.php(84): require_once()
+#1 {main}
+  thrown in /home/webapppr/public_html/project/app/Config/Email.php on line 7

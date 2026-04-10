@@ -1,0 +1,1218 @@
+'use client';
+
+import { useEffect, useState, useRef, ChangeEvent, useMemo } from 'react';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
+import { confirmToast } from '@/lib/toast-utils';
+
+/* ─────────────────────────── types ─────────────────────────── */
+
+interface OfferHistory {
+  id: number;
+  action: string;
+  new_start_date?: string;
+  new_end_date?: string;
+  created_at: string;
+}
+
+interface Offer {
+  id: number;
+  product_id: number;
+  product_title: string;
+  product_number?: string;
+  product_image?: string;
+  product_rental_cost?: number;
+  product_rental_deposit?: number;
+  product_views?: number;
+  dispatch_city?: string;
+  dispatch_state?: string;
+  seller_id: number;
+  buyer_id: number;
+  offer_price: number;
+  offered_price?: number;
+  original_price?: number;
+  status: string;
+  listing_type: string;
+  offer_type?: string;
+  seller_remarks?: string;
+  buyer_name?: string;
+  buyer_mobile?: string;
+  buyer_email?: string;
+  buyer_rating_avg?: number;
+  buyer_rating_count?: number;
+  buyer_reliability_score?: number;
+  seller_name?: string;
+  seller_rating_avg?: number;
+  seller_rating_count?: number;
+  message?: string;
+  delivery_address?: string;
+  delivery_city?: string;
+  delivery_state?: string;
+  delivery_pin_code?: string;
+  deposit_amount?: number;
+  created_at: string;
+  accepted_at?: string;
+  rental_start_date?: string;
+  rental_end_date?: string;
+  perspective?: 'buyer' | 'seller' | 'sent' | 'received';
+  buyer_rated_seller?: boolean | number;
+  seller_rated_buyer?: boolean | number;
+  is_product_sold?: number;
+  is_rental_blocked?: number;
+  linked_order_status?: string;
+  contact_viewed_at?: string;
+  history?: OfferHistory[];
+  rental_cost?: number;
+}
+
+interface ChatMessage {
+  id: number;
+  sender_name: string;
+  sender_role: 'buyer' | 'seller';
+  message: string;
+  media_url?: string;
+  created_at: string;
+}
+
+const BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+
+interface Props {
+  role: string;
+  apiPath: string;
+  perspective: 'buyer' | 'seller' | 'combined';
+  noLayout?: boolean;
+  noHeader?: boolean;
+}
+
+/* ─────────────────────────── helpers ───────────────────────── */
+
+function historyLabel(action: string) {
+  switch (action) {
+    case 'initial_offer': return 'Offer Initiated';
+    case 'buyer_date_update': return 'Buyer updated dates';
+    case 'seller_suggest_dates': return 'Seller suggested new dates';
+    case 'buyer_accept_negotiation': return 'Buyer accepted suggested dates';
+    default: return action;
+  }
+}
+
+function fmtShort(d?: string) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+}
+
+function fmtFull(d?: string) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function fmtDateTime(d?: string) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function nightsBetween(start?: string, end?: string) {
+  if (!start || !end) return 0;
+  return Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000);
+}
+
+function getImageUrl(path?: string) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('uploads/')) return `${BASE_URL}/${path}`;
+  if (path.startsWith('/uploads/')) return `${BASE_URL}${path}`;
+  return `${BASE_URL}/uploads/products/${path}`;
+}
+
+/* ─────────────────── CSS (exact copy from PHP reference) ───── */
+
+const CSS = `
+  /* ── filter tabs (offers_new.php) ── */
+  .filter-tabs {
+    background: white;
+    padding: 8px;
+    border-radius: 15px;
+    display: inline-flex;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+    border: 1px solid #eee;
+  }
+  .filter-tabs .nav-link {
+    border-radius: 10px;
+    padding: 8px 20px;
+    color: #6f6f6f;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    text-decoration: none !important;
+  }
+  .filter-tabs .nav-link:hover { background: #f8f9fa; color: #000 !important; }
+  .filter-tabs .nav-link.active { background: #ffc63a; color: #000 !important; box-shadow: 0 4px 10px rgba(255,198,58,0.2); }
+
+  /* ── product group (seller view) ── */
+  .product-group { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; border: 1px solid #eee; }
+  .product-header { background: #fffdf8; padding: 20px 25px; border-bottom: 1px solid #f9e6b3; display: flex; align-items: center; }
+  .product-thumb { width: 65px; height: 65px; border-radius: 12px; object-fit: cover; margin-right: 20px; border: 2px solid #ffc63a; flex-shrink: 0; }
+
+  /* ── offer row (seller view) ── */
+  .offer-row { padding: 25px; border-bottom: 1px solid #f8f8f8; transition: all 0.3s ease; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+  .offer-row:last-child { border-bottom: none; }
+  .offer-row:hover { background-color: #fffef5; }
+
+  /* ── buyer avatar ── */
+  .buyer-avatar { width: 45px; height: 45px; background: #000; color: #ffc63a; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; margin-right: 15px; font-family: 'Maven Pro', sans-serif; flex-shrink: 0; }
+
+  /* ── buyer contact item ── */
+  .buyer-contact-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #555; margin-bottom: 3px; }
+
+  /* ── seller status pill ── */
+  .status-pill { font-size: 0.7rem; padding: 5px 12px; border-radius: 50px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
+  .status-pending   { background: #FFF9E6; color: #D7B467; }
+  .status-accepted  { background: #E7F9ED; color: #15BD66; }
+  .status-rejected  { background: #FDEEEE; color: #EB5757; }
+  .status-negotiating { background: #E1F5FE; color: #01579B; }
+  .status-cancelled { background: #f1f3f5; color: #868e96; }
+
+  /* ── price ── */
+  .price-tag { font-family: 'Maven Pro', sans-serif; font-size: 1.25rem; font-weight: 800; color: #000; }
+  .original-price-strikethrough { font-size: 0.82rem; color: #aaa; text-decoration: line-through; }
+
+  /* ── rental info box ── */
+  .rental-info-box { background: #fffdf8 !important; border: 1px solid #f9e6b3; border-radius: 12px; padding: 10px 14px; }
+
+  /* ── conflict warning (seller) ── */
+  .conflict-warning { background: #fff1f2; color: #e11d48; border: 1px solid #fda4af; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; gap: 8px; }
+
+  /* ── delivery box ── */
+  .delivery-box { background: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 8px 12px; }
+
+  /* ── buttons ── */
+  .btn-yellow { background-color: #ffc63a; color: #000; border: none; border-radius: 10px; font-weight: 700; padding: 8px 16px; transition: all 0.3s ease; cursor: pointer; }
+  .btn-yellow:hover { background-color: #000; color: #fff; }
+  .btn-outline-dark-custom { border: 1px solid #ddd; color: #666; border-radius: 10px; font-weight: 600; padding: 8px 16px; transition: all 0.3s ease; background: transparent; cursor: pointer; }
+  .btn-outline-dark-custom:hover { background: #f8f9fa; border-color: #000; color: #000; }
+
+  /* ── product meta badge ── */
+  .product-meta-badge { font-size: 0.75rem; background: #f8f9fa; padding: 5px 12px; border-radius: 8px; color: #666; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+
+  /* ── badge colors ── */
+  .badge-rent  { background: #e0f2f1; color: #00897b; }
+  .badge-sell  { background: #e8eaf6; color: #3949ab; }
+
+  /* ───────────────────────────────────────────────────────────
+     BUYER my_offers.php styles
+  ─────────────────────────────────────────────────────────── */
+
+  .luxury-item-card { background: white; border-radius: 20px; padding: 24px; border: 1px solid #eee; margin-bottom: 20px; transition: all 0.3s ease; }
+  .luxury-item-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-color: #ffc63a; }
+  .item-img { width: 100px; height: 125px; object-fit: cover; border-radius: 12px; }
+
+  /* buyer status pills use pill-* prefix */
+  .pill-pending     { background: #f8f9fa; color: #666; border: 1px solid #eee; }
+  .pill-accepted    { background: #eaffea; color: #1a8a1a; border: 1px solid #c9f9c9; }
+  .pill-rejected    { background: #fff5f5; color: #d63031; border: 1px solid #ffeaea; }
+  .pill-cancelled   { background: #f1f3f5; color: #868e96; border: 1px solid #dee2e6; }
+  .pill-negotiating { background: #ffc63a; color: #000; border: 1px solid #ffdb7e; }
+
+  .price-badge { font-size: 1.5rem; font-weight: 800; color: #000; }
+
+  .btn-modern-cancel { background: #fff5f5; color: #d63031; border: 1px solid #ffeaea; padding: 10px 18px; border-radius: 10px; font-weight: 700; transition: 0.2s; cursor: pointer; width: 100%; }
+  .btn-modern-cancel:hover { background: #d63031; color: white; }
+
+  /* conflict alert (buyer) */
+  .conflict-alert { background: #fff1f2; color: #e11d48; border: 1px solid #fda4af; border-radius: 12px; padding: 12px 16px; margin-top: 15px; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; }
+
+  /* no-data box */
+  .no-data { padding: 80px 0; text-align: center; background: white; border-radius: 20px; border: 1px solid #eee; }
+
+  /* history */
+  .history-item { display: flex; gap: 8px; margin-bottom: 8px; }
+
+  /* change dates modal */
+  .rental-date-range-container { border: 1px solid #eee; border-radius: 12px; padding: 15px; transition: 0.3s; cursor: pointer; background: #f8f9fa; }
+  .rental-date-range-container:hover { border-color: #ffc63a; background: #fff; }
+  .calendar-icon-bg { width: 40px; height: 40px; background: #ffc63a; color: #000; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  /* admin table */
+  .direction-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+  .direction-sent { background: #fff4e5; color: #ed6c02; }
+  .direction-received { background: #e3f2fd; color: #1976d2; }
+  .admin-table th { background: #f8f9fa; color: #666; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 15px 20px; border: none; }
+  .admin-table td { padding: 18px 20px; border-bottom: 1px solid #f1f1f1; }
+  .admin-table tr:last-child td { border-bottom: none; }
+  .admin-table .product-img { width: 45px; height: 45px; border-radius: 8px; object-fit: cover; }
+`;
+
+/* ─────────────────────────── main component ────────────────── */
+
+export default function OffersView({ role, apiPath, perspective, noLayout, noHeader }: Props) {
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [filter, setFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState({ acceptanceLimitDays: 7, ratingPeriod: 7, rejectionWindowHours: 24, minRentalDays: 3 });
+  const [bookedDates, setBookedDates] = useState<{ product_id: number; rental_start_date: string; rental_end_date: string }[]>([]);
+
+  /* modals */
+  const [ratingModal, setRatingModal] = useState<{ id: number; title: string; target: 'seller' | 'buyer' } | null>(null);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [ratingLoading, setRatingLoading] = useState(false);
+
+  const [actionModal, setActionModal] = useState<{ id: number; action: 'accept' | 'reject' | 'cancel'; title: string; offer?: Offer } | null>(null);
+  const [remarks, setRemarks] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const [dateModal, setDateModal] = useState<{ id: number; title: string; start: string; end: string } | null>(null);
+  const [dateLoading, setDateLoading] = useState(false);
+
+  /* ── change dates modal ── */
+  const [changeDatesModal, setChangeDatesModal] = useState<{ offer: Offer } | null>(null);
+  const [cdStart, setCdStart] = useState('');
+  const [cdEnd, setCdEnd] = useState('');
+  const [cdAddress, setCdAddress] = useState('');
+  const [cdPin, setCdPin] = useState('');
+  const [cdLoading, setCdLoading] = useState(false);
+
+  /* ── data loading ── */
+  const load = () => {
+    setLoading(true);
+    api.get<Offer[]>(apiPath).then((r: any) => {
+      if (r.success && r.data) setOffers(r.data);
+      if (r.bookedDates) setBookedDates(r.bookedDates);
+      if (r.acceptanceLimitDays != null) {
+        setSettings({
+          acceptanceLimitDays: r.acceptanceLimitDays ?? 7,
+          ratingPeriod: r.ratingPeriod ?? 7,
+          rejectionWindowHours: r.rejectionWindowHours ?? 24,
+          minRentalDays: r.minRentalDays ?? 3,
+        });
+      }
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => { load(); }, [apiPath]);
+
+  useEffect(() => { load(); }, [apiPath]);
+
+  /* ── accept / reject / cancel ── */
+  const handleAction = async () => {
+    if (!actionModal) return;
+    setActionLoading(true);
+    let res;
+    if (actionModal.action === 'accept') res = await api.post(`/seller/accept-offer/${actionModal.id}`, { remarks });
+    else if (actionModal.action === 'reject') res = await api.post(`/seller/reject-offer/${actionModal.id}`, { remarks });
+    else res = await api.post(`/buyer/cancel-offer/${actionModal.id}`);
+    setActionLoading(false);
+    if (res?.success) { 
+      toast.success(`Offer ${actionModal.action === 'accept' ? 'accepted' : actionModal.action === 'reject' ? 'rejected' : 'cancelled'}`);
+      setActionModal(null); 
+      setRemarks(''); 
+      load(); 
+    }
+    else toast.error(res?.message || 'Action failed');
+  };
+
+  /* ── rating ── */
+  const handleRateSubmit = async () => {
+    if (!ratingModal) return;
+    setRatingLoading(true);
+    const endpoint = ratingModal.target === 'seller' ? '/buyer/rate-seller' : '/seller/rate-buyer';
+    const res = await api.post<any>(endpoint, { offer_id: ratingModal.id, rating: ratingValue });
+    setRatingLoading(false);
+    if (res.success) { 
+      toast.success('Rating submitted!');
+      setRatingModal(null); 
+      load(); 
+    }
+    else toast.error(res.message || 'Failed to submit rating');
+  };
+
+  /* ── update dates ── */
+  const handleUpdateDates = async () => {
+    if (!dateModal) return;
+    setDateLoading(true);
+    const res = await api.post(`/buyer/update-offer-dates/${dateModal.id}`, {
+      rental_start_date: dateModal.start,
+      rental_end_date: dateModal.end
+    });
+    setDateLoading(false);
+    if (res?.success) { 
+      toast.success('Dates updated!');
+      setDateModal(null); 
+      load(); 
+    }
+    else toast.error(res?.message || 'Update failed');
+  };
+
+  /* ── accept seller's suggested dates ── */
+  const handleAcceptDates = async (offer: Offer) => {
+    const res = await api.post(`/buyer/confirmDateChange/${offer.id}`, {});
+    if (res?.success) {
+      toast.success('Negotiation accepted!');
+      load();
+    }
+    else toast.error(res?.message || 'Action failed');
+  };
+
+  /* ── open change dates modal ── */
+  const openChangeDates = (offer: Offer) => {
+    setChangeDatesModal({ offer });
+    setCdStart(offer.rental_start_date || '');
+    setCdEnd(offer.rental_end_date || '');
+    setCdAddress(offer.delivery_address || '');
+    setCdPin(offer.delivery_pin_code || '');
+  };
+
+  /* ── submit changed dates ── */
+  const submitChangeDates = async () => {
+    if (!changeDatesModal) return;
+    const { offer } = changeDatesModal;
+    const nights = nightsBetween(cdStart, cdEnd);
+    if (nights < settings.minRentalDays) {
+      toast.error(`Minimum ${settings.minRentalDays} days rental required`);
+      return;
+    }
+    if (!cdAddress || !cdPin) { toast.error('Please fill delivery address and pin code'); return; }
+    setCdLoading(true);
+    const res = await api.post(`/buyer/update-offer-dates/${offer.id}`, {
+      rental_start_date: cdStart,
+      rental_end_date: cdEnd,
+      delivery_address: cdAddress,
+      delivery_pin_code: cdPin,
+      offered_price: Math.round(nights * Number(offer.rental_cost ?? 0)),
+    });
+    setCdLoading(false);
+    if (res?.success) { 
+      toast.success('Dates updated!');
+      setChangeDatesModal(null); 
+      load(); 
+    }
+    else toast.error(res?.message || 'Failed to update dates');
+  };
+
+  /* ── computed ── */
+  const productStatusMap = useMemo(() => {
+    const map: Record<number, { isSold: boolean; bookedRanges: { start: number; end: number }[] }> = {};
+    offers.forEach(o => {
+      if (o.status === 'accepted') {
+        if (!map[o.product_id]) map[o.product_id] = { isSold: false, bookedRanges: [] };
+        if (o.listing_type === 'sell') map[o.product_id].isSold = true;
+        else if (o.listing_type === 'rent' && o.rental_start_date && o.rental_end_date) {
+          map[o.product_id].bookedRanges.push({ start: new Date(o.rental_start_date).getTime(), end: new Date(o.rental_end_date).getTime() });
+        }
+      }
+    });
+    return map;
+  }, [offers]);
+
+  const isRentalBlocked = (o: Offer, acceptedRentalRanges: { start: number; end: number }[]) => {
+    if ((o.offer_type ?? o.listing_type) !== 'rent' || o.status !== 'pending') return false;
+    const s1 = new Date(o.rental_start_date!).getTime();
+    const e1 = new Date(o.rental_end_date!).getTime();
+    // check bookedDates (from orders)
+    for (const b of bookedDates) {
+      if (b.product_id === o.product_id) {
+        const s2 = new Date(b.rental_start_date).getTime();
+        const e2 = new Date(b.rental_end_date).getTime();
+        if (s1 <= e2 && e1 >= s2) return true;
+      }
+    }
+    // check accepted offers in same product group
+    for (const r of acceptedRentalRanges) {
+      if (s1 <= r.end && e1 >= r.start) return true;
+    }
+    return false;
+  };
+
+  const isSoldOut = (o: Offer) => {
+    if (o.listing_type !== 'sell') return false;
+    return !!(productStatusMap[o.product_id]?.isSold || (o.is_product_sold && o.is_product_sold > 0));
+  };
+
+  const isRentalConflict = (o: Offer) => {
+    if (o.is_rental_blocked && o.is_rental_blocked > 0) return true;
+    if (o.listing_type !== 'rent' || !o.rental_start_date) return false;
+    const ps = productStatusMap[o.product_id];
+    if (!ps) return false;
+    const s = new Date(o.rental_start_date).getTime();
+    const e = new Date(o.rental_end_date!).getTime();
+    return ps.bookedRanges.some(r => s <= r.end && e >= r.start);
+  };
+
+  const filtered = filter === '' ? offers : offers.filter(o => o.status === filter);
+
+  /* ── render ── */
+  const content = (
+    <div className={noLayout ? '' : 'container-fluid py-4'}>
+      <style>{CSS}</style>
+
+      {!noHeader && (
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 style={{ fontFamily: "'Maven Pro', sans-serif", fontWeight: 700 }}>
+              {perspective === 'buyer'
+                ? <><i className="bi bi-tag me-2"></i>Sent Proposals 🏷️</>
+                : <><i className="bi bi-envelope-paper me-2"></i>Offers Received</>}
+            </h2>
+            <p className="text-muted mb-0">
+              {perspective === 'buyer'
+                ? 'Track offers and negotiation status with sellers.'
+                : 'Manage buying requests and rental bookings on Flex Market'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Status Filter – exact match to PHP filter-tabs */}
+      <div className="filter-tabs">
+        {['', 'pending', 'accepted', 'rejected'].map(f => (
+          <button key={f} className={`nav-link${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
+            {f === '' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="text-center py-5">
+          <div className="spinner-border" style={{ color: '#ffc63a' }}></div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="no-data shadow-sm">
+          <i className="bi bi-inbox" style={{ fontSize: 64, color: '#ccc' }}></i>
+          <h5 className="mt-3 text-muted">No offers found</h5>
+        </div>
+      ) : perspective === 'seller' ? (
+        <SellerView
+          offers={filtered}
+          settings={settings}
+          isRentalBlocked={isRentalBlocked}
+          onAccept={o => { setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o }); setRemarks(''); }}
+          onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
+          onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'buyer' }); setRatingValue(5); }}
+        />
+      ) : perspective === 'buyer' ? (
+        <BuyerView
+          offers={filtered}
+          settings={settings}
+          isRentalConflict={isRentalConflict}
+          isSoldOut={isSoldOut}
+          onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
+          onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
+          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '' })}
+        />
+      ) : (
+        <CombinedView
+          offers={filtered}
+          settings={settings}
+          isRentalBlocked={isRentalBlocked}
+          isRentalConflict={isRentalConflict}
+          isSoldOut={isSoldOut}
+          onAccept={o => { setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o }); setRemarks(''); }}
+          onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
+          onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
+          onRateBuyer={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'buyer' }); setRatingValue(5); }}
+          onRateSeller={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
+          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '' })}
+        />
+      )}
+    </div>
+  );
+
+  const modals = (
+    <>
+      {/* ── Accept / Reject / Cancel Modal ── */}
+      {actionModal && (
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setActionModal(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-0 pb-0 px-4 pt-4">
+                <h5 className="modal-title fw-bold">
+                  {actionModal.action === 'cancel' ? 'Cancel Proposal?' : actionModal.action === 'accept' ? 'Accept Offer' : 'Reject Offer'}
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setActionModal(null)}></button>
+              </div>
+              <div className="modal-body px-4 pt-3">
+                <p className="text-muted">
+                  {actionModal.action === 'cancel'
+                    ? `Are you sure you want to withdraw this offer on "${actionModal.title}"? This action cannot be undone.`
+                    : `${actionModal.action === 'accept' ? 'Accept' : 'Reject'} offer on "${actionModal.title}"?`}
+                </p>
+                {actionModal.action !== 'cancel' && (
+                  <>
+                    <label className="form-label fw-bold small text-uppercase">Remarks (optional)</label>
+                    <textarea className="form-control rounded-3" rows={3} value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Add remarks…" />
+                  </>
+                )}
+              </div>
+              <div className="modal-footer border-0 px-4 pb-4">
+                <button className="btn btn-light rounded-pill px-4" onClick={() => setActionModal(null)}>
+                  {actionModal.action === 'cancel' ? 'No, keep it' : 'Close'}
+                </button>
+                <button
+                  className={`btn rounded-pill px-4 fw-bold ${actionModal.action === 'accept' ? 'btn-warning' : 'btn-danger'}`}
+                  onClick={handleAction}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? 'Processing…'
+                    : actionModal.action === 'cancel' ? 'Yes, withdraw it!'
+                      : actionModal.action === 'accept' ? 'Accept' : 'Reject'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Rating Modal ── */}
+      {ratingModal && (
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setRatingModal(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-0 pb-0 px-4 pt-4">
+                <h5 className="modal-title fw-bold">Rate Your Experience</h5>
+                <button type="button" className="btn-close" onClick={() => setRatingModal(null)}></button>
+              </div>
+              <div className="modal-body p-4 text-center">
+                <p className="text-muted mb-4">Rate your interaction for <strong>{ratingModal.title}</strong></p>
+                <div className="d-flex justify-content-center gap-2 mb-3">
+                  {[1, 2, 3, 4, 5].map(s => (
+                    <button key={s} type="button" onClick={() => setRatingValue(s)} style={{ fontSize: '2.5rem', color: s <= ratingValue ? '#ffc63a' : '#dee2e6', background: 'none', border: 'none', cursor: 'pointer' }}>
+                      <i className={`bi bi-star${s <= ratingValue ? '-fill' : ''}`}></i>
+                    </button>
+                  ))}
+                </div>
+                <div className="h5 fw-bold text-dark">
+                  {ratingValue === 5 && 'Outstanding! 🌟'}{ratingValue === 4 && 'Very Good! 😊'}{ratingValue === 3 && 'Decent 😐'}{ratingValue === 2 && 'Poor 😕'}{ratingValue === 1 && 'Very Poor 😞'}
+                </div>
+              </div>
+              <div className="modal-footer border-0 px-4 pb-4">
+                <button className="btn btn-light rounded-pill px-4" onClick={() => setRatingModal(null)}>Cancel</button>
+                <button className="btn btn-dark rounded-pill px-4 fw-bold" onClick={handleRateSubmit} disabled={ratingLoading}>
+                  {ratingLoading ? 'Submitting…' : 'Yes, Rate it'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Date Update Modal ── */}
+      {dateModal && (
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setDateModal(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-0 pb-0 px-4 pt-4">
+                <h5 className="modal-title fw-bold">Update Rental Dates</h5>
+                <button type="button" className="btn-close" onClick={() => setDateModal(null)}></button>
+              </div>
+              <div className="modal-body px-4 pt-3">
+                <p className="text-muted small mb-3">Modify your proposal dates for "{dateModal.title}"</p>
+                <div className="row g-3">
+                  <div className="col-6">
+                    <label className="form-label small fw-bold">Start Date</label>
+                    <input type="date" className="form-control" value={dateModal.start} onChange={e => setDateModal({ ...dateModal, start: e.target.value })} min={new Date().toISOString().split('T')[0]} />
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label small fw-bold">End Date</label>
+                    <input type="date" className="form-control" value={dateModal.end} onChange={e => setDateModal({ ...dateModal, end: e.target.value })} min={dateModal.start || new Date().toISOString().split('T')[0]} />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-0 px-4 pb-4 mt-2">
+                <button className="btn btn-light rounded-pill px-4" onClick={() => setDateModal(null)}>Cancel</button>
+                <button className="btn btn-dark rounded-pill px-4 fw-bold" onClick={handleUpdateDates} disabled={dateLoading || !dateModal.start || !dateModal.end}>
+                  {dateLoading ? 'Updating…' : 'Update Dates'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  if (noLayout) return <>{content}{modals}</>;
+  return (
+    <DashboardLayout requiredRoles={[role]}>
+      {content}
+      {modals}
+    </DashboardLayout>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SELLER VIEW  —  grouped by product, matches offers_new.php
+═══════════════════════════════════════════════════════════════ */
+
+interface SellerViewProps {
+  offers: Offer[];
+  settings: { acceptanceLimitDays: number; ratingPeriod: number; rejectionWindowHours: number };
+  isRentalBlocked: (o: Offer, acceptedRanges: { start: number; end: number }[]) => boolean;
+  onAccept: (o: Offer) => void;
+  onReject: (o: Offer) => void;
+  onRate: (o: Offer) => void;
+}
+
+function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onRate }: SellerViewProps) {
+  // group by product_id
+  const grouped = useMemo(() => {
+    const m: Record<number, Offer[]> = {};
+    offers.forEach(o => { (m[o.product_id] = m[o.product_id] || []).push(o); });
+    return m;
+  }, [offers]);
+
+  return (
+    <>
+      {Object.entries(grouped).map(([pid, productOffers]) => {
+        const first = productOffers[0];
+
+        // per-group sold & accepted rental ranges (matching PHP logic exactly)
+        const isGroupSold = productOffers.some(o => o.status === 'accepted' && (o.offer_type ?? o.listing_type) === 'sell');
+        const acceptedRentalRanges = productOffers
+          .filter(o => o.status === 'accepted' && (o.offer_type ?? o.listing_type) === 'rent' && o.rental_start_date && o.rental_end_date)
+          .map(o => ({ start: new Date(o.rental_start_date!).getTime(), end: new Date(o.rental_end_date!).getTime() }));
+
+        return (
+          <div key={pid} className="product-group">
+            {/* Product header */}
+            <div className="product-header">
+              {first.product_image
+                ? <img src={getImageUrl(first.product_image)} className="product-thumb" alt={first.product_title} />
+                : <div className="product-thumb d-flex align-items-center justify-content-center bg-light"><i className="bi bi-image text-muted"></i></div>}
+              <div>
+                <h5 className="fw-bold mb-0">{first.product_title}</h5>
+                <div className="d-flex align-items-center gap-2 mt-1">
+                  <small className="text-muted"><i className="bi bi-hash"></i> ID: {first.product_number ?? 'N/A'}</small>
+                  <span className={`badge badge-${first.listing_type} text-uppercase`} style={{ fontSize: '0.65rem' }}>
+                    {first.listing_type}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Offer rows */}
+            <div className="offer-container">
+              {productOffers.map(offer => {
+                const isBlockedRental = isRentalBlocked(offer, acceptedRentalRanges);
+
+                // expiry logic (matching PHP exactly)
+                let isExpired = false;
+                let expiryDate: string | null = null;
+                if (offer.status === 'pending' && offer.contact_viewed_at) {
+                  const viewedTime = new Date(offer.contact_viewed_at).getTime();
+                  const expiryTime = viewedTime + settings.acceptanceLimitDays * 86400000;
+                  isExpired = Date.now() > expiryTime;
+                  expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                }
+
+                const offeredPrice = offer.offered_price ?? offer.offer_price;
+                const nights = nightsBetween(offer.rental_start_date, offer.rental_end_date);
+
+                // display status (matching PHP logic)
+                const displayStatus = (() => {
+                  if (offer.status === 'pending' && isExpired) return 'rejected';
+                  if (offer.status === 'pending' && isGroupSold && (offer.offer_type ?? offer.listing_type) === 'sell') return 'rejected';
+                  if (offer.status === 'pending' && isBlockedRental) return 'rejected';
+                  return offer.status;
+                })();
+                const statusLabel = (() => {
+                  if (offer.status === 'pending' && isExpired) return 'Missed';
+                  if (offer.status === 'pending' && isGroupSold && (offer.offer_type ?? offer.listing_type) === 'sell') return 'Sold Out';
+                  if (offer.status === 'pending' && isBlockedRental) return 'Dates Booked';
+                  if (offer.status === 'negotiating') return 'waiting';
+                  return offer.status;
+                })();
+
+                // accepted offer windows
+                const acceptedTs = offer.accepted_at ? new Date(offer.accepted_at).getTime() : 0;
+                const windowMs = settings.rejectionWindowHours * 3600000;
+                const canRejectByTime = offer.status === 'accepted' && acceptedTs > 0 && Date.now() < acceptedTs + windowMs;
+                const canRejectByPickup = offer.status === 'accepted' && (offer.offer_type ?? offer.listing_type) === 'rent' && offer.rental_start_date
+                  ? Date.now() < new Date(offer.rental_start_date).getTime() - windowMs : false;
+                const isProcessed = !!offer.linked_order_status && ['paid', 'for_delivery', 'dispatched', 'delivered', 'completed'].includes(offer.linked_order_status);
+                const canRate = offer.status === 'accepted' && !offer.seller_rated_buyer && acceptedTs > 0 && Date.now() < acceptedTs + settings.ratingPeriod * 86400000;
+
+                return (
+                  <div key={offer.id} className={`offer-row${offer.status === 'rejected' ? ' opacity-50' : ''}`}>
+
+                    {/* ── buyer info column ── */}
+                    <div className="buyer-info d-flex flex-column align-items-start" style={{ minWidth: 170 }}>
+                      <div className="d-flex align-items-center mb-2">
+                        <div className="buyer-avatar">{(offer.buyer_name || 'B').charAt(0).toUpperCase()}</div>
+                        <div>
+                          <div className="fw-bold fs-6">{offer.buyer_name || '—'}</div>
+                          <div className="d-flex align-items-center">
+                            <span style={{ fontSize: '0.82rem' }}>
+                              {offer.buyer_rating_count ?? 0} <i className="bi bi-star-fill text-warning" style={{ fontSize: '0.7rem' }}></i>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="buyer-contact-info border-top pt-2 w-100">
+                        <div className="buyer-contact-item"><i className="bi bi-telephone text-primary"></i><span>{offer.buyer_mobile || 'N/A'}</span></div>
+                        <div className="buyer-contact-item"><i className="bi bi-envelope text-primary"></i><span className="text-truncate" style={{ maxWidth: 180, display: 'block' }}>{offer.buyer_email || 'N/A'}</span></div>
+                        <div className="buyer-contact-item"><i className="bi bi-geo-alt text-danger"></i><span>{offer.delivery_address ? `${offer.delivery_address}, ` : ''}{offer.delivery_city || 'N/A'}, {offer.delivery_pin_code || 'No Pin'} {offer.delivery_state || ''}</span></div>
+                      </div>
+                    </div>
+
+                    {/* ── offer details column ── */}
+                    <div className="offer-details flex-grow-1">
+                      {/* meta badges */}
+                      <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
+                        <div className="product-meta-badge"><i className="bi bi-eye"></i> {offer.product_views ?? 0} Views</div>
+                        <div className="product-meta-badge"><i className="bi bi-geo"></i> {offer.dispatch_city ?? 'N/A'}, {offer.dispatch_state ?? 'N/A'}</div>
+                      </div>
+
+                      {/* price + status */}
+                      <div className="price-container d-flex align-items-end gap-2 mb-2">
+                        {(offer.original_price ?? 0) > 0 && (
+                          <span className="original-price-strikethrough">₹{Number(offer.original_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        )}
+                        <div className="d-flex flex-column">
+                          <small className="text-muted" style={{ fontSize: '0.7rem' }}>OFFERED PRICE</small>
+                          <span className="price-tag">₹{Number(offeredPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <span className={`status-pill status-${displayStatus}`}>{statusLabel}</span>
+                      </div>
+
+                      {/* rental info box */}
+                      {(offer.offer_type ?? offer.listing_type) === 'rent' && offer.rental_start_date && (
+                        <div className="rental-info-box bg-light p-2 rounded mb-3">
+                          <div className="d-flex justify-content-between small mb-1">
+                            <span className="text-muted">Product Rental:</span>
+                            <span className="fw-bold text-dark">₹{Number(offer.product_rental_cost ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}/day</span>
+                          </div>
+                          <div className="d-flex justify-content-between small mb-2">
+                            <span className="text-muted">Security Deposit:</span>
+                            <span className="fw-bold text-dark">₹{Number(offer.product_rental_deposit ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="rental-dates border-top pt-2 small">
+                            <i className="bi bi-calendar-range text-primary me-1"></i>
+                            <strong>{fmtShort(offer.rental_start_date)}</strong>
+                            {' - '}
+                            <strong>{fmtFull(offer.rental_end_date)}</strong>
+                            {nights > 0 && <span className="badge bg-secondary ms-1">{nights} nights</span>}
+                          </div>
+                          {isBlockedRental && (
+                            <div className="conflict-warning mt-2 w-100">
+                              <i className="bi bi-exclamation-triangle-fill"></i> Booking Overlap Detected!
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* message */}
+                      {offer.message && (
+                        <div className="alert alert-light border-0 py-2 px-3 small fst-italic mb-3">
+                          <i className="bi bi-chat-quote me-1 text-muted"></i>"{offer.message}"
+                        </div>
+                      )}
+
+                      {/* delivery box */}
+                      {offer.delivery_address && (
+                        <div className="delivery-box bg-white border rounded p-2 mb-3">
+                          <div className="d-flex align-items-center gap-2 small">
+                            <i className="bi bi-truck text-primary"></i>
+                            <span className="fw-bold">DELIVERY:</span>
+                            <span className="text-dark">{offer.delivery_address ? `${offer.delivery_address}, ` : ''}{offer.delivery_city ?? 'N/A'}, {offer.delivery_pin_code ?? 'No Pin'} {offer.delivery_state ?? ''}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* history / detailed tracker */}
+                      {offer.history && offer.history.length > 0 && (
+                        <div className="mt-3 pt-3 border-top w-100">
+                          <h6 className="small fw-bold text-muted mb-2"><i className="bi bi-clock-history me-1"></i>Detailed Tracker</h6>
+                          <div className="history-list small">
+                            {offer.history.map(h => (
+                              <div key={h.id} className="history-item d-flex gap-2 mb-2 text-start">
+                                <div className="text-primary"><i className="bi bi-dot"></i></div>
+                                <div>
+                                  <span className="text-dark fw-semibold">{historyLabel(h.action)}</span>
+                                  <div className="text-muted opacity-75" style={{ fontSize: '0.75rem' }}>
+                                    {fmtDateTime(h.created_at)}
+                                    {h.new_start_date && <> • {fmtShort(h.new_start_date)} - {fmtShort(h.new_end_date)}</>}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── offer actions column ── */}
+                    <div className="offer-actions" style={{ minWidth: 120, textAlign: 'right' }}>
+                      {offer.status === 'pending' && (
+                        <>
+                          {isExpired ? (
+                            <div className="text-danger small fw-bold">
+                              <i className="bi bi-clock-fill"></i> Offer Missed
+                              <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>Acceptance period expired on {expiryDate}</div>
+                            </div>
+                          ) : isGroupSold && (offer.offer_type ?? offer.listing_type) === 'sell' ? (
+                            <div className="text-danger small fw-bold">
+                              <i className="bi bi-slash-circle-fill"></i> Already Sold
+                              <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>This product is sold to another buyer.</div>
+                            </div>
+                          ) : isBlockedRental ? (
+                            <>
+                              <div className="text-danger small fw-bold mb-2">
+                                <i className="bi bi-calendar-x-fill"></i> Dates Booked
+                                <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>These dates overlap with an accepted booking.</div>
+                              </div>
+                              <button className="btn-yellow btn-sm" onClick={() => onAccept(offer)}>Accept</button>
+                            </>
+                          ) : (
+                            <div className="btn-group btn-group-sm">
+                              <button className="btn-yellow" onClick={() => onAccept(offer)}>Accept</button>
+                              <button className="btn-outline-dark-custom" onClick={() => onReject(offer)}>Reject</button>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {offer.status === 'negotiating' && (
+                        <span className="badge bg-info text-dark rounded-pill py-2 px-3">
+                          <i className="bi bi-clock-history me-1"></i>Waiting for Buyer
+                        </span>
+                      )}
+
+                      {offer.status === 'accepted' && (
+                        <div className="d-flex flex-column align-items-end gap-1">
+                          <div className="d-flex align-items-center gap-1">
+                            {offer.linked_order_status && offer.linked_order_status !== 'pending' && (
+                              <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 rounded-pill" style={{ fontSize: '0.65rem' }}>
+                                <i className="bi bi-truck me-1"></i>{offer.linked_order_status.toUpperCase()}
+                              </span>
+                            )}
+                            <i className="bi bi-patch-check-fill text-success fs-4" title="Accepted"></i>
+                          </div>
+                          {canRate ? (
+                            <button className="btn-yellow btn-sm mt-2 rounded-pill px-3" style={{ fontSize: '0.8rem' }} onClick={() => onRate(offer)}>
+                              <i className="bi bi-star-fill me-1"></i>Rate Delivery
+                            </button>
+                          ) : offer.seller_rated_buyer ? (
+                            <span className="badge bg-light text-dark mt-2 border rounded-pill px-3">
+                              <i className="bi bi-check-circle-fill text-success me-1"></i>Rated
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+
+                      {offer.status === 'rejected' && (
+                        <i className="bi bi-dash-circle text-muted fs-4" title="Rejected"></i>
+                      )}
+
+
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BUYER VIEW  —  luxury cards, matches my_offers.php
+═══════════════════════════════════════════════════════════════ */
+
+interface BuyerViewProps {
+  offers: Offer[];
+  settings: { acceptanceLimitDays: number; ratingPeriod: number; rejectionWindowHours: number };
+  isRentalConflict: (o: Offer) => boolean;
+  isSoldOut: (o: Offer) => boolean;
+  onCancel: (o: Offer) => void;
+  onRate: (o: Offer) => void;
+  onUpdateDates: (o: Offer) => void;
+}
+
+function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, onRate, onUpdateDates }: BuyerViewProps) {
+  return (
+    <>
+      {offers.map(o => {
+        const offeredPrice = o.offered_price ?? o.offer_price;
+        const nights = nightsBetween(o.rental_start_date, o.rental_end_date);
+        const conflict = isRentalConflict(o);
+        const soldOut = isSoldOut(o);
+        const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
+        const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
+        const canRate = o.status === 'accepted' && !o.buyer_rated_seller && acceptedTs > 0 && Date.now() < ratingExpiryTs;
+
+        // pill class: pill-pending / pill-accepted etc  (my_offers.php convention)
+        const pillClass = `status-pill pill-${o.status}`;
+        const pillLabel = o.status === 'negotiating' ? 'action required' : o.status;
+
+        return (
+          <div key={o.id} className="luxury-item-card shadow-sm">
+            <div className="row align-items-center">
+              {/* product image */}
+              <div className="col-auto">
+                {o.product_image
+                  ? <img src={getImageUrl(o.product_image)} className="item-img" alt={o.product_title} />
+                  : <div className="item-img d-flex align-items-center justify-content-center bg-light rounded-3"><i className="bi bi-image text-muted fs-3"></i></div>}
+              </div>
+
+              {/* main info */}
+              <div className="col px-md-4">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <h5 className="fw-bold mb-1">{o.product_title}</h5>
+                    <small className="text-muted d-block mb-2">#REF-{o.id} • {o.offer_type ? o.offer_type.charAt(0).toUpperCase() + o.offer_type.slice(1) : o.listing_type?.charAt(0).toUpperCase() + (o.listing_type?.slice(1) ?? '')}</small>
+                  </div>
+                  <span className={pillClass}>{pillLabel}</span>
+                </div>
+
+                {/* price + rental info block */}
+                <div className="bg-light p-3 rounded-4 mt-2">
+                  <div className="row text-center text-md-start align-items-center">
+                    <div className="col-md-4 border-end">
+                      <small className="text-muted d-block">PROPOSED PRICE</small>
+                      <span className="price-badge">₹{Number(offeredPrice).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="col-md-8 ps-md-4">
+                      {(o.offer_type ?? o.listing_type) === 'rent' && o.rental_start_date && (
+                        <p className="mb-0 small fw-bold text-muted">
+                          <i className="bi bi-calendar-event me-1 text-primary"></i>
+                          {fmtShort(o.rental_start_date)} to {fmtFull(o.rental_end_date)}
+                        </p>
+                      )}
+                      {o.status === 'negotiating' ? (
+                        <div className="alert alert-info py-2 px-3 mt-2 rounded-3 border-0 small">
+                          <i className="bi bi-info-circle-fill me-2"></i>
+                          <strong>Action Required:</strong> {o.message}
+                        </div>
+                      ) : (
+                        <p className="mb-0 small text-muted fst-italic mt-1">
+                          <i className="bi bi-chat-left-dots me-1"></i>{o.message || 'No message attached.'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* conflict alert */}
+                  {conflict && (
+                    <div className="conflict-alert mb-3">
+                      <i className="bi bi-exclamation-triangle-fill fs-5"></i>
+                      <div>
+                        These rental dates overlap with an accepted booking.
+                        {conflict && <><br /><small className="fw-normal opacity-75">You can try changing your dates to something else.</small></>}
+                      </div>
+                    </div>
+                  )}
+                  {soldOut && o.status === 'pending' && (
+                    <div className="conflict-alert mb-3">
+                      <i className="bi bi-slash-circle-fill fs-5"></i>
+                      <div>This product has been sold to another buyer.</div>
+                    </div>
+                  )}
+
+                  {/* negotiation logs */}
+                  {o.history && o.history.length > 0 && (
+                    <div className="mt-3 pt-3 border-top">
+                      <h6 className="small fw-bold text-muted mb-2"><i className="bi bi-clock-history me-1"></i>Negotiation Logs</h6>
+                      <div className="history-list small">
+                        {o.history.map(h => (
+                          <div key={h.id} className="history-item d-flex gap-2 mb-2">
+                            <div className="text-primary"><i className="bi bi-dot"></i></div>
+                            <div>
+                              <span className="text-dark fw-semibold">{historyLabel(h.action)}</span>
+                              <div className="text-muted opacity-75" style={{ fontSize: '0.75rem' }}>
+                                {fmtDateTime(h.created_at)}
+                                {h.new_start_date && <> • {fmtShort(h.new_start_date)} - {fmtShort(h.new_end_date)}</>}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* action buttons */}
+              <div className="col-md-2 text-end">
+                <div className="d-grid gap-2">
+                  {(o.status === 'pending' || o.status === 'negotiating') && (
+                    <>
+                      {o.listing_type === 'rent' && (
+                        <button className="btn-yellow mb-1" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates(o)}>Change dates</button>
+                      )}
+                      <button className="btn-modern-cancel" onClick={() => onCancel(o)}>Cancel Offer</button>
+                    </>
+                  )}
+                  {canRate && (
+                    <button className="btn btn-warning rounded-pill fw-bold" onClick={() => onRate(o)}>
+                      <i className="bi bi-star-fill me-1"></i>Rate Delivery
+                    </button>
+                  )}
+                  {o.status === 'accepted' && o.buyer_rated_seller ? (
+                    <span className="badge bg-light text-dark rounded-pill border py-2 px-3">
+                      <i className="bi bi-check-circle-fill text-success me-1"></i>Rated
+                    </span>
+                  ) : null}
+
+                  <a href={`/buyer/product/${o.product_id}`} className="btn btn-light rounded-pill border text-decoration-none" style={{ fontSize: '0.875rem' }}>
+                    View Item
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMBINED VIEW  —  table for admin / superadmin
+═══════════════════════════════════════════════════════════════ */
+
+interface CombinedViewProps {
+  offers: Offer[];
+  settings: { acceptanceLimitDays: number; ratingPeriod: number; rejectionWindowHours: number };
+  isRentalBlocked: (o: Offer, acceptedRanges: { start: number; end: number }[]) => boolean;
+  isRentalConflict: (o: Offer) => boolean;
+  isSoldOut: (o: Offer) => boolean;
+  onAccept: (o: Offer) => void;
+  onReject: (o: Offer) => void;
+  onCancel: (o: Offer) => void;
+  onRateBuyer: (o: Offer) => void;
+  onRateSeller: (o: Offer) => void;
+  onUpdateDates: (o: Offer) => void;
+}
+
+function CombinedView({ offers, settings, isRentalBlocked, isRentalConflict, isSoldOut, onAccept, onReject, onCancel, onRateBuyer, onRateSeller, onUpdateDates }: CombinedViewProps) {
+  // Pre-calculate per-product accepted ranges for conflict detection in flat list
+  const productAcceptedRanges = useMemo(() => {
+    const map: Record<number, { start: number; end: number }[]> = {};
+    offers.forEach(o => {
+      if (o.status === 'accepted' && (o.offer_type ?? o.listing_type) === 'rent' && o.rental_start_date && o.rental_end_date) {
+        (map[o.product_id] = map[o.product_id] || []).push({
+          start: new Date(o.rental_start_date).getTime(),
+          end: new Date(o.rental_end_date).getTime()
+        });
+      }
+    });
+    return map;
+  }, [offers]);
+
+  return (
+    <div className="card border-0 shadow-sm rounded-4 overflow-hidden mt-2">
+      <div className="table-responsive">
+        <table className="table table-hover align-middle mb-0 admin-table">
+          <thead>
+            <tr>
+               <th style={{ width: 60 }}>Type</th>
+               <th style={{ width: 80 }}>Ref ID</th>
+               <th>Product</th>
+               <th>Counterpart</th>
+               <th>Price & Dates</th>
+               <th>Status</th>
+               <th className="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {offers.map(o => {
+              const isSent = o.perspective === 'sent';
+              const directionTitle = isSent ? 'Offer Sent' : 'Offer Received';
+              const directionIcon = isSent ? 'bi-arrow-up-right' : 'bi-arrow-down-left';
+              const typeClass = isSent ? 'direction-sent' : 'direction-received';
+              
+              const offeredPrice = o.offered_price ?? o.offer_price;
+              const nights = nightsBetween(o.rental_start_date, o.rental_end_date);
+              
+              // For received offers, check if blocked by other accepted offers
+              const conflict = isSent ? isRentalConflict(o) : isRentalBlocked(o, productAcceptedRanges[o.product_id] || []);
+              const sold = isSent ? isSoldOut(o) : false; // groupsold logic in SellerView is more complex but this is basic check
+
+              // Common status classes
+              const statusClass = `status-pill ${isSent ? `pill-${o.status}` : `status-${o.status === 'pending' && conflict ? 'rejected' : o.status}`}`;
+              const label = o.status === 'negotiating' ? (isSent ? 'action required' : 'waiting') : o.status;
+
+              return (
+                <tr key={o.id}>
+                  <td>
+                    <div className={`direction-icon ${typeClass}`} title={directionTitle} data-bs-toggle="tooltip">
+                      <i className={`bi ${directionIcon}`}></i>
+                    </div>
+                  </td>
+                  <td className="text-muted small fw-bold">#REF-{o.id}</td>
+                  <td>
+                    <div className="d-flex align-items-center gap-3">
+                      {o.product_image ? (
+                        <img src={getImageUrl(o.product_image)} className="product-img shadow-sm" alt="" />
+                      ) : (
+                        <div className="product-img bg-light d-flex align-items-center justify-content-center border">
+                          <i className="bi bi-image text-muted"></i>
+                        </div>
+                      )}
+                      <div>
+                        <div className="fw-bold text-dark">{o.product_title}</div>
+                        <div className="badge bg-light text-dark border-0 p-0 text-uppercase" style={{ fontSize: '0.65rem', opacity: 0.7 }}>{o.listing_type}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="d-flex align-items-center gap-2">
+                      <div className="buyer-avatar" style={{ width: 30, height: 30, fontSize: '0.8rem' }}>
+                        {((isSent ? o.seller_name : o.buyer_name) || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="fw-semibold small">{isSent ? (o.seller_name || 'Unknown Seller') : (o.buyer_name || 'Unknown Buyer')}</div>
+                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>{isSent ? 'Seller' : 'Buyer'}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="fw-bold">₹{Number(offeredPrice).toLocaleString('en-IN')}</div>
+                    {o.rental_start_date && (
+                      <div className="text-muted small" style={{ fontSize: '0.7rem' }}>
+                        <i className="bi bi-calendar-event me-1"></i>
+                        {fmtShort(o.rental_start_date)} - {fmtShort(o.rental_end_date)}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <span className={statusClass} style={{ fontSize: '0.65rem' }}>{label}</span>
+                    {conflict && o.status === 'pending' && <div className="text-danger mt-1 fw-bold" style={{ fontSize: '0.6rem' }}>Overlap Detected</div>}
+                  </td>
+                  <td className="text-end">
+                    <div className="d-flex justify-content-end gap-2">
+                      {/* Perspective-based actions */}
+                      {!isSent && o.status === 'pending' && !conflict && !sold && (
+                        <>
+                          <button className="btn btn-sm btn-warning rounded-pill px-3 fw-bold" onClick={() => onAccept(o)}>Accept</button>
+                          <button className="btn btn-sm btn-outline-danger rounded-pill px-3" onClick={() => onReject(o)}>Reject</button>
+                        </>
+                      )}
+
+                      {isSent && (o.status === 'pending' || o.status === 'negotiating') && (
+                        <button className="btn btn-sm btn-outline-danger rounded-pill px-3" onClick={() => onCancel(o)}>Withdraw</button>
+                      )}
+
+                      {o.status === 'accepted' && (
+                        <i className="bi bi-check-circle-fill text-success fs-5"></i>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

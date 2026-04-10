@@ -1,0 +1,1606 @@
+<?php
+
+namespace App\Controllers\Api;
+
+use CodeIgniter\RESTful\ResourceController;
+
+class BuyerApi extends ResourceController
+{
+    protected $format = 'json';
+
+    public function dashboard()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId = $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+
+        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+
+        // Product stats
+        $ttlProducts = $db->table('offers')->where('buyer_id', $userId)->countAllResults();
+        $pendingOffers = $db->table('offers')->where('buyer_id', $userId)->where('status', 'pending')->countAllResults();
+        $acceptedOffers = $db->table('offers')->where('buyer_id', $userId)->where('status', 'accepted')->countAllResults();
+        $totalOrders = $db->table('orders')->where('buyer_id', $userId)->countAllResults();
+
+        // Recent offers
+        $recentOffers = $db->table('offers o')
+            ->select('o.*, p.title as product_title, p.listing_type, u.name as seller_name')
+            ->join('products p', 'p.id = o.product_id', 'left')
+            ->join('users u', 'u.id = o.seller_id', 'left')
+            ->where('o.buyer_id', $userId)
+            ->orderBy('o.created_at', 'DESC')
+            ->limit(5)
+            ->get()->getResultArray();
+
+        // Notifications
+        $notifications = $db->table('notifications')
+            ->where('user_id', $userId)
+            ->where('is_read', 0)
+            ->orderBy('created_at', 'DESC')
+            ->limit(5)
+            ->get()->getResultArray();
+
+        return $this->respond([
+            'success' => true,
+            'data' => [
+                'user' => [
+                    'id' => (int) $user['id'],
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'user_type' => $user['user_type'],
+                    'role' => $jwtUser['role'],
+                    'reliability_score' => (int) ($user['reliability_score'] ?? 100),
+                    'referral_code' => $user['referral_code'] ?? '',
+                ],
+                'stats' => [
+                    'ttl_products' => $ttlProducts,
+                    'pending' => $pendingOffers,
+                    'accepted' => $acceptedOffers,
+                    'total_orders' => $totalOrders,
+                ],
+                'recent_offers' => $recentOffers,
+                'notifications' => $notifications,
+            ],
+        ]);
+    }
+
+    public function browse()
+    {
+        $jwtUser = isset($this->request->jwt_user) ? $this->request->jwt_user : null;
+        $buyerId = $jwtUser ? (int) $jwtUser['user_id'] : null;
+        $db = \Config\Database::connect();
+        $page = (int) ($this->request->getGet('page') ?? 1);
+        $perPage = 12;
+        $offset = ($page - 1) * $perPage;
+        $search = $this->request->getGet('search');
+        $listingType = $this->request->getGet('listing_type');
+        $category = $this->request->getGet('category');
+
+        $builder = $db->table('products p')
+            ->select('p.*, u.name as seller_name, u.seller_rating_avg, ob.brand_name as brand_name, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as image')
+            ->join('users u', 'u.id = p.seller_id', 'left')
+            ->join('orignal_brands ob', 'ob.id = p.brand_id AND ob.is_active = 1', 'left')
+            ->where('p.status', 'approved');
+
+        // Exclude blocked sellers if user is authenticated
+        if ($buyerId) {
+            $builder->whereNotIn('p.seller_id', $db->table('buyer_blocked_sellers')
+                ->select('blocked_seller_id')
+                ->where('buyer_id', $buyerId)
+                ->get()->getResultArray(), false);
+        }
+
+        if ($search) {
+            $builder->groupStart()
+                ->like('p.title', $search)
+                ->orLike('p.description', $search)
+                ->groupEnd();
+        }
+        if ($listingType) {
+            // listing_type is sell/rent; anything else is a listing_type_category (e.g. clothing, electronics)
+            if (in_array(strtolower($listingType), ['sell', 'rent'])) {
+                $builder->where('p.listing_type', strtolower($listingType));
+            } else {
+                $builder->where('LOWER(p.listing_type_category)', strtolower($listingType));
+            }
+        }
+        if ($category) $builder->where('p.category', $category);
+
+        $total = $builder->countAllResults(false);
+        $products = $builder->orderBy('p.created_at', 'DESC')
+            ->limit($perPage, $offset)
+            ->get()->getResultArray();
+
+        $categories = $db->table('categories')->get()->getResultArray();
+
+        return $this->respond([
+            'success' => true,
+            'data' => [
+                'products' => $products,
+                'categories' => $categories,
+                'pagination' => [
+                    'page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $total,
+                    'total_pages' => ceil($total / $perPage),
+                ],
+            ],
+        ]);
+    }
+
+    public function productDetails(int $id)
+    {
+        $db = \Config\Database::connect();
+
+        $product = $db->table('products p')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as brand, lt.usage_label')
+            ->join('users u', 'u.id = p.seller_id', 'left')
+            ->join('orignal_brands ob', 'ob.id = p.brand_id AND ob.is_active = 1 AND ob.is_blocked = 0', 'left')
+            ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
+            ->where('p.id', $id)
+            ->get()->getRowArray();
+
+        if (!$product) {
+            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+        }
+
+        $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+
+        return $this->respond([
+            'success' => true,
+            'data' => [
+                'product' => $product,
+                'images' => $images,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/v1/product/{id}/similar
+     * Returns similar products based on category, brand, listing type, and gender.
+     */
+    public function similarProducts(int $id)
+    {
+        $db = \Config\Database::connect();
+
+        $product = $db->table('products')->where('id', $id)->get()->getRowArray();
+        if (!$product) {
+            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+        }
+
+        // Build a scored similarity query
+        // Priority: same category > same brand > same listing type > same gender
+        $builder = $db->table('products p')
+            ->select('p.*, u.name as seller_name, u.seller_rating_avg, ob.brand_name as brand_name,
+                (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as image')
+            ->join('users u', 'u.id = p.seller_id', 'left')
+            ->join('orignal_brands ob', 'ob.id = p.brand_id AND ob.is_active = 1', 'left')
+            ->where('p.status', 'approved')
+            ->where('p.id !=', $id);
+
+        // Match on at least one attribute: category, brand, or listing_type
+        $builder->groupStart();
+        if (!empty($product['category'])) {
+            $builder->where('p.category', $product['category']);
+        }
+        if (!empty($product['brand_id'])) {
+            $builder->orWhere('p.brand_id', $product['brand_id']);
+        }
+        if (!empty($product['listing_type'])) {
+            $builder->orWhere('p.listing_type', $product['listing_type']);
+        }
+        if (!empty($product['gender'])) {
+            $builder->orWhere('p.gender', $product['gender']);
+        }
+        $builder->groupEnd();
+
+        $similar = $builder->orderBy('p.views_count', 'DESC')
+            ->limit(8)
+            ->get()->getResultArray();
+
+        // Score and sort by relevance
+        $scored = array_map(function ($item) use ($product) {
+            $score = 0;
+            if ($item['category'] === $product['category']) $score += 4;
+            if ($item['brand_id'] === $product['brand_id']) $score += 3;
+            if ($item['listing_type'] === $product['listing_type']) $score += 2;
+            if ($item['gender'] === $product['gender']) $score += 1;
+            $item['_score'] = $score;
+            return $item;
+        }, $similar);
+
+        usort($scored, function ($a, $b) {
+            return $b['_score'] - $a['_score'];
+        });
+
+        // Remove internal score before responding
+        $scored = array_map(function ($item) {
+            unset($item['_score']);
+            return $item;
+        }, $scored);
+
+        return $this->respond([
+            'success' => true,
+            'data' => $scored,
+        ]);
+    }
+
+    public function myOffers()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $offers = $db->table('offers o')
+            ->select('o.*, o.offer_price as offered_price,
+                p.title as product_title, p.listing_type, p.original_price,
+                p.rental_cost as rental_cost,
+                (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image,
+                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = "accepted" AND listing_type = "sell") as is_product_sold,
+                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = "accepted" AND listing_type = "rent" AND rental_start_date <= o.rental_end_date AND rental_end_date >= o.rental_start_date AND p.listing_type = "rent") as is_rental_blocked,
+                u.name as seller_name, u.seller_rating_avg, u.seller_rating_count')
+            ->join('products p', 'p.id = o.product_id', 'left')
+            ->join('users u', 'u.id = o.seller_id', 'left')
+            ->where('o.buyer_id', $jwtUser['user_id'])
+            ->orderBy('o.created_at', 'DESC')
+            ->get()->getResultArray();
+
+        $historyModel = new \App\Models\OfferHistoryModel();
+        foreach ($offers as &$o) { $o['history'] = $historyModel->getHistoryByOffer($o['id']); }
+        unset($o);
+
+        return $this->respond([
+            'success'      => true,
+            'data'         => $offers,
+            'minRentalDays' => (int) getSystemSetting('min_rental_days', 3),
+            'acceptanceLimitDays'  => (float) getSystemSetting('offer_acceptance_limit_days', 7),
+            'ratingPeriod'         => (float) getSystemSetting('seller_rating_period_days', 7),
+            'rejectionWindowHours' => (float) getSystemSetting('seller_rejection_window_hours', 24),
+        ]);
+    }
+
+    public function myOrders()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $orders = $db->table('orders o')
+            ->select('o.*, p.title as product_title, p.listing_type, u.name as seller_name, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as primary_image')
+            ->join('products p', 'p.id = o.product_id', 'left')
+            ->join('users u', 'u.id = o.seller_id', 'left')
+            ->where('o.buyer_id', $jwtUser['user_id'])
+            ->orderBy('o.created_at', 'DESC')
+            ->get()->getResultArray();
+
+        foreach ($orders as &$order) {
+            $review = $db->table('reviews')
+                ->where('order_id', $order['id'])
+                ->where('reviewer_id', $jwtUser['user_id'])
+                ->get()->getRowArray();
+            $order['review']     = $review ?: null;
+            $order['can_review'] = in_array($order['status'], ['delivered', 'completed']) && !$review;
+        }
+        unset($order);
+
+        return $this->respond(['success' => true, 'data' => $orders]);
+    }
+
+    public function notifications()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $notifications = $db->table('notifications')
+            ->where('user_id', $jwtUser['user_id'])
+            ->orderBy('created_at', 'DESC')
+            ->limit(50)
+            ->get()->getResultArray();
+
+        return $this->respond(['success' => true, 'data' => $notifications]);
+    }
+
+    public function transactions()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $transactions = $db->table('transactions')
+            ->where('user_id', $jwtUser['user_id'])
+            ->orderBy('created_at', 'DESC')
+            ->limit(50)
+            ->get()->getResultArray();
+
+        return $this->respond(['success' => true, 'data' => $transactions]);
+    }
+
+    /**
+     * GET /api/v1/product/:id/booked-dates  (public)
+     */
+    public function getBookedDates(int $productId)
+    {
+        $db = \Config\Database::connect();
+
+        $product = $db->table('products')->where('id', $productId)->where('status', 'approved')->get()->getRowArray();
+        if (!$product || $product['listing_type'] !== 'rent') {
+            return $this->respond(['success' => true, 'data' => ['booked_ranges' => []]], 200);
+        }
+
+        $offers = $db->table('offers')
+            ->select('rental_start_date, rental_end_date')
+            ->where('product_id', $productId)
+            ->whereIn('status', ['pending', 'accepted'])
+            ->where('rental_start_date IS NOT NULL', null, false)
+            ->where('rental_end_date IS NOT NULL', null, false)
+            ->get()->getResultArray();
+
+        $bookedRanges = array_map(fn($o) => [
+            'start' => $o['rental_start_date'],
+            'end'   => $o['rental_end_date'],
+        ], $offers);
+
+        return $this->respond(['success' => true, 'data' => ['booked_ranges' => $bookedRanges]], 200);
+    }
+
+    /**
+     * POST /api/v1/buyer/make-offer
+     */
+    public function makeOffer()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $data = $this->request->getJSON(true);
+        $db = \Config\Database::connect();
+
+        $product = $db->table('products')->where('id', $data['product_id'])->where('status', 'approved')->get()->getRowArray();
+        if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+        if ($product['seller_id'] == $jwtUser['user_id']) return $this->respond(['success' => false, 'message' => 'Cannot make offer on your own product'], 400);
+
+        // SuperAdmin bypasses subscription check
+        if ($jwtUser['role'] !== 'super_admin') {
+            $activeSub = $db->table('user_subscriptions')
+                ->where('user_id', $jwtUser['user_id'])
+                ->where('is_active', 1)
+                ->where('expires_at >=', date('Y-m-d H:i:s'))
+                ->get()->getRowArray();
+            if (!$activeSub) {
+                return $this->respond(['success' => false, 'message' => 'You need an active subscription to make offers. Please subscribe to a plan.'], 403);
+            }
+        }
+
+        $offerType = $data['offer_type'] ?? $product['listing_type'];
+
+        // For rent offers, block if dates overlap with any active offer on the same product
+        if ($offerType === 'rent') {
+            if (empty($data['rental_start_date']) || empty($data['rental_end_date'])) {
+                return $this->respond(['success' => false, 'message' => 'Rental start and end dates are required'], 400);
+            }
+
+            $overlapping = $db->table('offers')
+                ->where('product_id', $data['product_id'])
+                ->whereIn('status', ['pending', 'accepted'])
+                ->where('rental_start_date <=', $data['rental_end_date'])
+                ->where('rental_end_date >=', $data['rental_start_date'])
+                ->countAllResults();
+
+            if ($overlapping > 0) {
+                return $this->respond(['success' => false, 'message' => 'This product already has an active offer for the selected dates. Please choose different dates.'], 409);
+            }
+        }
+
+        $offerData = [
+            'product_id' => $data['product_id'],
+            'buyer_id' => $jwtUser['user_id'],
+            'seller_id' => $product['seller_id'],
+            'offer_type' => $offerType,
+            'offer_price' => $data['offer_price'],
+            'deposit_amount' => $data['deposit_amount'] ?? null,
+            'rental_start_date' => $data['rental_start_date'] ?? null,
+            'rental_end_date' => $data['rental_end_date'] ?? null,
+            'delivery_address' => $data['delivery_address'] ?? null,
+            'delivery_pin_code' => $data['delivery_pin_code'] ?? null,
+            'status' => 'pending',
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        $offerId = $db->table('offers')->insert($offerData, true);
+
+        // Create notification for seller
+        $db->table('notifications')->insert([
+            'user_id' => $product['seller_id'],
+            'title' => 'New Offer Received',
+            'message' => 'You received a new offer of ₹' . $data['offer_price'] . ' on "' . $product['title'] . '"',
+            'type' => 'offer',
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Offer submitted successfully', 'data' => ['offer_id' => $offerId]], 201);
+    }
+
+    /**
+     * POST /api/v1/buyer/update-offer-dates/{id}
+     */
+    public function updateOfferDates(int $id)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+        $data = $this->request->getJSON(true) ?: $this->request->getPost();
+
+        $offer = $db->table('offers')->where('id', $id)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+        
+        if (!in_array($offer['status'], ['pending', 'negotiating'])) {
+            return $this->respond(['success' => false, 'message' => 'Dates can only be updated for pending or negotiating offers.'], 400);
+        }
+
+        $startDate = $data['rental_start_date'] ?? null;
+        $endDate = $data['rental_end_date'] ?? null;
+        $newPrice = $data['offer_price'] ?? null;
+
+        if (!$startDate || !$endDate) {
+            return $this->respond(['success' => false, 'message' => 'Start and end dates are required.'], 400);
+        }
+
+        // Check for conflicts with already accepted offers
+        $overlapping = $db->table('offers')
+            ->where('product_id', $offer['product_id'])
+            ->where('id !=', $id)
+            ->where('status', 'accepted')
+            ->where('rental_start_date <=', $endDate)
+            ->where('rental_end_date >=', $startDate)
+            ->countAllResults();
+
+        if ($overlapping > 0) {
+            return $this->respond(['success' => false, 'message' => 'The selected dates conflict with an existing booking.'], 409);
+        }
+
+        // Update offer
+        $updateData = [
+            'rental_start_date' => $startDate,
+            'rental_end_date' => $endDate,
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+        if ($newPrice !== null) {
+            $updateData['offer_price'] = $newPrice;
+        }
+
+        $db->table('offers')->where('id', $id)->update($updateData);
+
+        // Add to history
+        $db->table('offer_history')->insert([
+            'offer_id'       => $id,
+            'changed_by'     => $jwtUser['user_id'],
+            'action'         => 'buyer_date_update',
+            'old_start_date' => $offer['rental_start_date'],
+            'old_end_date'   => $offer['rental_end_date'],
+            'new_start_date' => $startDate,
+            'new_end_date'   => $endDate,
+            'new_price'      => $newPrice ?? $offer['offer_price'],
+            'created_at'     => date('Y-m-d H:i:s')
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Offer dates updated successfully.']);
+    }
+
+    /**
+     * POST /api/v1/buyer/cancel-offer/{id}
+     */
+    public function cancelOffer(int $id)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $offer = $db->table('offers')->where('id', $id)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+        if (!in_array($offer['status'], ['pending', 'negotiating', 'accepted'])) return $this->respond(['success' => false, 'message' => 'This offer can no longer be cancelled'], 400);
+
+        // If offer was accepted, also cancel the associated order
+        if ($offer['status'] === 'accepted') {
+            $db->table('orders')
+                ->where('buyer_id', $offer['buyer_id'])
+                ->where('product_id', $offer['product_id'])
+                ->where('status', 'pending')
+                ->update(['status' => 'cancelled', 'updated_at' => date('Y-m-d H:i:s')]);
+        }
+
+        $db->table('offers')->where('id', $id)->update(['status' => 'cancelled', 'updated_at' => date('Y-m-d H:i:s')]);
+        return $this->respond(['success' => true, 'message' => 'Offer cancelled']);
+    }
+
+    /**
+     * POST /api/v1/buyer/confirm-delivery/{orderId}
+     */
+    public function confirmDelivery(int $orderId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $order = $db->table('orders')->where('id', $orderId)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$order) return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
+        if (!in_array($order['status'], ['dispatched', 'delivered'])) return $this->respond(['success' => false, 'message' => 'Order cannot be confirmed in current status'], 400);
+
+        $db->table('orders')->where('id', $orderId)->update(['status' => 'completed', 'completed_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]);
+
+        $db->table('order_status_history')->insert([
+            'order_id' => $orderId, 'status' => 'completed', 'updated_by' => $jwtUser['user_id'],
+            'remarks' => 'Delivery confirmed by buyer', 'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Delivery confirmed']);
+    }
+
+    /**
+     * POST /api/v1/buyer/cancel-order/{orderId}
+     */
+    public function cancelOrder(int $orderId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $order = $db->table('orders')->where('id', $orderId)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$order) return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
+        if (!in_array($order['status'], ['pending'])) return $this->respond(['success' => false, 'message' => 'Only pending orders can be cancelled'], 400);
+
+        $db->table('orders')->where('id', $orderId)->update(['status' => 'cancelled', 'updated_at' => date('Y-m-d H:i:s')]);
+
+        $db->table('order_status_history')->insert([
+            'order_id' => $orderId, 'status' => 'cancelled', 'updated_by' => $jwtUser['user_id'],
+            'remarks' => 'Cancelled by buyer', 'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Order cancelled']);
+    }
+
+    /**
+     * POST /api/v1/buyer/submit-review
+     */
+    public function submitReview()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $data = $this->request->getJSON(true);
+        $db = \Config\Database::connect();
+
+        $order = $db->table('orders')->where('id', $data['order_id'])->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$order) return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
+        if (!in_array($order['status'], ['delivered', 'completed'])) return $this->respond(['success' => false, 'message' => 'You can only review after the order is delivered'], 400);
+
+        $existing = $db->table('reviews')->where('order_id', $data['order_id'])->where('reviewer_id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($existing) return $this->respond(['success' => false, 'message' => 'Already reviewed'], 400);
+
+        $db->table('reviews')->insert([
+            'order_id' => $data['order_id'],
+            'product_id' => $order['product_id'],
+            'reviewer_id' => $jwtUser['user_id'],
+            'reviewed_id' => $order['seller_id'],
+            'rating' => $data['rating'],
+            'comment' => $data['comment'] ?? '',
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // Update seller rating incrementally (same as rateSeller) to avoid counting
+        // rows from other review types (e.g. 'seller_rating') in the reviews table.
+        $seller = $db->table('users')->where('id', $order['seller_id'])->get()->getRowArray();
+        $oldCount = (int)($seller['seller_rating_count'] ?? 0);
+        $oldAvg   = (float)($seller['seller_rating_avg'] ?? 0);
+        $newCount = $oldCount + 1;
+        $newAvg   = (($oldAvg * $oldCount) + (float)$data['rating']) / $newCount;
+        $db->table('users')->where('id', $order['seller_id'])->update([
+            'seller_rating_avg'   => round($newAvg, 2),
+            'seller_rating_count' => $newCount,
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Review submitted']);
+    }
+
+    /**
+     * POST /api/v1/buyer/pay-order/{orderId}
+     */
+    public function payOrder(int $orderId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $buyerId = $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+
+        $order = $db->table('orders')->where('id', $orderId)->get()->getRowArray();
+        if (!$order || $order['buyer_id'] != $buyerId) {
+            return $this->respond(['success' => false, 'message' => 'Invalid order'], 404);
+        }
+        if ($order['status'] !== 'pending') {
+            return $this->respond(['success' => false, 'message' => 'Order is already ' . $order['status']], 400);
+        }
+
+        $db->table('orders')->where('id', $orderId)->update(['status' => 'confirmed', 'payment_status' => 'paid', 'updated_at' => date('Y-m-d H:i:s')]);
+        $db->table('order_status_history')->insert([
+            'order_id' => $orderId,
+            'status' => 'confirmed',
+            'updated_by' => $buyerId,
+            'remarks' => 'Payment received - Order confirmed by buyer',
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+        $db->table('notifications')->insert([
+            'user_id' => $order['seller_id'],
+            'title' => 'Order Confirmed',
+            'message' => "Payment received for order #{$orderId}. You can now dispatch the item.",
+            'type' => 'order_confirmed',
+            'related_id' => $orderId,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Payment successful! Order confirmed.']);
+    }
+
+    /**
+     * POST /api/v1/buyer/confirm-date-change/{offerId}
+     */
+    public function confirmDateChange(int $offerId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId = $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+
+        $offer = $db->table('offers')->where('id', $offerId)->get()->getRowArray();
+        if (!$offer || $offer['buyer_id'] != $userId) {
+            return $this->respond(['success' => false, 'message' => 'Invalid offer'], 404);
+        }
+
+        $db->table('offer_history')->insert([
+            'offer_id' => $offerId,
+            'updated_by' => $userId,
+            'action' => 'buyer_accept_negotiation',
+            'new_start_date' => $offer['rental_start_date'],
+            'new_end_date' => $offer['rental_end_date'],
+            'new_price' => $offer['offer_price'],
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+        $db->table('offers')->where('id', $offerId)->update([
+            'status' => 'accepted',
+            'accepted_at' => date('Y-m-d H:i:s'),
+            'message' => 'Buyer approved the suggested dates. Deal finalized.',
+        ]);
+
+        $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+        $db->table('notifications')->insert([
+            'user_id' => $offer['seller_id'],
+            'title' => 'Offer Finalized',
+            'message' => "The buyer has approved your suggested dates. The offer for '{$product['title']}' is now finalized.",
+            'type' => 'offer_update',
+            'related_id' => $offerId,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Dates approved! The offer is now finalized.']);
+    }
+
+    /**
+     * POST /api/v1/buyer/rate-seller
+     */
+    public function rateSeller()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId = $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+
+        $offerId = $this->request->getPost('offer_id');
+        $offer = $db->table('offers')->where('id', $offerId)->get()->getRowArray();
+        if (!$offer || $offer['buyer_id'] != $userId) {
+            return $this->respond(['success' => false, 'message' => 'Invalid offer'], 404);
+        }
+        if ($offer['status'] !== 'accepted') {
+            return $this->respond(['success' => false, 'message' => 'Offer must be accepted before rating'], 400);
+        }
+        if ($offer['buyer_rated_seller']) {
+            return $this->respond(['success' => false, 'message' => 'You have already rated this seller'], 400);
+        }
+
+        $limitSetting = $db->table('system_settings')->where('setting_key', 'buyer_rating_period_days')->get()->getRowArray();
+        $ratingPeriod = $limitSetting ? (float) $limitSetting['setting_value'] : 7;
+        if (time() > strtotime($offer['accepted_at']) + ($ratingPeriod * 86400)) {
+            return $this->respond(['success' => false, 'message' => 'Rating window has expired'], 400);
+        }
+
+        $data = $this->request->getPost() ?: $this->request->getJSON(true);
+        $rating = (float) ($data['rating'] ?? 5.0);
+        if ($rating < 1 || $rating > 5) {
+            return $this->respond(['success' => false, 'message' => 'Rating must be between 1 and 5'], 400);
+        }
+
+        $sellerId = $offer['seller_id'];
+        $seller = $db->table('users')->where('id', $sellerId)->get()->getRowArray();
+        $oldCount = (int) ($seller['seller_rating_count'] ?? 0);
+        $oldAvg = (float) ($seller['seller_rating_avg'] ?? 0);
+        $newCount = $oldCount + 1;
+        $newAvg = (($oldAvg * $oldCount) + $rating) / $newCount;
+
+        $db->transStart();
+        $db->table('offers')->where('id', $offerId)->update(['buyer_rated_seller' => 1]);
+        $db->table('users')->where('id', $sellerId)->update([
+            'seller_rating_avg' => round($newAvg, 2),
+            'seller_rating_count' => $newCount,
+        ]);
+        $db->table('reviews')->insert([
+            'reviewer_id' => $userId,
+            'reviewed_id' => $sellerId,
+            'product_id' => $offer['product_id'],
+            'reviewer_type' => 'buyer',
+            'rating' => (int) round($rating),
+            'comment' => 'Buyer rated seller star: ' . $rating,
+            'review_type' => 'seller_rating',
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return $this->respond(['success' => false, 'message' => 'Failed to save rating'], 500);
+        }
+
+        return $this->respond(['success' => true, 'message' => 'Seller rated successfully!']);
+    }
+
+    /**
+     * POST /api/v1/buyer/rate-self-delivery-seller
+     */
+    public function rateSelfDeliverySeller()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $buyerId = $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+
+        $sellerId = $this->request->getPost('seller_id');
+        $productId = $this->request->getPost('product_id');
+        if (!$sellerId || !$productId) {
+            return $this->respond(['success' => false, 'message' => 'seller_id and product_id are required'], 400);
+        }
+
+        $view = $db->table('contact_views')
+            ->where('user_id', $buyerId)->where('seller_id', $sellerId)->where('product_id', $productId)
+            ->get()->getRowArray();
+        if (!$view) {
+            return $this->respond(['success' => false, 'message' => 'Contact details not viewed.'], 400);
+        }
+        if (time() > strtotime($view['viewed_at']) + (20 * 24 * 60 * 60)) {
+            return $this->respond(['success' => false, 'message' => '20-day rating window has expired.'], 400);
+        }
+        if (!$view['return_confirmed']) {
+            return $this->respond(['success' => false, 'message' => 'You can only rate the seller after they confirm the safe return of the product.'], 400);
+        }
+
+        $existing = $db->table('reviews')
+            ->where('reviewer_id', $buyerId)->where('reviewed_id', $sellerId)
+            ->where('review_type', 'self_delivery')->where('product_id', $productId)
+            ->get()->getRowArray();
+        if ($existing) {
+            return $this->respond(['success' => false, 'message' => 'You have already rated this seller for self-delivery.'], 400);
+        }
+
+        $totalContacts = $db->table('contact_views')->where('user_id', $buyerId)->countAllResults();
+        $totalRatings = $db->table('reviews')->where('reviewer_id', $buyerId)->where('review_type', 'self_delivery')->countAllResults();
+        if ($totalRatings >= floor($totalContacts / 3)) {
+            return $this->respond(['success' => false, 'message' => 'Your rating limit has been reached. You get 1 rating opportunity for every 3 unique sellers you contact.'], 400);
+        }
+
+        $db->table('reviews')->insert([
+            'reviewer_id' => $buyerId,
+            'reviewed_id' => $sellerId,
+            'product_id' => $productId,
+            'reviewer_type' => 'buyer',
+            'rating' => 1,
+            'comment' => $this->request->getPost('comment') ?: 'Self-delivery completed successfully',
+            'review_type' => 'self_delivery',
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+        $seller = $db->table('users')->where('id', $sellerId)->get()->getRowArray();
+        $newScore = ($seller['seller_reliability_score'] ?? 0) + 1;
+        $db->table('users')->where('id', $sellerId)->update(['seller_reliability_score' => $newScore]);
+        $db->table('notifications')->insert([
+            'user_id' => $sellerId,
+            'title' => 'Self-Delivery Rating Received',
+            'message' => 'You received a reliability point for safe self-delivery!',
+            'type' => 'rating_received',
+            'related_id' => $productId,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Reliability point awarded successfully!']);
+    }
+
+    /**
+     * POST /api/v1/buyer/mark-notifications-read
+     */
+    public function markNotificationsRead()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId = $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+        $db->table('notifications')->where('user_id', $userId)->update(['is_read' => 1]);
+        return $this->respond(['success' => true, 'message' => 'All notifications marked as read']);
+    }
+
+    /**
+     * GET /api/v1/buyer/offer-messages/{offerId}
+     */
+    public function getOfferMessages(int $offerId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $offer = $db->table('offers')->where('id', $offerId)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+
+        $messages = $db->table('offer_messages om')
+            ->select('om.*, u.name as sender_name')
+            ->join('users u', 'u.id = om.sender_id', 'left')
+            ->where('om.offer_id', $offerId)
+            ->orderBy('om.created_at', 'ASC')
+            ->get()->getResultArray();
+
+        // Mark seller messages as read
+        $db->table('offer_messages')->where('offer_id', $offerId)->where('sender_role', 'seller')->update(['is_read' => 1]);
+
+        return $this->respond(['success' => true, 'data' => $messages]);
+    }
+
+    /**
+     * POST /api/v1/buyer/offer-messages/{offerId}/upload
+     */
+    public function uploadOfferMedia(int $offerId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $offer = $db->table('offers')->where('id', $offerId)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+
+        $file = $this->request->getFile('file');
+        if (!$file || !$file->isValid()) {
+            return $this->respond(['success' => false, 'message' => 'No valid file uploaded'], 400);
+        }
+
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'mov'];
+        if (!in_array(strtolower($file->getClientExtension()), $allowed)) {
+            return $this->respond(['success' => false, 'message' => 'File type not allowed'], 400);
+        }
+
+        if ($file->getSize() > 10 * 1024 * 1024) {
+            return $this->respond(['success' => false, 'message' => 'File too large. Max 10 MB.'], 400);
+        }
+
+        $uploadPath = FCPATH . 'uploads/chat/';
+        if (!is_dir($uploadPath)) mkdir($uploadPath, 0755, true);
+
+        $newName = uniqid('chat_') . '.' . $file->getClientExtension();
+        $file->move($uploadPath, $newName);
+
+        $mediaUrl = 'uploads/chat/' . $newName;
+        $caption  = trim($this->request->getPost('message') ?? '');
+
+        $db->table('offer_messages')->insert([
+            'offer_id'    => $offerId,
+            'sender_id'   => $jwtUser['user_id'],
+            'sender_role' => 'buyer',
+            'message'     => $caption ?: '',
+            'media_url'   => $mediaUrl,
+            'is_read'     => 0,
+            'created_at'  => date('Y-m-d H:i:s'),
+        ]);
+
+        $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+        $db->table('notifications')->insert([
+            'user_id'    => $offer['seller_id'],
+            'title'      => 'Buyer sent a file',
+            'message'    => 'Buyer shared media on offer for "' . ($product['title'] ?? '') . '".',
+            'type'       => 'offer',
+            'is_read'    => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'media_url' => $mediaUrl]);
+    }
+
+    /**
+     * POST /api/v1/buyer/offer-messages/{offerId}
+     */
+    public function sendOfferMessage(int $offerId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+        $body = $this->request->getJSON(true) ?? [];
+
+        $offer = $db->table('offers')->where('id', $offerId)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+
+        $message = trim($body['message'] ?? '');
+        if ($message === '') return $this->respond(['success' => false, 'message' => 'Message cannot be empty'], 400);
+
+        $db->table('offer_messages')->insert([
+            'offer_id'    => $offerId,
+            'sender_id'   => $jwtUser['user_id'],
+            'sender_role' => 'buyer',
+            'message'     => $message,
+            'is_read'     => 0,
+            'created_at'  => date('Y-m-d H:i:s'),
+        ]);
+
+        $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+        $db->table('notifications')->insert([
+            'user_id'    => $offer['seller_id'],
+            'title'      => 'New message from buyer',
+            'message'    => 'Buyer sent a message on offer for "' . ($product['title'] ?? '') . '".',
+            'type'       => 'offer',
+            'is_read'    => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Message sent']);
+    }
+
+    /**
+     * GET /api/v1/buyer/order/{orderId}
+     */
+    public function orderDetail(int $orderId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $order = $db->table('orders o')
+            ->select('o.*, p.title as product_title, p.listing_type as product_listing_type, p.description as product_description, u.name as seller_name, u.mobile as seller_mobile, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as primary_image, (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = "accepted" AND listing_type = "rent" AND rental_start_date <= o.rental_end_date AND rental_end_date >= o.rental_start_date AND p.listing_type = "rent") as is_rental_blocked')
+            ->join('products p', 'p.id = o.product_id', 'left')
+            ->join('users u', 'u.id = o.seller_id', 'left')
+            ->where('o.id', $orderId)
+            ->where('o.buyer_id', $jwtUser['user_id'])
+            ->get()->getRowArray();
+
+        if (!$order) return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
+
+        $statusHistory = $db->table('order_status_history')->where('order_id', $orderId)->orderBy('created_at', 'ASC')->get()->getResultArray();
+        $review = $db->table('reviews')->where('order_id', $orderId)->where('reviewer_id', $jwtUser['user_id'])->get()->getRowArray();
+
+        return $this->respond(['success' => true, 'data' => ['order' => $order, 'status_history' => $statusHistory, 'review' => $review]]);
+    }
+
+    /**
+     * POST /api/v1/buyer/report-user/:id
+     * Buyer reports a seller. Auto-suspends after 3 reports in 7 days.
+     */
+    public function reportUser(int $reportedId)
+    {
+        $jwtUser  = $this->request->jwt_user;
+        $reporter = (int) $jwtUser['user_id'];
+        $db       = \Config\Database::connect();
+
+        if ($reporter === $reportedId) {
+            return $this->respond(['success' => false, 'message' => 'You cannot report yourself'], 400);
+        }
+
+        $reported = $db->table('users')->where('id', $reportedId)->get()->getRowArray();
+        if (!$reported) {
+            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+        }
+        if (in_array($reported['role'] ?? '', ['admin', 'super_admin'])) {
+            return $this->respond(['success' => false, 'message' => 'Cannot report an admin'], 400);
+        }
+
+        $reason = trim($this->request->getPost('reason') ?? '');
+        if (empty($reason)) {
+            return $this->respond(['success' => false, 'message' => 'A reason is required'], 400);
+        }
+
+        // Prevent duplicate report within 7 days
+        $alreadyReported = $db->table('user_reports')
+            ->where('reporter_id', $reporter)
+            ->where('reported_id', $reportedId)
+            ->where('created_at >=', date('Y-m-d H:i:s', strtotime('-7 days')))
+            ->countAllResults();
+        if ($alreadyReported > 0) {
+            return $this->respond(['success' => false, 'message' => 'You have already reported this user in the past 7 days'], 400);
+        }
+
+        // Assign to a random admin or superadmin
+        $admins = $db->table('users')
+            ->whereIn('role', ['admin', 'super_admin'])
+            ->where('is_blocked', 0)
+            ->get()->getResultArray();
+        $assignedAdminId = !empty($admins) ? $admins[array_rand($admins)]['id'] : null;
+
+        $db->table('user_reports')->insert([
+            'reporter_id'       => $reporter,
+            'reported_id'       => $reportedId,
+            'reporter_role'     => 'buyer',
+            'reason'            => $reason,
+            'status'            => 'pending',
+            'assigned_admin_id' => $assignedAdminId,
+            'created_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => date('Y-m-d H:i:s'),
+        ]);
+
+        // Count reports against this user in the last 7 days
+        $weeklyReports = $db->table('user_reports')
+            ->where('reported_id', $reportedId)
+            ->where('created_at >=', date('Y-m-d H:i:s', strtotime('-7 days')))
+            ->countAllResults();
+
+        if ($weeklyReports >= 3 && !$reported['is_suspended']) {
+            $db->table('users')->where('id', $reportedId)->update([
+                'is_suspended'      => 1,
+                'suspended_at'      => date('Y-m-d H:i:s'),
+                'suspension_reason' => 'Auto-suspended: received ' . $weeklyReports . ' reports within 7 days.',
+                'updated_at'        => date('Y-m-d H:i:s'),
+            ]);
+
+            // Notify all admins about the auto-suspension
+            foreach ($admins as $admin) {
+                $db->table('notifications')->insert([
+                    'user_id'    => $admin['id'],
+                    'title'      => 'User Auto-Suspended',
+                    'message'    => 'User "' . $reported['name'] . '" has been auto-suspended after receiving ' . $weeklyReports . ' reports in 7 days.',
+                    'type'       => 'user_suspended',
+                    'is_read'    => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+        } elseif ($assignedAdminId) {
+            // Notify the assigned admin
+            $db->table('notifications')->insert([
+                'user_id'    => $assignedAdminId,
+                'title'      => 'New User Report',
+                'message'    => 'A buyer reported user "' . $reported['name'] . '". Reason: ' . substr($reason, 0, 100),
+                'type'       => 'user_report',
+                'is_read'    => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        return $this->respond(['success' => true, 'message' => 'Report submitted successfully']);
+    }
+
+    /**
+     * POST /api/v1/buyer/view-seller-contact/{productId}
+     */
+    public function viewSellerContact(int $productId)
+    {
+        $jwtUser  = $this->request->jwt_user;
+        $buyerId  = (int) $jwtUser['user_id'];
+        $db       = \Config\Database::connect();
+
+        $product = $db->table('products')->where('id', $productId)->get()->getRowArray();
+        if (!$product) {
+            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+        }
+
+        $sellerId = (int) $product['seller_id'];
+
+        if ($sellerId === $buyerId) {
+            return $this->respond(['success' => false, 'message' => 'You cannot view your own contact'], 400);
+        }
+
+        // Check if this buyer has already viewed this specific product's seller contact
+        $existingView = $db->table('contact_views')
+            ->where('user_id', $buyerId)
+            ->where('seller_id', $sellerId)
+            ->where('product_id', $productId)
+            ->get()->getRowArray();
+
+        // Check if this buyer has previously made any offer to this seller
+        // (if so, contact is revealed without consuming subscription quota)
+        $previousOffer = $db->table('offers')
+            ->where('buyer_id', $buyerId)
+            ->where('seller_id', $sellerId)
+            ->get()->getRowArray();
+
+        $activeSub = null;
+
+        if (!$existingView) {
+            if (!$previousOffer) {
+                // Check if any buyer subscription plans are enabled in the system
+                $enabledBuyerPlans = $db->table('subscription_plans')
+                    ->where('user_type', 'buyer')
+                    ->where('is_active', 1)
+                    ->countAllResults();
+
+                if ($enabledBuyerPlans > 0) {
+                    // Fetch all active, non-expired subscriptions for this user
+                    $activeSubs = $db->table('user_subscriptions')
+                        ->select('user_subscriptions.*, subscription_plans.plan_type, subscription_plans.limit_value')
+                        ->join('subscription_plans', 'subscription_plans.id = user_subscriptions.plan_id')
+                        ->where('user_subscriptions.user_id', $buyerId)
+                        ->where('user_subscriptions.is_active', 1)
+                        ->where('user_subscriptions.expires_at >=', date('Y-m-d H:i:s'))
+                        ->orderBy('subscription_plans.plan_type', 'DESC') 
+                        ->get()->getResultArray();
+
+                    if (empty($activeSubs)) {
+                        $expiredSub = $db->table('user_subscriptions')
+                            ->where('user_id', $buyerId)
+                            ->where('is_active', 1)
+                            ->where('expires_at <', date('Y-m-d H:i:s'))
+                            ->orderBy('expires_at', 'DESC')
+                            ->get()->getRowArray();
+
+                        if ($expiredSub) {
+                            return $this->respond([
+                                'success' => false,
+                                'message' => 'Your buyer subscription expired on ' . date('d M Y', strtotime($expiredSub['expires_at'])) . '. Please renew your plan to view contact details.'
+                            ], 403);
+                        }
+                        return $this->respond(['success' => false, 'message' => 'No active subscription found. Please subscribe to view contact details.'], 403);
+                    }
+
+                    foreach ($activeSubs as $sub) {
+                        if ($sub['plan_type'] === 'duration') {
+                            $activeSub = $sub;
+                            break;
+                        } elseif ((int)$sub['usage_count'] < (int)$sub['limit_value']) {
+                            $activeSub = $sub;
+                            break;
+                        }
+                    }
+
+                    if (!$activeSub) {
+                        return $this->respond(['success' => false, 'message' => 'Your contact limit has been reached. Please upgrade or renew your plan.'], 403);
+                    }
+                }
+            }
+
+            // Record the contact view (even if it was free via an offer)
+            $db->table('contact_views')->insert([
+                'user_id'         => $buyerId,
+                'seller_id'       => $sellerId,
+                'product_id'      => $productId,
+                'subscription_id' => $activeSub ? $activeSub['id'] : null,
+                'viewed_at'       => date('Y-m-d H:i:s'),
+            ]);
+
+            // Deduct from quantity-based subscription
+            if ($activeSub && $activeSub['plan_type'] === 'quantity') {
+                $newCount = (int)$activeSub['usage_count'] + 1;
+                $update = ['usage_count' => $newCount];
+                // Auto-deactivate when all contacts are exhausted
+                if ($newCount >= (int)$activeSub['limit_value']) {
+                    $update['is_active'] = 0;
+                }
+                $db->table('user_subscriptions')
+                    ->where('id', $activeSub['id'])
+                    ->update($update);
+            }
+        }
+
+        $seller = $db->table('users')->where('id', $sellerId)->get()->getRowArray();
+
+        return $this->respond([
+            'success' => true,
+            'data'    => [
+                'seller_name'   => $seller['name'] ?? '',
+                'seller_email'  => $seller['email'] ?? '',
+                'seller_mobile' => $seller['mobile'] ?? '',
+                'product_id'    => $productId,
+                'already_viewed' => (bool) $existingView,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/v1/buyer/block-seller/{sellerId}
+     * Block a seller from appearing in the buyer's browse view
+     */
+    public function blockSeller(int $sellerId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $buyerId = (int) $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+        $data = $this->request->getJSON(true) ?? [];
+
+        if ($buyerId === $sellerId) {
+            return $this->respond(['success' => false, 'message' => 'You cannot block yourself'], 400);
+        }
+
+        $seller = $db->table('users')->where('id', $sellerId)->get()->getRowArray();
+        if (!$seller) {
+            return $this->respond(['success' => false, 'message' => 'Seller not found'], 404);
+        }
+
+        // Check if already blocked
+        $alreadyBlocked = $db->table('buyer_blocked_sellers')
+            ->where('buyer_id', $buyerId)
+            ->where('blocked_seller_id', $sellerId)
+            ->countAllResults();
+        
+        if ($alreadyBlocked > 0) {
+            return $this->respond(['success' => false, 'message' => 'You have already blocked this seller'], 400);
+        }
+
+        $db->table('buyer_blocked_sellers')->insert([
+            'buyer_id' => $buyerId,
+            'blocked_seller_id' => $sellerId,
+            'reason' => $data['reason'] ?? null,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Seller blocked successfully']);
+    }
+
+    /**
+     * POST /api/v1/buyer/unblock-seller/{sellerId}
+     * Unblock a previously blocked seller
+     */
+    public function unblockSeller(int $sellerId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $buyerId = (int) $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+
+        $blocked = $db->table('buyer_blocked_sellers')
+            ->where('buyer_id', $buyerId)
+            ->where('blocked_seller_id', $sellerId)
+            ->delete();
+
+        if (!$blocked) {
+            return $this->respond(['success' => false, 'message' => 'This seller is not blocked'], 400);
+        }
+
+        return $this->respond(['success' => true, 'message' => 'Seller unblocked successfully']);
+    }
+
+    /**
+     * GET /api/v1/buyer/blocked-sellers
+     * Get list of all blocked sellers by current buyer
+     */
+    public function blockedSellers()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $buyerId = (int) $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+
+        $blockedSellers = $db->table('buyer_blocked_sellers bbs')
+            ->select('bbs.*, u.id as seller_id, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count')
+            ->join('users u', 'u.id = bbs.blocked_seller_id', 'left')
+            ->where('bbs.buyer_id', $buyerId)
+            ->orderBy('bbs.created_at', 'DESC')
+            ->get()->getResultArray();
+
+        return $this->respond(['success' => true, 'data' => $blockedSellers]);
+    }
+
+    /**
+     * GET /api/v1/buyer/plan-checkout-details/{planId}
+     * Returns plan info + platform charge breakdown + referral discount for checkout page
+     */
+    public function planCheckoutDetails($planId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId  = $jwtUser['user_id'];
+        $db      = \Config\Database::connect();
+
+        $plan = $db->table('subscription_plans')
+            ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'buyer'])
+            ->get()->getRowArray();
+        if (!$plan) {
+            return $this->respond(['success' => false, 'message' => 'Plan not found or inactive'], 404);
+        }
+
+        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+
+        // Platform charges breakdown
+        $chargeModel   = new \App\Models\PlatformChargeModel();
+        $activeCharges = $chargeModel->getActiveCharges();
+        $chargeBreakdown = [];
+        $totalCharges    = 0;
+        foreach ($activeCharges as $charge) {
+            $amt = $charge['charge_type'] === 'percentage'
+                ? ($plan['price'] * $charge['charge_value']) / 100
+                : (float) $charge['charge_value'];
+            $chargeBreakdown[] = [
+                'name'   => $charge['charge_name'],
+                'type'   => $charge['charge_type'],
+                'value'  => $charge['charge_value'],
+                'amount' => $amt,
+            ];
+            $totalCharges += $amt;
+        }
+
+        // Referral discount
+        $referralDiscount = 0;
+        $referralBalance  = (float) ($user['referral_balance'] ?? 0);
+        $hasUsed          = (int)   ($user['has_used_referral'] ?? 0);
+        $expiry           = $user['referral_expires_at'] ?? null;
+        if ($referralBalance > 0 && $hasUsed === 0) {
+            if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                $referralDiscount = $referralBalance;
+            }
+        }
+
+        $total = max(0, (float) $plan['price'] + $totalCharges - $referralDiscount);
+
+        return $this->respond([
+            'success' => true,
+            'data'    => [
+                'plan'             => $plan,
+                'user'             => [
+                    'name'    => $user['name'],
+                    'email'   => $user['email'],
+                    'mobile'  => $user['mobile'] ?? '',
+                    'address' => $user['address'] ?? '',
+                ],
+                'charge_breakdown' => $chargeBreakdown,
+                'total_charges'    => $totalCharges,
+                'referral_discount'=> $referralDiscount,
+                'total'            => $total,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/v1/buyer/apply-coupon
+     * Validates a coupon code against a plan and returns the discount amount
+     */
+    public function applyCoupon()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $data    = $this->request->getJSON(true);
+        $db      = \Config\Database::connect();
+
+        $code   = strtoupper(trim($data['code'] ?? ''));
+        $planId = (int) ($data['plan_id'] ?? 0);
+
+        if (!$code) return $this->respond(['success' => false, 'message' => 'Coupon code is required'], 400);
+
+        $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
+        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+
+        $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
+        if (!$coupon) return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
+
+        if ($coupon['valid_until'] && strtotime($coupon['valid_until']) < time()) {
+            return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+        }
+
+        if ($coupon['usage_limit'] !== null) {
+            $usedCount = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
+            if ($usedCount >= $coupon['usage_limit']) {
+                return $this->respond(['success' => false, 'message' => 'Coupon usage limit reached.']);
+            }
+        }
+
+        if ((float) $plan['price'] < (float) $coupon['min_order_amount']) {
+            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $coupon['min_order_amount']]);
+        }
+
+        $discountValue = 0;
+        if ($coupon['discount_type'] === 'percentage') {
+            $discountValue = ($plan['price'] * $coupon['discount_value']) / 100;
+            if ($coupon['max_discount'] && $discountValue > $coupon['max_discount']) {
+                $discountValue = $coupon['max_discount'];
+            }
+        } else {
+            $discountValue = (float) $coupon['discount_value'];
+        }
+
+        return $this->respond([
+            'success' => true,
+            'message' => 'Coupon applied successfully!',
+            'data'    => ['discount' => round($discountValue, 2)],
+        ]);
+    }
+
+    /**
+     * POST /api/v1/buyer/initiate-payment
+     * Creates a pending subscription record and initiates PhonePe checkout
+     * Body: { plan_id, coupon_code?, callback_url }
+     */
+    public function initiatePayment()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId  = $jwtUser['user_id'];
+        $data    = $this->request->getJSON(true);
+        $db      = \Config\Database::connect();
+
+        $planId      = (int) ($data['plan_id'] ?? 0);
+        $couponCode  = strtoupper(trim($data['coupon_code'] ?? ''));
+        $callbackUrl = trim($data['callback_url'] ?? ''); // Next.js callback page URL
+
+        $plan = $db->table('subscription_plans')
+            ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'buyer'])
+            ->get()->getRowArray();
+        if (!$plan) return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+
+        // Note: Allowing users to buy multiple subscriptions/stack them.
+        // The reveal logic will automatically pick the first valid active subscription.
+
+        $basePrice    = (float) $plan['price'];
+        $chargeModel  = new \App\Models\PlatformChargeModel();
+        $activeCharges = $chargeModel->getActiveCharges();
+        $totalCharges = 0;
+        foreach ($activeCharges as $charge) {
+            $totalCharges += $charge['charge_type'] === 'percentage'
+                ? ($basePrice * $charge['charge_value']) / 100
+                : (float) $charge['charge_value'];
+        }
+
+        // Coupon discount
+        $discount  = 0;
+        $couponId  = null;
+        if ($couponCode) {
+            $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
+            if ($coupon && $basePrice >= (float) $coupon['min_order_amount']
+                && (!$coupon['valid_until'] || strtotime($coupon['valid_until']) >= time())) {
+                if ($coupon['discount_type'] === 'percentage') {
+                    $discount = ($basePrice * $coupon['discount_value']) / 100;
+                    if ($coupon['max_discount'] && $discount > $coupon['max_discount']) $discount = $coupon['max_discount'];
+                } else {
+                    $discount = (float) $coupon['discount_value'];
+                }
+                $couponId = $coupon['id'];
+            }
+        }
+
+        $finalAmount = ($basePrice + $totalCharges) - $discount;
+
+        // Referral discount
+        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        $referralDiscountApplied = 0;
+        $referralBalance = (float) ($user['referral_balance'] ?? 0);
+        $hasUsed         = (int)   ($user['has_used_referral'] ?? 0);
+        $expiry          = $user['referral_expires_at'] ?? null;
+        if ($referralBalance > 0 && $hasUsed === 0) {
+            if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                $referralDiscountApplied = $referralBalance;
+                $finalAmount -= $referralDiscountApplied;
+            }
+        }
+
+        $finalAmount    = max(1, $finalAmount);
+        $amountInPaise  = (int) ($finalAmount * 100);
+        $merchantOrderId = 'SUB-' . $userId . '-' . time();
+
+        // Build redirect URL — Next.js passes its own callback URL with {id} placeholder
+        $redirectUrl = $callbackUrl
+            ? str_replace('{id}', $merchantOrderId, $callbackUrl)
+            : base_url("buyer/subscriptionPaymentCallback?id={$merchantOrderId}");
+
+        $payload = [
+            'merchantOrderId' => $merchantOrderId,
+            'amount'          => $amountInPaise,
+            'paymentFlow'     => [
+                'type'         => 'PG_CHECKOUT',
+                'merchantUrls' => ['redirectUrl' => $redirectUrl],
+            ],
+        ];
+
+        // Persist pending subscription record
+        $db->table('user_subscriptions')->insert([
+            'user_id'                   => $userId,
+            'plan_id'                   => $planId,
+            'starts_at'                 => date('Y-m-d H:i:s'),
+            'expires_at'                => date('Y-m-d H:i:s'),
+            'usage_count'               => 0,
+            'is_active'                 => 0,
+            'payment_status'            => 'pending',
+            'amount_paid'               => $finalAmount,
+            'referral_discount_applied' => $referralDiscountApplied,
+            'merchant_transaction_id'   => $merchantOrderId,
+        ]);
+
+        $phonepe  = new \App\Libraries\PhonePe();
+        $response = $phonepe->createPayment($payload);
+
+        if (isset($response['redirectUrl'])) {
+            return $this->respond([
+                'success' => true,
+                'data'    => [
+                    'redirect_url'      => $response['redirectUrl'],
+                    'merchant_order_id' => $merchantOrderId,
+                ],
+            ]);
+        }
+
+        return $this->respond([
+            'success' => false,
+            'message' => 'Failed to initiate payment. Please try again.',
+            'debug'   => $response,
+        ]);
+    }
+
+    /**
+     * GET /api/v1/buyer/verify-payment?id={merchantOrderId}
+     * Checks PhonePe payment status and activates subscription on success
+     */
+    public function verifyPayment()
+    {
+        log_message('error', 'DEBUG: verifyPayment CRITICAL hit');
+        $merchantOrderId     = $this->request->getGet('id');
+        log_message('error', 'DEBUG: verifyPayment ID: ' . ($merchantOrderId ?? 'NULL'));
+        $db                  = \Config\Database::connect();
+
+        if (!$merchantOrderId) {
+            return $this->respond(['status' => 'error', 'message' => 'No transaction ID provided'], 400);
+        }
+
+        $dbSub = $db->table('user_subscriptions')
+            ->where('merchant_transaction_id', $merchantOrderId)
+            ->get()->getRowArray();
+
+        if (!$dbSub) return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
+        $userId = $dbSub['user_id'];
+        if (false) { // Skip check for debug
+            return $this->respond(['status' => 'error', 'message' => 'Unauthorized'], 403);
+        }
+
+        // Already activated — return success immediately
+        if ($dbSub['is_active'] == 1 && $dbSub['payment_status'] === 'paid') {
+            return $this->respond(['status' => 'success', 'message' => 'Subscription is already active']);
+        }
+
+        $phonepe = new \App\Libraries\PhonePe();
+        $status  = $phonepe->getOrderStatus($merchantOrderId);
+        
+        // Log the response for debugging
+        log_message('debug', 'PhonePe Status Response for ' . $merchantOrderId . ': ' . json_encode($status));
+
+        $state   = $status['state'] ?? ($status['data']['state'] ?? 'PENDING');
+
+        if ($state === 'COMPLETED') {
+            if ($dbSub['is_active'] == 0) {
+                $plan      = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
+                $startsAt  = date('Y-m-d H:i:s');
+                $expiresAt = ((int) $plan['duration_hours'] > 0)
+                    ? date('Y-m-d H:i:s', strtotime("+{$plan['duration_hours']} hours"))
+                    : '2099-12-31 23:59:59';
+
+                $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
+                    'is_active'      => 1,
+                    'payment_status' => 'paid',
+                    'starts_at'      => $startsAt,
+                    'expires_at'     => $expiresAt,
+                    'updated_at'     => date('Y-m-d H:i:s'),
+                ]);
+
+                // Update users table for redundancy/quick lookup
+                $db->table('users')->where('id', $dbSub['user_id'])->update([
+                    'subscription_tier'       => $plan['name'],
+                    'subscription_expires_at' => $expiresAt,
+                    'updated_at'              => date('Y-m-d H:i:s'),
+                ]);
+
+                // Record transaction
+                $db->table('transactions')->insert([
+                    'user_id'          => $dbSub['user_id'],
+                    'type'             => 'subscription',
+                    'amount'           => $dbSub['amount_paid'],
+                    'description'      => 'Subscription Purchase: ' . $plan['name'],
+                    'payment_method'   => 'online',
+                    'payment_status'   => 'completed',
+                    'transaction_id'   => $status['data']['transactionId'] ?? ($status['paymentDetails'][0]['transactionId'] ?? 'PNP-' . time()),
+                    'created_at'       => date('Y-m-d H:i:s'),
+                ]);
+
+                // Note: Not deactivating previous subscriptions to allow stacking/sequential usage.
+                // The reveal logic handles picking the first valid one.
+
+                // Mark referral discount as used if applicable
+                if ((float) $dbSub['referral_discount_applied'] > 0) {
+                    $db->table('users')->where('id', $dbSub['user_id'])->update([
+                        'has_used_referral' => 1,
+                        'referral_balance'  => 0,
+                    ]);
+                }
+            }
+            return $this->respond(['status' => 'success', 'message' => 'Payment successful! Subscription activated.']);
+        }
+
+        if ($state === 'FAILED' || $state === 'CANCELLED') {
+            $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
+                'payment_status' => 'failed',
+                'updated_at'     => date('Y-m-d H:i:s'),
+            ]);
+            $errorMsg = $status['errorContext']['description'] ?? ($status['message'] ?? 'Payment failed');
+            return $this->respond(['status' => 'failed', 'message' => $errorMsg]);
+        }
+
+        return $this->respond([
+            'status' => 'pending', 
+            'message' => 'Payment is still processing',
+            'debug' => [
+                'state' => $state,
+                'phonepe_response' => $status
+            ]
+        ]);
+    }
+}
