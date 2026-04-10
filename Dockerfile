@@ -43,9 +43,10 @@ COPY . .
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 RUN composer install --no-dev --optimize-autoloader
 
-# Set permissions for CodeIgniter's writable directory
-RUN chown -R www-data:www-data writable
-RUN chmod -R 775 writable
+# Create writable subdirectories and set permissions
+RUN mkdir -p writable/cache writable/logs writable/session writable/uploads \
+    && chown -R www-data:www-data /var/www/html/writable \
+    && chmod -R 777 /var/www/html/writable
 
 # Expose the port (Render will override this, but it's good practice)
 EXPOSE 80
