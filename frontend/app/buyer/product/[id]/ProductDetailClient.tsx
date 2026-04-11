@@ -360,6 +360,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
       if (contactRes.success && contactRes.data) {
         setContactInfo(contactRes.data);
         setShowContactModal(true);
+        // Notify contacts page (if open) to refresh its list
+        window.dispatchEvent(new CustomEvent('flex:contact-created'));
       } else {
         setContactError(contactRes.message || 'Offer sent! Contact could not be retrieved.');
       }

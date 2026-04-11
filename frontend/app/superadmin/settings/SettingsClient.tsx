@@ -9,11 +9,38 @@ import { confirmToast } from '@/lib/toast-utils';
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 
+function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+  return (
+    <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '0.75rem' }}>
+      <div className="card-header bg-white py-3 border-bottom">
+        <h5 className="mb-0 fw-bold" style={{ color: '#212529' }}>
+          <i className={`bi ${icon} me-2`} style={{ color: '#ffc63a' }}></i>{title}
+        </h5>
+      </div>
+      <div className="card-body">{children}</div>
+    </div>
+  );
+}
+
+function Toggle({ label, desc, settingKey, settings, update }: { label: string; desc?: string; settingKey: string; settings: Record<string, string>; update: (k: string, v: string) => void }) {
+  const checked = settings[settingKey] === '1' || settings[settingKey] === 'true';
+  return (
+    <div className="d-flex align-items-start gap-3 p-3 rounded-3" style={{ background: '#f8f9fa', border: '1px solid #eee' }}>
+      <div className="form-check form-switch mb-0 mt-1">
+        <input className="form-check-input" type="checkbox" checked={checked} onChange={(e) => update(settingKey, e.target.checked ? '1' : '0')} style={{ width: 42, height: 22, cursor: 'pointer' }} />
+      </div>
+      <div>
+        <div className="fw-semibold">{label}</div>
+        {desc && <small className="text-muted">{desc}</small>}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsClient() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
 
   // Bulk delete
   const [fromDate, setFromDate] = useState('');
@@ -42,9 +69,9 @@ export default function SettingsClient() {
   };
 
   const handleBulkDelete = () => {
-    if (!fromDate || !toDate) { 
-      toast.error('Please select both from and to dates'); 
-      return; 
+    if (!fromDate || !toDate) {
+      toast.error('Please select both from and to dates');
+      return;
     }
     confirmToast('All rejected products and their images will be permanently deleted! Are you sure?', async () => {
       setDeleting(true);
@@ -67,18 +94,246 @@ export default function SettingsClient() {
   return (
     <DashboardLayout requiredRoles={['super_admin']}>
       <div className="container-fluid">
-        <div className="mb-4"><h1 style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}><i className="bi bi-gear" style={{ color: '#ffc63a' }}></i> System Settings</h1></div>
+        <div className="mb-4 d-flex justify-content-between align-items-center">
+          <div>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}><i className="bi bi-gear" style={{ color: '#ffc63a' }}></i> System Settings</h1>
+            <p className="text-muted small mb-0">Configure all platform-wide settings from one place.</p>
+          </div>
+        </div>
 
+        <form onSubmit={handleSave}>
 
-        {/* System Maintenance */}
-        <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '0.75rem' }}>
-          <div className="card-header bg-white py-3"><h5 className="mb-0 text-danger"><i className="bi bi-tools me-2"></i>System Maintenance</h5></div>
-          <div className="card-body">
-            <div className="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 flex-wrap gap-3">
-              <div className="flex-grow-1">
-                <h6 className="mb-1 fw-bold">Delete Rejected Products</h6>
-                <p className="text-muted small mb-0">Permanently remove rejected products and their images based on rejection date range. <strong>This action cannot be undone.</strong></p>
+          {/* ── General ── */}
+          <Section title="General" icon="bi-globe">
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Site Name</label>
+                <input className="form-control" style={inputStyle} value={settings.site_name || ''} onChange={(e) => update('site_name', e.target.value)} />
               </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Support Email</label>
+                <input type="email" className="form-control" style={inputStyle} value={settings.site_email || settings.support_email || ''} onChange={(e) => update('site_email', e.target.value)} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Support Phone</label>
+                <input className="form-control" style={inputStyle} value={settings.site_phone || settings.support_mobile || ''} onChange={(e) => update('site_phone', e.target.value)} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Currency</label>
+                <select className="form-select" style={inputStyle} value={settings.currency || 'INR'} onChange={(e) => update('currency', e.target.value)}>
+                  <option value="INR">INR — Indian Rupee (₹)</option>
+                  <option value="USD">USD — US Dollar ($)</option>
+                </select>
+              </div>
+            </div>
+          </Section>
+
+          {/* ── Platform Rules ── */}
+          <Section title="Platform Rules" icon="bi-sliders">
+            <div className="row g-3">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Commission Rate (%)</label>
+                <input type="number" step="0.1" min="0" max="100" className="form-control" style={inputStyle} value={settings.commission_rate || '10'} onChange={(e) => update('commission_rate', e.target.value)} />
+                <small className="text-muted">Platform fee on each transaction</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Default Delivery Charge (₹)</label>
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.default_delivery_charge || settings.delivery_charge || '50'} onChange={(e) => update('default_delivery_charge', e.target.value)} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Minimum Order Value (₹)</label>
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.min_order_value || '100'} onChange={(e) => update('min_order_value', e.target.value)} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Max Images per Product</label>
+                <input type="number" min="1" max="20" className="form-control" style={inputStyle} value={settings.max_images_per_product || '8'} onChange={(e) => update('max_images_per_product', e.target.value)} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">OTP Expiry (minutes)</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.otp_expiry_minutes || '10'} onChange={(e) => update('otp_expiry_minutes', e.target.value)} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Blocked from Approvals (days)</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.blocked_from_approvals_days || '30'} onChange={(e) => update('blocked_from_approvals_days', e.target.value)} />
+                <small className="text-muted">Days a seller stays blocked from approvals after violations</small>
+              </div>
+              <div className="col-12">
+                <Toggle
+                  label="Admin Review Required for New Products"
+                  desc="When enabled, all new product listings will be 'Pending' until an admin approves them."
+                  settingKey="product_approval_required"
+                  settings={settings}
+                  update={update}
+                />
+              </div>
+              <div className="col-12">
+                <Toggle
+                  label="Enable Zone Restriction"
+                  desc="Restrict registrations and contact viewing to allowed geographic zones only."
+                  settingKey="enable_zone_restriction"
+                  settings={settings}
+                  update={update}
+                />
+              </div>
+              <div className="col-12">
+                <Toggle
+                  label="Global System Lock"
+                  desc="When enabled: no new users can register and buyers cannot view seller contact details."
+                  settingKey="global_system_lock"
+                  settings={settings}
+                  update={update}
+                />
+              </div>
+            </div>
+          </Section>
+
+          {/* ── Offer & Rating Rules ── */}
+          <Section title="Offer & Rating Rules" icon="bi-handshake">
+            <div className="row g-3">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Offer Acceptance Limit (days)</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.offer_acceptance_limit_days || '7'} onChange={(e) => update('offer_acceptance_limit_days', e.target.value)} />
+                <small className="text-muted">Days before an unaccepted offer auto-expires</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Seller Rejection Window (hours)</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.seller_rejection_window_hours || '7'} onChange={(e) => update('seller_rejection_window_hours', e.target.value)} />
+                <small className="text-muted">Hours seller has to reject after acceptance</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Buyer Rating Period (days)</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.buyer_rating_period_days || '7'} onChange={(e) => update('buyer_rating_period_days', e.target.value)} />
+                <small className="text-muted">Days a seller has to rate the buyer</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Seller Rating Period (days)</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.seller_rating_period_days || '7'} onChange={(e) => update('seller_rating_period_days', e.target.value)} />
+                <small className="text-muted">Days a buyer has to rate the seller</small>
+              </div>
+            </div>
+          </Section>
+
+          {/* ── Rental Settings ── */}
+          <Section title="Rental Settings" icon="bi-calendar-range">
+            <div className="row g-3">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Minimum Rental Days</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.min_rental_days || '3'} onChange={(e) => update('min_rental_days', e.target.value)} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Rental Deposit (%)</label>
+                <input type="number" min="0" max="100" className="form-control" style={inputStyle} value={settings.rental_deposit_percentage || '40'} onChange={(e) => update('rental_deposit_percentage', e.target.value)} />
+                <small className="text-muted">% of rental cost charged as security deposit</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Suggested Rental Cost (%)</label>
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.rental_suggested_cost_percent || '13'} onChange={(e) => update('rental_suggested_cost_percent', e.target.value)} />
+                <small className="text-muted">% of original price suggested as daily rental cost</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Max Daily Rental Cap (%)</label>
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.rental_max_cost_cap_per_day || '14'} onChange={(e) => update('rental_max_cost_cap_per_day', e.target.value)} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Deposit Deduction Base (%)</label>
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.rental_base_deposit_deduction || '9'} onChange={(e) => update('rental_base_deposit_deduction', e.target.value)} />
+              </div>
+            </div>
+          </Section>
+
+          {/* ── PhonePe Payment ── */}
+          <Section title="PhonePe Payment Gateway" icon="bi-credit-card">
+            <div className="row g-3">
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Environment</label>
+                <select className="form-select" style={inputStyle} value={settings.phonepe_env || 'sandbox'} onChange={(e) => update('phonepe_env', e.target.value)}>
+                  <option value="sandbox">Sandbox (Testing)</option>
+                  <option value="production">Production (Live)</option>
+                </select>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Client ID</label>
+                <input className="form-control" style={inputStyle} value={settings.phonepe_client_id || ''} onChange={(e) => update('phonepe_client_id', e.target.value)} />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Merchant ID</label>
+                <input className="form-control" style={inputStyle} value={settings.phonepe_merchant_id || ''} onChange={(e) => update('phonepe_merchant_id', e.target.value)} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Client Secret</label>
+                <input type="password" className="form-control" style={inputStyle} value={settings.phonepe_client_secret || ''} onChange={(e) => update('phonepe_client_secret', e.target.value)} placeholder="••••••••••••" />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Client Version</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.phonepe_client_version || '1'} onChange={(e) => update('phonepe_client_version', e.target.value)} />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Callback URL</label>
+                <input className="form-control" style={inputStyle} value={settings.phonepe_callback_url || ''} onChange={(e) => update('phonepe_callback_url', e.target.value)} placeholder="https://yourdomain.com/buyer/payment-callback" />
+              </div>
+            </div>
+          </Section>
+
+          {/* ── SMTP Email ── */}
+          <Section title="SMTP Email Settings" icon="bi-envelope">
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">SMTP Host</label>
+                <input className="form-control" style={inputStyle} value={settings.smtp_host || ''} onChange={(e) => update('smtp_host', e.target.value)} placeholder="smtp.gmail.com" />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">SMTP Port</label>
+                <input type="number" className="form-control" style={inputStyle} value={settings.smtp_port || '587'} onChange={(e) => update('smtp_port', e.target.value)} />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Encryption</label>
+                <select className="form-select" style={inputStyle} value={settings.smtp_encryption || 'tls'} onChange={(e) => update('smtp_encryption', e.target.value)}>
+                  <option value="tls">TLS</option>
+                  <option value="ssl">SSL</option>
+                  <option value="">None</option>
+                </select>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">SMTP Username</label>
+                <input className="form-control" style={inputStyle} value={settings.smtp_username || ''} onChange={(e) => update('smtp_username', e.target.value)} placeholder="your@email.com" />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">SMTP Password</label>
+                <input type="password" className="form-control" style={inputStyle} value={settings.smtp_password || ''} onChange={(e) => update('smtp_password', e.target.value)} placeholder="••••••••" />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">From Email</label>
+                <input type="email" className="form-control" style={inputStyle} value={settings.smtp_from_email || ''} onChange={(e) => update('smtp_from_email', e.target.value)} placeholder="noreply@flexmarket.com" />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">From Name</label>
+                <input className="form-control" style={inputStyle} value={settings.smtp_from_name || ''} onChange={(e) => update('smtp_from_name', e.target.value)} placeholder="Flex Market" />
+              </div>
+            </div>
+          </Section>
+
+          {/* ── Save Button ── */}
+          <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '0.75rem' }}>
+            <div className="card-body d-flex justify-content-end gap-3 align-items-center">
+              <small className="text-muted">All sections are saved together.</small>
+              <button type="submit" className="btn" style={btnGold} disabled={saving}>
+                {saving
+                  ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving…</>
+                  : <><i className="bi bi-check-circle me-2"></i>Save All Settings</>}
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {/* ── Maintenance ── */}
+        <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '0.75rem' }}>
+          <div className="card-header bg-white py-3 border-bottom">
+            <h5 className="mb-0 fw-bold text-danger"><i className="bi bi-tools me-2"></i>System Maintenance</h5>
+          </div>
+          <div className="card-body">
+            <div className="p-3 rounded-3" style={{ background: '#fff5f5', border: '1px solid #ffeaea' }}>
+              <h6 className="fw-bold mb-1">Delete Rejected Products</h6>
+              <p className="text-muted small mb-3">Permanently remove rejected products and all their images for a selected date range. <strong>This cannot be undone.</strong></p>
               <div className="d-flex align-items-center gap-2 flex-wrap">
                 <input type="date" className="form-control form-control-sm" style={{ ...inputStyle, width: 'auto' }} value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
                 <span className="text-muted small">to</span>
@@ -89,46 +344,6 @@ export default function SettingsClient() {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* General Settings */}
-        <div className="card border-0 shadow-sm" style={{ borderRadius: '0.75rem' }}>
-          <div className="card-header bg-white py-3"><h5 className="mb-0" style={{ color: '#ffc63a' }}><i className="bi bi-gear-wide-connected me-2"></i>General Settings</h5></div>
-          <div className="card-body">
-            <form onSubmit={handleSave}>
-              <div className="row g-4">
-                <div className="col-md-6"><label className="form-label">Site Name</label><input className="form-control" style={inputStyle} value={settings.site_name || 'Flex Market'} onChange={(e) => update('site_name', e.target.value)} /></div>
-                <div className="col-md-6"><label className="form-label">Commission Rate (%)</label><input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.commission_rate || '10'} onChange={(e) => update('commission_rate', e.target.value)} /><small className="text-muted">Platform commission on each transaction</small></div>
-                <div className="col-md-6"><label className="form-label">Delivery Charge (₹)</label><input type="number" className="form-control" style={inputStyle} value={settings.delivery_charge || '50'} onChange={(e) => update('delivery_charge', e.target.value)} /><small className="text-muted">Fixed delivery charge per order</small></div>
-                <div className="col-md-6"><label className="form-label">Minimum Order Value (₹)</label><input type="number" className="form-control" style={inputStyle} value={settings.min_order_value || '100'} onChange={(e) => update('min_order_value', e.target.value)} /><small className="text-muted">Minimum amount for placing orders</small></div>
-                <div className="col-md-6"><label className="form-label">Support Email</label><input type="email" className="form-control" style={inputStyle} value={settings.support_email || ''} onChange={(e) => update('support_email', e.target.value)} /></div>
-                <div className="col-md-6"><label className="form-label">Support Mobile</label><input className="form-control" style={inputStyle} value={settings.support_mobile || ''} onChange={(e) => update('support_mobile', e.target.value)} /></div>
-
-                <div className="col-md-12">
-                  <label className="form-label">Product Approval Flow</label>
-                  <div className="form-check form-switch">
-                    <input className="form-check-input" type="checkbox" checked={settings.product_approval_required === '1' || settings.product_approval_required === 'true'} onChange={(e) => update('product_approval_required', e.target.checked ? '1' : '0')} style={{ width: 42, height: 22 }} />
-                    <label className="form-check-label ms-2">Admin Review Required (New products will be &apos;Pending&apos; until approved)</label>
-                  </div>
-                </div>
-
-                <div className="col-md-12">
-                  <label className="form-label">Global System Lock</label>
-                  <div className="form-check form-switch">
-                    <input className="form-check-input" type="checkbox" checked={settings.global_system_lock === '1' || settings.global_system_lock === 'true'} onChange={(e) => update('global_system_lock', e.target.checked ? '1' : '0')} style={{ width: 42, height: 22 }} />
-                    <label className="form-check-label text-danger fw-bold ms-2">Enable Global System Lock (Disables new registrations and contact viewing)</label>
-                  </div>
-                  <small className="text-muted d-block mt-1">When enabled: No new users can register, and buyers cannot view seller contact details.</small>
-                </div>
-
-                <div className="col-md-12">
-                  <button type="submit" className="btn sa-filter-btn" style={btnGold} disabled={saving}>
-                    {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : <><i className="bi bi-check-circle me-2"></i>Save Settings</>}
-                  </button>
-                </div>
-              </div>
-            </form>
           </div>
         </div>
       </div>

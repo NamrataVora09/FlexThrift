@@ -688,6 +688,162 @@ class BuyerApi extends ResourceController
     }
 
     /**
+     * POST /api/v1/buyer/initiate-order-payment
+     * Creates a PhonePe checkout session for an order payment
+     * Body: { order_id, callback_url }
+     */
+    public function initiateOrderPayment()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $buyerId = (int) $jwtUser['user_id'];
+        $data = $this->request->getJSON(true);
+        $db = \Config\Database::connect();
+
+        $orderId = (int) ($data['order_id'] ?? 0);
+        $callbackUrl = trim($data['callback_url'] ?? '');
+
+        $order = $db->table('orders')->where('id', $orderId)->where('buyer_id', $buyerId)->get()->getRowArray();
+        if (!$order) {
+            return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
+        }
+        if ($order['payment_status'] === 'paid') {
+            return $this->respond(['success' => false, 'message' => 'This order is already paid'], 400);
+        }
+        if ($order['status'] !== 'pending') {
+            return $this->respond(['success' => false, 'message' => 'Order is not in a payable state'], 400);
+        }
+
+        $amount = (float) $order['final_price'];
+        $amountInPaise = (int) ($amount * 100);
+        $merchantOrderId = 'ORD-' . $buyerId . '-' . $orderId . '-' . time();
+
+        $redirectUrl = $callbackUrl
+            ? str_replace('{id}', $merchantOrderId, $callbackUrl)
+            : base_url("buyer/order-payment-callback?id={$merchantOrderId}");
+
+        $payload = [
+            'merchantOrderId' => $merchantOrderId,
+            'amount' => $amountInPaise,
+            'paymentFlow' => [
+                'type' => 'PG_CHECKOUT',
+                'merchantUrls' => ['redirectUrl' => $redirectUrl],
+            ],
+        ];
+
+        // Store the merchant transaction ID on the order so we can match it on callback
+        $db->table('orders')->where('id', $orderId)->update([
+            'merchant_transaction_id' => $merchantOrderId,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        $phonepe = new \App\Libraries\PhonePe();
+        $response = $phonepe->createPayment($payload);
+
+        if (isset($response['redirectUrl'])) {
+            return $this->respond([
+                'success' => true,
+                'data' => [
+                    'redirect_url' => $response['redirectUrl'],
+                    'merchant_order_id' => $merchantOrderId,
+                ],
+            ]);
+        }
+
+        return $this->respond([
+            'success' => false,
+            'message' => 'Failed to initiate payment. Please try again.',
+            'debug' => $response,
+        ]);
+    }
+
+    /**
+     * GET /api/v1/buyer/verify-order-payment?id={merchantOrderId}
+     * Verifies PhonePe payment and confirms the order on success
+     */
+    public function verifyOrderPayment()
+    {
+        $merchantOrderId = $this->request->getGet('id');
+        $db = \Config\Database::connect();
+
+        if (!$merchantOrderId) {
+            return $this->respond(['status' => 'error', 'message' => 'No transaction ID provided'], 400);
+        }
+
+        $order = $db->table('orders')
+            ->where('merchant_transaction_id', $merchantOrderId)
+            ->get()->getRowArray();
+
+        if (!$order) {
+            return $this->respond(['status' => 'error', 'message' => 'Order not found for this transaction'], 404);
+        }
+
+        // Already paid — return success immediately
+        if ($order['payment_status'] === 'paid') {
+            return $this->respond(['status' => 'success', 'message' => 'Order is already confirmed', 'order_id' => $order['id']]);
+        }
+
+        $phonepe = new \App\Libraries\PhonePe();
+        $status = $phonepe->getOrderStatus($merchantOrderId);
+
+        log_message('debug', 'PhonePe Order Payment Status for ' . $merchantOrderId . ': ' . json_encode($status));
+
+        $state = $status['state'] ?? ($status['data']['state'] ?? 'PENDING');
+
+        if ($state === 'COMPLETED') {
+            $buyerId = $order['buyer_id'];
+            $orderId = $order['id'];
+
+            $db->table('orders')->where('id', $orderId)->update([
+                'status' => 'confirmed',
+                'payment_status' => 'paid',
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->table('order_status_history')->insert([
+                'order_id' => $orderId,
+                'status' => 'confirmed',
+                'updated_by' => $buyerId,
+                'remarks' => 'PhonePe payment verified - Order confirmed',
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->table('transactions')->insert([
+                'user_id' => $buyerId,
+                'order_id' => $orderId,
+                'type' => 'order_payment',
+                'amount' => $order['final_price'],
+                'description' => 'Order Payment: #' . ($order['order_number'] ?: $orderId),
+                'payment_method' => 'phonepe',
+                'payment_status' => 'completed',
+                'transaction_id' => $status['data']['transactionId'] ?? ($status['paymentDetails'][0]['transactionId'] ?? 'PNP-' . time()),
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->table('notifications')->insert([
+                'user_id' => $order['seller_id'],
+                'title' => 'Order Confirmed',
+                'message' => "Payment received for order #{$orderId}. You can now dispatch the item.",
+                'type' => 'order_confirmed',
+                'related_id' => $orderId,
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            return $this->respond([
+                'status' => 'success',
+                'message' => 'Payment successful! Your order has been confirmed.',
+                'order_id' => $orderId,
+            ]);
+        }
+
+        if ($state === 'FAILED') {
+            return $this->respond(['status' => 'failed', 'message' => 'Payment failed. Please try again.']);
+        }
+
+        return $this->respond(['status' => 'pending', 'message' => 'Payment is being processed…']);
+    }
+
+    /**
      * POST /api/v1/buyer/confirm-date-change/{offerId}
      */
     public function confirmDateChange(int $offerId)

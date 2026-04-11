@@ -91,10 +91,12 @@ function register_api_routes($routes) {
         $routes->get('plan-checkout-details/(:num)', 'Api\BuyerApi::planCheckoutDetails/$1');
         $routes->post('apply-coupon', 'Api\BuyerApi::applyCoupon');
         $routes->post('initiate-payment', 'Api\BuyerApi::initiatePayment');
+        $routes->post('initiate-order-payment', 'Api\BuyerApi::initiateOrderPayment');
     });
 
     // Public/Semi-public Subscription check
     $routes->get('buyer/verify-payment', 'Api\BuyerApi::verifyPayment');
+    $routes->get('buyer/verify-order-payment', 'Api\BuyerApi::verifyOrderPayment');
 
     // Seller API (protected)
     $routes->group('seller', ['filter' => 'jwt'], function ($routes) {

@@ -10,6 +10,23 @@ import { useAuth } from '@/lib/auth-context';
 
 interface Attribute { name: string; type: string; required?: boolean; options?: string; }
 
+interface PricingRule {
+  id: number;
+  filter_type: string;       // '', 'sub_category', 'category', 'listing_type'
+  filter_value: number | string; // ID of the sub_category / category / listing_type
+  filter_label: string;
+  is_active: number;
+  depreciation_range_min: number; // used_times lower bound
+  depreciation_range_max: number; // used_times upper bound (0 = unlimited)
+  depreciation_amount: number;    // additional % for depreciation
+  // Sale specific
+  deduction_threshold?: number;    // % — used for max allowed price
+  // Rental specific
+  deposit_deduction_threshold?: number;
+  deposit_percentage?: number;
+  max_cost_cap_per_day?: number;
+}
+
 interface FormMeta {
   listing_types: Array<{ id: number; type_name: string; usage_label?: string; field_config?: string }>;
   product_types: Array<{ id: number; name: string; listing_type_id: number }>;
@@ -19,6 +36,8 @@ interface FormMeta {
   genders: Array<{ id: number; name: string }>;
   brands: Array<{ id: number; brand_name: string; brand_image?: string; listing_type_id?: number | string | null; listing_type_ids?: string | null }>;
   config: Record<string, string>;
+  pricing_rules: PricingRule[];
+  rental_pricing_rules: PricingRule[];
 }
 
 interface Props { role: string; apiBasePath: string; redirectPath: string; }
@@ -264,30 +283,42 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     });
   }, [f.listing_type_category, f.category_id, f.sub_category_id, meta]);
 
-  // Cascading tier lookup: sub_category → category → listing_type → global
-  const findTiers = (cfg: Record<string, string>, prefix: string): Array<{ min: number; max: number; dep: number }> => {
-    const tryParse = (key: string) => {
-      try { const t = JSON.parse(cfg[key] || ''); if (Array.isArray(t) && t.length > 0) return t; } catch { /* skip */ }
-      return null;
+  /**
+   * Find the best matching pricing rule for the current product.
+   * Priority: sub_category → category → listing_type → default (empty filter_type)
+   * Within each level, match by used_times falling in [depreciation_range_min, depreciation_range_max]
+   * (range_max === 0 means no upper bound)
+   */
+  const findPricingRule = (rules: PricingRule[], usedTimes: number): { rule: PricingRule; source: string } | null => {
+    const match = (filterType: string, filterValue: number | string): PricingRule | null => {
+      const pool = rules.filter(r =>
+        r.filter_type === filterType && String(r.filter_value) === String(filterValue)
+      );
+      return pool.find(r =>
+        usedTimes >= r.depreciation_range_min &&
+        (r.depreciation_range_max === 0 || usedTimes <= r.depreciation_range_max)
+      ) ?? null;
     };
-    // 1. Sub-category specific
+
     if (f.sub_category_id) {
-      const t = tryParse(`${prefix}_sub_category_${f.sub_category_id}`);
-      if (t) return t;
+      const r = match('sub_category', f.sub_category_id);
+      if (r) return { rule: r, source: 'Sub-Category' };
     }
-    // 2. Category specific
     if (f.category_id) {
-      const t = tryParse(`${prefix}_category_${f.category_id}`);
-      if (t) return t;
+      const r = match('category', f.category_id);
+      if (r) return { rule: r, source: 'Category' };
     }
-    // 3. Listing type specific
     if (f.listing_type_category) {
-      const t = tryParse(`${prefix}_listing_type_${f.listing_type_category}`);
-      if (t) return t;
+      const r = match('listing_type', f.listing_type_category);
+      if (r) return { rule: r, source: 'Listing Type' };
     }
-    // 4. Global fallback
-    const t = tryParse(prefix);
-    return t || [];
+    // Default: filter_type is empty string or 'default'
+    const defaults = rules.filter(r => !r.filter_type || r.filter_type === 'default');
+    const r = defaults.find(d =>
+      usedTimes >= d.depreciation_range_min &&
+      (d.depreciation_range_max === 0 || usedTimes <= d.depreciation_range_max)
+    ) ?? null;
+    return r ? { rule: r, source: 'Default' } : null;
   };
 
   const isInitialLoad = useRef(true);
@@ -300,20 +331,20 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     const origPrice = parseFloat(f.original_price);
     if (!origPrice || origPrice <= 0) return;
 
-    const baseDiscount = parseFloat(meta.config.sale_base_discount || '5');
     const usedTimes = parseInt(f.used_times || '0');
-    const noDepMax = parseInt(meta.config.usage_no_dep_max || '2');
+    const found = findPricingRule(meta.pricing_rules || [], usedTimes);
 
-    let usageDep = 0;
-    if (usedTimes > noDepMax) {
-      const tiers = findTiers(meta.config, 'pricing_tiers');
-      for (const tier of tiers) {
-        if (usedTimes >= tier.min && (tier.max <= 0 || usedTimes <= tier.max)) { usageDep = tier.dep; break; }
-      }
+    let deductionThreshold = parseFloat(meta.config.sale_base_discount || '5');
+    let depreciationAmount = 0;
+    if (found) {
+      deductionThreshold = Number(found.rule.deduction_threshold);
+      depreciationAmount = Number(found.rule.depreciation_amount);
     }
 
-    const suggested = Math.round(origPrice * (1 - (baseDiscount + usageDep) / 100));
+    // Suggested = original × (1 - (deductionThreshold + depreciationAmount) / 100)
+    const suggested = Math.round(origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
     setF(prev => ({ ...prev, price: String(suggested > 0 ? suggested : 1) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f.original_price, f.used_times, f.listing_type, f.sub_category_id, f.category_id, f.listing_type_category, meta, isEditMode]);
 
   // Auto-fill rental deposit & rental cost when original_price / used_times changes
@@ -328,21 +359,24 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (!origPrice || origPrice <= 0) return;
 
     const usedTimes = parseInt(f.used_times || '0');
-    const noDepMax = parseInt(meta.config.usage_no_dep_max || '2');
-    const baseThreshold = parseFloat(meta.config.rental_base_deposit_deduction || '9');
-    const depositPct = parseFloat(meta.config.rental_deposit_percentage || '40') / 100;
-    const suggestedPct = parseFloat(meta.config.rental_suggested_cost_percent || '13');
-    const maxCapPct = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
 
-    let dep = 0;
-    if (usedTimes > noDepMax) {
-      const tiers = findTiers(meta.config, 'rental_pricing_tiers');
-      for (const tier of tiers) {
-        if (usedTimes >= tier.min && (tier.max <= 0 || usedTimes <= tier.max)) { dep = tier.dep; break; }
-      }
+    // Find rental pricing rule
+    const found = findPricingRule(meta.rental_pricing_rules || [], usedTimes);
+    let deductionThreshold = parseFloat(meta.config.rental_base_deposit_deduction || '9');
+    let depreciationAmount = 0;
+    let depositPct = parseFloat(meta.config.rental_deposit_percentage || '40') / 100;
+    let suggestedPct = parseFloat(meta.config.rental_suggested_cost_percent || '13');
+    let maxCapPct = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
+
+    if (found) {
+      deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? deductionThreshold);
+      depreciationAmount = Number(found.rule.depreciation_amount ?? 0);
+      if (found.rule.deposit_percentage) depositPct = Number(found.rule.deposit_percentage) / 100;
+      if (found.rule.max_cost_cap_per_day) maxCapPct = Number(found.rule.max_cost_cap_per_day);
     }
 
-    const depreciatedValue = origPrice * (1 - (baseThreshold + dep) / 100);
+    // Depreciated value = original × (1 - (deductionThreshold + depreciationAmount) / 100)
+    const depreciatedValue = origPrice * (1 - (deductionThreshold + depreciationAmount) / 100);
     const deposit = Math.round(depreciatedValue * depositPct);
     const rental = Math.min(Math.round(deposit * suggestedPct / 100), Math.round(deposit * maxCapPct / 100));
 
@@ -351,6 +385,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       rental_deposit: String(deposit > 0 ? deposit : ''),
       rental_cost: String(rental > 0 ? rental : ''),
     }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f.original_price, f.used_times, f.listing_type, f.sub_category_id, f.category_id, f.listing_type_category, meta, isEditMode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -427,12 +462,17 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Validate sale price doesn't exceed max allowed
+    // Validate sale price doesn't exceed max allowed (based on pricing rule)
     if (f.listing_type === 'sell' && f.original_price && f.price && meta) {
-      const baseDiscount = parseFloat(meta.config.sale_base_discount || '5');
-      const maxPrice = Math.round(parseFloat(f.original_price) - (parseFloat(f.original_price) * baseDiscount / 100));
+      const origPrice = parseFloat(f.original_price);
+      const usedTimes = parseInt(f.used_times || '0');
+      const found = findPricingRule(meta.pricing_rules || [], usedTimes);
+      const deductionThreshold = found ? Number(found.rule.deduction_threshold) : parseFloat(meta.config.sale_base_discount || '5');
+      // Maximum Allowed Price = original × (1 - deductionThreshold / 100)
+      const maxPrice = Math.round(origPrice * (1 - deductionThreshold / 100));
       if (parseFloat(f.price) > maxPrice) {
-        setError(`Sale price cannot exceed ₹${maxPrice} (Original ₹${f.original_price} minus ${baseDiscount}% base deduction)`);
+        const src = found ? found.source : 'Global';
+        setError(`Sale price cannot exceed ₹${maxPrice.toLocaleString('en-IN')} (Original ₹${origPrice.toLocaleString('en-IN')} minus ${deductionThreshold}% deduction threshold — ${src} rule)`);
         setSubmitting(false);
         return;
       }
@@ -496,71 +536,70 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const cfg = meta.config;
   const isSell = f.listing_type === 'sell';
 
-  // ── Sale Price Suggestion Calculator ──
+  // ── Sale Price Suggestion Calculator (uses pricing_rules table) ──
   const salePriceSuggestion = (() => {
     const origPrice = parseFloat(f.original_price);
     if (!origPrice || origPrice <= 0) return null;
 
-    const baseDiscount = parseFloat(cfg.sale_base_discount || '5');
     const usedTimes = parseInt(f.used_times || '0');
-    const noDepMax = parseInt(cfg.usage_no_dep_max || '2');
+    const found = findPricingRule(meta.pricing_rules || [], usedTimes);
 
-    let usageDepreciation = 0;
-    let tierSource = 'Global';
-    if (usedTimes > noDepMax) {
-      const tiers = findTiers(cfg, 'pricing_tiers');
-      // Determine which level matched for display
-      if (f.sub_category_id && cfg[`pricing_tiers_sub_category_${f.sub_category_id}`]) tierSource = 'Sub-Category';
-      else if (f.category_id && cfg[`pricing_tiers_category_${f.category_id}`]) tierSource = 'Category';
-      else if (f.listing_type_category && cfg[`pricing_tiers_listing_type_${f.listing_type_category}`]) tierSource = 'Listing Type';
-      for (const tier of tiers) {
-        if (usedTimes >= tier.min && (tier.max <= 0 || usedTimes <= tier.max)) {
-          usageDepreciation = tier.dep;
-          break;
-        }
-      }
-    }
+    const deductionThreshold = found ? Number(found.rule.deduction_threshold) : parseFloat(cfg.sale_base_discount || '5');
+    const depreciationAmount = found ? Number(found.rule.depreciation_amount) : 0;
+    const source = found ? found.source : 'Default';
 
-    const totalDeduction = baseDiscount + usageDepreciation;
-    const suggestedPrice = Math.round(origPrice - (origPrice * totalDeduction / 100));
-    const maxAllowedPrice = Math.round(origPrice - (origPrice * baseDiscount / 100));
+    // Suggested = original × (1 - (deductionThreshold + depreciationAmount) / 100)
+    const suggestedPrice = Math.round(origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
+    // Maximum Allowed = original × (1 - deductionThreshold / 100)
+    const maxAllowedPrice = Math.round(origPrice * (1 - deductionThreshold / 100));
 
-    return { baseDiscount, usageDepreciation, totalDeduction, suggestedPrice, maxAllowedPrice, tierSource };
+    return { deductionThreshold, depreciationAmount, suggestedPrice, maxAllowedPrice, source, ruleLabel: found?.rule.filter_label || '' };
   })();
 
-  // ── Rental Price Suggestion Calculator ──
+  // ── Rental Price Suggestion Calculator (uses rental_pricing_rules table) ──
   const rentalPriceSuggestion = (() => {
     if (isSell) return null;
     const origPrice = parseFloat(f.original_price);
     if (!origPrice || origPrice <= 0) return null;
 
     const usedTimes = parseInt(f.used_times || '0');
-    const noDepMax = parseInt(cfg.usage_no_dep_max || '2');
 
-    const baseThreshold = parseFloat(cfg.rental_base_deposit_deduction || '9');
-    const depositPct = parseFloat(cfg.rental_deposit_percentage || '40') / 100;
-    const suggestedPct = parseFloat(cfg.rental_suggested_cost_percent || '13');
-    const maxCapPct = parseFloat(cfg.rental_max_cost_cap_per_day || '14');
+    // Find rental pricing rule
+    const found = findPricingRule(meta.rental_pricing_rules || [], usedTimes);
+    let deductionThreshold = parseFloat(cfg.rental_base_deposit_deduction || '9');
+    let depreciationAmount = 0;
+    let depositPct = parseFloat(cfg.rental_deposit_percentage || '40') / 100;
+    let suggestedPct = parseFloat(cfg.rental_suggested_cost_percent || '13');
+    let maxCapPct = parseFloat(cfg.rental_max_cost_cap_per_day || '14');
+    const source = found ? found.source : 'Default';
 
-    let rentalDepreciation = 0;
-    if (usedTimes > noDepMax) {
-      const tiers = findTiers(cfg, 'rental_pricing_tiers');
-      for (const tier of tiers) {
-        if (usedTimes >= tier.min && (tier.max <= 0 || usedTimes <= tier.max)) {
-          rentalDepreciation = tier.dep;
-          break;
-        }
-      }
+    if (found) {
+      deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? deductionThreshold);
+      depreciationAmount = Number(found.rule.depreciation_amount ?? 0);
+      if (found.rule.deposit_percentage) depositPct = Number(found.rule.deposit_percentage) / 100;
+      if (found.rule.max_cost_cap_per_day) maxCapPct = Number(found.rule.max_cost_cap_per_day);
     }
 
-    const depreciatedValue = origPrice * (1 - (baseThreshold + rentalDepreciation) / 100);
+    // Depreciated value = original × (1 - (deductionThreshold + depreciationAmount) / 100)
+    const depreciatedValue = origPrice * (1 - (deductionThreshold + depreciationAmount) / 100);
     const suggestedDeposit = Math.round(depreciatedValue * depositPct);
     const suggestedRental = Math.min(
       Math.round(suggestedDeposit * suggestedPct / 100),
       Math.round(suggestedDeposit * maxCapPct / 100)
     );
 
-    return { baseThreshold, rentalDepreciation, depositPct: depositPct * 100, depreciatedValue: Math.round(depreciatedValue), suggestedDeposit, suggestedRental, suggestedPct, maxCapPct };
+    return { 
+      deductionThreshold, 
+      depreciationAmount, 
+      depositPct: depositPct * 100, 
+      depreciatedValue: Math.round(depreciatedValue), 
+      suggestedDeposit, 
+      suggestedRental, 
+      suggestedPct, 
+      maxCapPct,
+      source,
+      ruleLabel: found?.rule.filter_label || ''
+    };
   })();
 
   return (
@@ -757,6 +796,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                         <div>
                           <small>Suggested Sale Price</small>
                           <h4 className="mb-0">₹{salePriceSuggestion.suggestedPrice.toLocaleString('en-IN')}</h4>
+                          {salePriceSuggestion.ruleLabel && (
+                            <div className="mt-2 small" style={{ opacity: 0.9 }}>
+                              <i className="bi bi-info-circle me-1"></i>
+                              {salePriceSuggestion.ruleLabel} ({salePriceSuggestion.source} Rule)
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -788,6 +833,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                           <small>Suggested Rental Cost (per day)</small>
                           <h5 className="mb-0">₹{rentalPriceSuggestion.suggestedRental.toLocaleString('en-IN')}</h5>
                         </div>
+                        {rentalPriceSuggestion.ruleLabel && (
+                          <div className="col-12 mt-1 small" style={{ opacity: 0.9 }}>
+                            <i className="bi bi-info-circle me-1"></i>
+                            {rentalPriceSuggestion.ruleLabel} ({rentalPriceSuggestion.source} Rule)
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

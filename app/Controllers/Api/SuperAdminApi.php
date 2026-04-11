@@ -256,14 +256,35 @@ class SuperAdminApi extends ResourceController
     public function allOffers()
     {
         $db = \Config\Database::connect();
-        $offers = $db->table('offers o')
-            ->select('o.*, p.title as product_title, p.listing_type, p.original_price, ub.name as buyer_name, us.name as seller_name,
-                (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image')
-            ->join('products p', 'p.id = o.product_id', 'left')
-            ->join('users ub', 'ub.id = o.buyer_id', 'left')
-            ->join('users us', 'us.id = o.seller_id', 'left')
-            ->orderBy('o.created_at', 'DESC')
-            ->get()->getResultArray();
+        $offers = $db->query("
+            SELECT o.*,
+                p.title as product_title, p.listing_type, p.original_price, p.product_number,
+                p.dispatch_city, p.dispatch_state,
+                (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image,
+                ub.name as buyer_name, ub.email as buyer_email, ub.mobile as buyer_mobile,
+                ub.buyer_rating_avg, ub.buyer_rating_count,
+                us.name as seller_name, us.email as seller_email, us.mobile as seller_mobile,
+                us.seller_rating_avg, us.seller_rating_count,
+                (SELECT ord.id            FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as order_id,
+                (SELECT ord.order_number  FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as order_number,
+                (SELECT ord.status        FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as order_status,
+                (SELECT ord.payment_status FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as payment_status,
+                (SELECT ord.final_price   FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as order_amount,
+                (SELECT ord.deposit_amount FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as order_deposit,
+                (SELECT ord.delivery_type  FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as delivery_type,
+                (SELECT ord.self_delivery  FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as self_delivery,
+                (SELECT ord.delivery_address FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as order_delivery_address,
+                (SELECT ord.delivery_pin_code FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as order_delivery_pin_code,
+                (SELECT ord.dispatched_at  FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as dispatched_at,
+                (SELECT ord.delivery_date  FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as delivery_date,
+                (SELECT ord.return_date    FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as return_date,
+                (SELECT ord.delivery_photo FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != 'cancelled' ORDER BY ord.created_at DESC LIMIT 1) as delivery_photo
+            FROM offers o
+            LEFT JOIN products p ON p.id = o.product_id
+            LEFT JOIN users ub ON ub.id = o.buyer_id
+            LEFT JOIN users us ON us.id = o.seller_id
+            ORDER BY o.created_at DESC
+        ")->getResultArray();
         return $this->respond(['success' => true, 'data' => $offers]);
     }
 

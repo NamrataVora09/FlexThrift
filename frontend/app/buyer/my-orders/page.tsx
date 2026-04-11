@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { Suspense, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { confirmToast } from '@/lib/toast-utils';
 
 interface Order {
   id: number;
@@ -27,7 +27,8 @@ interface Order {
 
 const statusFilters = ['all', 'pending', 'confirmed', 'dispatched', 'delivered', 'completed', 'cancelled'];
 
-export default function Page() {
+function MyOrdersInner() {
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -48,7 +49,16 @@ export default function Page() {
     });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const successMsg = searchParams.get('success');
+    if (successMsg) {
+      toast.success(decodeURIComponent(successMsg));
+      // Clean up URL without re-render
+      window.history.replaceState({}, '', '/buyer/my-orders');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() =>
     filter === 'all' ? orders : orders.filter((o) => o.status === filter),
@@ -63,18 +73,19 @@ export default function Page() {
     return c;
   }, [orders]);
 
-  const handlePay = (orderId: number) => {
-    confirmToast('Would you like to proceed with the secure payment for this order?', async () => {
-      setActionLoading(orderId);
-      const res = await api.post(`/buyer/pay-order/${orderId}`);
-      setActionLoading(null);
-      if (res?.success) {
-        toast.success('Payment successful!');
-        load();
-      } else {
-        toast.error(res?.message || 'Payment processing failed');
-      }
-    }, 'Pay Now');
+  const handlePay = async (orderId: number) => {
+    setActionLoading(orderId);
+    const callbackUrl = `${window.location.origin}/buyer/order-payment-callback?id={id}`;
+    const res = await api.post<{ redirect_url: string; merchant_order_id: string }>(
+      '/buyer/initiate-order-payment',
+      { order_id: orderId, callback_url: callbackUrl }
+    );
+    setActionLoading(null);
+    if (res?.success && res.data?.redirect_url) {
+      window.location.href = res.data.redirect_url;
+    } else {
+      toast.error(res?.message || 'Failed to initiate payment. Please try again.');
+    }
   };
 
   const handleReview = async () => {
@@ -405,5 +416,13 @@ export default function Page() {
         </div>
       )}
     </DashboardLayout>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="spinner-border text-warning" /></div>}>
+      <MyOrdersInner />
+    </Suspense>
   );
 }

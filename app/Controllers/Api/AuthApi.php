@@ -422,16 +422,27 @@ class AuthApi extends ResourceController
 
     private function sendOTPEmail(string $to, string $name, string $otp): void
     {
-        $email = \Config\Services::email();
-
         $db = \Config\Database::connect();
-        $settings = $db->table('system_settings')->get()->getResultArray();
-        $config = [];
-        foreach ($settings as $s) {
-            $config[$s['setting_key']] = $s['setting_value'];
+        $rows = $db->table('system_settings')->get()->getResultArray();
+        $cfg = [];
+        foreach ($rows as $s) {
+            $cfg[$s['setting_key']] = $s['setting_value'];
         }
 
-        $email->setFrom($config['smtp_from_email'] ?? 'info@webappsofttech.com', $config['smtp_from_name'] ?? 'Flex Market');
+        $emailConfig = [
+            'protocol'  => 'smtp',
+            'SMTPHost'  => $cfg['smtp_host']       ?? 'smtp.gmail.com',
+            'SMTPPort'  => (int) ($cfg['smtp_port'] ?? 587),
+            'SMTPUser'  => $cfg['smtp_username']   ?? '',
+            'SMTPPass'  => $cfg['smtp_password']   ?? '',
+            'SMTPCrypto'=> $cfg['smtp_encryption'] ?? 'tls',
+            'mailType'  => 'html',
+            'charset'   => 'utf-8',
+        ];
+
+        $email = \Config\Services::email();
+        $email->initialize($emailConfig);
+        $email->setFrom($cfg['smtp_from_email'] ?? 'info@flexmarket.com', $cfg['smtp_from_name'] ?? 'Flex Market');
         $email->setTo($to);
         $email->setSubject('Your Flex Market OTP');
         $email->setMessage("
@@ -440,7 +451,6 @@ class AuthApi extends ResourceController
             <p>This OTP expires in 10 minutes.</p>
             <br><p>— Flex Market</p>
         ");
-        $email->setMailType('html');
 
         $email->send(false);
     }

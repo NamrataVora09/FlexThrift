@@ -38,7 +38,13 @@ export default function Page() {
     });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Auto-refresh when a new offer contact is created from another page
+    const onContactCreated = () => load();
+    window.addEventListener('flex:contact-created', onContactCreated);
+    return () => window.removeEventListener('flex:contact-created', onContactCreated);
+  }, []);
 
   const availableRatings = contacts.filter((c) => c.can_rate_now && !c.already_rated).length;
 

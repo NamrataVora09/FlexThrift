@@ -201,17 +201,22 @@ class SellerApi extends ResourceController
         ];
         $config = array_merge($defaults, $config);
 
+        $pricingRules = $db->table('pricing_rules')->where('is_active', 1)->orderBy('filter_type', 'ASC')->get()->getResultArray();
+        $rentalPricingRules = $db->table('rental_pricing_rules')->where('is_active', 1)->orderBy('filter_type', 'ASC')->get()->getResultArray();
+
         return $this->respond([
             'success' => true,
             'data' => [
-                'listing_types' => $listingTypes,
-                'product_types' => $productTypes,
-                'categories' => $categories,
-                'sub_categories' => $subCategories,
-                'colors' => $colors,
-                'genders' => $genders,
-                'brands' => $brands,
-                'config' => $config,
+                'listing_types'       => $listingTypes,
+                'product_types'       => $productTypes,
+                'categories'          => $categories,
+                'sub_categories'      => $subCategories,
+                'colors'              => $colors,
+                'genders'             => $genders,
+                'brands'              => $brands,
+                'config'              => $config,
+                'pricing_rules'       => $pricingRules,
+                'rental_pricing_rules'=> $rentalPricingRules,
             ],
         ]);
     }
