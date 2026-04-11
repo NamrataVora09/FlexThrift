@@ -13,35 +13,21 @@ class CorsFilter implements FilterInterface
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
         $allowed = [
-            // Local development
             'http://localhost:3000',
             'http://localhost:3001',
             'http://localhost:3002',
+            'https://flex-three-zeta.vercel.app',
         ];
 
-        // Allow Vercel production & preview deployments
-        if (preg_match('/^https:\/\/[\w-]+\.vercel\.app$/', $origin)) {
+        // Allow Vercel & Render subdomains
+        if ($origin && (str_contains($origin, '.vercel.app') || str_contains($origin, '.onrender.com'))) {
             $allowed[] = $origin;
         }
 
-        // Allow Railway domains
-        if (preg_match('/^https:\/\/[\w-]+\.railway\.app$/', $origin)) {
-            $allowed[] = $origin;
-        }
-
-        // Allow custom frontend URL from environment variable (e.g., https://flexmarket.in)
-        $frontendUrl = getenv('FRONTEND_URL');
-        if ($frontendUrl) {
-            $allowed[] = rtrim($frontendUrl, '/');
-        }
-
-        if (in_array($origin, $allowed, true)) {
-            header("Access-Control-Allow-Origin: $origin");
-        } else {
-            // Default fallback for unknown origins (restrict in production)
-            $default = getenv('FRONTEND_URL') ?: 'http://localhost:3000';
-            header("Access-Control-Allow-Origin: $default");
-        }
+        $isAllowed = in_array($origin, $allowed, true);
+        $finalOrigin = $isAllowed ? $origin : 'https://flex-three-zeta.vercel.app';
+        
+        header("Access-Control-Allow-Origin: $finalOrigin");
 
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
