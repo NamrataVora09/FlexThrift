@@ -25,16 +25,20 @@ const nextConfig = {
     const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
     return [
       {
+        source: '/api/v1/superadmin/:path*',
+        destination: `${apiBase}/api/v1/superadmin/:path*`,
+      },
+      {
+        source: '/api/v1/:path*',
+        destination: `${apiBase}/api/v1/:path*`,
+      },
+      {
         source: '/api/superadmin/:path*',
         destination: `${apiBase}/api/v1/superadmin/:path*`,
       },
       {
         source: '/api/:path*',
         destination: `${apiBase}/api/v1/:path*`,
-      },
-      {
-        source: '/backend/superadmin/:path*',
-        destination: `${apiBase}/superadmin/:path*`,
       },
     ];
   },
