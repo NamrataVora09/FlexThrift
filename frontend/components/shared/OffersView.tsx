@@ -735,7 +735,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                 const canRejectByPickup = offer.status === 'accepted' && (offer.offer_type ?? offer.listing_type) === 'rent' && offer.rental_start_date
                   ? Date.now() < new Date(offer.rental_start_date).getTime() - windowMs : false;
                 const isProcessed = !!offer.linked_order_status && ['paid', 'for_delivery', 'dispatched', 'delivered', 'completed'].includes(offer.linked_order_status);
-                const canRate = offer.status === 'accepted' && !offer.seller_rated_buyer && acceptedTs > 0 && Date.now() < acceptedTs + settings.ratingPeriod * 86400000;
+                const canRate = offer.status === 'accepted' && !offer.seller_rated_buyer && (acceptedTs === 0 || Date.now() < acceptedTs + settings.ratingPeriod * 86400000);
 
                 return (
                   <div key={offer.id} className={`offer-row${offer.status === 'rejected' ? ' opacity-50' : ''}`}>
@@ -895,7 +895,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                           </div>
                           {canRate ? (
                             <button className="btn-yellow btn-sm mt-2 rounded-pill px-3" style={{ fontSize: '0.8rem' }} onClick={() => onRate(offer)}>
-                              <i className="bi bi-star-fill me-1"></i>Rate Delivery
+                              <i className="bi bi-star-fill me-1"></i>Rate Buyer
                             </button>
                           ) : offer.seller_rated_buyer ? (
                             <span className="badge bg-light text-dark mt-2 border rounded-pill px-3">
@@ -947,7 +947,7 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
         const soldOut = isSoldOut(o);
         const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
         const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
-        const canRate = o.status === 'accepted' && !o.buyer_rated_seller && acceptedTs > 0 && Date.now() < ratingExpiryTs;
+        const canRate = o.status === 'accepted' && !o.buyer_rated_seller && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
 
         // pill class: pill-pending / pill-accepted etc  (my_offers.php convention)
         const pillClass = `status-pill pill-${o.status}`;
@@ -1053,7 +1053,7 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
                   )}
                   {canRate && (
                     <button className="btn btn-warning rounded-pill fw-bold" onClick={() => onRate(o)}>
-                      <i className="bi bi-star-fill me-1"></i>Rate Delivery
+                      <i className="bi bi-star-fill me-1"></i>Rate Seller
                     </button>
                   )}
                   {o.status === 'accepted' && o.buyer_rated_seller ? (

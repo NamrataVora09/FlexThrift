@@ -738,7 +738,10 @@ class BuyerApi extends ResourceController
         $userId = $jwtUser['user_id'];
         $db = \Config\Database::connect();
 
-        $offerId = $this->request->getPost('offer_id');
+        $data = $this->request->getPost() ?: $this->request->getJSON(true);
+        $offerId = $data['offer_id'] ?? null;
+        $rating = (float) ($data['rating'] ?? 5.0);
+
         $offer = $db->table('offers')->where('id', $offerId)->get()->getRowArray();
         if (!$offer || $offer['buyer_id'] != $userId) {
             return $this->respond(['success' => false, 'message' => 'Invalid offer'], 404);
@@ -749,17 +752,14 @@ class BuyerApi extends ResourceController
         if ($offer['buyer_rated_seller']) {
             return $this->respond(['success' => false, 'message' => 'You have already rated this seller'], 400);
         }
+        if ($rating < 1 || $rating > 5) {
+            return $this->respond(['success' => false, 'message' => 'Rating must be between 1 and 5'], 400);
+        }
 
         $limitSetting = $db->table('system_settings')->where('setting_key', 'buyer_rating_period_days')->get()->getRowArray();
         $ratingPeriod = $limitSetting ? (float) $limitSetting['setting_value'] : 7;
-        if (time() > strtotime($offer['accepted_at']) + ($ratingPeriod * 86400)) {
+        if (!empty($offer['accepted_at']) && time() > strtotime($offer['accepted_at']) + ($ratingPeriod * 86400)) {
             return $this->respond(['success' => false, 'message' => 'Rating window has expired'], 400);
-        }
-
-        $data = $this->request->getPost() ?: $this->request->getJSON(true);
-        $rating = (float) ($data['rating'] ?? 5.0);
-        if ($rating < 1 || $rating > 5) {
-            return $this->respond(['success' => false, 'message' => 'Rating must be between 1 and 5'], 400);
         }
 
         $sellerId = $offer['seller_id'];
