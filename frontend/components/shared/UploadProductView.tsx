@@ -477,6 +477,36 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         return;
       }
     }
+
+    // Validate rental cost doesn't exceed max allowed (based on pricing rule)
+    if (f.listing_type === 'rent' && f.rental_cost && meta) {
+      const origPrice = parseFloat(f.original_price || '0');
+      const usedTimes = parseInt(f.used_times || '0');
+      const found = findPricingRule(meta.rental_pricing_rules || [], usedTimes);
+      
+      let deductionThreshold = parseFloat(meta.config.rental_base_deposit_deduction || '9');
+      let depreciationAmount = 0;
+      let depositPct = parseFloat(meta.config.rental_deposit_percentage || '40') / 100;
+      let maxCapPct = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
+
+      if (found) {
+        deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? deductionThreshold);
+        depreciationAmount = Number(found.rule.depreciation_amount ?? 0);
+        if (found.rule.deposit_percentage) depositPct = Number(found.rule.deposit_percentage) / 100;
+        if (found.rule.max_cost_cap_per_day) maxCapPct = Number(found.rule.max_cost_cap_per_day);
+      }
+
+      const depreciatedValue = origPrice * (1 - (deductionThreshold + depreciationAmount) / 100);
+      const deposit = Math.round(depreciatedValue * depositPct);
+      const maxRental = Math.round(deposit * maxCapPct / 100);
+      
+      if (parseFloat(f.rental_cost) > maxRental) {
+        const src = found ? found.source : 'Global';
+        setError(`Rental cost cannot exceed ₹${maxRental.toLocaleString('en-IN')} per day (${maxCapPct}% cap based on ${src} rule)`);
+        setSubmitting(false);
+        return;
+      }
+    }
     try {
       setError(''); setSuccess(''); setSubmitting(true);
       const fd = new FormData();
