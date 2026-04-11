@@ -18,6 +18,12 @@ class App extends BaseConfig
      */
     public string $baseURL = 'http://localhost/flex/public/';
 
+    public function __construct()
+    {
+        parent::__construct();
+        $this->baseURL = env('app.baseURL', $this->baseURL);
+    }
+
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.
      * If you want to accept multiple Hostnames, set this.
