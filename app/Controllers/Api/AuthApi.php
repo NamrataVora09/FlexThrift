@@ -403,13 +403,18 @@ class AuthApi extends ResourceController
             'name'              => $user['name'],
             'email'             => $user['email'],
             'mobile'            => $user['mobile'] ?? '',
+            'address'           => $user['address'] ?? '',
+            'pin_code'          => $user['pin_code'] ?? '',
+            'city'              => $user['city'] ?? '',
+            'state'             => $user['state'] ?? '',
             'user_type'         => $user['user_type'],
             'role'              => $role,
-            'reliability_score' => (int) ($user['reliability_score'] ?? 100),
+            'reliability_score' => (int) ($user['renter_reliability_score'] ?? $user['reliability_score'] ?? 100),
             'referral_code'     => $user['referral_code'] ?? '',
             'is_verified'       => (int) ($user['is_verified'] ?? 0),
             'blocked_buyer'     => (int) ($user['blocked_buyer'] ?? 0),
             'blocked_seller'    => (int) ($user['blocked_seller'] ?? 0),
+            'created_at'        => $user['created_at'] ?? '',
         ];
     }
 
