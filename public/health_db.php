@@ -26,11 +26,11 @@ foreach ($_SERVER as $key => $value) {
 }
 echo "---------------------------\n\n";
 
-$host = getenv('database.default.hostname') ?: getenv('database_default_hostname') ?: getenv('DATABASE_DEFAULT_HOSTNAME') ?: getenv('DB_HOSTNAME') ?: 'localhost';
-$user = getenv('database.default.username') ?: getenv('database_default_username') ?: getenv('DATABASE_DEFAULT_USERNAME') ?: getenv('DB_USERNAME') ?: 'root';
-$pass = getenv('database.default.password') ?: getenv('database_default_password') ?: getenv('DATABASE_DEFAULT_PASSWORD') ?: getenv('DB_PASSWORD') ?: '';
-$db   = getenv('database.default.database') ?: getenv('database_default_database') ?: getenv('DATABASE_DEFAULT_DATABASE') ?: getenv('DB_DATABASE') ?: 'flex';
-$port = getenv('database.default.port') ?: getenv('database_default_port') ?: getenv('DATABASE_DEFAULT_PORT') ?: getenv('DB_PORT') ?: 3306;
+$host = getenv('DB_HOSTNAME') ?: getenv('database.default.hostname') ?: 'localhost';
+$user = getenv('DB_USERNAME') ?: getenv('database.default.username') ?: 'root';
+$pass = getenv('DB_PASSWORD') ?: getenv('database.default.password') ?: '';
+$db   = getenv('DB_DATABASE') ?: getenv('database.default.database') ?: 'flex';
+$port = getenv('DB_PORT')     ?: getenv('database.default.port') ?: 3306;
 
 echo "Attempting connection to $host as $user on port $port...\n";
 

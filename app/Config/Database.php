@@ -55,12 +55,11 @@ class Database extends Config
     {
         parent::__construct();
 
-        // Use environment variables if they are set
-        $this->default['hostname'] = env('database.default.hostname', $this->default['hostname']);
-        $this->default['database'] = env('database.default.database', $this->default['database']);
-        $this->default['username'] = env('database.default.username', $this->default['username']);
-        $this->default['password'] = env('database.default.password', $this->default['password']);
-        $this->default['port']     = env('database.default.port', $this->default['port']);
+        $this->default['hostname'] = getenv('DB_HOSTNAME') ?: getenv('database.default.hostname') ?: 'localhost';
+        $this->default['username'] = getenv('DB_USERNAME') ?: getenv('database.default.username') ?: 'root';
+        $this->default['password'] = getenv('DB_PASSWORD') ?: getenv('database.default.password') ?: '';
+        $this->default['database'] = getenv('DB_DATABASE') ?: getenv('database.default.database') ?: 'flex';
+        $this->default['port']     = getenv('DB_PORT')     ?: getenv('database.default.port') ?: 3306;
 
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
