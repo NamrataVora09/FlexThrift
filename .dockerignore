@@ -1,0 +1,13 @@
+.git
+.env
+node_modules
+.next
+vendor
+writable/*
+!writable/index.html
+flex_full_dump.sql
+*.log
+docker-compose.yml
+Dockerfile
+.vscode
+.idea
