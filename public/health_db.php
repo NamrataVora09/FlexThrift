@@ -61,7 +61,7 @@ try {
 
 echo "\n--- Writable Directory Check ---\n";
 foreach (['cache', 'logs', 'session', 'uploads'] as $dir) {
-    $path = APPPATH . '../writable/' . $dir;
+    $path = __DIR__ . '/../writable/' . $dir;
     $is_writable = is_writable($path);
     echo "  $dir: " . ($is_writable ? 'WRITABLE' : 'NOT WRITABLE') . " ($path)\n";
     
