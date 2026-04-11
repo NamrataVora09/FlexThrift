@@ -409,7 +409,7 @@ class AuthApi extends ResourceController
             'state'             => $user['state'] ?? '',
             'user_type'         => $user['user_type'],
             'role'              => $role,
-            'reliability_score' => (int) ($user['renter_reliability_score'] ?? $user['reliability_score'] ?? 100),
+            'reliability_score' => (int) ($user['reliability_score'] ?? 100),
             'referral_code'     => $user['referral_code'] ?? '',
             'is_verified'       => (int) ($user['is_verified'] ?? 0),
             'blocked_buyer'     => (int) ($user['blocked_buyer'] ?? 0),
