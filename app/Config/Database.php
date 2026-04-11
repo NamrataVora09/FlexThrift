@@ -59,7 +59,7 @@ class Database extends Config
         $this->default['username'] = getenv('DB_USERNAME') ?: getenv('database.default.username') ?: 'root';
         $this->default['password'] = getenv('DB_PASSWORD') ?: getenv('database.default.password') ?: '';
         $this->default['database'] = getenv('DB_DATABASE') ?: getenv('database.default.database') ?: 'flex';
-        $this->default['port']     = getenv('DB_PORT')     ?: getenv('database.default.port') ?: 3306;
+        $this->default['port']     = (int)(getenv('DB_PORT') ?: getenv('database.default.port') ?: 3306);
 
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
