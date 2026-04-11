@@ -4,6 +4,10 @@ header('Content-Type: text/plain');
 echo "--- PHP Environment Info ---\n";
 echo "variables_order: " . ini_get('variables_order') . "\n";
 echo "PHP Version: " . PHP_VERSION . "\n";
+echo "Required Extensions Checked:\n";
+foreach (['mysqli', 'intl', 'mbstring', 'json', 'gd', 'curl', 'openssl'] as $ext) {
+    echo "  $ext: " . (extension_loaded($ext) ? 'LOADED' : 'MISSING') . "\n";
+}
 echo "---------------------------\n\n";
 
 echo "--- Common Database Keys (getenv) ---\n";
