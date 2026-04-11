@@ -284,12 +284,12 @@ class SuperAdminApi extends ResourceController
                 p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit,
                 p.views_count as product_views, p.dispatch_city, p.dispatch_state,
                 (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image,
-                (SELECT ord.status FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != "cancelled" ORDER BY ord.created_at DESC LIMIT 1) as linked_order_status,
+                (SELECT ord.status FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != \'cancelled\' ORDER BY ord.created_at DESC LIMIT 1) as linked_order_status,
                 u.name as buyer_name, u.mobile as buyer_mobile, u.email as buyer_email,
                 u.buyer_rating_avg, u.buyer_rating_count,
                 u.renter_reliability_score as buyer_reliability_score,
                 cv.viewed_at as contact_viewed_at,
-                "received" as perspective')
+                \'received\' as perspective')
             ->join('products p', 'p.id = o.product_id', 'left')
             ->join('users u', 'u.id = o.buyer_id', 'left')
             ->join('contact_views cv', 'cv.user_id = o.buyer_id AND cv.product_id = o.product_id', 'left')
@@ -302,10 +302,10 @@ class SuperAdminApi extends ResourceController
             ->select('o.*, o.offer_price as offered_price,
                 p.title as product_title, p.listing_type, p.original_price,
                 (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image,
-                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = "accepted" AND listing_type = "sell") as is_product_sold,
-                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = "accepted" AND listing_type = "rent" AND rental_start_date <= o.rental_end_date AND rental_end_date >= o.rental_start_date AND p.listing_type = "rent") as is_rental_blocked,
+                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = \'accepted\' AND listing_type = \'sell\') as is_product_sold,
+                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = \'accepted\' AND listing_type = \'rent\' AND rental_start_date <= o.rental_end_date AND rental_end_date >= o.rental_start_date AND p.listing_type = \'rent\') as is_rental_blocked,
                 u.name as seller_name, u.seller_rating_avg, u.seller_rating_count,
-                "sent" as perspective')
+                \'sent\' as perspective')
             ->join('products p', 'p.id = o.product_id', 'left')
             ->join('users u', 'u.id = o.seller_id', 'left')
             ->where('o.buyer_id', $jwtUser['user_id'])

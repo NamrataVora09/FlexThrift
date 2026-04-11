@@ -90,7 +90,7 @@ class SellerApi extends ResourceController
         $offers = $db->table('offers o')
             ->select('o.*, o.offer_price as offered_price, p.title as product_title, p.product_number, p.category, p.listing_type, p.original_price, p.price as product_price, p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit, p.views_count as product_views, p.dispatch_city, p.dispatch_state')
             ->select('(SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image')
-            ->select('(SELECT ord.status FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != "cancelled" ORDER BY ord.created_at DESC LIMIT 1) as linked_order_status')
+            ->select('(SELECT ord.status FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != \'cancelled\' ORDER BY ord.created_at DESC LIMIT 1) as linked_order_status')
             ->select('u.name as buyer_name, u.mobile as buyer_mobile, u.email as buyer_email, u.buyer_rating_avg, u.buyer_rating_count, u.renter_reliability_score as buyer_reliability_score')
             ->select('cv.viewed_at as contact_viewed_at')
             ->join('products p', 'p.id = o.product_id', 'left')
