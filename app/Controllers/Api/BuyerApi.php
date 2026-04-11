@@ -1167,11 +1167,11 @@ class BuyerApi extends ResourceController
         return $this->respond([
             'success' => true,
             'data'    => [
-                'seller_name'   => $seller['name'] ?? '',
-                'seller_email'  => $seller['email'] ?? '',
-                'seller_mobile' => $seller['mobile'] ?? '',
-                'product_id'    => $productId,
-                'already_viewed' => (bool) $existingView,
+                'seller_name'    => $seller ? ($seller['name'] ?? 'Unknown') : 'Unknown',
+                'seller_email'   => $seller ? ($seller['email'] ?? 'N/A') : 'N/A',
+                'seller_mobile'  => $seller ? ($seller['mobile'] ?? 'N/A') : 'N/A',
+                'product_id'     => (int)$productId,
+                'already_viewed' => (bool)$existingView,
             ],
         ]);
     }
