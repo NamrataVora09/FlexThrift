@@ -58,3 +58,21 @@ try {
 } catch (Exception $e) {
     echo "EXCEPTION: " . $e->getMessage() . "\n";
 }
+
+echo "\n--- Writable Directory Check ---\n";
+foreach (['cache', 'logs', 'session', 'uploads'] as $dir) {
+    $path = APPPATH . '../writable/' . $dir;
+    $is_writable = is_writable($path);
+    echo "  $dir: " . ($is_writable ? 'WRITABLE' : 'NOT WRITABLE') . " ($path)\n";
+    
+    if ($is_writable) {
+        $test_file = $path . '/test_write.txt';
+        if (@file_put_contents($test_file, 'test')) {
+            echo "    Write test: SUCCESS\n";
+            @unlink($test_file);
+        } else {
+            echo "    Write test: FAILED\n";
+        }
+    }
+}
+echo "---------------------------\n";
