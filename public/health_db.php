@@ -1,26 +1,36 @@
 <?php
 header('Content-Type: text/plain');
 
-echo "--- Environment Variables ---\n";
-foreach ($_ENV as $key => $value) {
-    if (stripos($key, 'database') !== false || stripos($key, 'db') !== false) {
-        echo "$key => " . ($key === 'database.default.password' || stripos($key, 'password') !== false ? '********' : $value) . "\n";
+echo "--- PHP Environment Info ---\n";
+echo "variables_order: " . ini_get('variables_order') . "\n";
+echo "PHP Version: " . PHP_VERSION . "\n";
+echo "---------------------------\n\n";
+
+echo "--- All Environment Keys (getenv) ---\n";
+// Since we can't easily list all getenv() keys in some PHP versions, 
+// we'll check common ones and then dump $_SERVER which usually has them.
+$keys_to_check = [
+    'database.default.hostname', 'database_default_hostname', 'DATABASE_DEFAULT_HOSTNAME',
+    'DB_HOST', 'DB_HOSTNAME', 'DATABASE_URL', 'PORT', 'CI_ENVIRONMENT'
+];
+foreach ($keys_to_check as $k) {
+    $v = getenv($k);
+    if ($v !== false) {
+        echo "$k => " . (stripos($k, 'password') !== false ? '********' : $v) . "\n";
     }
 }
+
+echo "\n--- $_SERVER Keys ---\n";
 foreach ($_SERVER as $key => $value) {
-    if (stripos($key, 'database') !== false || stripos($key, 'db') !== false) {
-        if (!isset($_ENV[$key])) {
-            echo "SERVER: $key => " . (stripos($key, 'password') !== false ? '********' : $value) . "\n";
-        }
-    }
+    echo "$key\n";
 }
 echo "---------------------------\n\n";
 
-$host = getenv('database__default__hostname') ?: getenv('database.default.hostname') ?: getenv('DATABASE_DEFAULT_HOSTNAME') ?: 'localhost';
-$user = getenv('database__default__username') ?: getenv('database.default.username') ?: getenv('DATABASE_DEFAULT_USERNAME') ?: 'root';
-$pass = getenv('database__default__password') ?: getenv('database.default.password') ?: getenv('DATABASE_DEFAULT_PASSWORD') ?: '';
-$db   = getenv('database__default__database') ?: getenv('database.default.database') ?: getenv('DATABASE_DEFAULT_DATABASE') ?: 'flex';
-$port = getenv('database__default__port') ?: getenv('database.default.port') ?: getenv('DATABASE_DEFAULT_PORT') ?: 3306;
+$host = getenv('database.default.hostname') ?: getenv('database_default_hostname') ?: getenv('DATABASE_DEFAULT_HOSTNAME') ?: getenv('DB_HOSTNAME') ?: 'localhost';
+$user = getenv('database.default.username') ?: getenv('database_default_username') ?: getenv('DATABASE_DEFAULT_USERNAME') ?: getenv('DB_USERNAME') ?: 'root';
+$pass = getenv('database.default.password') ?: getenv('database_default_password') ?: getenv('DATABASE_DEFAULT_PASSWORD') ?: getenv('DB_PASSWORD') ?: '';
+$db   = getenv('database.default.database') ?: getenv('database_default_database') ?: getenv('DATABASE_DEFAULT_DATABASE') ?: getenv('DB_DATABASE') ?: 'flex';
+$port = getenv('database.default.port') ?: getenv('database_default_port') ?: getenv('DATABASE_DEFAULT_PORT') ?: getenv('DB_PORT') ?: 3306;
 
 echo "Attempting connection to $host as $user on port $port...\n";
 
