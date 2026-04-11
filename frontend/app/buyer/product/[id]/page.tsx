@@ -7,7 +7,7 @@ export const revalidate = 60;
 
 // Use absolute URL on the server, relative proxy (/api) on the client
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
 const API_BASE = (typeof window === 'undefined' || !API_URL.startsWith('/'))
   ? (BACKEND_URL.endsWith('/') ? `${BACKEND_URL}api/v1` : `${BACKEND_URL}/api/v1`)
   : API_URL;

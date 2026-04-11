@@ -116,7 +116,7 @@ export default function BrowsePage() {
     fetch(`${API_BASE}/listing-types`)
       .then(r => r.json())
       .then(res => { if (res.success && res.data) setListingTypes(res.data); })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const load = (p: number, type: string, s: string) => {
@@ -288,7 +288,7 @@ export default function BrowsePage() {
                       <Link href={`/${user.role === 'super_admin' ? 'superadmin' : user.role === 'admin' ? 'admin' : 'buyer'}`} className="dd-item" onClick={() => setShowUserDropdown(false)}>
                         <i className="bi bi-speedometer2 text-warning"></i> My Portal
                       </Link>
-                      {!['admin','super_admin'].includes(user.role) && (
+                      {!['admin', 'super_admin'].includes(user.role) && (
                         <Link href="/cart" className="dd-item" onClick={() => setShowUserDropdown(false)}>
                           <i className="bi bi-cart3"></i> My Cart
                         </Link>

@@ -9,7 +9,8 @@ import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
 
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1').replace('/api/v1', '');
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
+const BASE_URL = BACKEND_URL;
 
 interface Order {
   id: number; product_title: string; listing_type: string;

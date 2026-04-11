@@ -10,8 +10,8 @@ import LandingNavbar from '@/components/layout/LandingNavbar';
 import toast from 'react-hot-toast';
 
 // ── Rental calendar ──────────────────────────────────
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DAY_NAMES = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 function RentalCalendar({
   bookedRanges,
@@ -29,8 +29,8 @@ function RentalCalendar({
   const [phase, setPhase] = useState<'start' | 'end'>('start');
   const [hover, setHover] = useState<Date | null>(null);
 
-  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  const parse = (s: string) => { if (!s) return null; const [y,m,day] = s.split('-').map(Number); return new Date(y, m-1, day); };
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const parse = (s: string) => { if (!s) return null; const [y, m, day] = s.split('-').map(Number); return new Date(y, m - 1, day); };
 
   const isBooked = (d: Date) => {
     const ds = fmt(d);
@@ -38,7 +38,7 @@ function RentalCalendar({
   };
 
   const startD = parse(startDate);
-  const endD   = parse(endDate);
+  const endD = parse(endDate);
 
   const inRange = (d: Date) => {
     if (!startD) return false;
@@ -49,7 +49,7 @@ function RentalCalendar({
     return d > lo && d < hi;
   };
 
-  const year  = viewDate.getFullYear();
+  const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const first = new Date(year, month, 1).getDay();
   const total = new Date(year, month + 1, 0).getDate();
@@ -66,42 +66,42 @@ function RentalCalendar({
     } else {
       const s = startD!;
       if (d < s) { onRangeChange(fmt(d), fmt(s)); }
-      else        { onRangeChange(fmt(s), fmt(d)); }
+      else { onRangeChange(fmt(s), fmt(d)); }
       setPhase('start');
     }
   };
 
   return (
-    <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:'14px', padding:'16px', userSelect:'none', fontSize:'0.82rem' }}>
+    <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '14px', padding: '16px', userSelect: 'none', fontSize: '0.82rem' }}>
       {/* nav */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
-        <button type="button" onClick={() => setViewDate(new Date(year, month-1, 1))}
-          style={{ background:'none', border:'1px solid #eee', borderRadius:'6px', cursor:'pointer', padding:'2px 10px', fontWeight:700 }}>‹</button>
-        <span style={{ fontWeight:700 }}>{MONTH_NAMES[month]} {year}</span>
-        <button type="button" onClick={() => setViewDate(new Date(year, month+1, 1))}
-          style={{ background:'none', border:'1px solid #eee', borderRadius:'6px', cursor:'pointer', padding:'2px 10px', fontWeight:700 }}>›</button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+        <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))}
+          style={{ background: 'none', border: '1px solid #eee', borderRadius: '6px', cursor: 'pointer', padding: '2px 10px', fontWeight: 700 }}>‹</button>
+        <span style={{ fontWeight: 700 }}>{MONTH_NAMES[month]} {year}</span>
+        <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))}
+          style={{ background: 'none', border: '1px solid #eee', borderRadius: '6px', cursor: 'pointer', padding: '2px 10px', fontWeight: 700 }}>›</button>
       </div>
       {/* day headers */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'2px', marginBottom:'4px' }}>
-        {DAY_NAMES.map(n => <div key={n} style={{ textAlign:'center', fontWeight:700, color:'#999', padding:'2px' }}>{n}</div>)}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '2px', marginBottom: '4px' }}>
+        {DAY_NAMES.map(n => <div key={n} style={{ textAlign: 'center', fontWeight: 700, color: '#999', padding: '2px' }}>{n}</div>)}
       </div>
       {/* day cells */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'2px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '2px' }}>
         {cells.map((d, i) => {
-          if (!d) return <div key={i}/>;
-          const past   = d < today;
+          if (!d) return <div key={i} />;
+          const past = d < today;
           const booked = isBooked(d);
           const disabled = past || booked;
-          const isS  = startD && fmt(d) === fmt(startD);
-          const isE  = endD   && fmt(d) === fmt(endD);
+          const isS = startD && fmt(d) === fmt(startD);
+          const isE = endD && fmt(d) === fmt(endD);
           const rang = inRange(d);
-          const isT  = fmt(d) === fmt(today);
+          const isT = fmt(d) === fmt(today);
 
           let bg = 'transparent', color = '#000', br = '6px';
-          if      (booked)    { bg = '#fee2e2'; color = '#dc2626'; }
-          else if (isS || isE){ bg = '#ffc63a'; color = '#000'; br = '8px'; }
-          else if (rang)      { bg = '#fff3cc'; color = '#555'; br = '0'; }
-          if (past && !booked){ color = '#ccc'; }
+          if (booked) { bg = '#fee2e2'; color = '#dc2626'; }
+          else if (isS || isE) { bg = '#ffc63a'; color = '#000'; br = '8px'; }
+          else if (rang) { bg = '#fff3cc'; color = '#555'; br = '0'; }
+          if (past && !booked) { color = '#ccc'; }
 
           return (
             <div key={i}
@@ -110,8 +110,8 @@ function RentalCalendar({
               onMouseLeave={() => setHover(null)}
               title={booked ? 'Already booked' : undefined}
               style={{
-                textAlign:'center', padding:'6px 2px', borderRadius:br,
-                background:bg, color,
+                textAlign: 'center', padding: '6px 2px', borderRadius: br,
+                background: bg, color,
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 fontWeight: (isS || isE || isT) ? 700 : 400,
                 border: isT && !isS && !isE ? '1.5px solid #ffc63a' : '1.5px solid transparent',
@@ -120,29 +120,29 @@ function RentalCalendar({
               }}
             >
               {d.getDate()}
-              {booked && <div style={{ width:4, height:4, background:'#dc2626', borderRadius:'50%', margin:'1px auto 0' }}/>}
+              {booked && <div style={{ width: 4, height: 4, background: '#dc2626', borderRadius: '50%', margin: '1px auto 0' }} />}
             </div>
           );
         })}
       </div>
       {/* legend */}
-      <div style={{ display:'flex', gap:'10px', marginTop:'10px', color:'#777', flexWrap:'wrap' }}>
-        <span><span style={{ display:'inline-block', width:10, height:10, background:'#ffc63a', borderRadius:3, marginRight:4 }}/>Selected</span>
-        <span><span style={{ display:'inline-block', width:10, height:10, background:'#fff3cc', borderRadius:3, marginRight:4 }}/>Range</span>
-        <span><span style={{ display:'inline-block', width:10, height:10, background:'#fee2e2', borderRadius:3, marginRight:4 }}/>Booked</span>
+      <div style={{ display: 'flex', gap: '10px', marginTop: '10px', color: '#777', flexWrap: 'wrap' }}>
+        <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#ffc63a', borderRadius: 3, marginRight: 4 }} />Selected</span>
+        <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#fff3cc', borderRadius: 3, marginRight: 4 }} />Range</span>
+        <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#fee2e2', borderRadius: 3, marginRight: 4 }} />Booked</span>
       </div>
       {/* selected display */}
       {startDate && (
-        <div style={{ marginTop:10, padding:'8px 12px', background:'#fffdf0', borderRadius:8, border:'1px solid #ffc63a44' }}>
+        <div style={{ marginTop: 10, padding: '8px 12px', background: '#fffdf0', borderRadius: 8, border: '1px solid #ffc63a44' }}>
           {endDate
-            ? <><i className="bi bi-calendar-range me-1" style={{ color:'#ffc63a' }}/><strong>{startDate}</strong> → <strong>{endDate}</strong></>
-            : <><i className="bi bi-calendar me-1" style={{ color:'#ffc63a' }}/><strong>{startDate}</strong> — click an end date</>
+            ? <><i className="bi bi-calendar-range me-1" style={{ color: '#ffc63a' }} /><strong>{startDate}</strong> → <strong>{endDate}</strong></>
+            : <><i className="bi bi-calendar me-1" style={{ color: '#ffc63a' }} /><strong>{startDate}</strong> — click an end date</>
           }
         </div>
       )}
       {!startDate && (
-        <div style={{ marginTop:10, padding:'8px 12px', background:'#f8f9fa', borderRadius:8, color:'#888', fontSize:'0.78rem' }}>
-          <i className="bi bi-info-circle me-1"/>Click a date to start your rental period
+        <div style={{ marginTop: 10, padding: '8px 12px', background: '#f8f9fa', borderRadius: 8, color: '#888', fontSize: '0.78rem' }}>
+          <i className="bi bi-info-circle me-1" />Click a date to start your rental period
         </div>
       )}
     </div>
@@ -241,7 +241,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const [contactInfo, setContactInfo] = useState<{ seller_name: string; seller_email: string; seller_mobile: string; already_viewed: boolean } | null>(null);
   const [contactError, setContactError] = useState<string | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
-  
+
   const datesSelected = product.listing_type !== 'rent' || (!!offerForm.rental_start_date && !!offerForm.rental_end_date);
 
   useEffect(() => {
@@ -252,6 +252,27 @@ export default function ProductDetailClient({ product, images, similarProducts =
       }
       setInCart(isInCart(Number(product.id)));
     }
+  }, [product.id]);
+
+  // Check if buyer already has an active offer on this product (persists across refreshes)
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('flex_token') : null;
+    if (!token) return;
+    api.get<{ has_offer: boolean }>(`/buyer/offer-status/${product.id}`)
+      .then(res => {
+        if (res.success && res.data?.has_offer) {
+          setOfferSuccess(true);
+          // Also fetch seller contact so "View Seller Contact" button is visible after refresh
+          setContactLoading(true);
+          api.post<{ seller_name: string; seller_email: string; seller_mobile: string; already_viewed: boolean }>(
+            `/buyer/view-seller-contact/${product.id}`
+          ).then(contactRes => {
+            setContactLoading(false);
+            if (contactRes.success && contactRes.data) setContactInfo(contactRes.data);
+          }).catch(() => setContactLoading(false));
+        }
+      })
+      .catch(() => { });
   }, [product.id]);
 
   // Recalculate rental price when dates change
@@ -274,7 +295,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
     if (product.listing_type === 'rent') {
       api.get<{ booked_ranges: { start: string; end: string }[] }>(`/product/${product.id}/booked-dates`)
         .then(res => { if (res.success && res.data) setBookedRanges(res.data.booked_ranges); })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [product.id, product.listing_type]);
 
@@ -812,11 +833,11 @@ export default function ProductDetailClient({ product, images, similarProducts =
                 <p className="text-muted fs-5" style={{ lineHeight: '1.6' }}>
                   {product.description
                     ? product.description.split('\n').map((line, i) => (
-                        <span key={i}>
-                          {line}
-                          {i < product.description.split('\n').length - 1 && <br />}
-                        </span>
-                      ))
+                      <span key={i}>
+                        {line}
+                        {i < product.description.split('\n').length - 1 && <br />}
+                      </span>
+                    ))
                     : 'No description available.'}
                 </p>
                 <div className="mt-4">
@@ -1123,7 +1144,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     </div>
                   </div>
                 )}
-                 <div className="mb-3">
+                <div className="mb-3">
                   <label className="form-label fw-bold small">Your Offer Price (&#8377;)</label>
                   <input
                     type="number"

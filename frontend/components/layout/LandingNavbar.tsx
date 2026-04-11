@@ -27,7 +27,9 @@ interface Category {
   product_type_id: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
+const API_PATH = (process.env.NEXT_PUBLIC_API_URL || '/api/v1').replace(/\/$/, '');
+const API_BASE = `${BACKEND_URL}${API_PATH}`;
 
 export default function LandingNavbar() {
   const { user, logout } = useAuth();

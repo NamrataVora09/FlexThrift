@@ -63,6 +63,7 @@ function register_api_routes($routes) {
         $routes->get('browse', 'Api\BuyerApi::browse');
         $routes->get('product/(:num)', 'Api\BuyerApi::productDetails/$1');
         $routes->get('my-offers', 'Api\BuyerApi::myOffers');
+        $routes->get('offer-status/(:num)', 'Api\BuyerApi::offerStatus/$1');
         $routes->get('my-orders', 'Api\BuyerApi::myOrders');
         $routes->get('notifications', 'Api\BuyerApi::notifications');
         $routes->get('transactions', 'Api\BuyerApi::transactions');

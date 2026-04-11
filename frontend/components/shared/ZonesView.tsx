@@ -157,14 +157,10 @@ export default function ZonesView() {
     const coordinates = latlngs.map((ll: any) => [ll.lat, ll.lng]);
 
     setSaving(true);
-    const fd = new URLSearchParams();
-    fd.append('zone_name', zoneName);
-    fd.append('zone_polygon', JSON.stringify(coordinates));
-
-    const res = await fetch('/api/v1/superadmin/add-zone', {
-      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': `Bearer ${localStorage.getItem('flex_token')}` },
-      body: fd,
-    }).then(r => r.json()).catch(() => ({ success: false }));
+    const res = await api.post<any>('/superadmin/add-zone', {
+      zone_name: zoneName,
+      zone_polygon: JSON.stringify(coordinates)
+    });
 
     setSaving(false);
     if (res.success) {

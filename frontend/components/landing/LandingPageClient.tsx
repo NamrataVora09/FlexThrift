@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
+const API_PATH = (process.env.NEXT_PUBLIC_API_URL || '/api/v1').replace(/\/$/, '');
+const API_BASE = `${BACKEND_URL}${API_PATH}`;
 
 /* ─── Types ───────────────────────────────────────────────────────────── */
 interface Category    { id: number; category_name: string; product_type_id: number; }
@@ -36,13 +38,6 @@ const HERO_SLIDES = [
   },
 ];
 
-/* ─── Static category grid (matching PHP) ────────────────────────────── */
-const DISPLAY_CATEGORIES = [
-  { name: 'Clothing',    img: 'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=1471', type: 'clothing' },
-  { name: 'Accessories', img: 'https://images.unsplash.com/photo-1596460107916-430662021049?q=80&w=1470', type: 'accessories' },
-  { name: 'Footwear',    img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1412',  type: 'footwear' },
-  { name: 'Electronics', img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=1470', type: 'electronics' },
-];
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 export default function LandingPageClient() {
@@ -720,12 +715,21 @@ export default function LandingPageClient() {
           <div className="col-12">
             <h2 className="premium-title fw-900">Browse by Essence.</h2>
           </div>
-          {DISPLAY_CATEGORIES.map(cat => (
-            <div key={cat.name} className="col-6 col-lg-3">
-              <Link href={`/buyer/browse?search=${cat.type}`} className="cat-card">
-                <img src={cat.img} alt={cat.name} />
+          {listingTypes.map(lt => (
+            <div key={lt.id} className="col-6 col-lg-3">
+              <Link href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`} className="cat-card">
+                {lt.image ? (
+                  <img
+                    src={lt.image.startsWith('http') ? lt.image : `${BACKEND_URL}/${lt.image}`}
+                    alt={lt.type_name}
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #1a1a1a, #333)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className="bi bi-tags" style={{ fontSize: '4rem', color: 'rgba(255,198,58,0.3)' }}></i>
+                  </div>
+                )}
                 <div className="cat-info">
-                  <h4 className="fw-800 mb-0">{cat.name}</h4>
+                  <h4 className="fw-800 mb-0">{lt.type_name}</h4>
                   <small className="opacity-75">View Collections <i className="bi bi-arrow-right"></i></small>
                 </div>
               </Link>
@@ -747,7 +751,7 @@ export default function LandingPageClient() {
                     <img
                       src={
                         p.primary_image
-                          ? (p.primary_image.startsWith('http') ? p.primary_image : `http://localhost:8080/${p.primary_image}`)
+                          ? (p.primary_image.startsWith('http') ? p.primary_image : `${BACKEND_URL}/${p.primary_image}`)
                           : 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=400&fit=crop'
                       }
                       alt={p.title}
