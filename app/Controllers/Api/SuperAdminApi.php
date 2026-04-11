@@ -1222,8 +1222,10 @@ class SuperAdminApi extends ResourceController
         $db = \Config\Database::connect();
         $content = $this->request->getPost('content') ?? $this->request->getJSON(true)['content'] ?? '';
         $title = $this->request->getPost('title') ?? $this->request->getJSON(true)['title'] ?? '';
+        $status = $this->request->getPost('status') ?? $this->request->getJSON(true)['status'] ?? null;
         $data = ['content' => $content, 'updated_at' => date('Y-m-d H:i:s')];
         if ($title) $data['title'] = $title;
+        if ($status) $data['status'] = $status;
         $db->table('cms_pages')->where('slug', $slug)->update($data);
         return $this->respond(['success' => true, 'message' => 'Page updated successfully.']);
     }

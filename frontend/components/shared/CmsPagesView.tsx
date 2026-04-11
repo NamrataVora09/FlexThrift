@@ -27,6 +27,7 @@ export default function CmsPagesView() {
   const [editing, setEditing] = useState<CmsPage | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editStatus, setEditStatus] = useState('active');
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -62,13 +63,18 @@ export default function CmsPagesView() {
       setEditing(res.data);
       setEditTitle(res.data.title);
       setEditContent(res.data.content || '');
+      setEditStatus(res.data.status || 'active');
     }
   };
 
   const handleSave = async () => {
     if (!editing) return;
     setSaving(true);
-    const res = await api.post(`/superadmin/update-cms-page/${editing.slug}`, { title: editTitle, content: editContent });
+    const res = await api.post(`/superadmin/update-cms-page/${editing.slug}`, { 
+      title: editTitle, 
+      content: editContent,
+      status: editStatus
+    });
     setSaving(false);
     if (res.success) {
       toast.success('CMS Page updated successfully!');
@@ -138,8 +144,8 @@ export default function CmsPagesView() {
                         <td style={tdStyle}><strong>{p.title}</strong></td>
                         <td style={tdStyle}><code className="bg-light px-2 py-1 rounded" style={{ fontSize: '0.8rem' }}>{p.slug}</code></td>
                         <td style={tdStyle}>
-                          <span className="badge px-3 py-2" style={p.status === 'active' ? { background: 'rgba(25,135,84,0.1)', color: '#198754', fontWeight: 600 } : { background: 'rgba(255,193,7,0.1)', color: '#856404', fontWeight: 600 }}>
-                            {p.status?.charAt(0).toUpperCase() + p.status?.slice(1)}
+                          <span className="badge px-3 py-2" style={(p.status || 'active') === 'active' ? { background: 'rgba(25,135,84,0.1)', color: '#198754', fontWeight: 600 } : { background: 'rgba(108,117,125,0.1)', color: '#6c757d', fontWeight: 600 }}>
+                            {p.status ? (p.status.charAt(0).toUpperCase() + p.status.slice(1)) : 'Active'}
                           </span>
                         </td>
                         <td style={tdStyle}>
@@ -241,6 +247,13 @@ export default function CmsPagesView() {
                   <label style={labelStyle}>Slug</label>
                   <input className="form-control" style={{ ...inputStyle, fontFamily: 'monospace' }} value={editing.slug} disabled />
                   <small className="text-muted">Slug cannot be changed after creation.</small>
+                </div>
+                <div className="mb-3">
+                  <label style={labelStyle}>Status</label>
+                  <select className="form-select" style={inputStyle} value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
                 </div>
                 <div className="mb-0">
                   <label style={labelStyle}>Content (HTML)</label>

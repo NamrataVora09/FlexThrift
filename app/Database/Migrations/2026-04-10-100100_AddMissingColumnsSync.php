@@ -1,7 +1,5 @@
 <?php
 
-namespace App\Database\Migrations;
-
 use CodeIgniter\Database\Migration;
 
 /**
@@ -34,11 +32,14 @@ use CodeIgniter\Database\Migration;
  *   listing_types       → usage_label
  *   transactions        → type, payment_status
  *   user_subscriptions  → amount_paid, referral_discount_applied, merchant_transaction_id
+ *   cms_pages           → status
  */
 class AddMissingColumnsSync extends Migration
 {
     public function up(): void
     {
+        // ─── cms_pages ────────────────────────────────────────────────
+        $this->addColumnIfMissing('cms_pages', 'status', ['type' => 'ENUM', 'constraint' => ['active', 'inactive'], 'null' => true, 'default' => 'active']);
         // ─── brands ───────────────────────────────────────────────────
         $this->addColumnIfMissing('brands', 'is_blocked',       ['type' => 'TINYINT', 'constraint' => 1, 'null' => false, 'default' => 0]);
         $this->addColumnIfMissing('brands', 'created_by_admin', ['type' => 'TINYINT', 'constraint' => 1, 'null' => false, 'default' => 0]);
