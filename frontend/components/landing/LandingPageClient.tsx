@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
-const API_PATH = (process.env.NEXT_PUBLIC_API_URL || '/api/v1').replace(/\/$/, '');
-const API_BASE = `${BACKEND_URL}${API_PATH}`;
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
 
 /* ─── Types ───────────────────────────────────────────────────────────── */
 interface Category    { id: number; category_name: string; product_type_id: number; }
@@ -45,6 +44,7 @@ export default function LandingPageClient() {
   const router = useRouter();
 
   const [listingTypes,     setListingTypes]     = useState<ListingType[]>([]);
+  const [browseCategories, setBrowseCategories] = useState<Category[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [currentSlide,     setCurrentSlide]     = useState(0);
   const [showMegaMenu,     setShowMegaMenu]      = useState(false);
@@ -81,6 +81,7 @@ export default function LandingPageClient() {
               })),
           }));
           setListingTypes(enriched);
+          setBrowseCategories(categories as Category[]);
         }
       })
       .catch(() => {});
@@ -711,31 +712,26 @@ export default function LandingPageClient() {
         </div>
 
         {/* ── Browse by Essence (Category Grid) ── */}
-        <div className="row g-4 mb-5 pb-5">
-          <div className="col-12">
-            <h2 className="premium-title fw-900">Browse by Essence.</h2>
-          </div>
-          {listingTypes.map(lt => (
-            <div key={lt.id} className="col-6 col-lg-3">
-              <Link href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`} className="cat-card">
-                {lt.image ? (
-                  <img
-                    src={lt.image.startsWith('http') ? lt.image : `${BACKEND_URL}/${lt.image}`}
-                    alt={lt.type_name}
-                  />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #1a1a1a, #333)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className="bi bi-tags" style={{ fontSize: '4rem', color: 'rgba(255,198,58,0.3)' }}></i>
-                  </div>
-                )}
-                <div className="cat-info">
-                  <h4 className="fw-800 mb-0">{lt.type_name}</h4>
-                  <small className="opacity-75">View Collections <i className="bi bi-arrow-right"></i></small>
-                </div>
-              </Link>
+        {browseCategories.length > 0 && (
+          <div className="row g-4 mb-5 pb-5">
+            <div className="col-12">
+              <h2 className="premium-title fw-900">Browse by Essence.</h2>
             </div>
-          ))}
-        </div>
+            {browseCategories.map(cat => (
+              <div key={cat.id} className="col-6 col-lg-3">
+                <Link href={`/buyer/browse?category=${cat.id}`} className="cat-card">
+                  <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #1a1a1a, #333)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className="bi bi-grid-fill" style={{ fontSize: '4rem', color: 'rgba(255,198,58,0.3)' }}></i>
+                  </div>
+                  <div className="cat-info">
+                    <h4 className="fw-800 mb-0">{cat.category_name}</h4>
+                    <small className="opacity-75">View Collections <i className="bi bi-arrow-right"></i></small>
+                  </div>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ── Elite Drops (Featured Products) ── */}
         {featuredProducts.length > 0 && (
