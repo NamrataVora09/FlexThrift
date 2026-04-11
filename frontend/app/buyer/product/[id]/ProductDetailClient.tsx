@@ -945,7 +945,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
               {similarProducts.slice(0, 4).map((sp) => {
                 const spPrice = getSimilarPrice(sp);
                 const spImage = sp.image
-                  ? (sp.image.startsWith('http') ? sp.image : sp.image.startsWith('uploads/') ? `${BASE_URL}${sp.image}` : `${BASE_URL}uploads/products/${sp.image}`)
+                  ? (sp.image.startsWith('http') ? sp.image : `${BASE_URL}/${sp.image}`)
                   : '';
                 return (
                   <div key={sp.id} className="col-6 col-md-3">
