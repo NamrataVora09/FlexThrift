@@ -65,9 +65,9 @@ export default function ErrorMessagesClient() {
   const loadMessages = async () => {
     setLoading(true);
     try {
-      const res = await api.get<{ data: ErrorMessage[] }>('/superadmin/error-messages');
+      const res = await api.get<ErrorMessage[]>('/superadmin/error-messages');
       if (res.success && res.data) {
-        setMessages(res.data.data);
+        setMessages(res.data);
       }
     } catch (err: any) {
       setErrorMsg('Failed to load error messages');
