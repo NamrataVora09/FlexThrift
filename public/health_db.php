@@ -39,9 +39,22 @@ try {
     $connected = @mysqli_real_connect($mysqli, $host, $user, $pass, $db, (int)$port);
     if ($connected) {
         echo "SUCCESS: Connected to database successfully!\n";
+        // Check for users table
+        $result = $mysqli->query("SHOW TABLES LIKE 'users'");
+        if ($result->num_rows > 0) {
+            echo "SUCCESS: 'users' table exists.\n";
+            
+            $user_check = $mysqli->query("SELECT id, email FROM users WHERE email = 'superadmin@flex.com'");
+            if ($user_check->num_rows > 0) {
+                echo "SUCCESS: Superadmin user found.\n";
+            } else {
+                echo "WARNING: Superadmin user NOT found in database.\n";
+            }
+        } else {
+            echo "FAILURE: 'users' table does NOT exist. Did you import the SQL dump?\n";
+        }
     } else {
         echo "FAILURE: " . mysqli_connect_error() . "\n";
     }
-} catch (Exception $e) {
     echo "EXCEPTION: " . $e->getMessage() . "\n";
 }
