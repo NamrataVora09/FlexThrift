@@ -11,8 +11,20 @@ $routes->options('api/(:any)', static function () {
     return service('response')->setStatusCode(200);
 });
 
-// ── REST API v1 ──────────────────────────────────────
+// ── REST API v1 (Standard) ───────────────────────────
 $routes->group('api/v1', ['filter' => 'api_cors'], function ($routes) {
+    register_api_routes($routes);
+});
+
+// ── REST API Fallback (No v1) ─────────────────────────
+$routes->group('api', ['filter' => 'api_cors'], function ($routes) {
+    register_api_routes($routes);
+});
+
+/**
+ * Helper to register all API routes in both groups
+ */
+function register_api_routes($routes) {
 
     // Auth (public)
     $routes->post('auth/login', 'Api\AuthApi::login');
@@ -308,4 +320,4 @@ $routes->group('api/v1', ['filter' => 'api_cors'], function ($routes) {
         $routes->post('mark-delivered/(:num)', 'Api\DeliveryApi::markDelivered/$1');
         $routes->post('update-profile', 'Api\DeliveryApi::updateProfile');
     });
-});
+}
