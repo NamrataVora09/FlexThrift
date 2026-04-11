@@ -45,6 +45,9 @@ export default function UserSubscriptionsClient() {
   const [planSearchInput, setPlanSearchInput] = useState('');
   const planDropdownRef = useRef<HTMLDivElement>(null);
 
+  // View modal
+  const [viewSub, setViewSub] = useState<Sub | null>(null);
+
   // Assign modal
   const [showAssign, setShowAssign] = useState(false);
   const [assignStep, setAssignStep] = useState(1);
@@ -376,7 +379,7 @@ export default function UserSubscriptionsClient() {
                           )}
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'end', paddingRight: '1.5rem' }}>
-                          <button className="btn btn-sm btn-light border" style={{ borderRadius: 8 }} title="View Details">
+                          <button className="btn btn-sm btn-light border" style={{ borderRadius: 8 }} title="View Details" onClick={() => setViewSub(s)}>
                             <i className="bi bi-eye"></i>
                           </button>
                         </td>
@@ -514,6 +517,55 @@ export default function UserSubscriptionsClient() {
                     {assigning ? <><span className="spinner-border spinner-border-sm me-2"></span>Assigning...</> : <><i className="bi bi-check2-circle me-1"></i> Assign Plan</>}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ View Subscription Modal ══ */}
+      {viewSub && (
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setViewSub(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem' }}>
+              <div className="modal-header border-0 px-4 pt-4 pb-2">
+                <h5 className="modal-title fw-bold">Subscription Details</h5>
+                <button className="btn-close" onClick={() => setViewSub(null)}></button>
+              </div>
+              <div className="modal-body px-4 pb-4">
+                {/* User */}
+                <div className="d-flex align-items-center gap-3 mb-4 p-3 rounded-3" style={{ background: '#f8f9fa' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: AVATAR_COLORS[viewSub.user_type] || '#ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '1rem', flexShrink: 0 }}>
+                    {getInitials(viewSub.user_name)}
+                  </div>
+                  <div>
+                    <div className="fw-bold">{viewSub.user_name}</div>
+                    <div className="text-muted small">{viewSub.email}</div>
+                    <span className="badge mt-1 text-capitalize" style={{ ...ROLE_BADGE[viewSub.user_type], fontSize: '0.7rem' }}>{viewSub.user_type}</span>
+                  </div>
+                </div>
+
+                {/* Plan details */}
+                <div className="row g-3">
+                  {[
+                    { label: 'Plan', value: viewSub.plan_name, bold: true },
+                    { label: 'Plan For', value: viewSub.plan_for },
+                    { label: 'Type', value: viewSub.plan_type.charAt(0).toUpperCase() + viewSub.plan_type.slice(1) },
+                    { label: 'Price', value: `₹${viewSub.price}` },
+                    { label: 'Usage', value: `${viewSub.usage_count} views/uploads` },
+                    { label: 'Status', value: Number(viewSub.is_active) === 1 ? 'Active' : 'Inactive' },
+                    { label: 'Starts At', value: viewSub.starts_at ? new Date(viewSub.starts_at).toLocaleString('en-IN') : '—' },
+                    { label: 'Expires At', value: isNoExpiry(viewSub.expires_at) ? 'No Expiry' : viewSub.expires_at ? new Date(viewSub.expires_at).toLocaleString('en-IN') : '—' },
+                  ].map(({ label, value, bold }) => (
+                    <div className="col-6" key={label}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#677788', marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontWeight: bold ? 700 : 400, color: bold ? '#ffc63a' : '#212529' }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer border-0 px-4 pb-4 pt-0">
+                <button className="btn btn-light px-4 rounded-pill" onClick={() => setViewSub(null)}>Close</button>
               </div>
             </div>
           </div>
