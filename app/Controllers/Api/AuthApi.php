@@ -409,12 +409,14 @@ class AuthApi extends ResourceController
             'state'             => $user['state'] ?? '',
             'user_type'         => $user['user_type'],
             'role'              => $role,
-            'reliability_score' => (int) ($user['reliability_score'] ?? 100),
-            'referral_code'     => $user['referral_code'] ?? '',
-            'is_verified'       => (int) ($user['is_verified'] ?? 0),
-            'blocked_buyer'     => (int) ($user['blocked_buyer'] ?? 0),
-            'blocked_seller'    => (int) ($user['blocked_seller'] ?? 0),
-            'created_at'        => $user['created_at'] ?? '',
+            'reliability_score'  => (int) ($user['reliability_score'] ?? 100),
+            'buyer_rating_avg'   => (float) ($user['buyer_rating_avg'] ?? 0),
+            'buyer_rating_count' => (int) ($user['buyer_rating_count'] ?? 0),
+            'referral_code'      => $user['referral_code'] ?? '',
+            'is_verified'        => (int) ($user['is_verified'] ?? 0),
+            'blocked_buyer'      => (int) ($user['blocked_buyer'] ?? 0),
+            'blocked_seller'     => (int) ($user['blocked_seller'] ?? 0),
+            'created_at'         => $user['created_at'] ?? '',
         ];
     }
 

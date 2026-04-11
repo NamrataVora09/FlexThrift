@@ -16,6 +16,8 @@ interface UserProfile {
   user_type: string;
   role: string;
   reliability_score: number;
+  buyer_rating_avg: number;
+  buyer_rating_count: number;
   referral_code: string;
   is_verified: number;
   created_at: string;
@@ -349,8 +351,14 @@ export default function BuyerProfilePage() {
                   <div className="info-row">
                     <span className="info-label">Reliability</span>
                     <span className="info-value">
-                      <i className="bi bi-star-fill me-1" style={{ color: '#ffc63a' }}></i>
-                      {user.reliability_score ?? 100}
+                      {user.buyer_rating_count > 0 ? (
+                        <>
+                          <i className="bi bi-star-fill me-1" style={{ color: '#ffc63a' }}></i>
+                          {user.buyer_rating_avg.toFixed(1)} <small className="text-muted">({user.buyer_rating_count} {user.buyer_rating_count === 1 ? 'rating' : 'ratings'})</small>
+                        </>
+                      ) : (
+                        <span className="text-muted small">No ratings yet</span>
+                      )}
                     </span>
                   </div>
                 </div>
