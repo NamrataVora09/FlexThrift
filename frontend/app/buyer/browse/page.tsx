@@ -427,7 +427,7 @@ export default function BrowsePage() {
                                   onClick={(e) => handleAddToCart(p, e)}
                                   title={inCart ? 'Already in cart' : 'Add to cart'}
                                 >
-                                  <i className={`bi ${inCart ? 'bi-cart-check-fill' : 'bi-cart-plus'}`}></i>
+                                  <i className={`bi ${inCart ? 'bi-heart-fill' : 'bi-heart'}`}></i>
                                 </button>
                                 <span className="btn-view">View</span>
                               </div>
