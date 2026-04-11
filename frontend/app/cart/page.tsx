@@ -72,8 +72,8 @@ export default function CartPage() {
 
         <div className="container py-4">
           <h2 style={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
-            <i className="bi bi-cart3 me-2" style={{ color: '#ffc63a' }}></i>
-            Your Cart ({items.length})
+            <i className="bi bi-heart me-2" style={{ color: '#ffc63a' }}></i>
+            Your Wishlist ({items.length})
           </h2>
           <p className="text-muted mb-4">
             {isAuthenticated ? 'Review your items and proceed to buy or rent.' : 'Sign in when you\'re ready to buy or rent.'}
@@ -81,9 +81,9 @@ export default function CartPage() {
 
           {items.length === 0 ? (
             <div className="text-center py-5">
-              <i className="bi bi-cart-x" style={{ fontSize: '4rem', color: '#ddd' }}></i>
-              <h4 className="mt-3 fw-bold">Your cart is empty</h4>
-              <p className="text-muted">Browse our marketplace and add items to your cart.</p>
+              <i className="bi bi-heart" style={{ fontSize: '4rem', color: '#ddd' }}></i>
+              <h4 className="mt-3 fw-bold">Your Wishlist is empty</h4>
+              <p className="text-muted">Browse our marketplace and add items to your wishlist.</p>
               <Link href="/buyer/browse" className="btn btn-lg" style={{ background: '#ffc63a', borderRadius: 12, fontWeight: 700, padding: '12px 40px' }}>
                 Explore Marketplace
               </Link>

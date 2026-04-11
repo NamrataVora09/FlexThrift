@@ -254,7 +254,7 @@ export default function BrowsePage() {
             <div className="d-flex align-items-center gap-4">
               {/* Cart Icon */}
               <Link href="/cart" className="position-relative text-dark" style={{ fontSize: '1.3rem' }}>
-                <i className="bi bi-cart3"></i>
+                <i className="bi bi-heart"></i>
                 {cartCount > 0 && (
                   <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill" style={{ background: '#ffc63a', color: '#000', fontSize: '0.65rem' }}>
                     {cartCount}
