@@ -374,7 +374,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     const { offer } = changeDatesModal;
     const nights = nightsBetween(cdStart, cdEnd);
     if (nights < settings.minRentalDays) {
-      toast.error(`Minimum ${settings.minRentalDays} days rental required`);
+      toast.error(`Minimum ${settings.minRentalDays} nights rental required`);
       return;
     }
     if (!cdAddress || !cdPin) { toast.error('Please fill delivery address and pin code'); return; }

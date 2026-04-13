@@ -283,19 +283,18 @@ export default function Page() {
       const s = new Date(cdStart);
       const e = new Date(cdEnd);
       const diff = e.getTime() - s.getTime();
-      const days = Math.round(diff / 86400000) + 1;
-      if (days > 0) {
-        setCdPrice((parseFloat(cdDailyRate) * days).toString());
+      const nights = Math.round(diff / 86400000);
+      if (nights > 0) {
+        setCdPrice((parseFloat(cdDailyRate) * nights).toString());
       }
     }
   }, [cdStart, cdEnd, cdDailyRate]);
 
   const handleChangeDates = async () => {
     if (!changeDatesModal) return;
-    // Inclusive day count — same as backend: round(diff/86400)+1
     if (!cdStart || !cdEnd) { setCdError('Please select both start and end dates.'); return; }
-    const totalDays = Math.round((new Date(cdEnd).getTime() - new Date(cdStart).getTime()) / 86400000) + 1;
-    if (totalDays < minRentalDays) { setCdError(`Minimum ${minRentalDays} days rental required. You selected ${totalDays} day${totalDays === 1 ? '' : 's'}.`); return; }
+    const totalDays = Math.round((new Date(cdEnd).getTime() - new Date(cdStart).getTime()) / 86400000);
+    if (totalDays < minRentalDays) { setCdError(`Minimum ${minRentalDays} nights rental required. You selected ${totalDays} night${totalDays === 1 ? '' : 's'}.`); return; }
     setCdLoading(true);
     setCdError(null);
     const res = await api.post(`/buyer/update-offer-dates/${changeDatesModal.id}`, {

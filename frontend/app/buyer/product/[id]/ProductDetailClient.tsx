@@ -281,10 +281,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
       const s = new Date(offerForm.rental_start_date);
       const e = new Date(offerForm.rental_end_date);
       const diff = e.getTime() - s.getTime();
-      const days = Math.round(diff / 86400000) + 1;
-      if (days > 0) {
+      const nights = Math.round(diff / 86400000);
+      if (nights > 0) {
         const dailyRate = parseFloat(product.rental_cost || '0');
-        const total = dailyRate * days;
+        const total = dailyRate * nights;
         setOfferForm(f => ({ ...f, offer_price: total.toString() }));
       }
     }
@@ -1153,7 +1153,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                   {product.listing_type === 'rent' && offerForm.rental_start_date && offerForm.rental_end_date && (
                     <div className="mt-1 small text-muted">
                       <i className="bi bi-info-circle me-1"></i>
-                      Calculated: ₹{product.rental_cost} × {Math.round((new Date(offerForm.rental_end_date).getTime() - new Date(offerForm.rental_start_date).getTime()) / 86400000) + 1} days = ₹{offerForm.offer_price}
+                      Calculated: ₹{product.rental_cost} × {Math.round((new Date(offerForm.rental_end_date).getTime() - new Date(offerForm.rental_start_date).getTime()) / 86400000)} nights = ₹{offerForm.offer_price}
                     </div>
                   )}
                 </div>
