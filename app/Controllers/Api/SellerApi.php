@@ -553,26 +553,43 @@ class SellerApi extends ResourceController
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
 
-            // Revert previously auto-rejected offers for this product back to pending
-            $db->table('offers')
+            // Revert ALL rejected offers for this product back to pending so buyers can compete again
+            $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+            $revertedOffers = $db->table('offers')
                 ->where('product_id', $offer['product_id'])
                 ->where('id !=', $id)
                 ->where('status', 'rejected')
-                ->like('seller_remarks', 'Another offer for this product has been accepted', 'none')
-                ->update([
-                    'status' => 'pending',
-                    'seller_remarks' => '',
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
+                ->get()->getResultArray();
+
+            if (!empty($revertedOffers)) {
+                $db->table('offers')
+                    ->where('product_id', $offer['product_id'])
+                    ->where('id !=', $id)
+                    ->where('status', 'rejected')
+                    ->update([
+                        'status' => 'pending',
+                        'seller_remarks' => '',
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+
+                // Notify each reverted buyer that their offer is active again
+                foreach ($revertedOffers as $rv) {
+                    $db->table('notifications')->insert([
+                        'user_id' => $rv['buyer_id'],
+                        'title' => 'Offer Reopened',
+                        'message' => 'Good news! The seller has retracted their acceptance on "' . ($product['title'] ?? '') . '". Your offer is now active again.',
+                        'type' => 'offer',
+                        'is_read' => 0,
+                        'created_at' => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
 
             $db->table('offers')->where('id', $id)->update([
                 'status' => 'rejected',
                 'seller_remarks' => $data['remarks'] ?? '',
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
-
-            // Notify buyer
-            $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
             $db->table('notifications')->insert([
                 'user_id' => $offer['buyer_id'],
                 'title' => 'Offer Retracted',
