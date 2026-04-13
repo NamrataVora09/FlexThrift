@@ -101,9 +101,13 @@ class SellerApi extends ResourceController
             ->get()->getResultArray();
 
         // Attach offer history for each offer
+        // Also backfill accepted_at from updated_at for legacy rows that predate the accepted_at column
         $historyModel = new \App\Models\OfferHistoryModel();
         foreach ($offers as &$o) {
             $o['history'] = $historyModel->getHistoryByOffer($o['id']);
+            if ($o['status'] === 'accepted' && empty($o['accepted_at'])) {
+                $o['accepted_at'] = $o['updated_at'];
+            }
         }
         unset($o);
 
@@ -427,7 +431,7 @@ class SellerApi extends ResourceController
         if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
         if ($offer['status'] !== 'pending') return $this->respond(['success' => false, 'message' => 'Only pending offers can be accepted'], 400);
 
-        $db->table('offers')->where('id', $id)->update(['status' => 'accepted', 'seller_remarks' => $data['remarks'] ?? '', 'updated_at' => date('Y-m-d H:i:s')]);
+        $db->table('offers')->where('id', $id)->update(['status' => 'accepted', 'seller_remarks' => $data['remarks'] ?? '', 'accepted_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]);
         
         // Auto-reject other pending offers for this product
         $db->table('offers')
@@ -507,7 +511,83 @@ class SellerApi extends ResourceController
 
         $offer = $db->table('offers')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
-        if ($offer['status'] !== 'pending') return $this->respond(['success' => false, 'message' => 'Only pending offers can be rejected'], 400);
+
+        if ($offer['status'] === 'accepted') {
+            // Seller retraction: only allowed within the rejection window
+            $rejectionWindowHours = (float) getSystemSetting('seller_rejection_window_hours', 24);
+            // Fall back to updated_at for legacy offers accepted before accepted_at column was populated
+            $acceptedAt = !empty($offer['accepted_at']) ? $offer['accepted_at'] : ($offer['updated_at'] ?? null);
+            if (!$acceptedAt) {
+                return $this->respond(['success' => false, 'message' => 'Rejection window unavailable for this offer'], 400);
+            }
+            $windowExpiry = strtotime($acceptedAt) + ($rejectionWindowHours * 3600);
+            if (time() > $windowExpiry) {
+                return $this->respond(['success' => false, 'message' => 'Rejection window has expired. You can no longer retract this accepted offer.'], 400);
+            }
+
+            // Cancel the linked order (if any) that is still in pending/unpaid state
+            $order = $db->table('orders')
+                ->where('product_id', $offer['product_id'])
+                ->where('buyer_id', $offer['buyer_id'])
+                ->where('seller_id', $offer['seller_id'])
+                ->where('status', 'pending')
+                ->where('payment_status', 'pending')
+                ->get()->getRowArray();
+            if ($order) {
+                $db->table('orders')->where('id', $order['id'])->update([
+                    'status' => 'cancelled',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+                $db->table('order_status_history')->insert([
+                    'order_id' => $order['id'],
+                    'status' => 'cancelled',
+                    'updated_by' => $jwtUser['user_id'],
+                    'remarks' => 'Order cancelled: seller retracted acceptance within rejection window.',
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            // Restore product to active status
+            $db->table('products')->where('id', $offer['product_id'])->update([
+                'status' => 'active',
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            // Revert previously auto-rejected offers for this product back to pending
+            $db->table('offers')
+                ->where('product_id', $offer['product_id'])
+                ->where('id !=', $id)
+                ->where('status', 'rejected')
+                ->like('seller_remarks', 'Another offer for this product has been accepted', 'none')
+                ->update([
+                    'status' => 'pending',
+                    'seller_remarks' => '',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+
+            $db->table('offers')->where('id', $id)->update([
+                'status' => 'rejected',
+                'seller_remarks' => $data['remarks'] ?? '',
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            // Notify buyer
+            $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+            $db->table('notifications')->insert([
+                'user_id' => $offer['buyer_id'],
+                'title' => 'Offer Retracted',
+                'message' => 'The seller has retracted their acceptance of your offer on "' . ($product['title'] ?? '') . '".' . ($data['remarks'] ? ' Reason: ' . $data['remarks'] : ''),
+                'type' => 'offer',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            return $this->respond(['success' => true, 'message' => 'Acceptance retracted. Offer has been rejected.']);
+        }
+
+        if ($offer['status'] !== 'pending') {
+            return $this->respond(['success' => false, 'message' => 'Only pending or accepted (within window) offers can be rejected'], 400);
+        }
 
         $db->table('offers')->where('id', $id)->update(['status' => 'rejected', 'seller_remarks' => $data['remarks'] ?? '', 'updated_at' => date('Y-m-d H:i:s')]);
 

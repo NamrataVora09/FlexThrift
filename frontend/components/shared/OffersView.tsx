@@ -52,6 +52,7 @@ interface Offer {
   delivery_pin_code?: string;
   deposit_amount?: number;
   created_at: string;
+  updated_at?: string;
   accepted_at?: string;
   rental_start_date?: string;
   rental_end_date?: string;
@@ -297,8 +298,6 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
   useEffect(() => { load(); }, [apiPath]);
 
-  useEffect(() => { load(); }, [apiPath]);
-
   /* ── accept / reject / cancel ── */
   const handleAction = async () => {
     if (!actionModal) return;
@@ -532,7 +531,13 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
             <div className="modal-content border-0 shadow-lg rounded-4">
               <div className="modal-header border-0 pb-0 px-4 pt-4">
                 <h5 className="modal-title fw-bold">
-                  {actionModal.action === 'cancel' ? 'Cancel Proposal?' : actionModal.action === 'accept' ? 'Accept Offer' : 'Reject Offer'}
+                  {actionModal.action === 'cancel'
+                    ? 'Cancel Proposal?'
+                    : actionModal.action === 'accept'
+                      ? 'Accept Offer'
+                      : actionModal.offer?.status === 'accepted'
+                        ? 'Retract Acceptance?'
+                        : 'Reject Offer'}
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setActionModal(null)}></button>
               </div>
@@ -540,7 +545,11 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                 <p className="text-muted">
                   {actionModal.action === 'cancel'
                     ? `Are you sure you want to withdraw this offer on "${actionModal.title}"? This action cannot be undone.`
-                    : `${actionModal.action === 'accept' ? 'Accept' : 'Reject'} offer on "${actionModal.title}"?`}
+                    : actionModal.action === 'accept'
+                      ? `Accept offer on "${actionModal.title}"?`
+                      : actionModal.offer?.status === 'accepted'
+                        ? `You are about to retract your acceptance of the offer on "${actionModal.title}". The linked order will be cancelled and the product will be relisted. This action cannot be undone.`
+                        : `Reject offer on "${actionModal.title}"?`}
                 </p>
                 {actionModal.action !== 'cancel' && (
                   <>
@@ -559,8 +568,13 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                   disabled={actionLoading}
                 >
                   {actionLoading ? 'Processing…'
-                    : actionModal.action === 'cancel' ? 'Yes, withdraw it!'
-                      : actionModal.action === 'accept' ? 'Accept' : 'Reject'}
+                    : actionModal.action === 'cancel'
+                      ? 'Yes, withdraw it!'
+                      : actionModal.action === 'accept'
+                        ? 'Accept'
+                        : actionModal.offer?.status === 'accepted'
+                          ? 'Yes, Retract Acceptance'
+                          : 'Reject'}
                 </button>
               </div>
             </div>
@@ -642,6 +656,34 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       {content}
       {modals}
     </DashboardLayout>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REJECTION WINDOW COUNTDOWN
+═══════════════════════════════════════════════════════════════ */
+
+function useNow(intervalMs = 60000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+  return now;
+}
+
+function RejectionCountdown({ acceptedAt, windowHours }: { acceptedAt: string; windowHours: number }) {
+  const now = useNow(10000);
+  const expiryMs = new Date(acceptedAt).getTime() + windowHours * 3600000;
+  const remainMs = expiryMs - now;
+  if (remainMs <= 0) return null;
+  const h = Math.floor(remainMs / 3600000);
+  const m = Math.floor((remainMs % 3600000) / 60000);
+  return (
+    <div style={{ fontSize: '0.72rem', color: '#b45309', background: '#fff8e1', border: '1px solid #fde68a', borderRadius: 6, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <i className="bi bi-clock" style={{ fontSize: '0.7rem' }}></i>
+      {h > 0 ? `${h}h ${m}m` : `${m}m`} left to retract
+    </div>
   );
 }
 
@@ -728,8 +770,9 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                   return offer.status;
                 })();
 
-                // accepted offer windows
-                const acceptedTs = offer.accepted_at ? new Date(offer.accepted_at).getTime() : 0;
+                // accepted offer windows — fall back to updated_at for legacy offers
+                const effectiveAcceptedAt = offer.accepted_at || (offer.status === 'accepted' ? offer.updated_at : undefined);
+                const acceptedTs = effectiveAcceptedAt ? new Date(effectiveAcceptedAt).getTime() : 0;
                 const windowMs = settings.rejectionWindowHours * 3600000;
                 const canRejectByTime = offer.status === 'accepted' && acceptedTs > 0 && Date.now() < acceptedTs + windowMs;
                 const canRejectByPickup = offer.status === 'accepted' && (offer.offer_type ?? offer.listing_type) === 'rent' && offer.rental_start_date
@@ -893,6 +936,19 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                             )}
                             <i className="bi bi-patch-check-fill text-success fs-4" title="Accepted"></i>
                           </div>
+                          {/* Rejection window: show retract button while within the window and order not processed */}
+                          {canRejectByTime && !isProcessed && effectiveAcceptedAt && (
+                            <div className="d-flex flex-column align-items-end gap-1 mt-1">
+                              <RejectionCountdown acceptedAt={effectiveAcceptedAt} windowHours={settings.rejectionWindowHours} />
+                              <button
+                                className="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                style={{ fontSize: '0.78rem', fontWeight: 700 }}
+                                onClick={() => onReject(offer)}
+                              >
+                                <i className="bi bi-x-circle me-1"></i>Retract Acceptance
+                              </button>
+                            </div>
+                          )}
                           {canRate ? (
                             <button className="btn-yellow btn-sm mt-2 rounded-pill px-3" style={{ fontSize: '0.8rem' }} onClick={() => onRate(offer)}>
                               <i className="bi bi-star-fill me-1"></i>Rate Buyer
