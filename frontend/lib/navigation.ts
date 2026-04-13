@@ -23,7 +23,6 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'Browse Market', href: '/buyer/browse', icon: 'fa-solid fa-magnifying-glass', target: '_blank' },
             { label: 'Contacts', href: '/buyer/contacts', icon: 'fa-solid fa-address-book' },
             { label: 'Offers', href: '/buyer/my-offers', icon: 'fa fa-tags' },
-            { label: 'Orders', href: '/buyer/my-orders', icon: 'fa fa-shopping-bag' },
             { label: 'Notifications', href: '/buyer/notifications', icon: 'fa fa-bell' },
             { label: 'Transactions', href: '/buyer/transactions', icon: 'fa fa-receipt' },
             { label: 'Help & Support', href: '/buyer/help', icon: 'fa fa-circle-question' },

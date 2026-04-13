@@ -1123,11 +1123,6 @@ export default function ProductDetailClient({ product, images, similarProducts =
                         <i className="bi bi-calendar3 me-1" style={{ color: '#ffc63a' }}></i>
                         Select Rental Dates
                       </span>
-                      {bookedRanges.length > 0 && (
-                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle" style={{ fontSize: '0.7rem' }}>
-                          {bookedRanges.length} period{bookedRanges.length > 1 ? 's' : ''} booked
-                        </span>
-                      )}
                     </div>
                     <RentalCalendar
                       bookedRanges={bookedRanges}
