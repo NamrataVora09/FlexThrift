@@ -270,13 +270,23 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const [dateModal, setDateModal] = useState<{ id: number; title: string; start: string; end: string } | null>(null);
   const [dateLoading, setDateLoading] = useState(false);
 
-  /* ── change dates modal ── */
+  /* ── change dates modal (buyer) ── */
   const [changeDatesModal, setChangeDatesModal] = useState<{ offer: Offer } | null>(null);
   const [cdStart, setCdStart] = useState('');
   const [cdEnd, setCdEnd] = useState('');
   const [cdAddress, setCdAddress] = useState('');
   const [cdPin, setCdPin] = useState('');
   const [cdLoading, setCdLoading] = useState(false);
+
+  /* ── suggest dates modal (seller) ── */
+  const [suggestModal, setSuggestModal] = useState<{ offer: Offer } | null>(null);
+  const [sdStart, setSdStart] = useState('');
+  const [sdEnd, setSdEnd] = useState('');
+  const [sdRemarks, setSdRemarks] = useState('');
+  const [sdLoading, setSdLoading] = useState(false);
+
+  /* ── accept-or-suggest choice modal (seller, rent only) ── */
+  const [acceptChoiceModal, setAcceptChoiceModal] = useState<{ offer: Offer } | null>(null);
 
   /* ── data loading ── */
   const load = () => {
@@ -348,16 +358,6 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     else toast.error(res?.message || 'Update failed');
   };
 
-  /* ── accept seller's suggested dates ── */
-  const handleAcceptDates = async (offer: Offer) => {
-    const res = await api.post(`/buyer/confirmDateChange/${offer.id}`, {});
-    if (res?.success) {
-      toast.success('Negotiation accepted!');
-      load();
-    }
-    else toast.error(res?.message || 'Action failed');
-  };
-
   /* ── open change dates modal ── */
   const openChangeDates = (offer: Offer) => {
     setChangeDatesModal({ offer });
@@ -392,6 +392,39 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       load(); 
     }
     else toast.error(res?.message || 'Failed to update dates');
+  };
+
+  /* ── submit seller date suggestion ── */
+  const submitSuggestDates = async () => {
+    if (!suggestModal) return;
+    if (!sdStart || !sdEnd) { toast.error('Please select both start and end dates'); return; }
+    if (sdEnd <= sdStart) { toast.error('End date must be after start date'); return; }
+    setSdLoading(true);
+    const res = await api.post(`/seller/suggest-dates/${suggestModal.offer.id}`, {
+      rental_start_date: sdStart,
+      rental_end_date: sdEnd,
+      remarks: sdRemarks,
+    });
+    setSdLoading(false);
+    if (res?.success) {
+      toast.success('Date suggestion sent to buyer!');
+      setSuggestModal(null);
+      setSdStart(''); setSdEnd(''); setSdRemarks('');
+      load();
+    } else {
+      toast.error(res?.message || 'Failed to send suggestion');
+    }
+  };
+
+  /* ── buyer accepts seller-suggested dates ── */
+  const handleAcceptDates = async (offer: Offer) => {
+    const res = await api.post(`/buyer/confirmDateChange/${offer.id}`, {});
+    if (res?.success) {
+      toast.success('Dates accepted! Deal is finalized.');
+      load();
+    } else {
+      toast.error(res?.message || 'Action failed');
+    }
   };
 
   /* ── computed ── */
@@ -490,7 +523,14 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           offers={filtered}
           settings={settings}
           isRentalBlocked={isRentalBlocked}
-          onAccept={o => { setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o }); setRemarks(''); }}
+          onAccept={o => {
+            if ((o.offer_type ?? o.listing_type) === 'rent') {
+              setAcceptChoiceModal({ offer: o });
+            } else {
+              setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o });
+              setRemarks('');
+            }
+          }}
           onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
           onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'buyer' }); setRatingValue(5); }}
         />
@@ -503,6 +543,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
           onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
           onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '' })}
+          onAcceptDates={handleAcceptDates}
         />
       ) : (
         <CombinedView
@@ -641,6 +682,120 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                 <button className="btn btn-light rounded-pill px-4" onClick={() => setDateModal(null)}>Cancel</button>
                 <button className="btn btn-dark rounded-pill px-4 fw-bold" onClick={handleUpdateDates} disabled={dateLoading || !dateModal.start || !dateModal.end}>
                   {dateLoading ? 'Updating…' : 'Update Dates'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Accept-or-Suggest choice modal (seller, rent offers) ── */}
+      {acceptChoiceModal && (
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setAcceptChoiceModal(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-0 pb-0 px-4 pt-4">
+                <h5 className="modal-title fw-bold">Accept Offer</h5>
+                <button type="button" className="btn-close" onClick={() => setAcceptChoiceModal(null)}></button>
+              </div>
+              <div className="modal-body px-4 pt-2 pb-4">
+                <p className="text-muted small mb-4">Choose how you want to accept this offer for <strong>{acceptChoiceModal.offer.product_title}</strong>.</p>
+                <div className="d-grid gap-3">
+                  <button
+                    className="btn btn-warning fw-bold rounded-3 py-3"
+                    onClick={() => {
+                      const o = acceptChoiceModal.offer;
+                      setAcceptChoiceModal(null);
+                      setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o });
+                      setRemarks('');
+                    }}
+                  >
+                    <i className="bi bi-check-circle-fill me-2"></i>
+                    Accept As-Is
+                    <div className="small fw-normal opacity-75 mt-1">
+                      Confirm the buyer's dates: {acceptChoiceModal.offer.rental_start_date ? `${fmtShort(acceptChoiceModal.offer.rental_start_date)} → ${fmtShort(acceptChoiceModal.offer.rental_end_date)}` : 'N/A'}
+                    </div>
+                  </button>
+                  <button
+                    className="btn btn-outline-primary fw-bold rounded-3 py-3"
+                    onClick={() => {
+                      const o = acceptChoiceModal.offer;
+                      setAcceptChoiceModal(null);
+                      setSdStart(o.rental_start_date || '');
+                      setSdEnd(o.rental_end_date || '');
+                      setSdRemarks('');
+                      setSuggestModal({ offer: o });
+                    }}
+                  >
+                    <i className="bi bi-calendar-range me-2"></i>
+                    Accept with Different Dates
+                    <div className="small fw-normal opacity-75 mt-1">Propose new rental dates for the buyer to review</div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Seller suggest-dates modal ── */}
+      {suggestModal && (
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setSuggestModal(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow-lg rounded-4">
+              <div className="modal-header border-0 pb-0 px-4 pt-4">
+                <h5 className="modal-title fw-bold"><i className="bi bi-calendar-range me-2"></i>Suggest New Dates</h5>
+                <button type="button" className="btn-close" onClick={() => setSuggestModal(null)}></button>
+              </div>
+              <div className="modal-body px-4 pt-3">
+                <p className="text-muted small mb-3">
+                  Suggest alternate rental dates for <strong>{suggestModal.offer.product_title}</strong>. The buyer will be notified and must accept before the deal is finalised.
+                </p>
+                <div className="row g-3 mb-3">
+                  <div className="col-6">
+                    <label className="form-label fw-bold small">New Start Date <span className="text-danger">*</span></label>
+                    <input
+                      type="date"
+                      className="form-control rounded-3"
+                      value={sdStart}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={e => setSdStart(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label fw-bold small">New End Date <span className="text-danger">*</span></label>
+                    <input
+                      type="date"
+                      className="form-control rounded-3"
+                      value={sdEnd}
+                      min={sdStart || new Date().toISOString().split('T')[0]}
+                      onChange={e => setSdEnd(e.target.value)}
+                    />
+                  </div>
+                </div>
+                {sdStart && sdEnd && sdEnd > sdStart && (
+                  <div className="alert alert-warning py-2 px-3 rounded-3 small border-0 mb-3">
+                    <i className="bi bi-info-circle me-1"></i>
+                    <strong>{nightsBetween(sdStart, sdEnd)} nights</strong> — Price will be recalculated automatically.
+                  </div>
+                )}
+                <label className="form-label fw-bold small">Note to Buyer (optional)</label>
+                <textarea
+                  className="form-control rounded-3"
+                  rows={2}
+                  value={sdRemarks}
+                  onChange={e => setSdRemarks(e.target.value)}
+                  placeholder="e.g. Original dates not available, suggest alternative…"
+                />
+              </div>
+              <div className="modal-footer border-0 px-4 pb-4">
+                <button className="btn btn-light rounded-pill px-4" onClick={() => setSuggestModal(null)}>Cancel</button>
+                <button
+                  className="btn btn-primary rounded-pill px-4 fw-bold"
+                  onClick={submitSuggestDates}
+                  disabled={sdLoading || !sdStart || !sdEnd || sdEnd <= sdStart}
+                >
+                  {sdLoading ? 'Sending…' : 'Send Suggestion'}
                 </button>
               </div>
             </div>
@@ -936,8 +1091,8 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                             )}
                             <i className="bi bi-patch-check-fill text-success fs-4" title="Accepted"></i>
                           </div>
-                          {/* Rejection window: show retract button while within the window and order not processed */}
-                          {canRejectByTime && !isProcessed && effectiveAcceptedAt && (
+                          {/* Rejection window: hide once seller has rated (deal is done) or order is processed */}
+                          {canRejectByTime && !isProcessed && !offer.seller_rated_buyer && effectiveAcceptedAt && (
                             <div className="d-flex flex-column align-items-end gap-1 mt-1">
                               <RejectionCountdown acceptedAt={effectiveAcceptedAt} windowHours={settings.rejectionWindowHours} />
                               <button
@@ -991,9 +1146,10 @@ interface BuyerViewProps {
   onCancel: (o: Offer) => void;
   onRate: (o: Offer) => void;
   onUpdateDates: (o: Offer) => void;
+  onAcceptDates: (o: Offer) => void;
 }
 
-function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, onRate, onUpdateDates }: BuyerViewProps) {
+function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, onRate, onUpdateDates, onAcceptDates }: BuyerViewProps) {
   return (
     <>
       {offers.map(o => {
@@ -1099,7 +1255,19 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
               {/* action buttons */}
               <div className="col-md-2 text-end">
                 <div className="d-grid gap-2">
-                  {(o.status === 'pending' || o.status === 'negotiating') && (
+                  {o.status === 'negotiating' && (
+                    <>
+                      <button
+                        className="btn btn-success fw-bold rounded-pill"
+                        style={{ fontSize: '0.875rem' }}
+                        onClick={() => onAcceptDates(o)}
+                      >
+                        <i className="bi bi-check-circle-fill me-1"></i>Accept Dates
+                      </button>
+                      <button className="btn-modern-cancel" style={{ fontSize: '0.8rem' }} onClick={() => onCancel(o)}>Decline</button>
+                    </>
+                  )}
+                  {o.status === 'pending' && (
                     <>
                       {o.listing_type === 'rent' && (
                         <button className="btn-yellow mb-1" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates(o)}>Change dates</button>

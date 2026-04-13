@@ -431,73 +431,161 @@ class SellerApi extends ResourceController
         if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
         if ($offer['status'] !== 'pending') return $this->respond(['success' => false, 'message' => 'Only pending offers can be accepted'], 400);
 
-        $db->table('offers')->where('id', $id)->update(['status' => 'accepted', 'seller_remarks' => $data['remarks'] ?? '', 'accepted_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]);
-        
-        // Auto-reject other pending offers for this product
-        $db->table('offers')
-            ->where('product_id', $offer['product_id'])
-            ->where('id !=', $id)
-            ->where('status', 'pending')
-            ->update([
-                'status' => 'rejected',
-                'seller_remarks' => 'Another offer for this product has been accepted.',
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
+        $db->table('offers')->where('id', $id)->update([
+            'status'         => 'accepted',
+            'seller_remarks' => $data['remarks'] ?? '',
+            'accepted_at'    => date('Y-m-d H:i:s'),
+            'updated_at'     => date('Y-m-d H:i:s'),
+        ]);
 
-        // Update product status to sold/rented if applicable
-        if (($offer['offer_type'] ?? 'sale') === 'sale') {
-            $db->table('products')->where('id', $offer['product_id'])->update(['status' => 'sold']);
-        }
         // Create order
+        $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $orderId = $db->table('orders')->insert([
-            'order_number' => 'FLX' . strtoupper(uniqid()),
-            'product_id' => $offer['product_id'],
-            'buyer_id' => $offer['buyer_id'],
-            'seller_id' => $offer['seller_id'],
-            'order_type' => $offer['offer_type'] ?? 'sale',
-            'final_price' => $offer['offer_price'],
-            'deposit_amount' => $offer['deposit_amount'] ?? null,
+            'order_number'      => 'FLX' . strtoupper(uniqid()),
+            'product_id'        => $offer['product_id'],
+            'buyer_id'          => $offer['buyer_id'],
+            'seller_id'         => $offer['seller_id'],
+            'order_type'        => $offer['offer_type'] ?? 'sale',
+            'final_price'       => $offer['offer_price'],
+            'deposit_amount'    => $offer['deposit_amount'] ?? null,
             'rental_start_date' => $offer['rental_start_date'] ?? null,
-            'rental_end_date' => $offer['rental_end_date'] ?? null,
-            'delivery_address' => $offer['delivery_address'] ?? null,
+            'rental_end_date'   => $offer['rental_end_date'] ?? null,
+            'delivery_address'  => $offer['delivery_address'] ?? null,
             'delivery_pin_code' => $offer['delivery_pin_code'] ?? null,
-            'payment_status' => 'pending',
-            'status' => 'pending',
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
+            'payment_status'    => 'pending',
+            'status'            => 'pending',
+            'created_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => date('Y-m-d H:i:s'),
         ], true);
 
         $db->table('order_status_history')->insert([
-            'order_id' => $orderId, 'status' => 'pending', 'updated_by' => $jwtUser['user_id'],
-            'remarks' => 'Order created from accepted offer', 'created_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        // Notify buyer
-        $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
-        $db->table('notifications')->insert([
-            'user_id' => $offer['buyer_id'],
-            'title' => 'Offer Accepted!',
-            'message' => 'Your offer of ₹' . $offer['offer_price'] . ' on "' . ($product['title'] ?? '') . '" has been accepted.',
-            'type' => 'offer',
-            'is_read' => 0,
+            'order_id'   => $orderId,
+            'status'     => 'pending',
+            'updated_by' => $jwtUser['user_id'],
+            'remarks'    => 'Order created from accepted offer',
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        // Mark product as sold and cancel remaining offers
+        // Notify the accepted buyer
+        $db->table('notifications')->insert([
+            'user_id'    => $offer['buyer_id'],
+            'title'      => 'Offer Accepted!',
+            'message'    => 'Your offer of ₹' . $offer['offer_price'] . ' on "' . ($product['title'] ?? '') . '" has been accepted.',
+            'type'       => 'offer',
+            'is_read'    => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // Mark product as sold
         $db->table('products')->where('id', $offer['product_id'])->update(['status' => 'sold', 'updated_at' => date('Y-m-d H:i:s')]);
 
-        $otherOffers = $db->table('offers')->where('product_id', $offer['product_id'])->where('status', 'pending')->where('id !=', $id)->get()->getResultArray();
+        // Auto-reject ALL other competing offers (pending + negotiating) and notify each buyer
+        $otherOffers = $db->table('offers')
+            ->where('product_id', $offer['product_id'])
+            ->where('id !=', $id)
+            ->whereIn('status', ['pending', 'negotiating'])
+            ->get()->getResultArray();
+
         foreach ($otherOffers as $other) {
-            $db->table('offers')->where('id', $other['id'])->update(['status' => 'rejected', 'seller_remarks' => 'This product has been sold to another buyer.', 'updated_at' => date('Y-m-d H:i:s')]);
+            $db->table('offers')->where('id', $other['id'])->update([
+                'status'         => 'rejected',
+                'seller_remarks' => 'Another buyer\'s offer for this product has been accepted.',
+                'updated_at'     => date('Y-m-d H:i:s'),
+            ]);
             $db->table('notifications')->insert([
-                'user_id' => $other['buyer_id'],
-                'title' => 'Offer Not Accepted',
-                'message' => 'Sorry, "' . ($product['title'] ?? '') . '" has been sold to another buyer.',
-                'type' => 'offer', 'is_read' => 0, 'created_at' => date('Y-m-d H:i:s'),
+                'user_id'    => $other['buyer_id'],
+                'title'      => 'Offer Not Accepted',
+                'message'    => 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" was accepted by the seller. Your offer has been closed.',
+                'type'       => 'offer',
+                'is_read'    => 0,
+                'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
 
         return $this->respond(['success' => true, 'message' => 'Offer accepted, order created', 'data' => ['order_id' => $orderId]]);
+    }
+
+    /**
+     * POST /api/v1/seller/suggest-dates/{id}
+     * Seller suggests alternate rental dates instead of outright accepting.
+     * Sets offer to 'negotiating' so the buyer can review and accept/decline.
+     */
+    public function suggestDates(int $id)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+        $data = $this->request->getJSON(true) ?? [];
+
+        $offer = $db->table('offers')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+        if ($offer['status'] !== 'pending') return $this->respond(['success' => false, 'message' => 'Date suggestions are only allowed on pending offers'], 400);
+
+        $newStart  = $data['rental_start_date'] ?? null;
+        $newEnd    = $data['rental_end_date']   ?? null;
+        $remarks   = $data['remarks']           ?? '';
+
+        if (!$newStart || !$newEnd) {
+            return $this->respond(['success' => false, 'message' => 'Both start and end dates are required'], 400);
+        }
+        if ($newEnd <= $newStart) {
+            return $this->respond(['success' => false, 'message' => 'End date must be after start date'], 400);
+        }
+
+        // Check for conflicts with already accepted offers
+        $overlapping = $db->table('offers')
+            ->where('product_id', $offer['product_id'])
+            ->where('id !=', $id)
+            ->where('status', 'accepted')
+            ->where('rental_start_date <=', $newEnd)
+            ->where('rental_end_date >=',  $newStart)
+            ->countAllResults();
+
+        if ($overlapping > 0) {
+            return $this->respond(['success' => false, 'message' => 'The suggested dates conflict with an existing booking'], 409);
+        }
+
+        // Recalculate price based on suggested nights × rental cost
+        $product   = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+        $rentalCost = (float)($product['rental_cost'] ?? $product['price'] ?? 0);
+        $nights     = max(1, (int)ceil((strtotime($newEnd) - strtotime($newStart)) / 86400));
+        $newPrice   = round($rentalCost * $nights);
+
+        $msg = 'Seller suggests new dates: ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ($remarks ? '. Note: ' . $remarks : '');
+
+        $db->table('offers')->where('id', $id)->update([
+            'status'             => 'negotiating',
+            'rental_start_date'  => $newStart,
+            'rental_end_date'    => $newEnd,
+            'offer_price'        => $newPrice,
+            'seller_remarks'     => $remarks,
+            'message'            => $msg,
+            'updated_at'         => date('Y-m-d H:i:s'),
+        ]);
+
+        // Record in history
+        $db->table('offer_history')->insert([
+            'offer_id'       => $id,
+            'changed_by'     => $jwtUser['user_id'],
+            'action'         => 'seller_suggest_dates',
+            'old_start_date' => $offer['rental_start_date'],
+            'old_end_date'   => $offer['rental_end_date'],
+            'new_start_date' => $newStart,
+            'new_end_date'   => $newEnd,
+            'new_price'      => $newPrice,
+            'created_at'     => date('Y-m-d H:i:s'),
+        ]);
+
+        // Notify buyer
+        $db->table('notifications')->insert([
+            'user_id'    => $offer['buyer_id'],
+            'title'      => 'Seller Suggested New Dates',
+            'message'    => 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . '. Please review and accept or decline.',
+            'type'       => 'offer',
+            'is_read'    => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Date suggestion sent to buyer']);
     }
 
     /**

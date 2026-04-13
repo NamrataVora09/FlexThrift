@@ -111,6 +111,7 @@ function register_api_routes($routes) {
         $routes->post('update-product/(:num)', 'Api\SellerApi::updateProduct/$1');
         $routes->post('accept-offer/(:num)', 'Api\SellerApi::acceptOffer/$1');
         $routes->post('reject-offer/(:num)', 'Api\SellerApi::rejectOffer/$1');
+        $routes->post('suggest-dates/(:num)', 'Api\SellerApi::suggestDates/$1');
         $routes->post('mark-dispatched/(:num)', 'Api\SellerApi::markDispatched/$1');
         $routes->post('confirm-delivery/(:num)', 'Api\SellerApi::confirmDelivery/$1');
         $routes->post('delete-product/(:num)', 'Api\SellerApi::deleteProduct/$1');
