@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth-context';
 import PageHeader from './PageHeader';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
-import { confirmToast } from '@/lib/toast-utils';
 
 interface Plan { id: number; name: string; plan_type: string; limit_value: number; duration_hours: number; price: string; }
 interface ActiveSub { plan_name: string; plan_type: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; }
@@ -17,9 +16,11 @@ interface Props { role: string; userType: string; }
 
 export default function SubscriptionsView({ role, userType }: Props) {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState<number | null>(null);
+  const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   // SuperAdmin has full access
   if (user?.role === 'super_admin') {
@@ -37,27 +38,19 @@ export default function SubscriptionsView({ role, userType }: Props) {
   }
 
   useEffect(() => {
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    if (success) setFlashMsg({ text: decodeURIComponent(success), ok: true });
+    if (error)   setFlashMsg({ text: decodeURIComponent(error),   ok: false });
+
     api.get<SubData>(`/shared/subscriptions/${userType}`).then((r) => {
       if (r.success && r.data) setData(r.data);
       setLoading(false);
     });
   }, [userType]);
 
-  const handlePurchase = (planId: number, planName: string) => {
-    confirmToast(`Subscribe to "${planName}"? You will be charged immediately.`, async () => {
-      setPurchasing(planId);
-      const res = await api.post('/shared/purchase-subscription', { plan_id: planId });
-      setPurchasing(null);
-      if (res?.success) {
-        toast.success('Subscription activated!');
-        // Reload data
-        api.get<SubData>(`/shared/subscriptions/${userType}`).then((r) => {
-          if (r.success && r.data) setData(r.data);
-        });
-      } else {
-        toast.error(res?.message || 'Purchase failed');
-      }
-    }, 'Subscribe');
+  const handleChoosePlan = (planId: number) => {
+    router.push(`/${role}/checkout-plan/${planId}`);
   };
 
   if (loading) return (
@@ -66,10 +59,20 @@ export default function SubscriptionsView({ role, userType }: Props) {
     </DashboardLayout>
   );
 
+  const hasActiveSub = !!data?.active;
+
   return (
     <DashboardLayout requiredRoles={[role]}>
       <div className="container">
         <PageHeader title="Subscriptions" />
+
+        {flashMsg && (
+          <div className={`alert ${flashMsg.ok ? 'alert-success' : 'alert-danger'} alert-dismissible fade show mb-4`}>
+            <i className={`bi ${flashMsg.ok ? 'bi-check-circle' : 'bi-exclamation-circle'} me-2`} />
+            {flashMsg.text}
+            <button type="button" className="btn-close" onClick={() => setFlashMsg(null)} />
+          </div>
+        )}
 
         {data?.active && (
           <div className="card mb-4" style={{ border: '2px solid #ffc63a' }}>
@@ -98,7 +101,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                 <div className="card-body text-center">
                   <h5 className="fw-bold">{plan.name}</h5>
                   <span className="type-badge sell">{plan.plan_type}</span>
-                  <h3 className="fw-bold mt-3" style={{ color: '#ffc63a' }}>₹{plan.price}</h3>
+                  <h3 className="fw-bold mt-3" style={{ color: '#ffc63a' }}>₹{Number(plan.price).toLocaleString('en-IN')}</h3>
                   <p className="normal_label_font">
                     {plan.plan_type === 'duration'
                       ? `${plan.duration_hours} hours`
@@ -106,10 +109,9 @@ export default function SubscriptionsView({ role, userType }: Props) {
                   </p>
                   <button
                     className="btn yellow_button w-100 mt-2"
-                    onClick={() => handlePurchase(plan.id, plan.name)}
-                    disabled={purchasing === plan.id}
+                    onClick={() => handleChoosePlan(plan.id)}
                   >
-                    {purchasing === plan.id ? 'Processing...' : 'Subscribe'}
+                    {hasActiveSub ? 'Purchase More' : 'Subscribe'}
                   </button>
                 </div>
               </div>
@@ -136,7 +138,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                           <td><span className="type-badge sell">{h.plan_type}</span></td>
                           <td>₹{h.price}</td>
                           <td className="normal_label_font">{new Date(h.starts_at).toLocaleDateString('en-IN')} - {new Date(h.expires_at).toLocaleDateString('en-IN')}</td>
-                          <td>{h.is_active ? <span className="accept_sts">Active</span> : <span className="status-badge pending">Expired</span>}</td>
+                          <td>{Number(h.is_active) === 1 ? <span className="accept_sts">Active</span> : <span className="status-badge pending">Expired</span>}</td>
                         </tr>
                       ))}
                     </tbody>

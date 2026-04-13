@@ -40,7 +40,6 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'My Products', href: '/seller/my-products', icon: 'fa fa-box' },
             { label: 'Analytics', href: '/seller/analytics', icon: 'fa fa-chart-line' },
             { label: 'Offers', href: '/seller/offers', icon: 'fa fa-tags' },
-            { label: 'Chat', href: '/seller/chat', icon: 'fa fa-comments' },
             { label: 'Notifications', href: '/seller/notifications', icon: 'fa fa-bell' },
             { label: 'Transactions', href: '/seller/transactions', icon: 'fa fa-receipt' },
             { label: 'Help & Support', href: '/seller/help', icon: 'fa fa-circle-question' },

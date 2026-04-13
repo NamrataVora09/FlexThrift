@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef, ChangeEvent } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import Link from 'next/link';
@@ -106,14 +106,6 @@ interface ConflictInfo {
   type: string;
 }
 
-interface ChatMessage {
-  id: number;
-  sender_name: string;
-  sender_role: 'buyer' | 'seller';
-  message: string;
-  media_url?: string;
-  created_at: string;
-}
 
 
 interface Offer {
@@ -195,14 +187,6 @@ export default function Page() {
   const [ratingLoading, setRatingLoading] = useState(false);
 
 
-  // Chat state
-  const [chatModal, setChatModal] = useState<{ id: number; title: string } | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatSending, setChatSending] = useState(false);
-  const [chatFile, setChatFile] = useState<File | null>(null);
-  const chatFileRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
     setLoading(true);
@@ -311,56 +295,6 @@ export default function Page() {
     }
   };
 
-  const loadChat = (offerId: number) => {
-    setChatLoading(true);
-    setChatMessages([]);
-    api.get<ChatMessage[]>(`/buyer/offer-messages/${offerId}`).then((r) => {
-      if (r.success && r.data) setChatMessages(r.data);
-      setChatLoading(false);
-    });
-  };
-
-  const openChat = (offer: Offer) => {
-    setChatModal({ id: offer.id, title: offer.product_title });
-    loadChat(offer.id);
-  };
-
-  const sendChatMessage = async () => {
-    if (!chatModal) return;
-    if (!chatInput.trim() && !chatFile) return;
-    setChatSending(true);
-
-    if (chatFile) {
-      const formData = new FormData();
-      formData.append('file', chatFile);
-      if (chatInput.trim()) formData.append('message', chatInput.trim());
-      try {
-        const data = await api.upload(`/buyer/offer-messages/${chatModal.id}/upload`, formData);
-        if (!data.success) {
-          toast.error(data.message || 'Upload failed');
-          setChatSending(false);
-          return;
-        }
-      } catch {
-        toast.error('Upload failed');
-        setChatSending(false);
-        return;
-      }
-      setChatFile(null);
-      if (chatFileRef.current) chatFileRef.current.value = '';
-    } else {
-      const res = await api.post(`/buyer/offer-messages/${chatModal.id}`, { message: chatInput.trim() });
-      if (!res?.success) {
-        toast.error(res?.message || 'Failed to send');
-        setChatSending(false);
-        return;
-      }
-    }
-
-    setChatInput('');
-    loadChat(chatModal.id);
-    setChatSending(false);
-  };
 
   const filtered = useMemo(() => {
     const list = offers || [];
@@ -868,101 +802,6 @@ export default function Page() {
         </div>
       )}
 
-      {/* Chat Modal */}
-      {chatModal && (
-        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setChatModal(null)}>
-          <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem' }}>
-              <div className="modal-header border-bottom px-4 pt-4">
-                <h5 className="modal-title fw-bold">
-                  <i className="bi bi-chat-dots me-2"></i>Chat — {chatModal.title}
-                </h5>
-                <button type="button" className="btn-close" onClick={() => setChatModal(null)}></button>
-              </div>
-              <div className="modal-body p-0">
-                <div style={{ height: 360, overflowY: 'auto', padding: '1rem 1.5rem' }}>
-                  {chatLoading && <div className="text-center text-muted py-4">Loading...</div>}
-                  {!chatLoading && chatMessages.length === 0 && (
-                    <div className="text-center text-muted py-5">No messages yet. Start the conversation!</div>
-                  )}
-                  {chatMessages.map((m) => {
-                    const isMine = m.sender_role === 'buyer';
-                    const isImage = m.media_url && /\.(jpg|jpeg|png|gif|webp)$/i.test(m.media_url);
-                    const isVideo = m.media_url && /\.(mp4|mov)$/i.test(m.media_url);
-                    const isPdf   = m.media_url && /\.pdf$/i.test(m.media_url);
-                    return (
-                      <div key={m.id} className={`d-flex mb-3 ${isMine ? 'justify-content-end' : 'justify-content-start'}`}>
-                        <div style={{
-                          maxWidth: '70%', padding: '10px 14px',
-                          borderRadius: isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                          background: isMine ? '#000' : '#f4f4f4',
-                          color: isMine ? '#ffc63a' : '#333', fontSize: '0.875rem'
-                        }}>
-                          <div className="fw-bold small mb-1" style={{ opacity: 0.7 }}>{m.sender_name} · {m.sender_role}</div>
-                          {m.media_url && isImage && (
-                            <a href={`${BASE_URL}/${m.media_url}`} target="_blank" rel="noreferrer">
-                              <img src={`${BASE_URL}/${m.media_url}`} alt="attachment" style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8, marginBottom: 4, display: 'block' }} />
-                            </a>
-                          )}
-                          {m.media_url && isVideo && (
-                            <video controls style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 8, marginBottom: 4, display: 'block' }}>
-                              <source src={`${BASE_URL}/${m.media_url}`} />
-                            </video>
-                          )}
-                          {m.media_url && (isPdf || (!isImage && !isVideo)) && (
-                            <a href={`${BASE_URL}/${m.media_url}`} target="_blank" rel="noreferrer"
-                              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: 'rgba(255,255,255,0.15)', borderRadius: 6, marginBottom: 4, color: 'inherit', textDecoration: 'none' }}>
-                              <i className="bi bi-paperclip" /> <span style={{ fontSize: '0.78rem' }}>{isPdf ? 'View PDF' : 'Download file'}</span>
-                            </a>
-                          )}
-                          {m.message && <div>{m.message}</div>}
-                          <div className="small mt-1" style={{ opacity: 0.5 }}>
-                            {new Date(m.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {chatFile && (
-                  <div className="border-top px-3 py-2 d-flex align-items-center gap-2" style={{ background: '#fffbeb', fontSize: '0.82rem' }}>
-                    <i className="bi bi-paperclip text-warning" />
-                    <span className="flex-grow-1">{chatFile.name}</span>
-                    <button onClick={() => { setChatFile(null); if (chatFileRef.current) chatFileRef.current.value = ''; }}
-                      style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer' }}>
-                      <i className="bi bi-x-circle-fill" />
-                    </button>
-                  </div>
-                )}
-                <div className="border-top p-3 d-flex gap-2">
-                  <input type="file" ref={chatFileRef} accept="image/*,video/*,.pdf" style={{ display: 'none' }}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) setChatFile(f); }} />
-                  <button title="Attach file" onClick={() => chatFileRef.current?.click()}
-                    style={{ background: 'none', border: '1px solid #eee', borderRadius: '50%', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888', flexShrink: 0 }}>
-                    <i className="bi bi-paperclip" />
-                  </button>
-                  <input
-                    className="form-control"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
-                    placeholder="Type a message..."
-                    style={{ borderRadius: '2rem' }}
-                  />
-                  <button
-                    className="btn btn-dark px-4 fw-bold"
-                    style={{ borderRadius: '2rem' }}
-                    onClick={sendChatMessage}
-                    disabled={chatSending || (!chatInput.trim() && !chatFile)}
-                  >
-                    {chatSending ? <span className="spinner-border spinner-border-sm" /> : <i className="bi bi-send"></i>}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Rating Modal */}
       {ratingModal && (

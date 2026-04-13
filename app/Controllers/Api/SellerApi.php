@@ -1286,4 +1286,307 @@ class SellerApi extends ResourceController
         
         return $updateData;
     }
+
+    /* ═══════════════════════════════════════════════════════════
+       SUBSCRIPTION PAYMENT — seller plans via PhonePe
+    ═══════════════════════════════════════════════════════════ */
+
+    /**
+     * GET /api/v1/seller/plan-checkout-details/:id
+     */
+    public function planCheckoutDetails(int $planId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId  = $jwtUser['user_id'];
+        $db      = \Config\Database::connect();
+
+        $plan = $db->table('subscription_plans')
+            ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'seller'])
+            ->get()->getRowArray();
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Plan not found or inactive'], 404);
+
+        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+
+        $chargeModel  = new \App\Models\PlatformChargeModel();
+        $activeCharges = $chargeModel->getActiveCharges();
+        $chargeBreakdown = [];
+        $totalCharges    = 0;
+        foreach ($activeCharges as $charge) {
+            $amt = $charge['charge_type'] === 'percentage'
+                ? ($plan['price'] * $charge['charge_value']) / 100
+                : (float) $charge['charge_value'];
+            $chargeBreakdown[] = [
+                'name'   => $charge['charge_name'],
+                'type'   => $charge['charge_type'],
+                'value'  => $charge['charge_value'],
+                'amount' => $amt,
+            ];
+            $totalCharges += $amt;
+        }
+
+        $referralDiscount = 0;
+        $referralBalance  = (float) ($user['referral_balance'] ?? 0);
+        $hasUsed          = (int) ($user['has_used_referral'] ?? 0);
+        $expiry           = $user['referral_expires_at'] ?? null;
+        if ($referralBalance > 0 && $hasUsed === 0) {
+            if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                $referralDiscount = $referralBalance;
+            }
+        }
+
+        $total = max(0, (float) $plan['price'] + $totalCharges - $referralDiscount);
+
+        return $this->respond([
+            'success' => true,
+            'data'    => [
+                'plan'             => $plan,
+                'user'             => [
+                    'name'    => $user['name'],
+                    'email'   => $user['email'],
+                    'mobile'  => $user['mobile'] ?? '',
+                    'address' => $user['address'] ?? '',
+                ],
+                'charge_breakdown' => $chargeBreakdown,
+                'total_charges'    => $totalCharges,
+                'referral_discount'=> $referralDiscount,
+                'total'            => $total,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/v1/seller/apply-coupon
+     */
+    public function applyCoupon()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $data    = $this->request->getJSON(true);
+        $db      = \Config\Database::connect();
+
+        $code   = strtoupper(trim($data['code'] ?? ''));
+        $planId = (int) ($data['plan_id'] ?? 0);
+
+        if (!$code)
+            return $this->respond(['success' => false, 'message' => 'Coupon code is required'], 400);
+
+        $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+
+        $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
+        if (!$coupon)
+            return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
+
+        if ($coupon['valid_until'] && strtotime($coupon['valid_until']) < time())
+            return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+
+        if ($coupon['usage_limit'] !== null) {
+            $usedCount = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
+            if ($usedCount >= $coupon['usage_limit'])
+                return $this->respond(['success' => false, 'message' => 'Coupon usage limit reached.']);
+        }
+
+        if ((float) $plan['price'] < (float) $coupon['min_order_amount'])
+            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $coupon['min_order_amount']]);
+
+        $discountValue = 0;
+        if ($coupon['discount_type'] === 'percentage') {
+            $discountValue = ($plan['price'] * $coupon['discount_value']) / 100;
+            if ($coupon['max_discount'] && $discountValue > $coupon['max_discount'])
+                $discountValue = $coupon['max_discount'];
+        } else {
+            $discountValue = (float) $coupon['discount_value'];
+        }
+
+        return $this->respond([
+            'success' => true,
+            'message' => 'Coupon applied successfully!',
+            'data'    => ['discount' => round($discountValue, 2)],
+        ]);
+    }
+
+    /**
+     * POST /api/v1/seller/initiate-payment
+     */
+    public function initiatePayment()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId  = $jwtUser['user_id'];
+        $data    = $this->request->getJSON(true);
+        $db      = \Config\Database::connect();
+
+        $planId      = (int) ($data['plan_id'] ?? 0);
+        $couponCode  = strtoupper(trim($data['coupon_code'] ?? ''));
+        $callbackUrl = trim($data['callback_url'] ?? '');
+
+        $plan = $db->table('subscription_plans')
+            ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'seller'])
+            ->get()->getRowArray();
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+
+        $basePrice    = (float) $plan['price'];
+        $chargeModel  = new \App\Models\PlatformChargeModel();
+        $activeCharges = $chargeModel->getActiveCharges();
+        $totalCharges  = 0;
+        foreach ($activeCharges as $charge) {
+            $totalCharges += $charge['charge_type'] === 'percentage'
+                ? ($basePrice * $charge['charge_value']) / 100
+                : (float) $charge['charge_value'];
+        }
+
+        $discount  = 0;
+        $couponId  = null;
+        if ($couponCode) {
+            $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
+            if ($coupon && $basePrice >= (float) $coupon['min_order_amount']
+                && (!$coupon['valid_until'] || strtotime($coupon['valid_until']) >= time())) {
+                if ($coupon['discount_type'] === 'percentage') {
+                    $discount = ($basePrice * $coupon['discount_value']) / 100;
+                    if ($coupon['max_discount'] && $discount > $coupon['max_discount'])
+                        $discount = $coupon['max_discount'];
+                } else {
+                    $discount = (float) $coupon['discount_value'];
+                }
+                $couponId = $coupon['id'];
+            }
+        }
+
+        $finalAmount = ($basePrice + $totalCharges) - $discount;
+
+        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        $referralDiscountApplied = 0;
+        $referralBalance = (float) ($user['referral_balance'] ?? 0);
+        $hasUsed         = (int) ($user['has_used_referral'] ?? 0);
+        $expiry          = $user['referral_expires_at'] ?? null;
+        if ($referralBalance > 0 && $hasUsed === 0) {
+            if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                $referralDiscountApplied = $referralBalance;
+                $finalAmount -= $referralDiscountApplied;
+            }
+        }
+
+        $finalAmount     = max(1, $finalAmount);
+        $amountInPaise   = (int) ($finalAmount * 100);
+        $merchantOrderId = 'SUB-SLR-' . $userId . '-' . time();
+
+        $redirectUrl = $callbackUrl
+            ? str_replace('{id}', $merchantOrderId, $callbackUrl)
+            : base_url("seller/payment-callback?id={$merchantOrderId}");
+
+        $payload = [
+            'merchantOrderId' => $merchantOrderId,
+            'amount'          => $amountInPaise,
+            'paymentFlow'     => [
+                'type'         => 'PG_CHECKOUT',
+                'merchantUrls' => ['redirectUrl' => $redirectUrl],
+            ],
+        ];
+
+        $db->table('user_subscriptions')->insert([
+            'user_id'                    => $userId,
+            'plan_id'                    => $planId,
+            'starts_at'                  => date('Y-m-d H:i:s'),
+            'expires_at'                 => date('Y-m-d H:i:s'),
+            'usage_count'                => 0,
+            'is_active'                  => 0,
+            'payment_status'             => 'pending',
+            'amount_paid'                => $finalAmount,
+            'referral_discount_applied'  => $referralDiscountApplied,
+            'merchant_transaction_id'    => $merchantOrderId,
+        ]);
+
+        $phonepe  = new \App\Libraries\PhonePe();
+        $response = $phonepe->createPayment($payload);
+
+        if (isset($response['redirectUrl'])) {
+            return $this->respond([
+                'success' => true,
+                'data'    => [
+                    'redirect_url'      => $response['redirectUrl'],
+                    'merchant_order_id' => $merchantOrderId,
+                ],
+            ]);
+        }
+
+        return $this->respond(['success' => false, 'message' => 'Failed to initiate payment. Please try again.']);
+    }
+
+    /**
+     * GET /api/v1/seller/verify-payment?id={merchantOrderId}
+     * Reuses the same PhonePe status check + subscription activation logic.
+     */
+    public function verifyPayment()
+    {
+        $merchantOrderId = $this->request->getGet('id');
+        $db = \Config\Database::connect();
+
+        if (!$merchantOrderId)
+            return $this->respond(['status' => 'error', 'message' => 'No transaction ID provided'], 400);
+
+        $dbSub = $db->table('user_subscriptions')
+            ->where('merchant_transaction_id', $merchantOrderId)
+            ->get()->getRowArray();
+
+        if (!$dbSub)
+            return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
+
+        if ($dbSub['is_active'] == 1 && $dbSub['payment_status'] === 'paid')
+            return $this->respond(['status' => 'success', 'message' => 'Subscription is already active']);
+
+        $phonepe = new \App\Libraries\PhonePe();
+        $status  = $phonepe->getOrderStatus($merchantOrderId);
+        $state   = $status['state'] ?? ($status['data']['state'] ?? 'PENDING');
+
+        if ($state === 'COMPLETED') {
+            if ($dbSub['is_active'] == 0) {
+                $plan      = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
+                $startsAt  = date('Y-m-d H:i:s');
+                $expiresAt = ((int) $plan['duration_hours'] > 0)
+                    ? date('Y-m-d H:i:s', strtotime("+{$plan['duration_hours']} hours"))
+                    : '2099-12-31 23:59:59';
+
+                $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
+                    'is_active'      => 1,
+                    'payment_status' => 'paid',
+                    'starts_at'      => $startsAt,
+                    'expires_at'     => $expiresAt,
+                    'updated_at'     => date('Y-m-d H:i:s'),
+                ]);
+                $db->table('users')->where('id', $dbSub['user_id'])->update([
+                    'subscription_tier'       => $plan['name'],
+                    'subscription_expires_at' => $expiresAt,
+                    'updated_at'              => date('Y-m-d H:i:s'),
+                ]);
+                $db->table('transactions')->insert([
+                    'user_id'          => $dbSub['user_id'],
+                    'type'             => 'subscription',
+                    'amount'           => $dbSub['amount_paid'],
+                    'description'      => 'Seller Subscription: ' . $plan['name'],
+                    'payment_method'   => 'online',
+                    'payment_status'   => 'completed',
+                    'transaction_id'   => $status['data']['transactionId'] ?? ('SLR-' . time()),
+                    'created_at'       => date('Y-m-d H:i:s'),
+                ]);
+                if ((float) $dbSub['referral_discount_applied'] > 0) {
+                    $db->table('users')->where('id', $dbSub['user_id'])->update([
+                        'has_used_referral' => 1,
+                        'referral_balance'  => 0,
+                    ]);
+                }
+            }
+            return $this->respond(['status' => 'success', 'message' => 'Payment successful! Subscription activated.']);
+        }
+
+        if ($state === 'FAILED' || $state === 'CANCELLED') {
+            $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
+                'payment_status' => 'failed',
+                'updated_at'     => date('Y-m-d H:i:s'),
+            ]);
+            return $this->respond(['status' => 'failed', 'message' => 'Payment failed or was cancelled.']);
+        }
+
+        return $this->respond(['status' => 'pending', 'message' => 'Payment is being processed…']);
+    }
 }

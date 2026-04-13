@@ -67,14 +67,6 @@ interface Offer {
   rental_cost?: number;
 }
 
-interface ChatMessage {
-  id: number;
-  sender_name: string;
-  sender_role: 'buyer' | 'seller';
-  message: string;
-  media_url?: string;
-  created_at: string;
-}
 
 const BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 
