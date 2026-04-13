@@ -715,7 +715,7 @@ export default function Page() {
                         </button>
                       </>
                     )}
-                    {o.status === 'accepted' && !o.buyer_rated_seller && (
+                    {o.status === 'accepted' && !Number(o.buyer_rated_seller) && (
                       <button
                         className="btn btn-warning rounded-pill fw-bold"
                         style={{ fontSize: '0.82rem', background: '#ffc63a', border: 'none' }}
@@ -724,7 +724,7 @@ export default function Page() {
                         <i className="bi bi-star-fill me-1"></i> Rate Seller
                       </button>
                     )}
-                    {o.status === 'accepted' && o.buyer_rated_seller && (
+                    {o.status === 'accepted' && Number(o.buyer_rated_seller) === 1 && (
                       <span className="badge bg-light text-success border py-2 rounded-pill small">
                         <i className="bi bi-check-circle-fill me-1"></i> Rated
                       </span>

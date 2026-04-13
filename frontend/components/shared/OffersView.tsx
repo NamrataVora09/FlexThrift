@@ -254,6 +254,7 @@ const CSS = `
 export default function OffersView({ role, apiPath, perspective, noLayout, noHeader }: Props) {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [filter, setFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({ acceptanceLimitDays: 7, ratingPeriod: 7, rejectionWindowHours: 24, minRentalDays: 3 });
   const [bookedDates, setBookedDates] = useState<{ product_id: number; rental_start_date: string; rental_end_date: string }[]>([]);
@@ -476,7 +477,22 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     return ps.bookedRanges.some(r => s <= r.end && e >= r.start);
   };
 
-  const filtered = filter === '' ? offers : offers.filter(o => o.status === filter);
+  const sorted = [...offers].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  const filtered = sorted.filter(o => {
+    const matchStatus = filter === '' || o.status === filter;
+    if (!matchStatus) return false;
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return (
+      o.product_title?.toLowerCase().includes(q) ||
+      o.buyer_name?.toLowerCase().includes(q) ||
+      o.seller_name?.toLowerCase().includes(q) ||
+      o.product_number?.toLowerCase().includes(q) ||
+      o.delivery_city?.toLowerCase().includes(q) ||
+      o.dispatch_city?.toLowerCase().includes(q)
+    );
+  });
 
   /* ── render ── */
   const content = (
@@ -500,13 +516,33 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
         </div>
       )}
 
-      {/* Status Filter – exact match to PHP filter-tabs */}
-      <div className="filter-tabs">
-        {['', 'pending', 'accepted', 'rejected'].map(f => (
-          <button key={f} className={`nav-link${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
-            {f === '' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      {/* Status Filter + Search */}
+      <div className="d-flex flex-wrap align-items-center gap-3 mb-4">
+        <div className="filter-tabs mb-0">
+          {['', 'pending', 'accepted', 'rejected'].map(f => (
+            <button key={f} className={`nav-link${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
+              {f === '' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div className="input-group" style={{ maxWidth: 280 }}>
+          <span className="input-group-text bg-white border-end-0" style={{ borderRadius: '12px 0 0 12px', border: '1px solid #eee' }}>
+            <i className="bi bi-search text-muted" style={{ fontSize: '0.85rem' }}></i>
+          </span>
+          <input
+            type="text"
+            className="form-control border-start-0"
+            placeholder="Search offers…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ borderRadius: '0 12px 12px 0', border: '1px solid #eee', borderLeft: 'none', fontSize: '0.88rem' }}
+          />
+          {search && (
+            <button className="btn btn-link position-absolute end-0 top-50 translate-middle-y pe-2 text-muted" style={{ zIndex: 5, fontSize: '0.8rem' }} onClick={() => setSearch('')}>
+              <i className="bi bi-x-lg"></i>
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -856,16 +892,24 @@ interface SellerViewProps {
 }
 
 function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onRate }: SellerViewProps) {
-  // group by product_id
+  // group by product_id, each group sorted newest-first, groups ordered by their newest offer
   const grouped = useMemo(() => {
     const m: Record<number, Offer[]> = {};
     offers.forEach(o => { (m[o.product_id] = m[o.product_id] || []).push(o); });
+    // sort offers within each group newest-first
+    Object.values(m).forEach(arr => arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
     return m;
   }, [offers]);
 
+  // sort product groups by their newest offer (first item after inner sort)
+  const groupEntries = useMemo(() =>
+    Object.entries(grouped).sort(([, a], [, b]) =>
+      new Date(b[0].created_at).getTime() - new Date(a[0].created_at).getTime()
+    ), [grouped]);
+
   return (
     <>
-      {Object.entries(grouped).map(([pid, productOffers]) => {
+      {groupEntries.map(([pid, productOffers]) => {
         const first = productOffers[0];
 
         // per-group sold & accepted rental ranges (matching PHP logic exactly)
@@ -933,7 +977,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                 const canRejectByPickup = offer.status === 'accepted' && (offer.offer_type ?? offer.listing_type) === 'rent' && offer.rental_start_date
                   ? Date.now() < new Date(offer.rental_start_date).getTime() - windowMs : false;
                 const isProcessed = !!offer.linked_order_status && ['paid', 'for_delivery', 'dispatched', 'delivered', 'completed'].includes(offer.linked_order_status);
-                const canRate = offer.status === 'accepted' && !offer.seller_rated_buyer && (acceptedTs === 0 || Date.now() < acceptedTs + settings.ratingPeriod * 86400000);
+                const canRate = offer.status === 'accepted' && !Number(offer.seller_rated_buyer) && (acceptedTs === 0 || Date.now() < acceptedTs + settings.ratingPeriod * 86400000);
 
                 return (
                   <div key={offer.id} className={`offer-row${offer.status === 'rejected' ? ' opacity-50' : ''}`}>
@@ -1092,7 +1136,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                             <i className="bi bi-patch-check-fill text-success fs-4" title="Accepted"></i>
                           </div>
                           {/* Rejection window: hide once seller has rated (deal is done) or order is processed */}
-                          {canRejectByTime && !isProcessed && !offer.seller_rated_buyer && effectiveAcceptedAt && (
+                          {canRejectByTime && !isProcessed && !Number(offer.seller_rated_buyer) && effectiveAcceptedAt && (
                             <div className="d-flex flex-column align-items-end gap-1 mt-1">
                               <RejectionCountdown acceptedAt={effectiveAcceptedAt} windowHours={settings.rejectionWindowHours} />
                               <button
@@ -1108,7 +1152,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                             <button className="btn-yellow btn-sm mt-2 rounded-pill px-3" style={{ fontSize: '0.8rem' }} onClick={() => onRate(offer)}>
                               <i className="bi bi-star-fill me-1"></i>Rate Buyer
                             </button>
-                          ) : offer.seller_rated_buyer ? (
+                          ) : Number(offer.seller_rated_buyer) === 1 ? (
                             <span className="badge bg-light text-dark mt-2 border rounded-pill px-3">
                               <i className="bi bi-check-circle-fill text-success me-1"></i>Rated
                             </span>
@@ -1159,7 +1203,7 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
         const soldOut = isSoldOut(o);
         const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
         const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
-        const canRate = o.status === 'accepted' && !o.buyer_rated_seller && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
+        const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
 
         // pill class: pill-pending / pill-accepted etc  (my_offers.php convention)
         const pillClass = `status-pill pill-${o.status}`;
@@ -1280,7 +1324,7 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
                       <i className="bi bi-star-fill me-1"></i>Rate Seller
                     </button>
                   )}
-                  {o.status === 'accepted' && o.buyer_rated_seller ? (
+                  {o.status === 'accepted' && Number(o.buyer_rated_seller) === 1 ? (
                     <span className="badge bg-light text-dark rounded-pill border py-2 px-3">
                       <i className="bi bi-check-circle-fill text-success me-1"></i>Rated
                     </span>
