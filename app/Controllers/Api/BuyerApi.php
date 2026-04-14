@@ -97,11 +97,17 @@ class BuyerApi extends ResourceController
                 ->groupEnd();
         }
         if ($listingType) {
-            // listing_type is sell/rent; anything else is a listing_type_category (e.g. clothing, electronics)
+            // Rental products always appear in browse regardless of the active filter
             if (in_array(strtolower($listingType), ['sell', 'rent'])) {
-                $builder->where('p.listing_type', strtolower($listingType));
+                $builder->groupStart()
+                    ->where('p.listing_type', strtolower($listingType))
+                    ->orWhere('p.listing_type', 'rent')
+                    ->groupEnd();
             } else {
-                $builder->where('LOWER(p.listing_type_category)', strtolower($listingType));
+                $builder->groupStart()
+                    ->where('LOWER(p.listing_type_category)', strtolower($listingType))
+                    ->orWhere('p.listing_type', 'rent')
+                    ->groupEnd();
             }
         }
         if ($category)
@@ -410,15 +416,22 @@ class BuyerApi extends ResourceController
 
         $offerType = $data['offer_type'] ?? $product['listing_type'];
 
-        // For rent offers, block if dates overlap with any active offer on the same product
+        // For rent offers, validate dates and minimum rental period
         if ($offerType === 'rent') {
             if (empty($data['rental_start_date']) || empty($data['rental_end_date'])) {
                 return $this->respond(['success' => false, 'message' => 'Rental start and end dates are required'], 400);
             }
 
+            $start = new \DateTime($data['rental_start_date']);
+            $end   = new \DateTime($data['rental_end_date']);
+            $days  = (int) $start->diff($end)->days + 1;
+            if ($days < 3) {
+                return $this->respond(['success' => false, 'message' => 'Minimum rental period is 3 days.'], 400);
+            }
+
             $overlapping = $db->table('offers')
                 ->where('product_id', $data['product_id'])
-                ->whereIn('status', ['pending', 'accepted'])
+                ->where('status', 'accepted')
                 ->where('rental_start_date <=', $data['rental_end_date'])
                 ->where('rental_end_date >=', $data['rental_start_date'])
                 ->countAllResults();

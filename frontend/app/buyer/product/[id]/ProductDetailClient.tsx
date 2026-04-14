@@ -32,9 +32,12 @@ function RentalCalendar({
   const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const parse = (s: string) => { if (!s) return null; const [y, m, day] = s.split('-').map(Number); return new Date(y, m - 1, day); };
 
+  // Strip optional time component so 'YYYY-MM-DD HH:MM:SS' compares correctly
+  const dateOnly = (s: string) => s ? s.split(' ')[0] : s;
+
   const isBooked = (d: Date) => {
     const ds = fmt(d);
-    return bookedRanges.some(r => ds >= r.start && ds <= r.end);
+    return bookedRanges.some(r => ds >= dateOnly(r.start) && ds <= dateOnly(r.end));
   };
 
   const startD = parse(startDate);
@@ -58,13 +61,20 @@ function RentalCalendar({
   for (let i = 0; i < first; i++) cells.push(null);
   for (let i = 1; i <= total; i++) cells.push(new Date(year, month, i));
 
+  const daysBetween = (a: Date, b: Date) => {
+    const lo = a <= b ? a : b;
+    const hi = a <= b ? b : a;
+    return Math.round((hi.getTime() - lo.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  };
+
   const handleDay = (d: Date) => {
-    if (d < today || isBooked(d)) return;
+    if (d < today) return;
     if (phase === 'start' || (startD && endD)) {
       onRangeChange(fmt(d), '');
       setPhase('end');
     } else {
       const s = startD!;
+      if (daysBetween(s, d) < 3) { toast.error('Minimum rental period is 3 days.'); return; }
       if (d < s) { onRangeChange(fmt(d), fmt(s)); }
       else { onRangeChange(fmt(s), fmt(d)); }
       setPhase('start');
@@ -91,36 +101,33 @@ function RentalCalendar({
           if (!d) return <div key={i} />;
           const past = d < today;
           const booked = isBooked(d);
-          const disabled = past || booked;
+          const disabled = past;
           const isS = startD && fmt(d) === fmt(startD);
           const isE = endD && fmt(d) === fmt(endD);
           const rang = inRange(d);
           const isT = fmt(d) === fmt(today);
 
           let bg = 'transparent', color = '#000', br = '6px';
-          if (booked) { bg = '#fee2e2'; color = '#dc2626'; }
-          else if (isS || isE) { bg = '#ffc63a'; color = '#000'; br = '8px'; }
+          if (isS || isE) { bg = '#ffc63a'; color = '#000'; br = '8px'; }
           else if (rang) { bg = '#fff3cc'; color = '#555'; br = '0'; }
-          if (past && !booked) { color = '#ccc'; }
+          if (past) { color = '#ccc'; }
 
           return (
             <div key={i}
               onClick={() => handleDay(d)}
               onMouseEnter={() => { if (!disabled) setHover(d); }}
               onMouseLeave={() => setHover(null)}
-              title={booked ? 'Already booked' : undefined}
               style={{
                 textAlign: 'center', padding: '6px 2px', borderRadius: br,
                 background: bg, color,
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 fontWeight: (isS || isE || isT) ? 700 : 400,
                 border: isT && !isS && !isE ? '1.5px solid #ffc63a' : '1.5px solid transparent',
-                opacity: past && !booked ? 0.35 : 1,
+                opacity: past ? 0.35 : 1,
                 transition: 'background .1s',
               }}
             >
               {d.getDate()}
-              {booked && <div style={{ width: 4, height: 4, background: '#dc2626', borderRadius: '50%', margin: '1px auto 0' }} />}
             </div>
           );
         })}
@@ -129,20 +136,19 @@ function RentalCalendar({
       <div style={{ display: 'flex', gap: '10px', marginTop: '10px', color: '#777', flexWrap: 'wrap' }}>
         <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#ffc63a', borderRadius: 3, marginRight: 4 }} />Selected</span>
         <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#fff3cc', borderRadius: 3, marginRight: 4 }} />Range</span>
-        <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#fee2e2', borderRadius: 3, marginRight: 4 }} />Booked</span>
       </div>
       {/* selected display */}
       {startDate && (
         <div style={{ marginTop: 10, padding: '8px 12px', background: '#fffdf0', borderRadius: 8, border: '1px solid #ffc63a44' }}>
           {endDate
             ? <><i className="bi bi-calendar-range me-1" style={{ color: '#ffc63a' }} /><strong>{startDate}</strong> → <strong>{endDate}</strong></>
-            : <><i className="bi bi-calendar me-1" style={{ color: '#ffc63a' }} /><strong>{startDate}</strong> — click an end date</>
+            : <><i className="bi bi-calendar me-1" style={{ color: '#ffc63a' }} /><strong>{startDate}</strong> — pick an end date (min 3 days)</>
           }
         </div>
       )}
       {!startDate && (
         <div style={{ marginTop: 10, padding: '8px 12px', background: '#f8f9fa', borderRadius: 8, color: '#888', fontSize: '0.78rem' }}>
-          <i className="bi bi-info-circle me-1" />Click a date to start your rental period
+          <i className="bi bi-info-circle me-1" />Click a start date — minimum rental period is 3 days
         </div>
       )}
     </div>

@@ -476,8 +476,10 @@ class SellerApi extends ResourceController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        // Mark product as sold
-        $db->table('products')->where('id', $offer['product_id'])->update(['status' => 'sold', 'updated_at' => date('Y-m-d H:i:s')]);
+        // Mark product as sold only for sell-type offers; rental products stay approved so they remain listed
+        if (($offer['offer_type'] ?? $product['listing_type']) !== 'rent') {
+            $db->table('products')->where('id', $offer['product_id'])->update(['status' => 'sold', 'updated_at' => date('Y-m-d H:i:s')]);
+        }
 
         // Auto-reject ALL other competing offers (pending + negotiating) and notify each buyer
         $otherOffers = $db->table('offers')
