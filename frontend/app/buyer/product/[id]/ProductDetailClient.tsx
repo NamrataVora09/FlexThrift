@@ -238,7 +238,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const [user, setUser] = useState<{ name?: string; user_type?: string } | null>(null);
   const [inCart, setInCart] = useState(false);
   const [contactLoading, setContactLoading] = useState(false);
-  const [contactInfo, setContactInfo] = useState<{ seller_name: string; seller_email: string; seller_mobile: string; already_viewed: boolean } | null>(null);
+  const [contactInfo, setContactInfo] = useState<{ seller_name: string; seller_email: string; seller_mobile: string; seller_address: string; already_viewed: boolean } | null>(null);
   const [contactError, setContactError] = useState<string | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
 
@@ -264,7 +264,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
           setOfferSuccess(true);
           // Also fetch seller contact so "View Seller Contact" button is visible after refresh
           setContactLoading(true);
-          api.post<{ seller_name: string; seller_email: string; seller_mobile: string; already_viewed: boolean }>(
+          api.post<{ seller_name: string; seller_email: string; seller_mobile: string; seller_address: string; already_viewed: boolean }>(
             `/buyer/view-seller-contact/${product.id}`
           ).then(contactRes => {
             setContactLoading(false);
@@ -353,7 +353,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
       // Auto-fetch seller contact after successful offer
       setContactLoading(true);
       setContactError(null);
-      const contactRes = await api.post<{ seller_name: string; seller_email: string; seller_mobile: string; already_viewed: boolean }>(
+      const contactRes = await api.post<{ seller_name: string; seller_email: string; seller_mobile: string; seller_address: string; already_viewed: boolean }>(
         `/buyer/view-seller-contact/${product.id}`
       );
       setContactLoading(false);
@@ -378,7 +378,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
     }
     setContactLoading(true);
     setContactError(null);
-    const res = await api.post<{ seller_name: string; seller_email: string; seller_mobile: string; already_viewed: boolean }>(
+    const res = await api.post<{ seller_name: string; seller_email: string; seller_mobile: string; seller_address: string; already_viewed: boolean }>(
       `/buyer/view-seller-contact/${product.id}`
     );
     setContactLoading(false);
@@ -1091,6 +1091,17 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       <a href={`tel:${contactInfo.seller_mobile}`} className="fw-bold text-dark text-decoration-none">{contactInfo.seller_mobile}</a>
                     </div>
                   </div>
+                  {contactInfo.seller_address && (
+                    <div className="d-flex align-items-start gap-3 p-3 rounded-3" style={{ background: '#f8f9fa' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ffc63a22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className="bi bi-geo-alt-fill" style={{ color: '#ffc63a', fontSize: '1.1rem' }}></i>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Address</div>
+                        <div className="fw-bold">{contactInfo.seller_address}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

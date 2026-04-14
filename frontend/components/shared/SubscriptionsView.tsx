@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth-context';
@@ -12,15 +12,41 @@ interface ActiveSub { plan_name: string; plan_type: string; limit_value: number;
 interface HistoryItem { plan_name: string; plan_type: string; price: string; starts_at: string; expires_at: string; is_active: number; }
 interface SubData { plans: Plan[]; active: ActiveSub | null; history: HistoryItem[]; }
 
+interface ChargeItem { name: string; type: 'percentage' | 'fixed'; value: number; amount: number; }
+interface CheckoutData {
+  plan: Plan;
+  user: { name: string; email: string; mobile: string; address: string };
+  charge_breakdown: ChargeItem[];
+  total_charges: number;
+  referral_discount: number;
+  total: number;
+}
+
 interface Props { role: string; userType: string; }
 
 export default function SubscriptionsView({ role, userType }: Props) {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  // Payment modal state
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [couponMsg, setCouponMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [appliedCoupon, setAppliedCoupon] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const [paying, setPaying] = useState(false);
 
   // SuperAdmin has full access
   if (user?.role === 'super_admin') {
@@ -49,9 +75,75 @@ export default function SubscriptionsView({ role, userType }: Props) {
     });
   }, [userType]);
 
-  const handleChoosePlan = (planId: number) => {
-    router.push(`/${role}/checkout-plan/${planId}`);
+  const openCheckout = async (plan: Plan) => {
+    setSelectedPlan(plan);
+    setCheckoutLoading(true);
+    setCheckoutData(null);
+    setCouponCode('');
+    setCouponMsg(null);
+    setCouponDiscount(0);
+    setAppliedCoupon('');
+    setModalOpen(true);
+
+    const r = await api.get<CheckoutData>(`/${role}/plan-checkout-details/${plan.id}`);
+    if (r.success && r.data) {
+      setCheckoutData(r.data);
+    } else {
+      setFlashMsg({ text: r.message || 'Failed to load plan details', ok: false });
+      setModalOpen(false);
+    }
+    setCheckoutLoading(false);
   };
+
+  const closeModal = () => {
+    if (paying) return;
+    setModalOpen(false);
+    setSelectedPlan(null);
+    setCheckoutData(null);
+  };
+
+  const applyCoupon = useCallback(async () => {
+    if (!couponCode.trim() || !selectedPlan) return;
+    setCouponLoading(true);
+    setCouponMsg(null);
+    const res = await api.post<{ discount: number }>(`/${role}/apply-coupon`, {
+      code: couponCode.trim().toUpperCase(),
+      plan_id: selectedPlan.id,
+    });
+    setCouponLoading(false);
+    if (res.success && res.data) {
+      setCouponDiscount(res.data.discount);
+      setAppliedCoupon(couponCode.trim().toUpperCase());
+      setCouponMsg({ text: res.message || 'Coupon applied!', ok: true });
+    } else {
+      setCouponDiscount(0);
+      setAppliedCoupon('');
+      setCouponMsg({ text: res.message || 'Invalid coupon', ok: false });
+    }
+  }, [couponCode, selectedPlan, role]);
+
+  const processPayment = useCallback(async () => {
+    if (!checkoutData || !selectedPlan) return;
+    setPaying(true);
+    const callbackUrl = `${window.location.origin}/${role}/payment-callback?id={id}`;
+    const res = await api.post<{ redirect_url: string; merchant_order_id: string }>(`/${role}/initiate-payment`, {
+      plan_id: selectedPlan.id,
+      coupon_code: appliedCoupon,
+      callback_url: callbackUrl,
+    });
+    if (res.success && res.data?.redirect_url) {
+      window.location.href = res.data.redirect_url;
+    } else {
+      setFlashMsg({ text: res.message || 'Failed to initiate payment. Please try again.', ok: false });
+      setPaying(false);
+      setModalOpen(false);
+    }
+  }, [checkoutData, selectedPlan, appliedCoupon, role]);
+
+  const basePrice      = Number(checkoutData?.plan?.price ?? 0);
+  const totalCharges   = checkoutData?.total_charges ?? 0;
+  const referralDiscount = checkoutData?.referral_discount ?? 0;
+  const displayTotal   = Math.max(1, basePrice + totalCharges - referralDiscount - couponDiscount);
 
   if (loading) return (
     <DashboardLayout requiredRoles={[role]}>
@@ -63,6 +155,59 @@ export default function SubscriptionsView({ role, userType }: Props) {
 
   return (
     <DashboardLayout requiredRoles={[role]}>
+      <style>{`
+        .pay-modal-backdrop {
+          position: fixed; inset: 0; background: rgba(0,0,0,.55);
+          z-index: 1050; display: flex; align-items: center; justify-content: center;
+          padding: 1rem; animation: fadeIn .18s ease;
+        }
+        .pay-modal {
+          background: #fff; border-radius: 1.25rem;
+          box-shadow: 0 24px 64px rgba(0,0,0,.18);
+          width: 100%; max-width: 820px; max-height: 90vh;
+          overflow-y: auto; animation: slideUp .2s ease;
+        }
+        .pay-modal-header {
+          padding: 1.4rem 1.75rem 1rem;
+          border-bottom: 1px solid #f0f0f0;
+          display: flex; align-items: center; justify-content: space-between;
+        }
+        .pay-modal-body { padding: 1.5rem 1.75rem; }
+        .price-row { display: flex; justify-content: space-between; margin-bottom: .6rem; font-size: .9rem; }
+        .price-total {
+          border-top: 1px dashed #dee2e6; margin-top: .9rem; padding-top: .9rem;
+          font-size: 1.15rem; font-weight: 700;
+          display: flex; justify-content: space-between;
+        }
+        .plan-chip {
+          background: rgba(255,198,58,.15); color: #000;
+          padding: .18rem .65rem; border-radius: 2rem;
+          font-size: .78rem; font-weight: 600; display: inline-block;
+        }
+        .btn-pay {
+          background: #ffc63a; color: #000; border: none;
+          border-radius: 10px; font-weight: 700; padding: .8rem 1.5rem;
+          font-size: 1rem; transition: all .25s; width: 100%;
+        }
+        .btn-pay:hover:not(:disabled) { background: #e0a800; transform: translateY(-2px); }
+        .btn-pay:disabled { opacity: .6; cursor: not-allowed; }
+        .close-btn {
+          background: none; border: none; font-size: 1.4rem;
+          line-height: 1; cursor: pointer; color: #666; padding: .2rem .4rem;
+          border-radius: 6px; transition: background .15s;
+        }
+        .close-btn:hover { background: #f3f3f3; }
+        .gateway-logo {
+          display: flex; align-items: center; gap: .5rem;
+          font-size: .72rem; color: #888; justify-content: center; margin-top: .75rem;
+        }
+        .coupon-input { border-radius: 8px 0 0 8px !important; }
+        .coupon-btn   { border-radius: 0 8px 8px 0 !important; }
+        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        .privilege-list li { display: flex; align-items: flex-start; gap: .5rem; margin-bottom: .55rem; font-size: .88rem; }
+      `}</style>
+
       <div className="container">
         <PageHeader title="Subscriptions" />
 
@@ -74,6 +219,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
           </div>
         )}
 
+        {/* Active Subscription */}
         {data?.active && (
           <div className="card mb-4" style={{ border: '2px solid #ffc63a' }}>
             <div className="card-body">
@@ -93,12 +239,13 @@ export default function SubscriptionsView({ role, userType }: Props) {
           </div>
         )}
 
+        {/* Plans */}
         <h5 className="subsection_label_font mb-3">Available Plans</h5>
         <div className="row">
           {data?.plans && data.plans.length > 0 ? data.plans.map((plan) => (
             <div key={plan.id} className="col-md-4 mb-4">
               <div className="card h-100">
-                <div className="card-body text-center">
+                <div className="card-body text-center d-flex flex-column">
                   <h5 className="fw-bold">{plan.name}</h5>
                   <span className="type-badge sell">{plan.plan_type}</span>
                   <h3 className="fw-bold mt-3" style={{ color: '#ffc63a' }}>₹{Number(plan.price).toLocaleString('en-IN')}</h3>
@@ -108,10 +255,11 @@ export default function SubscriptionsView({ role, userType }: Props) {
                       : `${plan.limit_value} items`}
                   </p>
                   <button
-                    className="btn yellow_button w-100 mt-2"
-                    onClick={() => handleChoosePlan(plan.id)}
+                    className="btn yellow_button w-100 mt-auto"
+                    onClick={() => openCheckout(plan)}
                   >
-                    {hasActiveSub ? 'Purchase More' : 'Subscribe'}
+                    <i className="bi bi-credit-card me-2" />
+                    {hasActiveSub ? 'Purchase More' : 'Subscribe & Pay'}
                   </button>
                 </div>
               </div>
@@ -123,6 +271,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
           )}
         </div>
 
+        {/* History */}
         {data?.history && data.history.length > 0 && (
           <>
             <h5 className="subsection_label_font mt-4 mb-3">Subscription History</h5>
@@ -137,8 +286,14 @@ export default function SubscriptionsView({ role, userType }: Props) {
                           <td className="fw-semibold">{h.plan_name}</td>
                           <td><span className="type-badge sell">{h.plan_type}</span></td>
                           <td>₹{h.price}</td>
-                          <td className="normal_label_font">{new Date(h.starts_at).toLocaleDateString('en-IN')} - {new Date(h.expires_at).toLocaleDateString('en-IN')}</td>
-                          <td>{Number(h.is_active) === 1 ? <span className="accept_sts">Active</span> : <span className="status-badge pending">Expired</span>}</td>
+                          <td className="normal_label_font">
+                            {new Date(h.starts_at).toLocaleDateString('en-IN')} – {new Date(h.expires_at).toLocaleDateString('en-IN')}
+                          </td>
+                          <td>
+                            {Number(h.is_active) === 1
+                              ? <span className="accept_sts">Active</span>
+                              : <span className="status-badge pending">Expired</span>}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -149,6 +304,166 @@ export default function SubscriptionsView({ role, userType }: Props) {
           </>
         )}
       </div>
+
+      {/* ── Payment Modal ── */}
+      {modalOpen && (
+        <div className="pay-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
+          <div className="pay-modal">
+            <div className="pay-modal-header">
+              <div>
+                <h5 className="fw-bold mb-0">Complete Payment</h5>
+                <p className="text-muted small mb-0">Secure checkout via PhonePe</p>
+              </div>
+              <button className="close-btn" onClick={closeModal} disabled={paying}>
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
+
+            {checkoutLoading ? (
+              <div className="text-center py-5">
+                <div className="spinner-border" style={{ color: '#ffc63a' }} />
+                <p className="text-muted mt-3 small">Loading plan details…</p>
+              </div>
+            ) : checkoutData && (
+              <div className="pay-modal-body">
+                <div className="row g-4">
+
+                  {/* Left — Plan info */}
+                  <div className="col-md-6">
+                    {/* Plan card */}
+                    <div className="d-flex align-items-center p-3 rounded-3 border border-warning-subtle mb-4" style={{ background: '#fffdf5' }}>
+                      <div className="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                        style={{ width: 46, height: 46, background: '#000', color: '#ffc63a' }}>
+                        <i className="bi bi-gem fs-5" />
+                      </div>
+                      <div className="flex-grow-1">
+                        <h6 className="fw-bold mb-0">{checkoutData.plan.name}</h6>
+                        <span className="plan-chip">{checkoutData.plan.plan_type}</span>
+                      </div>
+                      <div className="fw-bold">₹{Number(checkoutData.plan.price).toLocaleString('en-IN')}</div>
+                    </div>
+
+                    {/* Privileges */}
+                    <h6 className="fw-bold mb-3">What you get</h6>
+                    <ul className="list-unstyled privilege-list">
+                      <li>
+                        <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
+                        {checkoutData.plan.plan_type === 'quantity'
+                          ? <span><strong>{checkoutData.plan.limit_value}</strong> product listing slots</span>
+                          : <span><strong>Unlimited</strong> listings for the duration</span>}
+                      </li>
+                      <li>
+                        <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
+                        <span>Validity:&nbsp;<strong>{Number(checkoutData.plan.duration_hours) > 0 ? checkoutData.plan.duration_hours + ' Hours' : 'Life-Time'}</strong></span>
+                      </li>
+                      <li>
+                        <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
+                        <span>Priority visibility &amp; seller badge</span>
+                      </li>
+                    </ul>
+
+                    {/* Billing info */}
+                    <div className="p-3 rounded-3 bg-light border mt-3">
+                      <p className="fw-bold mb-1 small">{checkoutData.user.name}</p>
+                      <p className="text-muted mb-0" style={{ fontSize: '.8rem' }}>{checkoutData.user.email}</p>
+                      {checkoutData.user.mobile && <p className="text-muted mb-0" style={{ fontSize: '.8rem' }}>{checkoutData.user.mobile}</p>}
+                    </div>
+                  </div>
+
+                  {/* Right — Pricing + Pay */}
+                  <div className="col-md-6">
+                    <h6 className="fw-bold mb-3">Price Breakdown</h6>
+
+                    <div className="price-row">
+                      <span className="text-muted">Subscription Price</span>
+                      <span className="fw-semibold">₹{basePrice.toFixed(2)}</span>
+                    </div>
+
+                    {checkoutData.charge_breakdown.map((c, i) => (
+                      <div key={i} className="price-row">
+                        <span className="text-muted">{c.name}&nbsp;({c.type === 'percentage' ? `${c.value}%` : 'Fixed'})</span>
+                        <span className="fw-semibold">₹{Number(c.amount).toFixed(2)}</span>
+                      </div>
+                    ))}
+
+                    {referralDiscount > 0 && (
+                      <div className="price-row text-success">
+                        <span className="fw-bold">Referral Credit</span>
+                        <span className="fw-bold">− ₹{referralDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {couponDiscount > 0 && (
+                      <div className="price-row text-success">
+                        <span className="fw-bold">Coupon ({appliedCoupon})</span>
+                        <span className="fw-bold">− ₹{couponDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    <div className="price-total">
+                      <span>Total Payable</span>
+                      <span style={{ color: '#ffc63a' }}>₹{displayTotal.toFixed(2)}</span>
+                    </div>
+
+                    {/* Coupon */}
+                    <div className="mt-4 mb-3">
+                      <label className="form-label small fw-bold">Apply Coupon Code</label>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className="form-control coupon-input text-uppercase"
+                          placeholder="Enter code"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
+                          disabled={couponLoading || paying}
+                        />
+                        <button
+                          className="btn btn-outline-secondary coupon-btn fw-bold"
+                          onClick={applyCoupon}
+                          disabled={couponLoading || paying}
+                        >
+                          {couponLoading ? <span className="spinner-border spinner-border-sm" /> : 'Apply'}
+                        </button>
+                      </div>
+                      {couponMsg && (
+                        <div className={`small mt-1 ${couponMsg.ok ? 'text-success' : 'text-danger'}`}>
+                          <i className={`bi ${couponMsg.ok ? 'bi-check-circle' : 'bi-exclamation-circle'} me-1`} />
+                          {couponMsg.text}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="alert alert-warning small border-0 py-2 d-flex gap-2 align-items-start"
+                      style={{ background: 'rgba(255,198,58,.12)', borderRadius: 8 }}>
+                      <i className="bi bi-shield-lock-fill fs-6 flex-shrink-0" style={{ color: '#ffc63a' }} />
+                      <span>Payments are 256-bit encrypted and secure via PhonePe.</span>
+                    </div>
+
+                    <button
+                      className="btn-pay d-flex align-items-center justify-content-center gap-2"
+                      onClick={processPayment}
+                      disabled={paying}
+                    >
+                      {paying ? (
+                        <><span className="spinner-border spinner-border-sm" /> Redirecting to PhonePe…</>
+                      ) : (
+                        <><i className="bi bi-wallet2 fs-5" /> Pay ₹{displayTotal.toFixed(2)}</>
+                      )}
+                    </button>
+
+                    <div className="gateway-logo mt-3">
+                      <i className="bi bi-lock-fill" />
+                      <span>Secured by PhonePe Payment Gateway</span>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

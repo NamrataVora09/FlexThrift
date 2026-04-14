@@ -119,7 +119,12 @@ function register_api_routes($routes) {
         $routes->get('product/(:num)', 'Api\SellerApi::productDetail/$1');
         $routes->post('report-user/(:num)', 'Api\SellerApi::reportUser/$1');
         $routes->post('rate-buyer', 'Api\SellerApi::rateBuyer');
+        // Subscription payment routes
+        $routes->get('plan-checkout-details/(:num)', 'Api\SellerApi::planCheckoutDetails/$1');
+        $routes->post('apply-coupon', 'Api\SellerApi::applyCoupon');
+        $routes->post('initiate-payment', 'Api\SellerApi::initiatePayment');
     });
+    $routes->get('seller/verify-payment', 'Api\SellerApi::verifyPayment');
 
     // Shared API (protected)
     $routes->group('shared', ['filter' => 'jwt'], function ($routes) {
