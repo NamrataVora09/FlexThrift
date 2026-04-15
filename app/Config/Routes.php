@@ -54,6 +54,7 @@ function register_api_routes($routes) {
     // Auth (protected)
     $routes->group('auth', ['filter' => 'jwt'], function ($routes) {
         $routes->get('me', 'Api\AuthApi::me');
+        $routes->get('referral-stats', 'Api\AuthApi::referralStats');
         $routes->post('switch-role/(:any)', 'Api\AuthApi::switchRole/$1');
     });
 

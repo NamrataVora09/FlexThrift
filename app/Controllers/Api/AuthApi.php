@@ -216,7 +216,31 @@ class AuthApi extends ResourceController
         }
 
         // Check existing email
-        if ($this->userModel->getUserByEmail($data['email'])) {
+        $existingUser = $this->userModel->getUserByEmail($data['email']);
+        if ($existingUser) {
+            $requestedType = $data['user_type'] ?? 'buyer';
+            $currentType   = $existingUser['user_type'];
+
+            // Allow upgrading a buyer to seller (or vice versa) by switching to 'both'
+            $canUpgrade = (
+                ($requestedType === 'seller' && $currentType === 'buyer') ||
+                ($requestedType === 'buyer'  && $currentType === 'seller')
+            );
+
+            if ($canUpgrade) {
+                $this->userModel->update($existingUser['id'], [
+                    'user_type'  => 'both',
+                    'role'       => $requestedType,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+                $otp = $this->userModel->generateOTP($existingUser['id']);
+                if ($otp) $this->sendOTPEmail($existingUser['email'], $existingUser['name'], $otp);
+                return $this->respond([
+                    'success' => true,
+                    'message' => 'Account upgraded successfully. OTP sent to your email.',
+                ], 200);
+            }
+
             return $this->respond([
                 'success' => false,
                 'message' => 'Email already registered',
@@ -252,6 +276,29 @@ class AuthApi extends ResourceController
 
         if (!$userId) {
             return $this->respond(['success' => false, 'message' => 'Registration failed'], 500);
+        }
+
+        // Process referral code — only record it; reward is credited after friend buys a plan
+        $referredBy = strtoupper(trim($data['referred_by'] ?? ''));
+        if ($referredBy) {
+            $db = \Config\Database::connect();
+            $referrer = $db->table('users')->where('referral_code', $referredBy)->get()->getRowArray();
+            if ($referrer && $referrer['id'] !== $userId) {
+                $settings = $db->table('system_settings')
+                    ->whereIn('setting_key', ['referral_enabled'])
+                    ->get()->getResultArray();
+                $cfg = [];
+                foreach ($settings as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+
+                if (($cfg['referral_enabled'] ?? '1') === '1') {
+                    // Record that this user was referred; referrer balance credited on first plan purchase
+                    $db->table('users')->where('id', $userId)->update([
+                        'referred_by'       => $referredBy,
+                        'has_used_referral' => 0,
+                        'updated_at'        => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
         }
 
         // Generate and send OTP
@@ -303,6 +350,76 @@ class AuthApi extends ResourceController
             'data'    => [
                 'user'  => $this->sanitizeUser($user, $newRole),
                 'token' => $token,
+            ],
+        ]);
+    }
+
+    /**
+     * GET /api/v1/auth/referral-stats
+     */
+    public function referralStats()
+    {
+        $jwtUser = $this->request->jwt_user ?? null;
+        if (!$jwtUser) {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $user = $this->userModel->find($jwtUser['user_id']);
+        if (!$user) {
+            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        $db = \Config\Database::connect();
+
+        // Fetch referral settings
+        $rows = $db->table('system_settings')
+            ->whereIn('setting_key', ['referral_enabled', 'referral_reward_amount', 'referral_expiry_days'])
+            ->get()->getResultArray();
+        $cfg = [];
+        foreach ($rows as $r) {
+            $cfg[$r['setting_key']] = $r['setting_value'];
+        }
+
+        $rewardAmount = (float) ($cfg['referral_reward_amount'] ?? 40);
+        $referralEnabled = ($cfg['referral_enabled'] ?? '1') === '1';
+
+        // Get users referred by this user's code
+        $referredUsers = [];
+        if (!empty($user['referral_code'])) {
+            $referred = $db->table('users')
+                ->select('id, name, created_at, has_used_referral')
+                ->where('referred_by', $user['referral_code'])
+                ->orderBy('created_at', 'DESC')
+                ->get()->getResultArray();
+
+            foreach ($referred as $r) {
+                $nameParts = explode(' ', trim($r['name']));
+                $initials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
+                $referredUsers[] = [
+                    'initials'        => $initials,
+                    'name'            => substr($r['name'], 0, 3) . str_repeat('*', max(0, strlen($r['name']) - 3)),
+                    'joined_at'       => $r['created_at'],
+                    'reward_used'     => (int) $r['has_used_referral'],
+                    'reward_earned'   => (int) $r['has_used_referral'] ? $rewardAmount : 0,
+                ];
+            }
+        }
+
+        $totalEarned = count(array_filter($referredUsers, fn($u) => $u['reward_used'])) * $rewardAmount;
+
+        return $this->respond([
+            'success' => true,
+            'data'    => [
+                'referral_code'     => $user['referral_code'] ?? '',
+                'referral_balance'  => (float) ($user['referral_balance'] ?? 0),
+                'has_used_referral' => (int) ($user['has_used_referral'] ?? 0),
+                'referral_expires_at' => $user['referral_expires_at'] ?? null,
+                'referred_by'       => $user['referred_by'] ?? null,
+                'total_referrals'   => count($referredUsers),
+                'total_earned'      => $totalEarned,
+                'reward_amount'     => $rewardAmount,
+                'referral_enabled'  => $referralEnabled,
+                'referred_users'    => $referredUsers,
             ],
         ]);
     }
@@ -409,14 +526,19 @@ class AuthApi extends ResourceController
             'state'             => $user['state'] ?? '',
             'user_type'         => $user['user_type'],
             'role'              => $role,
-            'reliability_score'  => (int) ($user['reliability_score'] ?? 100),
-            'buyer_rating_avg'   => (float) ($user['buyer_rating_avg'] ?? 0),
-            'buyer_rating_count' => (int) ($user['buyer_rating_count'] ?? 0),
-            'referral_code'      => $user['referral_code'] ?? '',
-            'is_verified'        => (int) ($user['is_verified'] ?? 0),
-            'blocked_buyer'      => (int) ($user['blocked_buyer'] ?? 0),
-            'blocked_seller'     => (int) ($user['blocked_seller'] ?? 0),
-            'created_at'         => $user['created_at'] ?? '',
+            'reliability_score'          => (int) ($user['reliability_score'] ?? 100),
+            'seller_reliability_score'   => (int) ($user['seller_reliability_score'] ?? 0),
+            'buyer_rating_avg'           => (float) ($user['buyer_rating_avg'] ?? 0),
+            'buyer_rating_count'         => (int) ($user['buyer_rating_count'] ?? 0),
+            'seller_rating_avg'          => (float) ($user['seller_rating_avg'] ?? 0),
+            'seller_rating_count'        => (int) ($user['seller_rating_count'] ?? 0),
+            'products_uploaded_count'    => (int) ($user['products_uploaded_count'] ?? 0),
+            'referral_code'              => $user['referral_code'] ?? '',
+            'is_verified'                => (int) ($user['is_verified'] ?? 0),
+            'bgv_cleared'                => (int) ($user['bgv_cleared'] ?? 0),
+            'blocked_buyer'              => (int) ($user['blocked_buyer'] ?? 0),
+            'blocked_seller'             => (int) ($user['blocked_seller'] ?? 0),
+            'created_at'                 => $user['created_at'] ?? '',
         ];
     }
 

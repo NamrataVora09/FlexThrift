@@ -43,6 +43,8 @@ export default function SellerCheckoutPlanPage() {
   const [appliedCoupon, setAppliedCoupon] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
 
+  const [useReferral, setUseReferral] = useState(true);
+
   const [paying, setPaying] = useState(false);
 
   useEffect(() => {
@@ -59,7 +61,8 @@ export default function SellerCheckoutPlanPage() {
 
   const basePrice = Number(checkoutData?.plan?.price ?? 0);
   const totalCharges = checkoutData?.total_charges ?? 0;
-  const referralDiscount = checkoutData?.referral_discount ?? 0;
+  const availableReferral = checkoutData?.referral_discount ?? 0;
+  const referralDiscount = useReferral ? availableReferral : 0;
   const displayTotal = Math.max(0, basePrice + totalCharges - referralDiscount - couponDiscount);
 
   const applyCoupon = useCallback(async () => {
@@ -89,6 +92,7 @@ export default function SellerCheckoutPlanPage() {
     const res = await api.post<{ redirect_url: string; merchant_order_id: string }>('/seller/initiate-payment', {
       plan_id: Number(planId),
       coupon_code: appliedCoupon,
+      use_referral: useReferral,
       callback_url: callbackUrl,
     });
     if (res.success && res.data?.redirect_url) {
@@ -219,7 +223,9 @@ export default function SellerCheckoutPlanPage() {
 
               {referralDiscount > 0 && (
                 <div className="price-row text-success">
-                  <span className="fw-bold">Referral Credit Applied</span>
+                  <span className="fw-bold">
+                    <i className="bi bi-gift-fill me-1"></i>Referral Credit
+                  </span>
                   <span className="fw-bold">- ₹{referralDiscount.toFixed(2)}</span>
                 </div>
               )}
@@ -236,8 +242,55 @@ export default function SellerCheckoutPlanPage() {
                 <span>₹{Math.max(1, displayTotal).toFixed(2)}</span>
               </div>
 
+              {/* Referral Balance Toggle */}
+              {availableReferral > 0 && (
+                <div className="mt-4" style={{
+                  background: useReferral ? 'rgba(16,185,129,0.06)' : '#f8f9fa',
+                  border: `1.5px solid ${useReferral ? 'rgba(16,185,129,0.3)' : '#e5e7eb'}`,
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  transition: 'all 0.2s',
+                }}>
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-2">
+                      <i className="bi bi-gift-fill" style={{ color: useReferral ? '#10b981' : '#9ca3af', fontSize: '1.1rem' }}></i>
+                      <div>
+                        <div className="fw-bold" style={{ fontSize: '0.85rem' }}>
+                          Referral Balance
+                          {useReferral && (
+                            <span className="ms-2 badge" style={{ background: '#10b981', color: '#fff', fontSize: '0.7rem', borderRadius: '50px', padding: '2px 8px' }}>
+                              Applied
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+                          ₹{availableReferral.toFixed(2)} available
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setUseReferral(prev => !prev)}
+                      style={{
+                        background: useReferral ? 'rgba(239,68,68,0.08)' : '#10b981',
+                        color: useReferral ? '#ef4444' : '#fff',
+                        border: `1px solid ${useReferral ? 'rgba(239,68,68,0.2)' : '#10b981'}`,
+                        borderRadius: '8px',
+                        padding: '5px 14px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {useReferral ? 'Remove' : 'Apply'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Coupon */}
-              <div className="mt-4 mb-4">
+              <div className="mt-3 mb-4">
                 <label className="form-label small fw-bold">Apply Coupon Code</label>
                 <div className="input-group">
                   <input

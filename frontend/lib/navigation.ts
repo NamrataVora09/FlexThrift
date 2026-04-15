@@ -24,6 +24,7 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'Contacts', href: '/buyer/contacts', icon: 'fa-solid fa-address-book' },
             { label: 'Offers', href: '/buyer/my-offers', icon: 'fa fa-tags' },
             { label: 'Notifications', href: '/buyer/notifications', icon: 'fa fa-bell' },
+            { label: 'Referral Program', href: '/buyer/referral', icon: 'fa fa-gift' },
             { label: 'Transactions', href: '/buyer/transactions', icon: 'fa fa-receipt' },
             { label: 'Help & Support', href: '/buyer/help', icon: 'fa fa-circle-question' },
           ],
@@ -35,12 +36,14 @@ export function getNavigation(role: string): NavSection[] {
         {
           items: [
             { label: 'Dashboard', href: '/seller', icon: 'fa fa-chart-pie' },
+            { label: 'Profile', href: '/seller/profile', icon: 'fa fa-user' },
             { label: 'Subscription', href: '/seller/subscriptions', icon: 'fa fa-credit-card' },
             { label: 'Upload Product', href: '/seller/upload-product', icon: 'fa fa-upload' },
             { label: 'My Products', href: '/seller/my-products', icon: 'fa fa-box' },
             { label: 'Analytics', href: '/seller/analytics', icon: 'fa fa-chart-line' },
             { label: 'Offers', href: '/seller/offers', icon: 'fa fa-tags' },
             { label: 'Notifications', href: '/seller/notifications', icon: 'fa fa-bell' },
+            { label: 'Referral Program', href: '/seller/referral', icon: 'fa fa-gift' },
             { label: 'Transactions', href: '/seller/transactions', icon: 'fa fa-receipt' },
             { label: 'Help & Support', href: '/seller/help', icon: 'fa fa-circle-question' },
           ],

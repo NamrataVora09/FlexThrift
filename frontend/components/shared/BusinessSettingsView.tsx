@@ -90,9 +90,9 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
   image_upload_guidelines: { label: 'Image Upload Guidelines', type: 'textarea', hint: 'Guidelines shown to sellers during upload.' },
   smtp_host: { label: 'SMTP Host' },
   smtp_port: { label: 'SMTP Port' },
-  smtp_crypto: { label: 'Encryption', type: 'select' },
-  smtp_user: { label: 'SMTP Username' },
-  smtp_pass: { label: 'SMTP Password', type: 'password' },
+  smtp_encryption: { label: 'Encryption', type: 'select' },
+  smtp_username: { label: 'SMTP Username' },
+  smtp_password: { label: 'SMTP Password', type: 'password' },
   smtp_from_email: { label: 'From Email Address' },
   smtp_from_name: { label: 'From Name' },
   phonepe_env: { label: 'Environment', type: 'select' },
@@ -114,7 +114,7 @@ const TAB_FIELDS: Record<string, string[]> = {
   pricing: [],
   offers: ['offer_acceptance_limit_days', 'seller_rating_period_days', 'seller_rejection_window_hours', 'buyer_rating_period_days'],
   images: ['max_product_images', 'max_image_size_mb', 'image_upload_guidelines'],
-  smtp: ['smtp_host', 'smtp_port', 'smtp_crypto', 'smtp_user', 'smtp_pass', 'smtp_from_email', 'smtp_from_name'],
+  smtp: ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name'],
   messages: [],
   payment: ['phonepe_env', 'phonepe_merchant_id', 'phonepe_client_id', 'phonepe_client_secret', 'phonepe_client_version'],
   referral: ['referral_reward_amount', 'referral_expiry_days', 'referral_min_purchase', 'referral_enabled'],
@@ -599,7 +599,7 @@ export default function BusinessSettingsView() {
         </div>
       </div>
     );
-    if (field.type === 'select' && key === 'smtp_crypto') return (
+    if (field.type === 'select' && key === 'smtp_encryption') return (
       <div className="col-md-3 mb-3" key={key}>
         <label className="form-label" style={labelStyle}>{field.label}</label>
         <select className="form-select" style={inputStyle} value={val} onChange={(e) => update(key, e.target.value)}>
@@ -616,7 +616,7 @@ export default function BusinessSettingsView() {
         </div>
       </div>
     );
-    const colSize = key.includes('smtp_port') || key.includes('smtp_crypto') ? 3 : key.includes('smtp') ? 6 : 4;
+    const colSize = key.includes('smtp_port') || key.includes('smtp_encryption') ? 3 : key.includes('smtp') ? 6 : 4;
     return (
       <div className={`col-md-${colSize} mb-3`} key={key}>
         <label className="form-label" style={labelStyle}>{field.label}</label>

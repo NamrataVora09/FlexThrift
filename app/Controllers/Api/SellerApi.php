@@ -1421,6 +1421,7 @@ class SellerApi extends ResourceController
         $planId      = (int) ($data['plan_id'] ?? 0);
         $couponCode  = strtoupper(trim($data['coupon_code'] ?? ''));
         $callbackUrl = trim($data['callback_url'] ?? '');
+        $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
 
         $plan = $db->table('subscription_plans')
             ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'seller'])
@@ -1457,15 +1458,18 @@ class SellerApi extends ResourceController
 
         $finalAmount = ($basePrice + $totalCharges) - $discount;
 
+        // Referral discount (only if user chose to apply it)
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         $referralDiscountApplied = 0;
-        $referralBalance = (float) ($user['referral_balance'] ?? 0);
-        $hasUsed         = (int) ($user['has_used_referral'] ?? 0);
-        $expiry          = $user['referral_expires_at'] ?? null;
-        if ($referralBalance > 0 && $hasUsed === 0) {
-            if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
-                $referralDiscountApplied = $referralBalance;
-                $finalAmount -= $referralDiscountApplied;
+        if ($useReferral) {
+            $referralBalance = (float) ($user['referral_balance'] ?? 0);
+            $hasUsed         = (int) ($user['has_used_referral'] ?? 0);
+            $expiry          = $user['referral_expires_at'] ?? null;
+            if ($referralBalance > 0 && $hasUsed === 0) {
+                if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                    $referralDiscountApplied = $referralBalance;
+                    $finalAmount -= $referralDiscountApplied;
+                }
             }
         }
 
@@ -1571,11 +1575,44 @@ class SellerApi extends ResourceController
                     'transaction_id'   => $status['data']['transactionId'] ?? ('SLR-' . time()),
                     'created_at'       => date('Y-m-d H:i:s'),
                 ]);
+                // Mark referral discount as used if seller used their own referral balance
                 if ((float) $dbSub['referral_discount_applied'] > 0) {
                     $db->table('users')->where('id', $dbSub['user_id'])->update([
                         'has_used_referral' => 1,
                         'referral_balance'  => 0,
+                        'updated_at'        => date('Y-m-d H:i:s'),
                     ]);
+                }
+
+                // Credit referrer if this seller was referred and hasn't triggered the reward yet
+                $buyer = $db->table('users')->select('referred_by, has_used_referral')->where('id', $dbSub['user_id'])->get()->getRowArray();
+                if (!empty($buyer['referred_by']) && (int) $buyer['has_used_referral'] === 0) {
+                    $referrer = $db->table('users')->where('referral_code', $buyer['referred_by'])->get()->getRowArray();
+                    if ($referrer) {
+                        $settings = $db->table('system_settings')
+                            ->whereIn('setting_key', ['referral_reward_amount', 'referral_expiry_days', 'referral_enabled'])
+                            ->get()->getResultArray();
+                        $cfg = [];
+                        foreach ($settings as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+
+                        if (($cfg['referral_enabled'] ?? '1') === '1') {
+                            $rewardAmount = (float) ($cfg['referral_reward_amount'] ?? 40);
+                            $expiryDays   = (int)   ($cfg['referral_expiry_days']   ?? 7);
+                            $newBalance   = (float) ($referrer['referral_balance']   ?? 0) + $rewardAmount;
+                            $expiresAt    = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
+
+                            $db->table('users')->where('id', $referrer['id'])->update([
+                                'referral_balance'    => $newBalance,
+                                'referral_expires_at' => $expiresAt,
+                                'updated_at'          => date('Y-m-d H:i:s'),
+                            ]);
+                            // Mark buyer's referral as processed so referrer isn't credited again
+                            $db->table('users')->where('id', $dbSub['user_id'])->update([
+                                'has_used_referral' => 1,
+                                'updated_at'        => date('Y-m-d H:i:s'),
+                            ]);
+                        }
+                    }
                 }
             }
             return $this->respond(['status' => 'success', 'message' => 'Payment successful! Subscription activated.']);

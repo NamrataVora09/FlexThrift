@@ -13,7 +13,7 @@ export default function RegisterPage() {
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    name: '', email: '', mobile: '', password: '', address: '', pin_code: '', user_type: 'buyer',
+    name: '', email: '', mobile: '', password: '', address: '', pin_code: '', user_type: 'buyer', referred_by: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -69,7 +69,6 @@ export default function RegisterPage() {
     { value: 'buyer', label: 'Buy', icon: 'bi-bag-heart', desc: 'Shop products' },
     { value: 'seller', label: 'Sell', icon: 'bi-shop-window', desc: 'List & sell items' },
     { value: 'both', label: 'Both', icon: 'bi-arrow-left-right', desc: 'Buy & sell' },
-    { value: 'delivery', label: 'Delivery', icon: 'bi-truck', desc: 'Deliver orders' },
   ];
 
   const steps = [
@@ -250,6 +249,10 @@ export default function RegisterPage() {
               <div className="auth-input-group">
                 <label>PIN Code</label>
                 <input className="auth-input" type="text" name="pin_code" placeholder="Enter PIN code" value={formData.pin_code} onChange={handleChange} required />
+              </div>
+              <div className="auth-input-group">
+                <label>Referral Code <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+                <input className="auth-input" type="text" name="referred_by" placeholder="Enter a referral code to earn rewards" value={formData.referred_by} onChange={handleChange} style={{ textTransform: 'uppercase' }} />
               </div>
 
               <div className="btn-row">
