@@ -139,6 +139,10 @@ class BuyerApi extends ResourceController
     {
         $db = \Config\Database::connect();
 
+        // 1. Increment view count first
+        $db->table('products')->where('id', $id)->set('views_count', 'views_count + 1', false)->update();
+
+        // 2. Fetch product details
         $product = $db->table('products p')
             ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as brand, lt.usage_label')
             ->join('users u', 'u.id = p.seller_id', 'left')

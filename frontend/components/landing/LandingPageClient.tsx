@@ -60,14 +60,17 @@ export default function LandingPageClient() {
     if (isAuthenticated && user) {
       if (user.role === 'admin' && Number(user.blocked_buyer) === 1) {
         router.replace('/admin');
+        return;
+      }
+      // Strictly seller check (not 'both' and not 'admin/super_admin')
+      if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) {
+        router.replace('/seller');
+        return;
       }
     }
   }, [isLoading, isAuthenticated, user, router]);
 
-  // Prevent rendering if admin is blocked as a buyer
-  if (!isLoading && isAuthenticated && user && user.role === 'admin' && Number(user.blocked_buyer) === 1) {
-    return null;
-  }
+
 
   /* ── Taxonomy ─────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -156,6 +159,12 @@ export default function LandingPageClient() {
         </div>
       </div>
     );
+  }
+
+  // Prevent rendering if blocked
+  if (!isLoading && isAuthenticated && user) {
+    if (user.role === 'admin' && Number(user.blocked_buyer) === 1) return null;
+    if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) return null;
   }
 
   /* ─────────────────────────────────────────────────────────────────── */

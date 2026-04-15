@@ -34,7 +34,8 @@ interface BrowseData {
   pagination: { page: number; total: number; total_pages: number };
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || `${BACKEND_URL}/api/v1`).replace(/\/$/, '');
 
 export default function BrowsePage() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -119,19 +120,22 @@ export default function BrowsePage() {
       .catch(() => { });
   }, []);
 
-  // Blocked admin check
+  // Blocked admin or strict seller check
   useEffect(() => {
     if (isAuthenticated && user) {
       if (user.role === 'admin' && Number(user.blocked_buyer) === 1) {
         router.replace('/admin');
+        return;
+      }
+      // Strictly seller check (not 'both' and not 'admin/super_admin')
+      if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) {
+        router.replace('/seller');
+        return;
       }
     }
   }, [isAuthenticated, user, router]);
 
-  // Prevent rendering if admin is blocked as a buyer
-  if (isAuthenticated && user && user.role === 'admin' && Number(user.blocked_buyer) === 1) {
-    return null;
-  }
+
 
   const load = (p: number, type: string, s: string) => {
     setLoading(true);
@@ -174,6 +178,12 @@ export default function BrowsePage() {
     addToCart({ id: p.id, title: p.title, listing_type: p.listing_type, price, image: p.image || p.primary_image || '', seller_name: p.seller_name });
     setCartUpdated(c => c + 1);
   };
+
+  // Prevent rendering if blocked
+  if (isAuthenticated && user) {
+    if (user.role === 'admin' && Number(user.blocked_buyer) === 1) return null;
+    if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) return null;
+  }
 
   return (
     <>
@@ -416,7 +426,7 @@ export default function BrowsePage() {
                         <div className="premium-card">
                           <div className="card-img-box">
                             {(p.image || p.primary_image) ? (
-                              <img src={(() => { const img = p.image || p.primary_image; if (!img) return ''; return img.startsWith('http') ? img : img.startsWith('uploads/') ? `http://localhost:8080/${img}` : `http://localhost:8080/uploads/products/${img}`; })()} alt={p.title} />
+                              <img src={(() => { const img = p.image || p.primary_image; if (!img) return ''; return img.startsWith('http') ? img : img.startsWith('uploads/') ? `${BACKEND_URL}/${img}` : `${BACKEND_URL}/uploads/products/${img}`; })()} alt={p.title} />
                             ) : (
                               <div style={{ width: '100%', height: '100%', borderRadius: 16, background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <i className="bi bi-image" style={{ fontSize: '3rem', color: '#ccc' }}></i>

@@ -9,7 +9,8 @@ import { addToWishlist } from '@/lib/wishlist';
 import { confirmToast } from '@/lib/toast-utils';
 import toast from 'react-hot-toast';
 
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080/';
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+const BASE_URL = BACKEND_URL;
 
 export default function CartPage() {
   const { user, isAuthenticated } = useAuth();
@@ -103,7 +104,11 @@ export default function CartPage() {
                     <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 4px 15px rgba(0,0,0,0.06)' }}>
                       <div style={{ height: 200, background: '#f1f5f9', borderRadius: '16px 16px 0 0', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {item.image ? (
-                          <img src={item.image.startsWith('http') ? item.image : item.image.startsWith('uploads/') ? `${BASE_URL}${item.image}` : `${BASE_URL}uploads/products/${item.image}`} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img
+                            src={item.image.startsWith('http') ? item.image : item.image.startsWith('uploads/') ? `${BASE_URL}/${item.image}` : `${BASE_URL}/uploads/products/${item.image}`}
+                            alt={item.title}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
                         ) : (
                           <i className="bi bi-image" style={{ fontSize: '3rem', color: '#ccc' }}></i>
                         )}
@@ -154,17 +159,17 @@ export default function CartPage() {
               </div>
 
               <div className="d-flex justify-content-between align-items-center mt-4 p-3 bg-white rounded-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                <button 
-                  className="btn btn-outline-secondary" 
-                  style={{ borderRadius: 10 }} 
-                  onClick={() => { 
+                <button
+                  className="btn btn-outline-secondary"
+                  style={{ borderRadius: 10 }}
+                  onClick={() => {
                     confirmToast('Are you sure you want to clear your cart?', () => {
-                      clearCart(); 
-                      setItems([]); 
+                      clearCart();
+                      setItems([]);
                     });
                   }}
                 >
-                  <i className="bi bi-x-circle me-1"></i> Clear Cart
+                  <i className="bi bi-x-circle me-1"></i> Clear Wishlist
                 </button>
                 {!isAuthenticated && (
                   <Link href="/login" className="btn" style={{ background: '#ffc63a', borderRadius: 10, fontWeight: 700, padding: '10px 30px' }}>

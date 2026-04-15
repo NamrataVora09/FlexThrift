@@ -237,7 +237,10 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                           <div className="d-flex justify-content-between align-items-start mb-3">
                             <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{p.title}</h5>
                             <div className="text-end">
-                              <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>₹{Number(p.price || p.original_price || 0).toLocaleString()}</div>
+                              <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>
+                                ₹{Number(p.listing_type === 'rent' ? (p.rental_cost || 0) : (p.price || p.original_price || 0)).toLocaleString()}
+                                {p.listing_type === 'rent' && <small className="ms-1" style={{ fontSize: '0.65rem', textTransform: 'lowercase' }}>/day</small>}
+                              </div>
                               {p.listing_type === 'rent' && p.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(p.rental_deposit).toLocaleString()} deposit</small>}
                             </div>
                           </div>
@@ -538,7 +541,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Mobile</label><div className="fw-bold small">{inspecting.seller_mobile || 'N/A'}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Category</label><div className="fw-bold small">{inspecting.category || 'N/A'}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Color / Size</label><div className="fw-bold small">{inspecting.color || '—'} / {inspecting.size || '—'}</div></div></div>
-                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Price</label><div className="fw-bold small" style={{ color: '#ffc63a' }}>₹{Number(inspecting.price || inspecting.original_price || 0).toLocaleString()}</div></div></div>
+                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Price</label><div className="fw-bold small" style={{ color: '#ffc63a' }}>₹{Number(inspecting.listing_type === 'rent' ? (inspecting.rental_cost || 0) : (inspecting.price || inspecting.original_price || 0)).toLocaleString()}{inspecting.listing_type === 'rent' ? ' /pm' : ''}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Used Times</label><div className="fw-bold small">{inspecting.used_times || '0'}</div></div></div>
                     </div>
                     {Number(inspecting.has_bill) && inspecting.bill_image ? (
@@ -608,8 +611,12 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                     ])}
                     {renderCompSection('Pricing', [
                       { l: 'Original Price', v: '₹' + Number(comparison.original?.original_price || 0).toLocaleString() },
-                      { l: 'Sale Price', v: '₹' + Number(comparison.original?.price || 0).toLocaleString() },
-                    ])}
+                      { 
+                        l: comparison.original?.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price', 
+                        v: '₹' + Number(comparison.original?.listing_type === 'rent' ? (comparison.original?.rental_cost || 0) : (comparison.original?.price || 0)).toLocaleString() + (comparison.original?.listing_type === 'rent' ? ' /pm' : '')
+                      },
+                      comparison.original?.listing_type === 'rent' && { l: 'Security Deposit', v: '₹' + Number(comparison.original?.rental_deposit || 0).toLocaleString() }
+                    ].filter((item): item is { l: string; v: any } => !!item))}
                     <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2 mt-3">Images</h6>
                     <div className="row g-2">
                       {(comparison.original_images || []).map((img: any, i: number) => {
@@ -647,8 +654,15 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                           ])}
                           {renderCompSection('Pricing', [
                             { l: 'Original Price', v: diff('₹' + Number(orig.original_price || 0), '₹' + Number(updated.original_price || 0)) },
-                            { l: 'Sale Price', v: diff('₹' + Number(orig.price || 0), '₹' + Number(updated.price || 0)) },
-                          ])}
+                            { 
+                              l: updated.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price', 
+                              v: diff(
+                                '₹' + Number(orig.listing_type === 'rent' ? (orig.rental_cost || 0) : (orig.price || 0)) + (orig.listing_type === 'rent' ? ' /pm' : ''),
+                                '₹' + Number(updated.listing_type === 'rent' ? (updated.rental_cost || 0) : (updated.price || 0)) + (updated.listing_type === 'rent' ? ' /pm' : '')
+                              ) 
+                            },
+                            updated.listing_type === 'rent' && { l: 'Security Deposit', v: diff('₹' + Number(orig.rental_deposit || 0), '₹' + Number(updated.rental_deposit || 0)) }
+                          ].filter((item): item is { l: string; v: any } => !!item))}
                           {/* New images */}
                           {(() => {
                             const tempImages = JSON.parse(comparison.request?.temp_images || '[]');

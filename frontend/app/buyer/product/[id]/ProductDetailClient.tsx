@@ -257,20 +257,22 @@ export default function ProductDetailClient({ product, images, similarProducts =
         try { 
           const u = JSON.parse(stored);
           setUser(u);
-          // Blocked admin check
+          // 1. Blocked admin check
           if (u.role === 'admin' && Number(u.blocked_buyer) === 1) {
             router.replace('/admin');
+            return;
+          }
+          // 2. Strictly seller check (not 'both' and not 'admin/super_admin')
+          // Allow if they are the owner of THIS product
+          if (u.user_type === 'seller' && !['admin', 'super_admin'].includes(u.role) && Number(u.id) !== Number(product.seller_id)) {
+            router.replace('/seller');
+            return;
           }
         } catch { /* ignore */ }
       }
       setInCart(isInCart(Number(product.id)));
     }
-  }, [product.id, router]);
-
-  // Prevent rendering if admin is blocked as a buyer
-  if (user && user.role === 'admin' && Number((user as any).blocked_buyer) === 1) {
-    return null;
-  }
+  }, [product.id, router, product.seller_id]);
 
   // Check if buyer already has an active offer on this product (persists across refreshes)
   useEffect(() => {
@@ -284,14 +286,20 @@ export default function ProductDetailClient({ product, images, similarProducts =
           setContactLoading(true);
           api.post<{ seller_name: string; seller_email: string; seller_mobile: string; seller_city: string; seller_state: string; seller_pincode: string; already_viewed: boolean }>(
             `/buyer/view-seller-contact/${product.id}`
-          ).then(contactRes => {
+          ).then(cres => {
             setContactLoading(false);
-            if (contactRes.success && contactRes.data) setContactInfo(contactRes.data);
+            if (cres.success && cres.data) setContactInfo(cres.data);
           }).catch(() => setContactLoading(false));
         }
       })
       .catch(() => { });
   }, [product.id]);
+
+  // Prevent rendering if blocked (MUST BE AFTER HOOKS)
+  if (user) {
+    if (user.role === 'admin' && Number((user as any).blocked_buyer) === 1) return null;
+    if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role || '') && Number(user.id) !== Number(product.seller_id)) return null;
+  }
 
   // Recalculate rental price when dates change
   useEffect(() => {
@@ -352,6 +360,19 @@ export default function ProductDetailClient({ product, images, similarProducts =
       setOfferError('Please select your rental dates on the calendar first.');
       return;
     }
+    if (!offerForm.delivery_address.trim()) {
+      setOfferError('Delivery address is mandatory.');
+      return;
+    }
+    if (!offerForm.delivery_pin_code.trim()) {
+      setOfferError('PIN code is mandatory.');
+      return;
+    }
+    if (!/^\d{6}$/.test(offerForm.delivery_pin_code)) {
+      setOfferError('PIN code must be exactly 6 digits.');
+      return;
+    }
+
     setOfferLoading(true);
     setOfferError(null);
     const res = await api.post('/buyer/make-offer', {
@@ -1189,23 +1210,29 @@ export default function ProductDetailClient({ product, images, similarProducts =
                   )}
                 </div>
                 <div className="mb-3">
-                  <label className="form-label fw-bold small">Delivery Address</label>
+                  <label className="form-label fw-bold small text-dark">Delivery Address <span className="text-danger">*</span></label>
                   <textarea
                     className="form-control rounded-3"
                     rows={2}
                     value={offerForm.delivery_address}
                     onChange={(e) => setOfferForm({ ...offerForm, delivery_address: e.target.value })}
-                    placeholder="Enter delivery address"
+                    placeholder="E.g. Flat No, Building, Area, City"
+                    required
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label fw-bold small">PIN Code</label>
+                  <label className="form-label fw-bold small text-dark">PIN Code <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control rounded-3"
                     value={offerForm.delivery_pin_code}
-                    onChange={(e) => setOfferForm({ ...offerForm, delivery_pin_code: e.target.value })}
-                    placeholder="Enter PIN code"
+                    maxLength={6}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').substring(0, 6);
+                      setOfferForm({ ...offerForm, delivery_pin_code: val });
+                    }}
+                    placeholder="6-digit PIN code"
+                    required
                   />
                 </div>
               </div>
