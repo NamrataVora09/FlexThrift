@@ -1089,23 +1089,24 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                               <i className="bi bi-clock-fill"></i> Offer Missed
                               <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>Acceptance period expired on {expiryDate}</div>
                             </div>
-                          ) : isGroupSold && (offer.offer_type ?? offer.listing_type) === 'sell' ? (
-                            <div className="text-danger small fw-bold">
-                              <i className="bi bi-slash-circle-fill"></i> Already Sold
-                              <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>This product is sold to another buyer.</div>
-                            </div>
-                          ) : isBlockedRental ? (
-                            <>
-                              <div className="text-danger small fw-bold mb-2">
-                                <i className="bi bi-calendar-x-fill"></i> Dates Booked
-                                <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>These dates overlap with an accepted booking.</div>
-                              </div>
-                              <button className="btn-yellow btn-sm" onClick={() => onAccept(offer)}>Accept</button>
-                            </>
                           ) : (
-                            <div className="btn-group btn-group-sm">
-                              <button className="btn-yellow" onClick={() => onAccept(offer)}>Accept</button>
-                              <button className="btn-outline-dark-custom" onClick={() => onReject(offer)}>Reject</button>
+                            <div className="d-flex flex-column align-items-end gap-2">
+                              {isGroupSold && (offer.offer_type ?? offer.listing_type) === 'sell' && (
+                                <div className="text-danger small fw-bold">
+                                  <i className="bi bi-slash-circle-fill"></i> Already Sold
+                                  <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>This product is sold to another buyer.</div>
+                                </div>
+                              )}
+                              {isBlockedRental && (
+                                <div className="text-danger small fw-bold">
+                                  <i className="bi bi-calendar-x-fill"></i> Dates Booked
+                                  <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>These dates overlap with an accepted booking.</div>
+                                </div>
+                              )}
+                              <div className="btn-group btn-group-sm">
+                                <button className="btn-yellow" onClick={() => onAccept(offer)}>Accept</button>
+                                <button className="btn-outline-dark-custom" onClick={() => onReject(offer)}>Reject</button>
+                              </div>
                             </div>
                           )}
                         </>
@@ -1451,11 +1452,18 @@ function CombinedView({ offers, settings, isRentalBlocked, isRentalConflict, isS
                   <td className="text-end">
                     <div className="d-flex justify-content-end gap-2">
                       {/* Perspective-based actions */}
-                      {!isSent && o.status === 'pending' && !conflict && !sold && (
-                        <>
-                          <button className="btn btn-sm btn-warning rounded-pill px-3 fw-bold" onClick={() => onAccept(o)}>Accept</button>
-                          <button className="btn btn-sm btn-outline-danger rounded-pill px-3" onClick={() => onReject(o)}>Reject</button>
-                        </>
+                      {!isSent && o.status === 'pending' && (
+                        <div className="d-flex flex-column align-items-end gap-1">
+                          {(conflict || sold) && (
+                            <div className="text-danger fw-bold text-end mb-1" style={{ fontSize: '0.6rem', lineHeight: 1.1 }}>
+                              {sold ? 'SOLD OUT' : 'DATES BOOKED'}
+                            </div>
+                          )}
+                          <div className="d-flex gap-2">
+                            <button className="btn btn-sm btn-warning rounded-pill px-3 fw-bold" onClick={() => onAccept(o)}>Accept</button>
+                            <button className="btn btn-sm btn-outline-danger rounded-pill px-3" onClick={() => onReject(o)}>Reject</button>
+                          </div>
+                        </div>
                       )}
 
                       {isSent && (o.status === 'pending' || o.status === 'negotiating') && (
