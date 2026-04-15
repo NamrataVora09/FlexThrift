@@ -437,6 +437,13 @@ class SellerApi extends ResourceController
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $offerType = $offer['offer_type'] ?? $product['listing_type'];
 
+        // Expired check
+        $acceptanceLimitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $createdTs = strtotime($offer['created_at']);
+        if (time() > $createdTs + ($acceptanceLimitDays * 86400)) {
+            return $this->respond(['success' => false, 'message' => 'This offer has expired.'], 400);
+        }
+
         // Prevent acceptance if the product is already sold (for sale) or booked (for rent) during overlapping dates
         $overlapQuery = $db->table('offers')
             ->where('product_id', $offer['product_id'])

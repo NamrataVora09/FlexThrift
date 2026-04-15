@@ -134,7 +134,8 @@ class SharedApi extends ResourceController
 
         $db = \Config\Database::connect();
         $user = $db->table('users')->where('id', $id)->get()->getRowArray();
-        if (!$user) return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+        if (!$user)
+            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
 
         $newStatus = $user['is_blocked'] ? 0 : 1;
         $db->table('users')->where('id', $id)->update(['is_blocked' => $newStatus]);
@@ -247,7 +248,8 @@ class SharedApi extends ResourceController
         $settings = $db->table('system_settings')->get()->getResultArray();
 
         $config = [];
-        foreach ($settings as $s) $config[$s['setting_key']] = $s['setting_value'];
+        foreach ($settings as $s)
+            $config[$s['setting_key']] = $s['setting_value'];
 
         $groups = [
             'Pricing' => ['sale_base_discount', 'sale_depreciation_per_use', 'sale_max_additional_depreciation'],
@@ -393,10 +395,10 @@ class SharedApi extends ResourceController
             'name' => $data['name'],
             'user_type' => $data['user_type'],
             'plan_type' => $data['plan_type'] ?? 'duration',
-            'limit_value' => (int)($data['limit_value'] ?? 0),
-            'duration_hours' => (float)($data['duration_hours'] ?? 0),
-            'price' => (float)($data['price']),
-            'base_price' => (float)($data['base_price'] ?? $data['price']),
+            'limit_value' => (int) ($data['limit_value'] ?? 0),
+            'duration_hours' => (float) ($data['duration_hours'] ?? 0),
+            'price' => (float) ($data['price']),
+            'base_price' => (float) ($data['base_price'] ?? $data['price']),
             'is_active' => 1,
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
@@ -417,7 +419,8 @@ class SharedApi extends ResourceController
 
         $db = \Config\Database::connect();
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
         $newStatus = $plan['is_active'] ? 0 : 1;
         $db->table('subscription_plans')->where('id', $id)->update(['is_active' => $newStatus]);
@@ -428,7 +431,8 @@ class SharedApi extends ResourceController
     public function updateSubscriptionPlan(int $id)
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin']))
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
 
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
@@ -437,10 +441,10 @@ class SharedApi extends ResourceController
             'name' => $data['name'],
             'user_type' => $data['user_type'],
             'plan_type' => $data['plan_type'] ?? 'duration',
-            'limit_value' => (int)($data['limit_value'] ?? 0),
-            'duration_hours' => (float)($data['duration_hours'] ?? 0),
-            'price' => (float)($data['price']),
-            'base_price' => (float)($data['base_price'] ?? $data['price']),
+            'limit_value' => (int) ($data['limit_value'] ?? 0),
+            'duration_hours' => (float) ($data['duration_hours'] ?? 0),
+            'price' => (float) ($data['price']),
+            'base_price' => (float) ($data['base_price'] ?? $data['price']),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -450,7 +454,8 @@ class SharedApi extends ResourceController
     public function deleteSubscriptionPlan(int $id)
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin']))
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
 
         $db = \Config\Database::connect();
         $db->table('subscription_plans')->where('id', $id)->delete();
@@ -552,7 +557,8 @@ class SharedApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $coupon = $db->table('coupons')->where('id', $id)->get()->getRowArray();
-        if (!$coupon) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        if (!$coupon)
+            return $this->respond(['success' => false, 'message' => 'Not found'], 404);
         $db->table('coupons')->where('id', $id)->update(['is_active' => $coupon['is_active'] ? 0 : 1]);
         return $this->respond(['success' => true, 'message' => 'Coupon toggled']);
     }
@@ -630,11 +636,17 @@ class SharedApi extends ResourceController
         $productTypes = $db->table('product_types')->get()->getResultArray();
         $genders = $db->table('genders')->get()->getResultArray();
         $colors = $db->table('colors')->get()->getResultArray();
-        return $this->respond(['success' => true, 'data' => [
-            'listing_types' => $listingTypes, 'categories' => $categories,
-            'sub_categories' => $subCategories, 'product_types' => $productTypes,
-            'genders' => $genders, 'colors' => $colors,
-        ]]);
+        return $this->respond([
+            'success' => true,
+            'data' => [
+                'listing_types' => $listingTypes,
+                'categories' => $categories,
+                'sub_categories' => $subCategories,
+                'product_types' => $productTypes,
+                'genders' => $genders,
+                'colors' => $colors,
+            ]
+        ]);
     }
 
     public function contactedSellers()
@@ -645,7 +657,7 @@ class SharedApi extends ResourceController
             ->select('cv.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, p.title as product_title')
             ->join('users u', 'u.id = cv.seller_id', 'left')
             ->join('products p', 'p.id = cv.product_id', 'left')
-            ->where('cv.user_id = ' . (int)$jwtUser['user_id'])
+            ->where('cv.user_id = ' . (int) $jwtUser['user_id'])
             ->orderBy('cv.viewed_at', 'DESC')
             ->get()->getResultArray();
         return $this->respond(['success' => true, 'data' => $contacts]);
@@ -661,7 +673,8 @@ class SharedApi extends ResourceController
         $db = \Config\Database::connect();
 
         $plan = $db->table('subscription_plans')->where('id', $data['plan_id'])->where('is_active', 1)->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
         $expiresAt = date('Y-m-d H:i:s', strtotime('+' . ($plan['duration_hours'] ?: 720) . ' hours'));
 
@@ -702,9 +715,11 @@ class SharedApi extends ResourceController
         $updateData = [];
         $allowed = ['name', 'mobile', 'address', 'pin_code', 'city', 'state'];
         foreach ($allowed as $field) {
-            if (isset($data[$field])) $updateData[$field] = $data[$field];
+            if (isset($data[$field]))
+                $updateData[$field] = $data[$field];
         }
-        if (empty($updateData)) return $this->respond(['success' => false, 'message' => 'No data to update'], 400);
+        if (empty($updateData))
+            return $this->respond(['success' => false, 'message' => 'No data to update'], 400);
 
         $updateData['updated_at'] = date('Y-m-d H:i:s');
         $db->table('users')->where('id', $jwtUser['user_id'])->update($updateData);
@@ -722,7 +737,8 @@ class SharedApi extends ResourceController
         $db = \Config\Database::connect();
 
         $uploadPath = FCPATH . 'uploads/kyc/';
-        if (!is_dir($uploadPath)) mkdir($uploadPath, 0777, true);
+        if (!is_dir($uploadPath))
+            mkdir($uploadPath, 0777, true);
 
         $updateData = ['updated_at' => date('Y-m-d H:i:s')];
 
@@ -742,23 +758,32 @@ class SharedApi extends ResourceController
 
         $panNumber = $this->request->getPost('pan_number');
         $aadharNumber = $this->request->getPost('aadhar_number');
-        if ($panNumber) $updateData['pan_number'] = $panNumber;
-        if ($aadharNumber) $updateData['aadhar_number'] = $aadharNumber;
+        if ($panNumber)
+            $updateData['pan_number'] = $panNumber;
+        if ($aadharNumber)
+            $updateData['aadhar_number'] = $aadharNumber;
 
         // For delivery person, update delivery_persons table
         $deliveryPerson = $db->table('delivery_persons')->where('user_id', $jwtUser['user_id'])->get()->getRowArray();
         if ($deliveryPerson) {
             $dpUpdate = ['updated_at' => date('Y-m-d H:i:s')];
-            if (isset($updateData['pan_image'])) $dpUpdate['pan_image'] = $updateData['pan_image'];
-            if (isset($updateData['aadhar_image'])) $dpUpdate['aadhar_image'] = $updateData['aadhar_image'];
-            if ($panNumber) $dpUpdate['pan_number'] = $panNumber;
-            if ($aadharNumber) $dpUpdate['aadhar_number'] = $aadharNumber;
+            if (isset($updateData['pan_image']))
+                $dpUpdate['pan_image'] = $updateData['pan_image'];
+            if (isset($updateData['aadhar_image']))
+                $dpUpdate['aadhar_image'] = $updateData['aadhar_image'];
+            if ($panNumber)
+                $dpUpdate['pan_number'] = $panNumber;
+            if ($aadharNumber)
+                $dpUpdate['aadhar_number'] = $aadharNumber;
             $vehicleType = $this->request->getPost('vehicle_type');
             $vehicleNumber = $this->request->getPost('vehicle_number');
             $licenseNumber = $this->request->getPost('license_number');
-            if ($vehicleType) $dpUpdate['vehicle_type'] = $vehicleType;
-            if ($vehicleNumber) $dpUpdate['vehicle_number'] = $vehicleNumber;
-            if ($licenseNumber) $dpUpdate['license_number'] = $licenseNumber;
+            if ($vehicleType)
+                $dpUpdate['vehicle_type'] = $vehicleType;
+            if ($vehicleNumber)
+                $dpUpdate['vehicle_number'] = $vehicleNumber;
+            if ($licenseNumber)
+                $dpUpdate['license_number'] = $licenseNumber;
             $db->table('delivery_persons')->where('user_id', $jwtUser['user_id'])->update($dpUpdate);
         }
 
@@ -772,15 +797,26 @@ class SharedApi extends ResourceController
         $db = \Config\Database::connect();
         $rows = $db->table('system_settings')
             ->whereIn('setting_key', [
-                'hero_slides', 'display_categories', 'cta_title', 'cta_subtitle',
-                'footer_description', 'section_title_categories', 'section_title_products',
-                'footer_quick_links', 'footer_policy_links', 'footer_social_links',
-                'how_it_works_steps', 'stats_banner', 'trust_features', 'testimonials',
+                'hero_slides',
+                'display_categories',
+                'cta_title',
+                'cta_subtitle',
+                'footer_description',
+                'section_title_categories',
+                'section_title_products',
+                'footer_quick_links',
+                'footer_policy_links',
+                'footer_social_links',
+                'how_it_works_steps',
+                'stats_banner',
+                'trust_features',
+                'testimonials',
                 'enable_zone_restriction'
             ])
             ->get()->getResultArray();
         $content = [];
-        foreach ($rows as $r) $content[$r['setting_key']] = $r['setting_value'];
+        foreach ($rows as $r)
+            $content[$r['setting_key']] = $r['setting_value'];
         return $this->respond(['success' => true, 'data' => $content]);
     }
 
