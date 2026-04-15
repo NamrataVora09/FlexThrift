@@ -300,7 +300,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     });
   };
 
-  useEffect(() => { load(); }, [apiPath]);
+  useEffect(() => { load(); }, [apiPath, perspective]);
 
   /* ── accept / reject / cancel ── */
   const handleAction = async () => {
@@ -461,6 +461,9 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   };
 
   const isRentalConflict = (o: Offer) => {
+    // If it's already accepted, it's not a conflict, it IS the booking.
+    if (o.status === 'accepted') return false;
+    
     if (o.is_rental_blocked && o.is_rental_blocked > 0) return true;
     if (o.listing_type !== 'rent' || !o.rental_start_date) return false;
     const ps = productStatusMap[o.product_id];
@@ -473,6 +476,13 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const sorted = [...offers].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const filtered = sorted.filter(o => {
+    // Role/Perspective filtering
+    // If perspective is set, we strictly filter. 
+    // However, for standard buyer/seller pages where 'perspective' might not be in the DB yet,
+    // we allow the filter to pass if the field is missing but we are in that specific view.
+    if (perspective === 'buyer' && o.perspective && o.perspective !== 'sent') return false;
+    if (perspective === 'seller' && o.perspective && o.perspective !== 'received') return false;
+
     const matchStatus = filter === '' || o.status === filter;
     if (!matchStatus) return false;
     if (!search.trim()) return true;
@@ -1130,7 +1140,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                             <i className="bi bi-patch-check-fill text-success fs-4" title="Accepted"></i>
                           </div>
                           {/* Rejection window: hide once seller has rated (deal is done) or order is processed */}
-                          {canRejectByTime && !isProcessed && !Number(offer.seller_rated_buyer) && effectiveAcceptedAt && (
+                          {canRejectByTime && !isProcessed && !Number(offer.seller_rated_buyer) && !Number(offer.buyer_rated_seller) && effectiveAcceptedAt && (
                             <div className="d-flex flex-column align-items-end gap-1 mt-1">
                               <RejectionCountdown acceptedAt={effectiveAcceptedAt} windowHours={settings.rejectionWindowHours} />
                               <button

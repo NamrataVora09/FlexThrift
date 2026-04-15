@@ -92,7 +92,7 @@ class SellerApi extends ResourceController
             ->select('(SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image')
             ->select('(SELECT ord.status FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != \'cancelled\' ORDER BY ord.created_at DESC LIMIT 1) as linked_order_status')
             ->select('u.name as buyer_name, u.mobile as buyer_mobile, u.email as buyer_email, u.buyer_rating_avg, u.buyer_rating_count, u.renter_reliability_score as buyer_reliability_score')
-            ->select('cv.viewed_at as contact_viewed_at')
+            ->select('cv.viewed_at as contact_viewed_at, \'received\' as perspective')
             ->join('products p', 'p.id = o.product_id', 'left')
             ->join('users u', 'u.id = o.buyer_id', 'left')
             ->join('contact_views cv', 'cv.user_id = o.buyer_id AND cv.product_id = o.product_id', 'left')
