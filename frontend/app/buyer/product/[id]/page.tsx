@@ -42,6 +42,7 @@ interface ProductData {
     seller_id?: number;
   };
   images: { id: number; image_path: string }[];
+  min_rental_days?: number;
 }
 
 // Extract numeric ID from slug (e.g. "ssas-1" → "1", "1" → "1")
@@ -160,5 +161,5 @@ export default async function ProductPage({
     notFound();
   }
 
-  return <ProductDetailClient product={data.product} images={data.images} similarProducts={similarProducts} />;
+  return <ProductDetailClient product={data.product} images={data.images} similarProducts={similarProducts} minRentalDays={data.min_rental_days} />;
 }

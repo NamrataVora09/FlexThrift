@@ -266,10 +266,10 @@ export default function Page() {
     if (cdStart && cdEnd && cdDailyRate !== '0') {
       const s = new Date(cdStart);
       const e = new Date(cdEnd);
-      const diff = e.getTime() - s.getTime();
-      const nights = Math.round(diff / 86400000);
-      if (nights > 0) {
-        setCdPrice((parseFloat(cdDailyRate) * nights).toString());
+      const diffTime = Math.abs(e.getTime() - s.getTime());
+      const days = Math.ceil(diffTime / 86400000) + 1; // inclusive
+      if (days > 0) {
+        setCdPrice((parseFloat(cdDailyRate) * days).toString());
       }
     }
   }, [cdStart, cdEnd, cdDailyRate]);
@@ -277,8 +277,16 @@ export default function Page() {
   const handleChangeDates = async () => {
     if (!changeDatesModal) return;
     if (!cdStart || !cdEnd) { setCdError('Please select both start and end dates.'); return; }
-    const totalDays = Math.round((new Date(cdEnd).getTime() - new Date(cdStart).getTime()) / 86400000);
-    if (totalDays < minRentalDays) { setCdError(`Minimum ${minRentalDays} nights rental required. You selected ${totalDays} night${totalDays === 1 ? '' : 's'}.`); return; }
+    
+    const s = new Date(cdStart);
+    const e = new Date(cdEnd);
+    const diffTime = Math.abs(e.getTime() - s.getTime());
+    const totalDays = Math.ceil(diffTime / 86400000) + 1; // inclusive
+
+    if (totalDays < minRentalDays) { 
+      setCdError(`Minimum ${minRentalDays} days rental required. You selected ${totalDays} day${totalDays === 1 ? '' : 's'}.`); 
+      return; 
+    }
     setCdLoading(true);
     setCdError(null);
     const res = await api.post(`/buyer/update-offer-dates/${changeDatesModal.id}`, {

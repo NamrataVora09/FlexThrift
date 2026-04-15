@@ -18,11 +18,13 @@ function RentalCalendar({
   startDate,
   endDate,
   onRangeChange,
+  minRentalDays,
 }: {
   bookedRanges: { start: string; end: string }[];
   startDate: string;
   endDate: string;
   onRangeChange: (start: string, end: string) => void;
+  minRentalDays?: number;
 }) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const [viewDate, setViewDate] = useState(() => { const d = new Date(); d.setDate(1); return d; });
@@ -74,7 +76,11 @@ function RentalCalendar({
       setPhase('end');
     } else {
       const s = startD!;
-      if (daysBetween(s, d) < 3) { toast.error('Minimum rental period is 3 days.'); return; }
+      const limit = minRentalDays || 3;
+      if (daysBetween(s, d) < limit) { 
+        toast.error(`Minimum rental period is ${limit} days.`); 
+        return; 
+      }
       if (d < s) { onRangeChange(fmt(d), fmt(s)); }
       else { onRangeChange(fmt(s), fmt(d)); }
       setPhase('start');
@@ -144,13 +150,13 @@ function RentalCalendar({
         <div style={{ marginTop: 10, padding: '8px 12px', background: '#fffdf0', borderRadius: 8, border: '1px solid #ffc63a44' }}>
           {endDate
             ? <><i className="bi bi-calendar-range me-1" style={{ color: '#ffc63a' }} /><strong>{startDate}</strong> → <strong>{endDate}</strong></>
-            : <><i className="bi bi-calendar me-1" style={{ color: '#ffc63a' }} /><strong>{startDate}</strong> — pick an end date (min 3 days)</>
+            : <><i className="bi bi-calendar me-1" style={{ color: '#ffc63a' }} /><strong>{startDate}</strong> — pick an end date (min {minRentalDays || 3} days)</>
           }
         </div>
       )}
       {!startDate && (
         <div style={{ marginTop: 10, padding: '8px 12px', background: '#f8f9fa', borderRadius: 8, color: '#888', fontSize: '0.78rem' }}>
-          <i className="bi bi-info-circle me-1" />Click a start date — minimum rental period is 3 days
+          <i className="bi bi-info-circle me-1" />Click a start date — minimum rental period is {minRentalDays || 3} days
         </div>
       )}
     </div>
@@ -217,11 +223,12 @@ interface Props {
   product: Product;
   images: ProductImage[];
   similarProducts?: SimilarProduct[];
+  minRentalDays?: number;
 }
 
 const BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 
-export default function ProductDetailClient({ product, images, similarProducts = [] }: Props) {
+export default function ProductDetailClient({ product, images, similarProducts = [], minRentalDays = 3 }: Props) {
   const router = useRouter();
   const [imgIdx, setImgIdx] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
@@ -243,7 +250,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const [offerSuccess, setOfferSuccess] = useState(false);
   const [offerError, setOfferError] = useState<string | null>(null);
   const [bookedRanges, setBookedRanges] = useState<{ start: string; end: string }[]>([]);
-  const [user, setUser] = useState<{ name?: string; user_type?: string } | null>(null);
+  const [user, setUser] = useState<{ id?: number; name?: string; user_type?: string; role?: string; blocked_buyer?: number | string } | null>(null);
   const [inCart, setInCart] = useState(false);
   const [contactLoading, setContactLoading] = useState(false);
   const [contactInfo, setContactInfo] = useState<{ seller_name: string; seller_email: string; seller_mobile: string; seller_city: string; seller_state: string; seller_pincode: string; already_viewed: boolean } | null>(null);
@@ -308,11 +315,11 @@ export default function ProductDetailClient({ product, images, similarProducts =
     if (product.listing_type === 'rent' && offerForm.rental_start_date && offerForm.rental_end_date) {
       const s = new Date(offerForm.rental_start_date);
       const e = new Date(offerForm.rental_end_date);
-      const diff = e.getTime() - s.getTime();
-      const nights = Math.round(diff / 86400000);
-      if (nights > 0) {
+      const diffTime = Math.abs(e.getTime() - s.getTime());
+      const days = Math.ceil(diffTime / 86400000) + 1; // inclusive
+      if (days > 0) {
         const dailyRate = parseFloat(product.rental_cost || '0');
-        const total = dailyRate * nights;
+        const total = dailyRate * days;
         setOfferForm(f => ({ ...f, offer_price: total.toString() }));
       }
     }
@@ -1183,6 +1190,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       startDate={offerForm.rental_start_date}
                       endDate={offerForm.rental_end_date}
                       onRangeChange={(start, end) => setOfferForm(f => ({ ...f, rental_start_date: start, rental_end_date: end }))}
+                      minRentalDays={minRentalDays}
                     />
                     <div className="mt-3 mb-3">
                       <label className="form-label fw-bold small">Deposit Amount (&#8377;)</label>
@@ -1207,7 +1215,14 @@ export default function ProductDetailClient({ product, images, similarProducts =
                   {product.listing_type === 'rent' && offerForm.rental_start_date && offerForm.rental_end_date && (
                     <div className="mt-1 small text-muted">
                       <i className="bi bi-info-circle me-1"></i>
-                      Calculated: ₹{product.rental_cost} × {Math.round((new Date(offerForm.rental_end_date).getTime() - new Date(offerForm.rental_start_date).getTime()) / 86400000)} nights = ₹{offerForm.offer_price}
+                      Calculated: ₹{product.rental_cost} × {
+                        (() => {
+                          const s = new Date(offerForm.rental_start_date);
+                          const e = new Date(offerForm.rental_end_date);
+                          const diffTime = Math.abs(e.getTime() - s.getTime());
+                          return Math.ceil(diffTime / 86400000) + 1;
+                        })()
+                      } days = ₹{offerForm.offer_price}
                     </div>
                   )}
                 </div>

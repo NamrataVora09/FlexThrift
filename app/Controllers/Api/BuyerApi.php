@@ -162,6 +162,7 @@ class BuyerApi extends ResourceController
             'data' => [
                 'product' => $product,
                 'images' => $images,
+                'min_rental_days' => (int) getSystemSetting('min_rental_days', 3),
             ],
         ]);
     }

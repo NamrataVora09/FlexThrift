@@ -880,7 +880,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 </div>
                 <div className="col-md-4">
                   <label className="form-label" style={labelStyle}>Rental Cost (per day)</label>
-                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="rental_cost" step="0.01" value={f.rental_cost} onChange={handleChange} disabled /></div>
+                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="rental_cost" step="0.01" value={f.rental_cost} onChange={handleChange} /></div>
                   <small className="text-muted">Max {cfg.rental_max_cost_cap_per_day || '14'}% of deposit per day</small>
                 </div>
                 <div className="col-md-12">

@@ -306,6 +306,10 @@ class SellerApi extends ResourceController
             if ($pt) $productTypeName = $pt['name'];
         }
 
+        // Pricing Validation using dynamic rules
+        $v = $this->validatePricing($data);
+        if (!$v['success']) return $this->respond($v, 422);
+
         $productData = [
             'seller_id' => $userId,
             'title' => $data['title'],
@@ -1030,6 +1034,10 @@ class SellerApi extends ResourceController
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
         $processedData = $this->cleanProductData($data, $db);
 
+        // Pricing Validation
+        $v = $this->validatePricing($data);
+        if (!$v['success']) return $this->respond($v, 422);
+
         $db->table('product_edit_requests')->insert([
             'product_id' => $id,
             'seller_id' => $jwtUser['user_id'],
@@ -1068,6 +1076,10 @@ class SellerApi extends ResourceController
         // Direct update for admins
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
         $updateData = $this->cleanProductData($data, $db);
+
+        // Pricing Validation
+        $v = $this->validatePricing($data);
+        if (!$v['success']) return $this->respond($v, 422);
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         // Handle file uploads
@@ -1670,5 +1682,37 @@ class SellerApi extends ResourceController
         }
 
         return $this->respond(['status' => 'pending', 'message' => 'Payment is being processed…']);
+    }
+
+    /**
+     * Common pricing validation for uploads and edits
+     */
+    private function validatePricing(array $data)
+    {
+        helper('price_calculator');
+        
+        $originalPrice = (float)($data['original_price'] ?? 0);
+        $ltId = $data['listing_type_category'] ?? null;
+        $cId = $data['category_id'] ?? null;
+        $scId = $data['sub_category_id'] ?? null;
+
+        if ($data['listing_type'] === 'sell') {
+            $price = (float)($data['price'] ?? 0);
+            if (!validateSalePriceWithRules($originalPrice, $price, $ltId, $cId, $scId)) {
+                return ['success' => false, 'message' => 'Selling price exceeds the maximum allowed threshold.'];
+            }
+        } elseif ($data['listing_type'] === 'rent') {
+            $deposit = (float)($data['rental_deposit'] ?? 0);
+            $rentalCost = (float)($data['rental_cost'] ?? 0);
+            
+            if (!validateDepositWithRules($originalPrice, $deposit, $ltId, $cId, $scId)) {
+                return ['success' => false, 'message' => 'Rental deposit exceeds the maximum allowed threshold.'];
+            }
+            if (!validateRentalCostWithRules($deposit, $rentalCost, $ltId, $cId, $scId)) {
+                return ['success' => false, 'message' => 'Daily rental cost exceeds the maximum allowed daily cap.'];
+            }
+        }
+
+        return ['success' => true];
     }
 }
