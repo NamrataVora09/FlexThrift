@@ -509,8 +509,8 @@ class BuyerApi extends ResourceController
         if (!$offer)
             return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
 
-        if (!in_array($offer['status'], ['pending', 'negotiating'])) {
-            return $this->respond(['success' => false, 'message' => 'Dates can only be updated for pending or negotiating offers.'], 400);
+        if (!in_array($offer['status'], ['pending', 'negotiating', 'rejected'])) {
+            return $this->respond(['success' => false, 'message' => 'Dates can only be updated for active or rejected offers.'], 400);
         }
 
         $startDate = $data['rental_start_date'] ?? null;
@@ -543,7 +543,7 @@ class BuyerApi extends ResourceController
         if ($newPrice !== null) {
             $updateData['offer_price'] = $newPrice;
         }
-        if ($offer['status'] === 'negotiating') {
+        if (in_array($offer['status'], ['negotiating', 'rejected'])) {
             $updateData['status']  = 'pending';
             $updateData['message'] = 'Buyer has proposed new dates: ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. Please review.';
         }
@@ -563,8 +563,8 @@ class BuyerApi extends ResourceController
             'created_at'     => date('Y-m-d H:i:s'),
         ]);
 
-        // Notify seller when buyer counter-proposes after negotiation
-        if ($offer['status'] === 'negotiating') {
+        // Notify seller when buyer counter-proposes after negotiation or rejection
+        if (in_array($offer['status'], ['negotiating', 'rejected'])) {
             $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
             $buyer   = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
             $db->table('notifications')->insert([
@@ -591,7 +591,7 @@ class BuyerApi extends ResourceController
         $offer = $db->table('offers')->where('id', $id)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$offer)
             return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
-        if (!in_array($offer['status'], ['pending', 'negotiating', 'accepted']))
+        if (!in_array($offer['status'], ['pending', 'negotiating', 'accepted', 'rejected']))
             return $this->respond(['success' => false, 'message' => 'This offer can no longer be cancelled'], 400);
 
         // If offer was accepted, also cancel the associated order
@@ -964,11 +964,14 @@ class BuyerApi extends ResourceController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        // Mark product as sold/rented
-        $db->table('products')->where('id', $offer['product_id'])->update([
-            'status'     => 'sold',
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        // Mark product as sold only for sell-type offers; rental products stay active/approved so they remain listed
+        $finalOfferType = $offer['offer_type'] ?? $product['listing_type'];
+        if ($finalOfferType !== 'rent') {
+            $db->table('products')->where('id', $offer['product_id'])->update([
+                'status'     => 'sold',
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
 
         // Notify seller
         $db->table('notifications')->insert([
@@ -980,23 +983,41 @@ class BuyerApi extends ResourceController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        // Auto-reject all other competing offers (pending + negotiating) for this product and notify those buyers
-        $otherOffers = $db->table('offers')
+        // Auto-reject competing offers (pending + negotiating) for this product
+        // For 'sell' products, reject ALL others. For 'rent' products, reject only those that overlap in dates.
+        $otherOffersQuery = $db->table('offers')
             ->where('product_id', $offer['product_id'])
             ->where('id !=', $offerId)
-            ->whereIn('status', ['pending', 'negotiating'])
-            ->get()->getResultArray();
+            ->whereIn('status', ['pending', 'negotiating']);
+
+        if ($finalOfferType === 'rent') {
+            $otherOffersQuery->groupStart()
+                ->where('rental_start_date <=', $offer['rental_end_date'])
+                ->where('rental_end_date >=', $offer['rental_start_date'])
+                ->groupEnd();
+        }
+
+        $otherOffers = $otherOffersQuery->get()->getResultArray();
 
         foreach ($otherOffers as $other) {
+            $rejectMsg = ($finalOfferType === 'rent') 
+                ? 'Another buyer\'s offer for these dates has been accepted.'
+                : 'Another buyer\'s offer for this product has been accepted.';
+
             $db->table('offers')->where('id', $other['id'])->update([
                 'status'         => 'rejected',
-                'seller_remarks' => 'Another buyer\'s offer for this product has been accepted.',
+                'seller_remarks' => $rejectMsg,
                 'updated_at'     => date('Y-m-d H:i:s'),
             ]);
+
+            $notifMsg = ($finalOfferType === 'rent')
+                ? 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" for overlapping dates was accepted. Your offer has been closed.'
+                : 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" was accepted. Your offer has been closed.';
+
             $db->table('notifications')->insert([
                 'user_id'    => $other['buyer_id'],
                 'title'      => 'Offer Not Accepted',
-                'message'    => 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" was accepted. Your offer has been closed.',
+                'message'    => $notifMsg,
                 'type'       => 'offer',
                 'is_read'    => 0,
                 'created_at' => date('Y-m-d H:i:s'),

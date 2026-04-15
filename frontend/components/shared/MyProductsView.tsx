@@ -11,7 +11,7 @@ interface Product {
   id: number; title: string; product_number: string; listing_type: string; category: string;
   original_price: string; price: string; selling_price: string; status: string;
   admin_remarks: string; views_count: string; offer_count: string; image_count: string;
-  image: string; created_at: string;
+  image: string; created_at: string; rental_cost: string;
 }
 
 interface Props { role: string; apiPath: string; uploadPath: string; }
@@ -144,12 +144,17 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                           </td>
 
                           {/* Price */}
-                          <td style={tdStyle}>₹{Number(p.price || p.selling_price || p.original_price || 0).toFixed(2)}</td>
+                          <td style={tdStyle}>
+                            {p.listing_type === 'rent' 
+                              ? `₹${Number(p.rental_cost || 0).toFixed(2)} /day`
+                              : `₹${Number(p.price || p.selling_price || p.original_price || 0).toFixed(2)}`
+                            }
+                          </td>
 
                           {/* Status */}
                           <td style={tdStyle}>
                             <span className="badge" style={{ background: sc.bg, color: sc.color, fontWeight: 600, padding: '0.4rem 0.75rem', borderRadius: 6, display: 'inline-block', marginBottom: '0.25rem' }}>
-                              {p.status?.charAt(0).toUpperCase() + p.status?.slice(1)}
+                              {p.status === 'sold' && p.listing_type === 'rent' ? 'Rented' : (p.status?.charAt(0).toUpperCase() + p.status?.slice(1))}
                             </span>
                             {p.status === 'rejected' && p.admin_remarks && (
                               <div style={{ fontSize: '0.75rem', color: '#842029', background: 'rgba(248,215,218,0.5)', padding: '4px 8px', borderRadius: 4, marginTop: 4, maxWidth: 150, borderLeft: '3px solid #dc3545' }}>

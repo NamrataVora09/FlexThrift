@@ -1304,12 +1304,12 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
                       <button className="btn-modern-cancel" style={{ fontSize: '0.8rem' }} onClick={() => onCancel(o)}>Decline</button>
                     </>
                   )}
-                  {o.status === 'pending' && (
+                  {(o.status === 'pending' || o.status === 'rejected') && (
                     <>
-                      {o.listing_type === 'rent' && (
+                      {(o.offer_type ?? o.listing_type) === 'rent' && (
                         <button className="btn-yellow mb-1" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates(o)}>Change dates</button>
                       )}
-                      <button className="btn-modern-cancel" onClick={() => onCancel(o)}>Cancel Offer</button>
+                      <button className="btn-modern-cancel" onClick={() => onCancel(o)}>{o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}</button>
                     </>
                   )}
                   {canRate && (
@@ -1466,8 +1466,8 @@ function CombinedView({ offers, settings, isRentalBlocked, isRentalConflict, isS
                         </div>
                       )}
 
-                      {isSent && (o.status === 'pending' || o.status === 'negotiating') && (
-                        <button className="btn btn-sm btn-outline-danger rounded-pill px-3" onClick={() => onCancel(o)}>Withdraw</button>
+                      {isSent && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'rejected') && (
+                        <button className="btn btn-sm btn-outline-danger rounded-pill px-3" onClick={() => onCancel(o)}>{o.status === 'rejected' ? 'Close' : 'Withdraw'}</button>
                       )}
 
                       {o.status === 'accepted' && (
