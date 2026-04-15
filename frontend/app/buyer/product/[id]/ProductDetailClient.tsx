@@ -68,7 +68,7 @@ function RentalCalendar({
   };
 
   const handleDay = (d: Date) => {
-    if (d < today) return;
+    if (d < today || isBooked(d)) return;
     if (phase === 'start' || (startD && endD)) {
       onRangeChange(fmt(d), '');
       setPhase('end');
@@ -108,9 +108,10 @@ function RentalCalendar({
           const isT = fmt(d) === fmt(today);
 
           let bg = 'transparent', color = '#000', br = '6px';
-          if (isS || isE) { bg = '#ffc63a'; color = '#000'; br = '8px'; }
+          if (booked) { bg = '#fee2e2'; color = '#dc2626'; }
+          else if (isS || isE) { bg = '#ffc63a'; color = '#000'; br = '8px'; }
           else if (rang) { bg = '#fff3cc'; color = '#555'; br = '0'; }
-          if (past) { color = '#ccc'; }
+          if (past && !booked) { color = '#ccc'; }
 
           return (
             <div key={i}
@@ -136,6 +137,7 @@ function RentalCalendar({
       <div style={{ display: 'flex', gap: '10px', marginTop: '10px', color: '#777', flexWrap: 'wrap' }}>
         <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#ffc63a', borderRadius: 3, marginRight: 4 }} />Selected</span>
         <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#fff3cc', borderRadius: 3, marginRight: 4 }} />Range</span>
+        <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#fee2e2', borderRadius: 3, marginRight: 4 }} />Booked</span>
       </div>
       {/* selected display */}
       {startDate && (

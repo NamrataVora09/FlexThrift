@@ -434,7 +434,28 @@ class SellerApi extends ResourceController
 
         $offer = $db->table('offers')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
-        if ($offer['status'] !== 'pending') return $this->respond(['success' => false, 'message' => 'Only pending offers can be accepted'], 400);
+        $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+        $offerType = $offer['offer_type'] ?? $product['listing_type'];
+
+        // Prevent acceptance if the product is already sold (for sale) or booked (for rent) during overlapping dates
+        $overlapQuery = $db->table('offers')
+            ->where('product_id', $offer['product_id'])
+            ->where('id !=', $id)
+            ->where('status', 'accepted');
+
+        if ($offerType === 'rent') {
+            $overlapQuery->groupStart()
+                ->where('rental_start_date <=', $offer['rental_end_date'])
+                ->where('rental_end_date >=', $offer['rental_start_date'])
+                ->groupEnd();
+        }
+
+        if ($overlapQuery->countAllResults() > 0) {
+            $msg = ($offerType === 'rent') 
+                ? 'These dates conflict with an existing accepted booking.' 
+                : 'This product has already been sold to another buyer.';
+            return $this->respond(['success' => false, 'message' => $msg], 409);
+        }
 
         $db->table('offers')->where('id', $id)->update([
             'status'         => 'accepted',
@@ -486,23 +507,33 @@ class SellerApi extends ResourceController
             $db->table('products')->where('id', $offer['product_id'])->update(['status' => 'sold', 'updated_at' => date('Y-m-d H:i:s')]);
         }
 
-        // Auto-reject ALL other competing offers (pending + negotiating) and notify each buyer
-        $otherOffers = $db->table('offers')
+        // Auto-reject competing offers
+        // For 'sell' products, reject ALL others. For 'rent' products, reject only those that overlap in dates.
+        $offerType = $offer['offer_type'] ?? $product['listing_type'];
+        $otherOffersQuery = $db->table('offers')
             ->where('product_id', $offer['product_id'])
             ->where('id !=', $id)
-            ->whereIn('status', ['pending', 'negotiating'])
-            ->get()->getResultArray();
+            ->whereIn('status', ['pending', 'negotiating']);
+
+        if ($offerType === 'rent') {
+            $otherOffersQuery->groupStart()
+                ->where('rental_start_date <=', $offer['rental_end_date'])
+                ->where('rental_end_date >=', $offer['rental_start_date'])
+                ->groupEnd();
+        }
+
+        $otherOffers = $otherOffersQuery->get()->getResultArray();
 
         foreach ($otherOffers as $other) {
             $db->table('offers')->where('id', $other['id'])->update([
                 'status'         => 'rejected',
-                'seller_remarks' => 'Another buyer\'s offer for this product has been accepted.',
+                'seller_remarks' => 'Another buyer\'s offer for these dates has been accepted.',
                 'updated_at'     => date('Y-m-d H:i:s'),
             ]);
             $db->table('notifications')->insert([
                 'user_id'    => $other['buyer_id'],
                 'title'      => 'Offer Not Accepted',
-                'message'    => 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" was accepted by the seller. Your offer has been closed.',
+                'message'    => 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" for overlapping dates was accepted. Your offer has been closed.',
                 'type'       => 'offer',
                 'is_read'    => 0,
                 'created_at' => date('Y-m-d H:i:s'),

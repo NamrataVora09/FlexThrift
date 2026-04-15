@@ -757,11 +757,6 @@ export default function Page() {
               <div className="modal-body p-4">
                 <p className="text-muted small mb-3">
                   Offer: <strong>{changeDatesModal.title}</strong>
-                  {cdBookedRanges.length > 0 && (
-                    <span className="ms-2 badge bg-danger-subtle text-danger border border-danger-subtle">
-                      {cdBookedRanges.length} period{cdBookedRanges.length > 1 ? 's' : ''} unavailable
-                    </span>
-                  )}
                 </p>
                  <RentalCalendar
                   bookedRanges={cdBookedRanges}

@@ -250,8 +250,8 @@ class BuyerApi extends ResourceController
                 p.title as product_title, p.listing_type, p.original_price,
                 p.rental_cost as rental_cost,
                 (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image,
-                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = \'accepted\' AND listing_type = \'sell\') as is_product_sold,
-                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = \'accepted\' AND listing_type = \'rent\' AND rental_start_date <= o.rental_end_date AND rental_end_date >= o.rental_start_date AND p.listing_type = \'rent\') as is_rental_blocked,
+                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND id != o.id AND status = \'accepted\' AND listing_type = \'sell\') as is_product_sold,
+                (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND id != o.id AND status = \'accepted\' AND listing_type = \'rent\' AND rental_start_date <= o.rental_end_date AND rental_end_date >= o.rental_start_date AND p.listing_type = \'rent\') as is_rental_blocked,
                 u.name as seller_name, u.seller_rating_avg, u.seller_rating_count')
             ->join('products p', 'p.id = o.product_id', 'left')
             ->join('users u', 'u.id = o.seller_id', 'left')
@@ -262,6 +262,19 @@ class BuyerApi extends ResourceController
         $historyModel = new \App\Models\OfferHistoryModel();
         foreach ($offers as &$o) {
             $o['history'] = $historyModel->getHistoryByOffer($o['id']);
+            
+            // Check for conflicts
+            if ((int)($o['is_product_sold'] ?? 0) > 0) {
+                $o['conflict_info'] = [
+                    'message' => 'This item has been sold to someone else.',
+                    'type' => 'sold_conflict'
+                ];
+            } else if ((int)($o['is_rental_blocked'] ?? 0) > 0) {
+                $o['conflict_info'] = [
+                    'message' => 'The selected dates are now unavailable. Please update your proposal.',
+                    'type' => 'rent_conflict'
+                ];
+            }
         }
         unset($o);
 
@@ -344,7 +357,7 @@ class BuyerApi extends ResourceController
         $offers = $db->table('offers')
             ->select('rental_start_date, rental_end_date')
             ->where('product_id', $productId)
-            ->whereIn('status', ['pending', 'accepted'])
+            ->where('status', 'accepted')
             ->where('rental_start_date IS NOT NULL', null, false)
             ->where('rental_end_date IS NOT NULL', null, false)
             ->get()->getResultArray();
