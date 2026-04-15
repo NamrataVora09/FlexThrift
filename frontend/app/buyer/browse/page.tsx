@@ -119,6 +119,20 @@ export default function BrowsePage() {
       .catch(() => { });
   }, []);
 
+  // Blocked admin check
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'admin' && Number(user.blocked_buyer) === 1) {
+        router.replace('/admin');
+      }
+    }
+  }, [isAuthenticated, user, router]);
+
+  // Prevent rendering if admin is blocked as a buyer
+  if (isAuthenticated && user && user.role === 'admin' && Number(user.blocked_buyer) === 1) {
+    return null;
+  }
+
   const load = (p: number, type: string, s: string) => {
     setLoading(true);
     const params = new URLSearchParams();

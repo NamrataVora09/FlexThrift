@@ -46,55 +46,67 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
       )}
 
       <ul className="nav flex-column" style={{ padding: '0 8px' }}>
-        {navigation.map((section, si) => (
-          <li key={si}>
-            {section.title && (
-              <small
-                className="d-block px-3 mb-2 text-uppercase fw-semibold"
-                style={{
-                  fontSize: '0.7rem',
-                  letterSpacing: 1,
-                  color: sectionColor,
-                  marginTop: si > 0 ? 20 : 0,
-                }}
-              >
-                {section.title}
-              </small>
-            )}
-            {section.items.map((item) => {
-              // Exact match for dashboard root paths, startsWith for sub-pages
-              const isDashboardRoot = ['/superadmin', '/admin', '/buyer', '/seller', '/delivery'].includes(item.href);
-              const isActive = isDashboardRoot
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(item.href + '/');
-              return (
-                <li key={item.href} className="nav-item" style={{ listStyle: 'none' }}>
-                  <Link
-                    className="nav-link d-flex align-items-center gap-2"
-                    href={item.href}
-                    target={item.target}
-                    style={{
-                      color: isActive ? activeText : linkColor,
-                      background: isActive ? activeColor : 'transparent',
-                      padding: '10px 15px',
-                      margin: '2px 0',
-                      borderRadius: 8,
-                      fontSize: '0.9rem',
-                      transition: 'all 0.2s',
-                      boxShadow: isActive ? '0 4px 12px rgba(255,198,58,0.3)' : undefined,
-                    }}
-                  >
-                    <i className={item.icon} style={{ fontSize: '1.1rem', width: 20, textAlign: 'center' }}></i>
-                    <span>{item.label}</span>
-                    {item.badge && item.badge > 0 && (
-                      <span className="badge rounded-pill bg-danger ms-auto">{item.badge}</span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </li>
-        ))}
+        {navigation.map((section, si) => {
+          // Filter items based on block status
+          const filteredItems = section.items.filter(item => {
+            if (user.role === 'admin' && item.href === '/buyer/dashboard' && Number(user.blocked_buyer) === 1) {
+              return false;
+            }
+            return true;
+          });
+
+          if (filteredItems.length === 0) return null;
+
+          return (
+            <li key={si}>
+              {section.title && (
+                <small
+                  className="d-block px-3 mb-2 text-uppercase fw-semibold"
+                  style={{
+                    fontSize: '0.7rem',
+                    letterSpacing: 1,
+                    color: sectionColor,
+                    marginTop: si > 0 ? 20 : 0,
+                  }}
+                >
+                  {section.title}
+                </small>
+              )}
+              {filteredItems.map((item) => {
+                // Exact match for dashboard root paths, startsWith for sub-pages
+                const isDashboardRoot = ['/superadmin', '/admin', '/buyer', '/seller', '/delivery'].includes(item.href);
+                const isActive = isDashboardRoot
+                  ? pathname === item.href
+                  : pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <li key={item.href} className="nav-item" style={{ listStyle: 'none' }}>
+                    <Link
+                      className="nav-link d-flex align-items-center gap-2"
+                      href={item.href}
+                      target={item.target}
+                      style={{
+                        color: isActive ? activeText : linkColor,
+                        background: isActive ? activeColor : 'transparent',
+                        padding: '10px 15px',
+                        margin: '2px 0',
+                        borderRadius: 8,
+                        fontSize: '0.9rem',
+                        transition: 'all 0.2s',
+                        boxShadow: isActive ? '0 4px 12px rgba(255,198,58,0.3)' : undefined,
+                      }}
+                    >
+                      <i className={item.icon} style={{ fontSize: '1.1rem', width: 20, textAlign: 'center' }}></i>
+                      <span>{item.label}</span>
+                      {item.badge && item.badge > 0 && (
+                        <span className="badge rounded-pill bg-danger ms-auto">{item.badge}</span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </li>
+          );
+        })}
       </ul>
 
       <hr style={{ borderColor: '#ddd', margin: '20px 15px' }} />

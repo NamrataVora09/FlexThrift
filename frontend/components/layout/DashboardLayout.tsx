@@ -59,11 +59,17 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && requiredRoles && user) {
-      // Admin blocked as seller → cannot access seller pages
-      if (user.role === 'admin' && requiredRoles.includes('seller') && user.blocked_seller === 1) {
-        router.push('/admin');
-        return;
+      // Role-based blocking for admins
+      if (user.role === 'admin') {
+        const isBlockedBuyer = requiredRoles.includes('buyer') && Number(user.blocked_buyer) === 1;
+        const isBlockedSeller = requiredRoles.includes('seller') && Number(user.blocked_seller) === 1;
+
+        if (isBlockedBuyer || isBlockedSeller) {
+          router.push('/admin');
+          return;
+        }
       }
+      
       if (user.role !== 'super_admin' && !requiredRoles.includes(user.role)) {
         router.push(getDashboardPath(user.role));
       }

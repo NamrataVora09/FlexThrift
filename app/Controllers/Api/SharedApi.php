@@ -366,7 +366,7 @@ class SharedApi extends ResourceController
     public function adminSubscriptionPlans()
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin'])) {
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
             return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
@@ -382,7 +382,7 @@ class SharedApi extends ResourceController
     public function createSubscriptionPlan()
     {
         $jwtUser = $this->request->jwt_user;
-        if ($jwtUser['role'] !== 'super_admin') {
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
             return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
@@ -411,7 +411,7 @@ class SharedApi extends ResourceController
     public function togglePlanStatus(int $id)
     {
         $jwtUser = $this->request->jwt_user;
-        if ($jwtUser['role'] !== 'super_admin') {
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
             return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
@@ -428,7 +428,7 @@ class SharedApi extends ResourceController
     public function updateSubscriptionPlan(int $id)
     {
         $jwtUser = $this->request->jwt_user;
-        if ($jwtUser['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
 
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
@@ -450,7 +450,7 @@ class SharedApi extends ResourceController
     public function deleteSubscriptionPlan(int $id)
     {
         $jwtUser = $this->request->jwt_user;
-        if ($jwtUser['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
 
         $db = \Config\Database::connect();
         $db->table('subscription_plans')->where('id', $id)->delete();

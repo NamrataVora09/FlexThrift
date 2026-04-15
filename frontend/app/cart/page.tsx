@@ -17,11 +17,18 @@ export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
 
   useEffect(() => {
+    // Blocked admin check
+    if (isAuthenticated && user) {
+      if (user.role === 'admin' && Number(user.blocked_buyer) === 1) {
+        router.replace('/admin');
+        return;
+      }
+    }
     setItems(getCartItems());
     const handler = () => setItems(getCartItems());
     window.addEventListener('cart-updated', handler);
     return () => window.removeEventListener('cart-updated', handler);
-  }, []);
+  }, [isAuthenticated, user, router]);
 
   const handleRemove = (id: number) => {
     removeFromCart(id);

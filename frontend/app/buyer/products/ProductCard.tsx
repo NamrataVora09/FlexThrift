@@ -40,9 +40,22 @@ export default function ProductCard({ product }: { product: Product }) {
   const [inWishlist, setInWishlist] = useState(false);
 
   useEffect(() => {
+    // Blocked admin check
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('flex_user');
+      if (stored) {
+        try {
+          const u = JSON.parse(stored);
+          if (u.role === 'admin' && Number(u.blocked_buyer) === 1) {
+            router.replace('/admin');
+            return;
+          }
+        } catch { /* ignore */ }
+      }
+    }
     setInCart(isInCart(product.id));
     setInWishlist(isInWishlist(product.id));
-  }, [product.id]);
+  }, [product.id, router]);
 
   const price =
     product.listing_type === 'sell'

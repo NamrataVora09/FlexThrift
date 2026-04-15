@@ -48,10 +48,12 @@ export default function SubscriptionsView({ role, userType }: Props) {
 
   const [paying, setPaying] = useState(false);
 
-  // SuperAdmin has full access
+  const [buyerPlans, setBuyerPlans] = useState<Plan[]>([]);
+
+  // SuperAdmin has full access view
   if (user?.role === 'super_admin') {
     return (
-      <DashboardLayout requiredRoles={[role, 'super_admin']}>
+      <DashboardLayout requiredRoles={['super_admin']}>
         <div className="container">
           <div className="text-center py-5 bg-white rounded-4 border">
             <i className="bi bi-shield-check" style={{ fontSize: '5rem', color: '#ffc63a' }}></i>
@@ -69,11 +71,24 @@ export default function SubscriptionsView({ role, userType }: Props) {
     if (success) setFlashMsg({ text: decodeURIComponent(success), ok: true });
     if (error)   setFlashMsg({ text: decodeURIComponent(error),   ok: false });
 
-    api.get<SubData>(`/shared/subscriptions/${userType}`).then((r) => {
-      if (r.success && r.data) setData(r.data);
-      setLoading(false);
-    });
-  }, [userType]);
+    // For regular admins, we show both types of plans for their information
+    if (user?.role === 'admin') {
+      api.get<SubData>(`/shared/subscriptions/seller`).then((r) => {
+        if (r.success && r.data) setData(r.data);
+      });
+      api.get<SubData>(`/shared/subscriptions/buyer`).then((r) => {
+        if (r.success && r.data) {
+          setBuyerPlans(r.data.plans);
+          setLoading(false);
+        }
+      });
+    } else {
+      api.get<SubData>(`/shared/subscriptions/${userType}`).then((r) => {
+        if (r.success && r.data) setData(r.data);
+        setLoading(false);
+      });
+    }
+  }, [userType, user?.role]);
 
   const openCheckout = async (plan: Plan) => {
     setSelectedPlan(plan);
@@ -240,7 +255,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
         )}
 
         {/* Plans */}
-        <h5 className="subsection_label_font mb-3">Available Plans</h5>
+        <h5 className="subsection_label_font mb-3">{user?.role === 'admin' ? 'Seller Plans' : 'Available Plans'}</h5>
         <div className="row">
           {data?.plans && data.plans.length > 0 ? data.plans.map((plan) => (
             <div key={plan.id} className="col-md-4 mb-4">
@@ -266,10 +281,41 @@ export default function SubscriptionsView({ role, userType }: Props) {
             </div>
           )) : (
             <div className="col-12 text-center py-4">
-              <p className="normal_label_font">No plans available</p>
+              <p className="normal_label_font">No seller plans available</p>
             </div>
           )}
         </div>
+
+        {user?.role === 'admin' && buyerPlans.length > 0 && (
+          <>
+            <h5 className="subsection_label_font mt-4 mb-3">Buyer Plans</h5>
+            <div className="row">
+              {buyerPlans.map((plan) => (
+                <div key={plan.id} className="col-md-4 mb-4">
+                  <div className="card h-100">
+                    <div className="card-body text-center d-flex flex-column">
+                      <h5 className="fw-bold">{plan.name}</h5>
+                      <span className="type-badge sell">{plan.plan_type}</span>
+                      <h3 className="fw-bold mt-3" style={{ color: '#ffc63a' }}>₹{Number(plan.price).toLocaleString('en-IN')}</h3>
+                      <p className="normal_label_font">
+                        {plan.plan_type === 'duration'
+                          ? `${plan.duration_hours} hours`
+                          : `${plan.limit_value} items`}
+                      </p>
+                      <button
+                        className="btn yellow_button w-100 mt-auto"
+                        onClick={() => openCheckout(plan)}
+                      >
+                        <i className="bi bi-credit-card me-2" />
+                        {hasActiveSub ? 'Purchase More' : 'Subscribe & Pay'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* History */}
         {data?.history && data.history.length > 0 && (

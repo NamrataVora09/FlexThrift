@@ -254,11 +254,23 @@ export default function ProductDetailClient({ product, images, similarProducts =
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('flex_user');
       if (stored) {
-        try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
+        try { 
+          const u = JSON.parse(stored);
+          setUser(u);
+          // Blocked admin check
+          if (u.role === 'admin' && Number(u.blocked_buyer) === 1) {
+            router.replace('/admin');
+          }
+        } catch { /* ignore */ }
       }
       setInCart(isInCart(Number(product.id)));
     }
-  }, [product.id]);
+  }, [product.id, router]);
+
+  // Prevent rendering if admin is blocked as a buyer
+  if (user && user.role === 'admin' && Number((user as any).blocked_buyer) === 1) {
+    return null;
+  }
 
   // Check if buyer already has an active offer on this product (persists across refreshes)
   useEffect(() => {

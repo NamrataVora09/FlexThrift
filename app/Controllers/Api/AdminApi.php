@@ -15,35 +15,77 @@ class AdminApi extends ResourceController
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
 
+        $pendingProductsQuery = $db->table('products p')
+            ->where('p.status', 'pending');
+        
+        $pendingEditsQuery = $db->table('product_edit_requests r')
+            ->join('products p', 'p.id = r.product_id', 'left')
+            ->where('r.status', 'pending');
+
+        if ($jwtUser['role'] === 'admin') {
+            $pendingProductsQuery->join('users u', 'u.id = p.seller_id', 'left')->where('u.role !=', 'admin');
+            $pendingEditsQuery->join('users u', 'u.id = p.seller_id', 'left')->where('u.role !=', 'admin');
+        }
+
         $stats = [
             'total_users' => $db->table('users')->countAllResults(),
+            'total_sellers' => $db->table('users')->whereIn('user_type', ['seller', 'both'])->countAllResults(),
+            'total_buyers' => $db->table('users')->whereIn('user_type', ['buyer', 'both'])->countAllResults(),
             'total_products' => $db->table('products')->countAllResults(),
-            'pending_products' => $db->table('products')->where('status', 'pending')->countAllResults(),
-            'approved_products' => $db->table('products')->where('status', 'approved')->countAllResults(),
+            'pending_products' => $pendingProductsQuery->countAllResults(),
+            'pending_edits' => $pendingEditsQuery->countAllResults(),
             'total_orders' => $db->table('orders')->countAllResults(),
             'total_offers' => $db->table('offers')->countAllResults(),
+            'successful_deals' => $db->table('offers')->where('status', 'accepted')->countAllResults(),
+            'active_subscriptions' => $db->table('user_subscriptions')->where('is_active', 1)->where('expires_at >', date('Y-m-d H:i:s'))->countAllResults(),
         ];
+
+        $recentOffers = $db->table('offers o')
+            ->select('o.*, p.title as product_title, b.name as buyer_name, s.name as seller_name')
+            ->join('products p', 'p.id = o.product_id', 'left')
+            ->join('users b', 'b.id = o.buyer_id', 'left')
+            ->join('users s', 's.id = p.seller_id', 'left')
+            ->orderBy('o.created_at', 'DESC')
+            ->limit(5)
+            ->get()->getResultArray();
 
         return $this->respond([
             'success' => true,
-            'data' => ['user' => ['id' => (int) $user['id'], 'name' => $user['name'], 'role' => $jwtUser['role']], 'stats' => $stats],
+            'data' => [
+                'user' => ['id' => (int) $user['id'], 'name' => $user['name'], 'role' => $jwtUser['role']], 
+                'stats' => $stats,
+                'recent_offers' => $recentOffers
+            ],
         ]);
     }
 
     public function pendingProducts()
     {
         $jwtUser = $this->request->jwt_user;
-        if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => true, 'data' => []]);
+        $db = \Config\Database::connect();
+
+        // Check rights for regular admins
+        if ($jwtUser['role'] === 'admin') {
+            $adminUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            if ($adminUser && ($adminUser['blocked_from_approvals'] ?? 0)) {
+                return $this->respond(['success' => true, 'data' => [], 'message' => 'You are blocked from approvals.']);
+            }
+        } elseif ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        $db = \Config\Database::connect();
-        $products = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, lt.usage_label')
+        $productsQuery = $db->table('products p')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.usage_label, u.role as seller_role')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
-            ->where('p.status', 'pending')
-            ->orderBy('p.created_at', 'ASC')
+            ->where('p.status', 'pending');
+
+        // If the viewer is a regular admin, don't show products uploaded by other admins
+        if ($jwtUser['role'] === 'admin') {
+            $productsQuery->where('u.role !=', 'admin');
+        }
+
+        $products = $productsQuery->orderBy('p.created_at', 'ASC')
             ->get()->getResultArray();
 
         foreach ($products as &$product) {
@@ -168,13 +210,19 @@ class AdminApi extends ResourceController
      */
     public function getEditRequests()
     {
+        $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
-        $requests = $db->table('product_edit_requests r')
+        $builder = $db->table('product_edit_requests r')
             ->select('r.*, p.title as original_title, p.listing_type, u.name as seller_name, u.reliability_score')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->join('users u', 'u.id = p.seller_id', 'left')
-            ->where('r.status', 'pending')
-            ->orderBy('r.created_at', 'DESC')
+            ->where('r.status', 'pending');
+
+        if ($jwtUser['role'] === 'admin') {
+            $builder->where('u.role !=', 'admin');
+        }
+
+        $requests = $builder->orderBy('r.created_at', 'DESC')
             ->get()->getResultArray();
         return $this->respond(['success' => true, 'data' => $requests]);
     }
@@ -394,8 +442,219 @@ class AdminApi extends ResourceController
         $current = $user[$col] ?? 0;
         $db->table('users')->where('id', $userId)->update([$col => $current ? 0 : 1]);
 
+        // Side effects for blocking/unblocking seller
+        if ($role === 'seller') {
+            if (!$current) { // Just blocked
+                $db->table('products')
+                   ->where(['seller_id' => $userId, 'status' => 'approved'])
+                   ->update(['status' => 'inactive']);
+            } else { // Just unblocked
+                $db->table('products')
+                   ->where(['seller_id' => $userId, 'status' => 'inactive'])
+                   ->update(['status' => 'approved']);
+            }
+        }
+
         $action = $current ? 'unblocked' : 'blocked';
         return $this->respond(['success' => true, 'message' => ucfirst($role) . " role {$action} successfully."]);
+    }
+
+    public function planCheckoutDetails(int $planId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+
+        $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
+        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+
+        $basePrice = (float) $plan['price'];
+        $chargeModel = new \App\Models\PlatformChargeModel();
+        $activeCharges = $chargeModel->getActiveCharges();
+
+        $totalCharges = 0;
+        $breakdown = [];
+        foreach ($activeCharges as $charge) {
+            $amt = $charge['charge_type'] === 'percentage' ? ($basePrice * $charge['charge_value'] / 100) : (float)$charge['charge_value'];
+            $totalCharges += $amt;
+            $breakdown[] = ['name' => $charge['charge_name'], 'type' => $charge['charge_type'], 'value' => $charge['charge_value'], 'amount' => $amt];
+        }
+
+        $referralDiscount = 0;
+        $referralBalance = (float)($user['referral_balance'] ?? 0);
+        $hasUsed = (int)($user['has_used_referral'] ?? 0);
+        $expiry = $user['referral_expires_at'] ?? null;
+        if ($referralBalance > 0 && $hasUsed === 0) {
+            if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                $referralDiscount = $referralBalance;
+            }
+        }
+
+        return $this->respond([
+            'success' => true,
+            'data' => [
+                'plan' => $plan,
+                'user' => ['name' => $user['name'], 'email' => $user['email'], 'mobile' => $user['mobile_number'] ?? '', 'address' => $user['address'] ?? ''],
+                'charge_breakdown' => $breakdown,
+                'total_charges' => $totalCharges,
+                'referral_discount' => $referralDiscount,
+                'total' => max(0, $basePrice + $totalCharges - $referralDiscount)
+            ]
+        ]);
+    }
+
+    public function applyCoupon()
+    {
+        $data = $this->request->getJSON(true);
+        $code = strtoupper(trim($data['code'] ?? ''));
+        $planId = (int)($data['plan_id'] ?? 0);
+        $db = \Config\Database::connect();
+
+        $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
+        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+
+        $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
+        if (!$coupon) return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
+
+        if ($coupon['valid_until'] && strtotime($coupon['valid_until']) < time()) return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+
+        if ((float)$plan['price'] < (float)$coupon['min_order_amount']) return $this->respond(['success' => false, 'message' => 'Min purchase required: ₹' . $coupon['min_order_amount']]);
+
+        $discount = $coupon['discount_type'] === 'percentage' ? ($plan['price'] * $coupon['discount_value'] / 100) : (float)$coupon['discount_value'];
+        if ($coupon['max_discount'] && $discount > $coupon['max_discount']) $discount = $coupon['max_discount'];
+
+        return $this->respond(['success' => true, 'message' => 'Coupon applied!', 'data' => ['discount' => round($discount, 2)]]);
+    }
+
+    public function initiatePayment()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId = $jwtUser['user_id'];
+        $data = $this->request->getJSON(true);
+        $db = \Config\Database::connect();
+
+        $planId = (int)($data['plan_id'] ?? 0);
+        $couponCode = strtoupper(trim($data['coupon_code'] ?? ''));
+        $callbackUrl = trim($data['callback_url'] ?? '');
+
+        $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
+        if (!$plan) return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+
+        $basePrice = (float)$plan['price'];
+        $chargeModel = new \App\Models\PlatformChargeModel();
+        $totalCharges = 0;
+        foreach ($chargeModel->getActiveCharges() as $c) {
+            $totalCharges += $c['charge_type'] === 'percentage' ? ($basePrice * $c['charge_value'] / 100) : (float)$c['charge_value'];
+        }
+
+        $discount = 0;
+        if ($couponCode) {
+            $cpn = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
+            if ($cpn && $basePrice >= (float)$cpn['min_order_amount'] && (!$cpn['valid_until'] || strtotime($cpn['valid_until']) >= time())) {
+                $discount = $cpn['discount_type'] === 'percentage' ? ($basePrice * $cpn['discount_value'] / 100) : (float)$cpn['discount_value'];
+                if ($cpn['max_discount'] && $discount > $cpn['max_discount']) $discount = $cpn['max_discount'];
+            }
+        }
+
+        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        $referralDiscount = 0;
+        if ((float)($user['referral_balance'] ?? 0) > 0 && (int)($user['has_used_referral'] ?? 0) === 0) {
+            $exp = $user['referral_expires_at'] ?? null;
+            if (!$exp || $exp === '0000-00-00 00:00:00' || strtotime($exp) > time()) {
+                $referralDiscount = (float)$user['referral_balance'];
+            }
+        }
+
+        $final = max(1, ($basePrice + $totalCharges) - $discount - $referralDiscount);
+        $merchantOrderId = 'SUB-ADM-' . $userId . '-' . time();
+        $redirectUrl = $callbackUrl ? str_replace('{id}', $merchantOrderId, $callbackUrl) : base_url("admin/payment-callback?id={$merchantOrderId}");
+
+        $payload = ['merchantOrderId' => $merchantOrderId, 'amount' => (int)($final * 100), 'paymentFlow' => ['type' => 'PG_CHECKOUT', 'merchantUrls' => ['redirectUrl' => $redirectUrl]]];
+
+        $db->table('user_subscriptions')->insert([
+            'user_id' => $userId, 'plan_id' => $planId, 'starts_at' => date('Y-m-d H:i:s'), 'expires_at' => date('Y-m-d H:i:s'),
+            'usage_count' => 0, 'is_active' => 0, 'payment_status' => 'pending', 'amount_paid' => $final,
+            'referral_discount_applied' => $referralDiscount, 'merchant_transaction_id' => $merchantOrderId,
+        ]);
+
+        $phonepe = new \App\Libraries\PhonePe();
+        $res = $phonepe->createPayment($payload);
+        if (isset($res['redirectUrl'])) {
+            return $this->respond(['success' => true, 'data' => ['redirect_url' => $res['redirectUrl'], 'merchant_order_id' => $merchantOrderId]]);
+        }
+        return $this->respond(['success' => false, 'message' => 'Payment initiation failed.']);
+    }
+
+    public function verifyPayment()
+    {
+        $id = $this->request->getGet('id');
+        $db = \Config\Database::connect();
+        $dbSub = $db->table('user_subscriptions')->where('merchant_transaction_id', $id)->get()->getRowArray();
+        if (!$dbSub) return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
+        if ($dbSub['is_active'] == 1) return $this->respond(['status' => 'success', 'message' => 'Already active']);
+
+        $phonepe = new \App\Libraries\PhonePe();
+        $status = $phonepe->getOrderStatus($id);
+        $state = $status['state'] ?? ($status['data']['state'] ?? 'PENDING');
+
+        if ($state === 'COMPLETED') {
+            $plan = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
+            
+            // Stacking/Queueing Logic: Find the latest expiry among active/future plans
+            $latestActive = $db->table('user_subscriptions')
+                ->where('user_id', $dbSub['user_id'])
+                ->where('is_active', 1)
+                ->where('expires_at >', date('Y-m-d H:i:s'))
+                ->orderBy('expires_at', 'DESC')
+                ->get()->getRowArray();
+
+            $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+            $expiresAt = ((int) $plan['duration_hours'] > 0)
+                ? date('Y-m-d H:i:s', strtotime("+{$plan['duration_hours']} hours", strtotime($startsAt)))
+                : '2099-12-31 23:59:59';
+
+            $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
+                'is_active' => 1,
+                'payment_status' => 'paid',
+                'starts_at' => $startsAt,
+                'expires_at' => $expiresAt,
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+            
+            // Sync with users table (Set to the absolute latest expiry)
+            $db->table('users')->where('id', $dbSub['user_id'])->update([
+                'subscription_tier' => $plan['name'],
+                'subscription_expires_at' => $expiresAt,
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+            
+            // Mark referral as used if discount was applied
+            if ($dbSub['referral_discount_applied'] > 0) {
+                $db->table('users')->where('id', $dbSub['user_id'])->update(['has_used_referral' => 1, 'referral_balance' => 0]);
+            }
+            
+            $db->table('transactions')->insert([
+                'user_id' => $dbSub['user_id'], 
+                'type' => 'subscription', 
+                'amount' => $dbSub['amount_paid'], 
+                'description' => 'Subscription Stacking: ' . $plan['name'], 
+                'payment_method' => 'online', 
+                'payment_status' => 'completed', 
+                'transaction_id'   => $status['data']['transactionId'] ?? ('ADM-' . time()),
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+            return $this->respond(['status' => 'success', 'message' => 'Payment verified and plans stacked!']);
+        }
+
+        if ($state === 'FAILED' || $state === 'CANCELLED') {
+            $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
+                'payment_status' => 'failed',
+                'updated_at'     => date('Y-m-d H:i:s'),
+            ]);
+            return $this->respond(['status' => 'failed', 'message' => 'Payment failed or was cancelled.']);
+        }
+
+        return $this->respond(['status' => 'pending', 'message' => 'Payment is being processed…', 'state' => $state]);
     }
 
     public function userAuditLogs($userId)

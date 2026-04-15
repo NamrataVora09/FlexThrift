@@ -55,6 +55,7 @@ export function getNavigation(role: string): NavSection[] {
         {
           items: [
             { label: 'Dashboard', href: '/admin', icon: 'bi bi-speedometer2' },
+            { label: 'Subscription', href: '/admin/subscriptions', icon: 'fa fa-credit-card' },
           ],
         },
         {
@@ -82,7 +83,7 @@ export function getNavigation(role: string): NavSection[] {
         {
           title: 'Quick Links',
           items: [
-            { label: 'Browse Market', href: '/buyer/dashboard', icon: 'bi bi-shop-window', target: '_blank' },
+            { label: 'Browse Market', href: '/buyer', icon: 'bi bi-shop-window', target: '_blank' },
           ],
         },
       ];

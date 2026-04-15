@@ -231,8 +231,13 @@ class SellerApi extends ResourceController
         $userId = $jwtUser['user_id'];
         $db = \Config\Database::connect();
 
+        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        if ($user && !empty($user['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role has been blocked by the admin. You cannot upload products.'], 403);
+        }
+
         // SuperAdmin bypasses subscription check
-        if ($jwtUser['role'] !== 'super_admin' && $jwtUser['role'] !== 'admin') {
+        if ($jwtUser['role'] !== 'super_admin') {
             $activeSub = $db->table('user_subscriptions us')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $userId)
@@ -326,7 +331,7 @@ class SellerApi extends ResourceController
             'dispatch_state' => $data['dispatch_state'] ?? null,
             'dispatch_city' => $data['dispatch_city'] ?? null,
             'specifications' => $data['specifications'] ?? null,
-            'status' => in_array($jwtUser['role'], ['admin', 'super_admin']) ? 'approved' : 'pending',
+            'status' => $jwtUser['role'] === 'super_admin' ? 'approved' : 'pending',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ];

@@ -58,11 +58,16 @@ export default function LandingPageClient() {
   useEffect(() => {
     if (isLoading) return;
     if (isAuthenticated && user) {
-      if (user.role === 'admin' && user.blocked_buyer === 1) {
+      if (user.role === 'admin' && Number(user.blocked_buyer) === 1) {
         router.replace('/admin');
       }
     }
   }, [isLoading, isAuthenticated, user, router]);
+
+  // Prevent rendering if admin is blocked as a buyer
+  if (!isLoading && isAuthenticated && user && user.role === 'admin' && Number(user.blocked_buyer) === 1) {
+    return null;
+  }
 
   /* ── Taxonomy ─────────────────────────────────────────────────────── */
   useEffect(() => {

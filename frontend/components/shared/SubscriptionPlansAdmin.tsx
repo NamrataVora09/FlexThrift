@@ -109,7 +109,7 @@ export default function SubscriptionPlansAdmin() {
   const limitLabel = form.user_type === 'seller' ? 'Upload Limit (Qty)' : 'Contact View Limit (Qty)';
 
   return (
-    <DashboardLayout requiredRoles={['super_admin']}>
+    <DashboardLayout requiredRoles={['super_admin', 'admin']}>
       <div className="container-fluid">
         {/* Header */}
         <div className="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">

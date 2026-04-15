@@ -55,7 +55,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const savedUser = localStorage.getItem('flex_user');
       if (savedToken && savedUser) {
         setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+
+        // For admins, force a background refresh to catch any block status changes
+        if (parsedUser.role === 'admin') {
+          api.get<User>('/auth/me').then(res => {
+            if (res.success && res.data) {
+              setUser(res.data);
+              localStorage.setItem('flex_user', JSON.stringify(res.data));
+            }
+          }).catch(() => {});
+        }
       }
     } catch {
       localStorage.removeItem('flex_token');

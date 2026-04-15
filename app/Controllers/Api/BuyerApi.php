@@ -388,7 +388,14 @@ class BuyerApi extends ResourceController
 
         $product = $db->table('products')->where('id', $data['product_id'])->where('status', 'approved')->get()->getRowArray();
         if (!$product)
-            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            return $this->respond(['success' => false, 'message' => 'Product not found or currently unavailable'], 404);
+
+        // Check if seller is blocked
+        $seller = $db->table('users')->where('id', $product['seller_id'])->get()->getRowArray();
+        if ($seller && !empty($seller['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'This seller is currently blocked and cannot receive offers.'], 403);
+        }
+
         if ($product['seller_id'] == $jwtUser['user_id'])
             return $this->respond(['success' => false, 'message' => 'Cannot make offer on your own product'], 400);
 

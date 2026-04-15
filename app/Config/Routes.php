@@ -163,6 +163,7 @@ function register_api_routes($routes) {
         $routes->get('zones', 'Api\SharedApi::zones');
         $routes->get('cms-pages', 'Api\SharedApi::cmsPages');
         $routes->post('cms-pages', 'Api\SharedApi::saveCmsPage');
+
         $routes->get('taxonomy', 'Api\SharedApi::taxonomy');
         $routes->get('contacted-sellers', 'Api\SharedApi::contactedSellers');
         $routes->post('purchase-subscription', 'Api\SharedApi::purchaseSubscription');
@@ -172,6 +173,11 @@ function register_api_routes($routes) {
 
     // Admin API (protected)
     $routes->group('admin', ['filter' => 'jwt'], function ($routes) {
+        $routes->get('plan-checkout-details/(:num)', 'Api\AdminApi::planCheckoutDetails/$1');
+        $routes->post('apply-coupon', 'Api\AdminApi::applyCoupon');
+        $routes->post('initiate-payment', 'Api\AdminApi::initiatePayment');
+        $routes->get('payment-callback', 'Api\AdminApi::verifyPayment');
+        $routes->get('verify-payment', 'Api\AdminApi::verifyPayment');
         $routes->get('dashboard', 'Api\AdminApi::dashboard');
         $routes->get('pending-products', 'Api\AdminApi::pendingProducts');
         $routes->get('users', 'Api\AdminApi::users');
