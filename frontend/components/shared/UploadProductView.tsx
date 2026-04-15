@@ -496,13 +496,27 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         if (found.rule.max_cost_cap_per_day) maxCapPct = Number(found.rule.max_cost_cap_per_day);
       }
 
+      // 1. Validate Deposit Amount
+      const enteredDeposit = parseFloat(f.rental_deposit || '0');
       const depreciatedValue = origPrice * (1 - (deductionThreshold + depreciationAmount) / 100);
-      const deposit = Math.round(depreciatedValue * depositPct);
-      const maxRental = Math.round(deposit * maxCapPct / 100);
+      const theoreticalDeposit = Math.round(depreciatedValue * depositPct);
+      const maxAllowedDeposit = Math.round(depreciatedValue * 1.0); // Allow up to depreciated value? or depositPct?
+      // Actually, rule says at least X% less than original. validateDepositWithRules handles this.
       
+      // We'll use the theoretical deposit as the limit if we want to be strict, 
+      // but let's just use the rule's logic: deposit <= original * (1 - threshold/100)
+      const maxPriceBasedOnThreshold = Math.round(origPrice * (1 - (deductionThreshold) / 100));
+      if (enteredDeposit > maxPriceBasedOnThreshold) {
+          setError(`Deposit cannot exceed ₹${maxPriceBasedOnThreshold.toLocaleString('en-IN')} (based on ${deductionThreshold}% deduction rule)`);
+          setSubmitting(false);
+          return;
+      }
+
+      // 2. Validate Rental Cost based on ENTERED deposit
+      const maxRental = Math.round(enteredDeposit * maxCapPct / 100);
       if (parseFloat(f.rental_cost) > maxRental) {
         const src = found ? found.source : 'Global';
-        setError(`Rental cost cannot exceed ₹${maxRental.toLocaleString('en-IN')} per day (${maxCapPct}% cap based on ${src} rule)`);
+        setError(`Rental cost cannot exceed ₹${maxRental.toLocaleString('en-IN')} per day (${maxCapPct}% cap of enterred deposit based on ${src} rule)`);
         setSubmitting(false);
         return;
       }
