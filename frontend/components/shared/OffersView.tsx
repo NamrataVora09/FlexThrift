@@ -105,9 +105,10 @@ function fmtDateTime(d?: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-function nightsBetween(start?: string, end?: string) {
+function daysBetween(start?: string, end?: string) {
   if (!start || !end) return 0;
-  return Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000);
+  // Use +1 to count days inclusively (e.g., 15th to 17th is 3 days)
+  return Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1;
 }
 
 function getImageUrl(path?: string) {
@@ -364,9 +365,9 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const submitChangeDates = async () => {
     if (!changeDatesModal) return;
     const { offer } = changeDatesModal;
-    const nights = nightsBetween(cdStart, cdEnd);
-    if (nights < settings.minRentalDays) {
-      toast.error(`Minimum ${settings.minRentalDays} nights rental required`);
+    const days = daysBetween(cdStart, cdEnd);
+    if (days < settings.minRentalDays) {
+      toast.error(`Minimum ${settings.minRentalDays} days rental required`);
       return;
     }
     if (!cdAddress || !cdPin) { toast.error('Please fill delivery address and pin code'); return; }
@@ -376,7 +377,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       rental_end_date: cdEnd,
       delivery_address: cdAddress,
       delivery_pin_code: cdPin,
-      offered_price: Math.round(nights * Number(offer.rental_cost ?? 0)),
+      offered_price: Math.round(days * Number(offer.rental_cost ?? 0)),
     });
     setCdLoading(false);
     if (res?.success) { 
@@ -804,7 +805,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                 {sdStart && sdEnd && sdEnd > sdStart && (
                   <div className="alert alert-warning py-2 px-3 rounded-3 small border-0 mb-3">
                     <i className="bi bi-info-circle me-1"></i>
-                    <strong>{nightsBetween(sdStart, sdEnd)} nights</strong> — Price will be recalculated automatically.
+                    <strong>{daysBetween(sdStart, sdEnd)} days</strong> — Price will be recalculated automatically.
                   </div>
                 )}
                 <label className="form-label fw-bold small">Note to Buyer (optional)</label>
@@ -944,7 +945,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                 }
 
                 const offeredPrice = offer.offered_price ?? offer.offer_price;
-                const nights = nightsBetween(offer.rental_start_date, offer.rental_end_date);
+                const days = daysBetween(offer.rental_start_date, offer.rental_end_date);
 
                 // display status (matching PHP logic)
                 const displayStatus = (() => {
@@ -1030,7 +1031,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                             <strong>{fmtShort(offer.rental_start_date)}</strong>
                             {' - '}
                             <strong>{fmtFull(offer.rental_end_date)}</strong>
-                            {nights > 0 && <span className="badge bg-secondary ms-1">{nights} nights</span>}
+                            {days > 0 && <span className="badge bg-secondary ms-1">{days} days</span>}
                           </div>
                           {isBlockedRental && (
                             <div className="conflict-warning mt-2 w-100">
@@ -1191,7 +1192,7 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
     <>
       {offers.map(o => {
         const offeredPrice = o.offered_price ?? o.offer_price;
-        const nights = nightsBetween(o.rental_start_date, o.rental_end_date);
+        const days = daysBetween(o.rental_start_date, o.rental_end_date);
         const conflict = isRentalConflict(o);
         const soldOut = isSoldOut(o);
         const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
@@ -1392,7 +1393,7 @@ function CombinedView({ offers, settings, isRentalBlocked, isRentalConflict, isS
               const typeClass = isSent ? 'direction-sent' : 'direction-received';
               
               const offeredPrice = o.offered_price ?? o.offer_price;
-              const nights = nightsBetween(o.rental_start_date, o.rental_end_date);
+              const days = daysBetween(o.rental_start_date, o.rental_end_date);
               
               // For received offers, check if blocked by other accepted offers
               const conflict = isSent ? isRentalConflict(o) : isRentalBlocked(o, productAcceptedRanges[o.product_id] || []);

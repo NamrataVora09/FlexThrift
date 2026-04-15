@@ -541,7 +541,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Mobile</label><div className="fw-bold small">{inspecting.seller_mobile || 'N/A'}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Category</label><div className="fw-bold small">{inspecting.category || 'N/A'}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Color / Size</label><div className="fw-bold small">{inspecting.color || '—'} / {inspecting.size || '—'}</div></div></div>
-                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Price</label><div className="fw-bold small" style={{ color: '#ffc63a' }}>₹{Number(inspecting.listing_type === 'rent' ? (inspecting.rental_cost || 0) : (inspecting.price || inspecting.original_price || 0)).toLocaleString()}{inspecting.listing_type === 'rent' ? ' /pm' : ''}</div></div></div>
+                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Price</label><div className="fw-bold small" style={{ color: '#ffc63a' }}>₹{Number(inspecting.listing_type === 'rent' ? (inspecting.rental_cost || 0) : (inspecting.price || inspecting.original_price || 0)).toLocaleString()}{inspecting.listing_type === 'rent' ? ' /day' : ''}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Used Times</label><div className="fw-bold small">{inspecting.used_times || '0'}</div></div></div>
                     </div>
                     {Number(inspecting.has_bill) && inspecting.bill_image ? (
@@ -613,7 +613,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       { l: 'Original Price', v: '₹' + Number(comparison.original?.original_price || 0).toLocaleString() },
                       { 
                         l: comparison.original?.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price', 
-                        v: '₹' + Number(comparison.original?.listing_type === 'rent' ? (comparison.original?.rental_cost || 0) : (comparison.original?.price || 0)).toLocaleString() + (comparison.original?.listing_type === 'rent' ? ' /pm' : '')
+                        v: '₹' + Number(comparison.original?.listing_type === 'rent' ? (comparison.original?.rental_cost || 0) : (comparison.original?.price || 0)).toLocaleString() + (comparison.original?.listing_type === 'rent' ? ' /day' : '')
                       },
                       comparison.original?.listing_type === 'rent' && { l: 'Security Deposit', v: '₹' + Number(comparison.original?.rental_deposit || 0).toLocaleString() }
                     ].filter((item): item is { l: string; v: any } => !!item))}
@@ -657,8 +657,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             { 
                               l: updated.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price', 
                               v: diff(
-                                '₹' + Number(orig.listing_type === 'rent' ? (orig.rental_cost || 0) : (orig.price || 0)) + (orig.listing_type === 'rent' ? ' /pm' : ''),
-                                '₹' + Number(updated.listing_type === 'rent' ? (updated.rental_cost || 0) : (updated.price || 0)) + (updated.listing_type === 'rent' ? ' /pm' : '')
+                                '₹' + Number(orig.listing_type === 'rent' ? (orig.rental_cost || 0) : (orig.price || 0)) + (orig.listing_type === 'rent' ? ' /day' : ''),
+                                '₹' + Number(updated.listing_type === 'rent' ? (updated.rental_cost || 0) : (updated.price || 0)) + (updated.listing_type === 'rent' ? ' /day' : '')
                               ) 
                             },
                             updated.listing_type === 'rent' && { l: 'Security Deposit', v: diff('₹' + Number(orig.rental_deposit || 0), '₹' + Number(updated.rental_deposit || 0)) }

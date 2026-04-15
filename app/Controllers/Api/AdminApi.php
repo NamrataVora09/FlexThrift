@@ -277,9 +277,11 @@ class AdminApi extends ResourceController
 
         return $this->respond([
             'success' => true,
-            'request' => $request,
-            'original' => $original,
-            'original_images' => $originalImages,
+            'data' => [
+                'request' => $request,
+                'original' => $original,
+                'original_images' => $originalImages,
+            ]
         ]);
     }
 
