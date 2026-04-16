@@ -72,9 +72,22 @@ class BuyerApi extends ResourceController
         $page = (int) ($this->request->getGet('page') ?? 1);
         $perPage = 12;
         $offset = ($page - 1) * $perPage;
-        $search = $this->request->getGet('search');
+        $search      = $this->request->getGet('search');
         $listingType = $this->request->getGet('listing_type');
-        $category = $this->request->getGet('category');
+        $category    = $this->request->getGet('category');
+
+        // ── Filter params ────────────────────────────────────────────────────
+        $minPrice   = $this->request->getGet('min_price');
+        $maxPrice   = $this->request->getGet('max_price');
+        $categoryId = $this->request->getGet('category_id');
+        $subCatId   = $this->request->getGet('sub_category_id');
+        $brandId    = $this->request->getGet('brand_id');
+        $color      = $this->request->getGet('color');
+        $size       = $this->request->getGet('size');
+        $gender     = $this->request->getGet('gender');
+        $condition  = $this->request->getGet('condition'); // 'new' | 'used'
+        $specs      = $this->request->getGet('specs');     // JSON string
+        // ─────────────────────────────────────────────────────────────────────
 
         $builder = $db->table('products p')
             ->select('p.*, u.name as seller_name, u.seller_rating_avg, ob.brand_name as brand_name, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as image')
@@ -84,10 +97,13 @@ class BuyerApi extends ResourceController
 
         // Exclude blocked sellers if user is authenticated
         if ($buyerId) {
-            $builder->whereNotIn('p.seller_id', $db->table('buyer_blocked_sellers')
+            $blocked = $db->table('buyer_blocked_sellers')
                 ->select('blocked_seller_id')
                 ->where('buyer_id', $buyerId)
-                ->get()->getResultArray(), false);
+                ->get()->getResultArray();
+            if (!empty($blocked)) {
+                $builder->whereNotIn('p.seller_id', array_column($blocked, 'blocked_seller_id'));
+            }
         }
 
         if ($search) {
@@ -110,26 +126,94 @@ class BuyerApi extends ResourceController
                     ->groupEnd();
             }
         }
-        if ($category)
-            $builder->where('p.category', $category);
+        if ($category) $builder->where('p.category', $category);
 
-        $total = $builder->countAllResults(false);
+        // ── Apply new filters ─────────────────────────────────────────────────
+        if ($minPrice !== null && $minPrice !== '') {
+            $minVal = (float) $minPrice;
+            $builder->where("COALESCE(p.price, p.original_price, p.rental_cost) >= $minVal", null, false);
+        }
+        if ($maxPrice !== null && $maxPrice !== '') {
+            $maxVal = (float) $maxPrice;
+            $builder->where("COALESCE(p.price, p.original_price, p.rental_cost) <= $maxVal", null, false);
+        }
+        if ($categoryId) {
+            $catIdInt = (int) $categoryId;
+            $builder->groupStart()
+                ->like('p.category_ids', "\"$catIdInt\"")
+                ->orWhere('p.category', $categoryId)
+                ->groupEnd();
+        }
+        if ($subCatId) {
+            $subCatIdInt = (int) $subCatId;
+            $builder->groupStart()
+                ->like('p.sub_category_ids', "\"$subCatIdInt\"")
+                ->orWhere('p.sub_category', $subCatId)
+                ->groupEnd();
+        }
+        if ($brandId)   $builder->where('p.brand_id', (int) $brandId);
+        if ($color)     $builder->like('p.color', $color);
+        if ($size)      $builder->like('p.size', $size);
+        if ($gender) {
+            $builder->groupStart()
+                ->like('p.gender', $gender)
+                ->orLike('p.gender_ids', $gender)
+                ->groupEnd();
+        }
+        if ($condition === 'new') {
+            $builder->groupStart()
+                ->where('p.used_times', 0)
+                ->orWhere('p.used_times IS NULL', null, false)
+                ->groupEnd();
+        } elseif ($condition === 'used') {
+            $builder->where('p.used_times >', 0);
+        }
+        // Dynamic attribute filtering via JSON specifications column
+        if ($specs) {
+            $specsArr = json_decode($specs, true) ?: [];
+            foreach ($specsArr as $key => $val) {
+                if ($key !== '' && $val !== '') {
+                    $path = '$.' . json_encode($key);
+                    $builder->where('JSON_UNQUOTE(JSON_EXTRACT(p.specifications, ' . $db->escape($path) . '))', $val);
+                }
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
+        $total    = $builder->countAllResults(false);
         $products = $builder->orderBy('p.created_at', 'DESC')
             ->limit($perPage, $offset)
             ->get()->getResultArray();
 
-        $categories = $db->table('categories')->get()->getResultArray();
+        // ── Filter sidebar options ────────────────────────────────────────────
+        $categories    = $db->table('categories')->where('is_active', 1)->select('id, name, field_config')->orderBy('name')->get()->getResultArray();
+        $subCategories = $db->table('sub_categories')->select('id, name, category_id, field_config')->orderBy('name')->get()->getResultArray();
+        $brands        = $db->table('orignal_brands')->where('is_active', 1)->select('id, brand_name')->orderBy('brand_name')->get()->getResultArray();
+        $colors        = $db->table('colors')->select('id, name')->orderBy('name')->get()->getResultArray();
+        $genders       = $db->table('genders')->select('id, name')->get()->getResultArray();
+        $sizesRaw      = $db->query("SELECT DISTINCT size FROM products WHERE status = 'approved' AND size IS NOT NULL AND size != '' AND size != '[]' ORDER BY size")->getResultArray();
+        $priceRange    = $db->query("SELECT FLOOR(MIN(COALESCE(price, original_price, 0))) as min_price, CEIL(MAX(COALESCE(price, original_price, rental_cost, 0))) as max_price FROM products WHERE status = 'approved'")->getRowArray();
+        // ─────────────────────────────────────────────────────────────────────
 
         return $this->respond([
             'success' => true,
             'data' => [
-                'products' => $products,
-                'categories' => $categories,
-                'pagination' => [
-                    'page' => $page,
-                    'per_page' => $perPage,
-                    'total' => $total,
-                    'total_pages' => ceil($total / $perPage),
+                'products'       => $products,
+                'categories'     => $categories,
+                'pagination'     => [
+                    'page'        => $page,
+                    'per_page'    => $perPage,
+                    'total'       => $total,
+                    'total_pages' => (int) ceil($total / $perPage),
+                ],
+                'filter_options' => [
+                    'categories'     => $categories,
+                    'sub_categories' => $subCategories,
+                    'brands'         => $brands,
+                    'colors'         => $colors,
+                    'genders'        => $genders,
+                    'sizes'          => array_column($sizesRaw, 'size'),
+                    'price_range'    => $priceRange ?: ['min_price' => 0, 'max_price' => 100000],
                 ],
             ],
         ]);
