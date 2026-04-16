@@ -139,8 +139,46 @@ class BuyerApi extends ResourceController
     {
         $db = \Config\Database::connect();
 
-        // 1. Increment view count first
-        $db->table('products')->where('id', $id)->set('views_count', 'views_count + 1', false)->update();
+        // 0. Identify viewer (optional JWT + IP)
+        $authHeader = $this->request->getHeaderLine('Authorization');
+        $userId = null;
+        if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
+            $token = substr($authHeader, 7);
+            $payload = \App\Libraries\JWT::decode($token);
+            if ($payload) $userId = $payload['user_id'];
+        }
+        $ip = $this->request->getIPAddress();
+        $agent = $this->request->getUserAgent()->getAgentString();
+
+        // 1. Check for recent view (last 24h) to prevent redundant increments
+        $isDuplicate = false;
+        $check = $db->table('product_views_log')
+            ->where('product_id', $id)
+            ->where('created_at >', date('Y-m-d H:i:s', strtotime('-24 hours')));
+
+        if ($userId) {
+            $check->where('user_id', $userId);
+        } else {
+            $check->where('ip_address', $ip);
+        }
+
+        if ($check->countAllResults() > 0) {
+            $isDuplicate = true;
+        }
+
+        if (!$isDuplicate) {
+            // Increment view count
+            $db->table('products')->where('id', $id)->set('views_count', 'views_count + 1', false)->update();
+
+            // Log this view
+            $db->table('product_views_log')->insert([
+                'product_id' => $id,
+                'user_id'    => $userId,
+                'ip_address' => $ip,
+                'user_agent' => substr($agent, 0, 255),
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
 
         // 2. Fetch product details
         $product = $db->table('products p')
@@ -384,7 +422,7 @@ class BuyerApi extends ResourceController
         $offer = $db->table('offers')
             ->where('product_id', $productId)
             ->where('buyer_id', $jwtUser['user_id'])
-            ->whereIn('status', ['pending', 'accepted'])
+            ->whereIn('status', ['pending', 'accepted', 'rejected'])
             ->get()->getRowArray();
 
         return $this->respond([
@@ -519,43 +557,56 @@ class BuyerApi extends ResourceController
         $endDate = $data['rental_end_date'] ?? null;
         $newPrice = $data['offer_price'] ?? null;
 
-        if (!$startDate || !$endDate) {
-            return $this->respond(['success' => false, 'message' => 'Start and end dates are required.'], 400);
+        $offerType = $offer['offer_type'] ?? $offer['listing_type'];
+        $isRent = $offerType === 'rent';
+
+        if ($isRent) {
+            if (!$startDate || !$endDate) {
+                return $this->respond(['success' => false, 'message' => 'Start and end dates are required for rental products.'], 400);
+            }
+
+            // Enforce minimum rental days from system settings
+            helper('price_calculator');
+            $minDays = (int) getSystemSetting('min_rental_days', 3);
+            $days = (int)ceil((strtotime($endDate) - strtotime($startDate)) / 86400) + 1; // inclusive
+            if ($days < $minDays) {
+                return $this->respond(['success' => false, 'message' => "Minimum rental period is {$minDays} days. You selected {$days} day(s)."], 400);
+            }
+
+            // Check for conflicts with already accepted offers
+            $overlapping = $db->table('offers')
+                ->where('product_id', $offer['product_id'])
+                ->where('id !=', $id)
+                ->where('status', 'accepted')
+                ->where('rental_start_date <=', $endDate)
+                ->where('rental_end_date >=', $startDate)
+                ->countAllResults();
+
+            if ($overlapping > 0) {
+                return $this->respond(['success' => false, 'message' => 'The selected dates conflict with an existing booking.'], 409);
+            }
         }
 
-        // Enforce minimum rental days from system settings
-        helper('price_calculator');
-        $minDays = (int) getSystemSetting('min_rental_days', 3);
-        $days = (int)ceil((strtotime($endDate) - strtotime($startDate)) / 86400) + 1; // inclusive
-        if ($days < $minDays) {
-            return $this->respond(['success' => false, 'message' => "Minimum rental period is {$minDays} days. You selected {$days} day(s)."], 400);
-        }
-
-        // Check for conflicts with already accepted offers
-        $overlapping = $db->table('offers')
-            ->where('product_id', $offer['product_id'])
-            ->where('id !=', $id)
-            ->where('status', 'accepted')
-            ->where('rental_start_date <=', $endDate)
-            ->where('rental_end_date >=', $startDate)
-            ->countAllResults();
-
-        if ($overlapping > 0) {
-            return $this->respond(['success' => false, 'message' => 'The selected dates conflict with an existing booking.'], 409);
-        }
-
-        // Update offer — if negotiating, flip back to pending so seller can accept/reject the counter-proposal
+        // Update offer — if negotiating or rejected, flip back to pending
         $updateData = [
-            'rental_start_date' => $startDate,
-            'rental_end_date'   => $endDate,
-            'updated_at'        => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ];
-        if ($newPrice !== null) {
+        if ($isRent) {
+            $updateData['rental_start_date'] = $startDate;
+            $updateData['rental_end_date'] = $endDate;
+        }
+
+        if ($newPrice !== null && $offer['status'] !== 'rejected') {
             $updateData['offer_price'] = $newPrice;
         }
+
         if (in_array($offer['status'], ['negotiating', 'rejected'])) {
-            $updateData['status']  = 'pending';
-            $updateData['message'] = 'Buyer has proposed new dates: ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. Please review.';
+            $updateData['status'] = 'pending';
+            if ($offer['status'] === 'rejected') {
+                $updateData['message'] = 'Buyer has re-submitted the offer.';
+            } else if ($isRent) {
+                $updateData['message'] = 'Buyer has proposed new dates: ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '.';
+            }
         }
 
         $db->table('offers')->where('id', $id)->update($updateData);

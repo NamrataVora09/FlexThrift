@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { addToCart, isInCart } from '@/lib/cart';
-import { addToWishlist, removeFromWishlist, isInWishlist } from '@/lib/wishlist';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import toast from 'react-hot-toast';
 
@@ -77,9 +76,9 @@ function RentalCalendar({
     } else {
       const s = startD!;
       const limit = minRentalDays || 3;
-      if (daysBetween(s, d) < limit) { 
-        toast.error(`Minimum rental period is ${limit} days.`); 
-        return; 
+      if (daysBetween(s, d) < limit) {
+        toast.error(`Minimum rental period is ${limit} days.`);
+        return;
       }
       if (d < s) { onRangeChange(fmt(d), fmt(s)); }
       else { onRangeChange(fmt(s), fmt(d)); }
@@ -258,6 +257,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const [contactInfo, setContactInfo] = useState<{ seller_name: string; seller_email: string; seller_mobile: string; seller_city: string; seller_state: string; seller_pincode: string; already_viewed: boolean } | null>(null);
   const [contactError, setContactError] = useState<string | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [previousOffer, setPreviousOffer] = useState<any | null>(null);
 
   const datesSelected = product.listing_type !== 'rent' || (!!offerForm.rental_start_date && !!offerForm.rental_end_date);
 
@@ -265,7 +265,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('flex_user');
       if (stored) {
-        try { 
+        try {
           const u = JSON.parse(stored);
           setUser(u);
           // 1. Blocked admin check
@@ -289,18 +289,32 @@ export default function ProductDetailClient({ product, images, similarProducts =
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('flex_token') : null;
     if (!token) return;
-    api.get<{ has_offer: boolean }>(`/buyer/offer-status/${product.id}`)
+    api.get<{ has_offer: boolean, offer: any }>(`/buyer/offer-status/${product.id}`)
       .then(res => {
         if (res.success && res.data?.has_offer) {
-          setOfferSuccess(true);
-          // Also fetch seller contact so "View Seller Contact" button is visible after refresh
-          setContactLoading(true);
-          api.post<{ seller_name: string; seller_email: string; seller_mobile: string; seller_city: string; seller_state: string; seller_pincode: string; already_viewed: boolean }>(
-            `/buyer/view-seller-contact/${product.id}`
-          ).then(cres => {
-            setContactLoading(false);
-            if (cres.success && cres.data) setContactInfo(cres.data);
-          }).catch(() => setContactLoading(false));
+          const off = res.data.offer;
+          setPreviousOffer(off);
+
+          if (off.status === 'rejected') {
+            // Pre-fill form with rejected offer values but don't set offerSuccess=true
+            setOfferForm(f => ({
+              ...f,
+              offer_price: off.offer_price,
+              delivery_state: off.delivery_state || off.delivery_address?.split(', ')[1] || '',
+              delivery_city: off.delivery_city || off.delivery_address?.split(', ')[0] || '',
+              delivery_pin_code: off.delivery_pin_code || '',
+            }));
+          } else {
+            setOfferSuccess(true);
+            // Also fetch seller contact so "View Seller Contact" button is visible after refresh
+            setContactLoading(true);
+            api.post<{ seller_name: string; seller_email: string; seller_mobile: string; seller_city: string; seller_state: string; seller_pincode: string; already_viewed: boolean }>(
+              `/buyer/view-seller-contact/${product.id}`
+            ).then(cres => {
+              setContactLoading(false);
+              if (cres.success && cres.data) setContactInfo(cres.data);
+            }).catch(() => setContactLoading(false));
+          }
         }
       })
       .catch(() => { });
@@ -1215,6 +1229,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
                         type="number"
                         className="form-control rounded-3"
                         value={offerForm.deposit_amount}
+                        readOnly={true}
+                        style={{ background: '#f8f9fa', cursor: 'not-allowed' }}
                         onChange={(e) => setOfferForm({ ...offerForm, deposit_amount: e.target.value })}
                       />
                     </div>
@@ -1228,7 +1244,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     value={offerForm.offer_price}
                     onChange={(e) => setOfferForm({ ...offerForm, offer_price: e.target.value })}
                     placeholder="Enter your offer amount"
+                    readOnly={true}
+                    style={{ background: '#f8f9fa', cursor: 'not-allowed' }}
                   />
+
                   {product.listing_type === 'rent' && offerForm.rental_start_date && offerForm.rental_end_date && (
                     <div className="mt-1 small text-muted">
                       <i className="bi bi-info-circle me-1"></i>

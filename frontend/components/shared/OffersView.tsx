@@ -261,7 +261,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const [remarks, setRemarks] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [dateModal, setDateModal] = useState<{ id: number; title: string; start: string; end: string } | null>(null);
+  const [dateModal, setDateModal] = useState<{ id: number; title: string; start: string; end: string; price?: number | string; type?: string; status?: string } | null>(null);
   const [dateLoading, setDateLoading] = useState(false);
 
   /* ── change dates modal (buyer) ── */
@@ -325,7 +325,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     if (!ratingModal) return;
     setRatingLoading(true);
     const endpoint = ratingModal.target === 'seller' ? '/buyer/rate-seller' : '/seller/rate-buyer';
-    const res = await api.post<any>(endpoint, { offer_id: ratingModal.id, rating: ratingValue });
+    const res = await api.post<any>(endpoint, { offer_id: ratingModal.id, rating: 5 });
     setRatingLoading(false);
     if (res.success) { 
       toast.success('Rating submitted!');
@@ -588,7 +588,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           isSoldOut={isSoldOut}
           onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
           onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '' })}
+          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '', price: o.offered_price ?? o.offer_price, type: o.offer_type ?? o.listing_type, status: o.status })}
           onAcceptDates={handleAcceptDates}
         />
       ) : (
@@ -603,7 +603,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
           onRateBuyer={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'buyer' }); setRatingValue(5); }}
           onRateSeller={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '' })}
+          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '', price: o.offered_price ?? o.offer_price, type: o.offer_type ?? o.listing_type, status: o.status })}
         />
       )}
     </div>
@@ -675,26 +675,24 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
             <div className="modal-content border-0 shadow-lg rounded-4">
               <div className="modal-header border-0 pb-0 px-4 pt-4">
-                <h5 className="modal-title fw-bold">Rate Your Experience</h5>
+                <h5 className="modal-title fw-bold">Reward User</h5>
                 <button type="button" className="btn-close" onClick={() => setRatingModal(null)}></button>
               </div>
               <div className="modal-body p-4 text-center">
-                <p className="text-muted mb-4">Rate your interaction for <strong>{ratingModal.title}</strong></p>
-                <div className="d-flex justify-content-center gap-2 mb-3">
-                  {[1, 2, 3, 4, 5].map(s => (
-                    <button key={s} type="button" onClick={() => setRatingValue(s)} style={{ fontSize: '2.5rem', color: s <= ratingValue ? '#ffc63a' : '#dee2e6', background: 'none', border: 'none', cursor: 'pointer' }}>
-                      <i className={`bi bi-star${s <= ratingValue ? '-fill' : ''}`}></i>
-                    </button>
-                  ))}
+                <p className="text-muted mb-4">You are about to give <strong>+1 Point</strong> for <strong>{ratingModal.title}</strong>.</p>
+                <div className="d-flex justify-content-center mb-3">
+                  <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#ffc63a22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className="bi bi-star-fill" style={{ fontSize: '3rem', color: '#ffc63a' }}></i>
+                  </div>
                 </div>
                 <div className="h5 fw-bold text-dark">
-                  {ratingValue === 5 && 'Outstanding! 🌟'}{ratingValue === 4 && 'Very Good! 😊'}{ratingValue === 3 && 'Decent 😐'}{ratingValue === 2 && 'Poor 😕'}{ratingValue === 1 && 'Very Poor 😞'}
+                  Give +1 Point!
                 </div>
               </div>
               <div className="modal-footer border-0 px-4 pb-4">
                 <button className="btn btn-light rounded-pill px-4" onClick={() => setRatingModal(null)}>Cancel</button>
                 <button className="btn btn-dark rounded-pill px-4 fw-bold" onClick={handleRateSubmit} disabled={ratingLoading}>
-                  {ratingLoading ? 'Submitting…' : 'Yes, Rate it'}
+                  {ratingLoading ? 'Submitting…' : 'Yes, Give Point'}
                 </button>
               </div>
             </div>
@@ -702,32 +700,49 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
         </div>
       )}
 
-      {/* ── Date Update Modal ── */}
+      {/* ── Date/Offer Update Modal ── */}
       {dateModal && (
         <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setDateModal(null)}>
           <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
             <div className="modal-content border-0 shadow-lg rounded-4">
               <div className="modal-header border-0 pb-0 px-4 pt-4">
-                <h5 className="modal-title fw-bold">Update Rental Dates</h5>
+                <h5 className="modal-title fw-bold">{dateModal.status === 'rejected' ? 'Make Offer Again' : 'Update Rental Dates'}</h5>
                 <button type="button" className="btn-close" onClick={() => setDateModal(null)}></button>
               </div>
               <div className="modal-body px-4 pt-3">
-                <p className="text-muted small mb-3">Modify your proposal dates for "{dateModal.title}"</p>
-                <div className="row g-3">
-                  <div className="col-6">
-                    <label className="form-label small fw-bold">Start Date</label>
-                    <input type="date" className="form-control" value={dateModal.start} onChange={e => setDateModal({ ...dateModal, start: e.target.value })} min={new Date().toISOString().split('T')[0]} />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label small fw-bold">End Date</label>
-                    <input type="date" className="form-control" value={dateModal.end} onChange={e => setDateModal({ ...dateModal, end: e.target.value })} min={dateModal.start || new Date().toISOString().split('T')[0]} />
-                  </div>
+                <p className="text-muted small mb-3">
+                  {dateModal.status === 'rejected' 
+                    ? `You are re-submitting your offer for "${dateModal.title}".`
+                    : `Modify your proposal dates for "${dateModal.title}"`}
+                </p>
+                
+                <div className="mb-3">
+                   <label className="form-label small fw-bold">Price (₹)</label>
+                   <input type="text" className="form-control bg-light" value={Number(dateModal.price).toLocaleString('en-IN')} readOnly style={{ cursor: 'not-allowed' }} />
+                   {dateModal.status === 'rejected' && <small className="text-info mt-1 d-block"><i className="bi bi-info-circle me-1"></i>Price is fixed for re-offering.</small>}
                 </div>
+
+                {dateModal.type === 'rent' && (
+                  <div className="row g-3">
+                    <div className="col-6">
+                      <label className="form-label small fw-bold">Start Date</label>
+                      <input type="date" className="form-control" value={dateModal.start} onChange={e => setDateModal({ ...dateModal, start: e.target.value })} min={new Date().toISOString().split('T')[0]} />
+                    </div>
+                    <div className="col-6">
+                      <label className="form-label small fw-bold">End Date</label>
+                      <input type="date" className="form-control" value={dateModal.end} onChange={e => setDateModal({ ...dateModal, end: e.target.value })} min={dateModal.start || new Date().toISOString().split('T')[0]} />
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="modal-footer border-0 px-4 pb-4 mt-2">
                 <button className="btn btn-light rounded-pill px-4" onClick={() => setDateModal(null)}>Cancel</button>
-                <button className="btn btn-dark rounded-pill px-4 fw-bold" onClick={handleUpdateDates} disabled={dateLoading || !dateModal.start || !dateModal.end}>
-                  {dateLoading ? 'Updating…' : 'Update Dates'}
+                <button 
+                  className="btn btn-dark rounded-pill px-4 fw-bold" 
+                  onClick={handleUpdateDates} 
+                  disabled={dateLoading || (dateModal.type === 'rent' && (!dateModal.start || !dateModal.end))}
+                >
+                  {dateLoading ? 'Wait…' : (dateModal.status === 'rejected' ? 'Submit Offer' : 'Update Dates')}
                 </button>
               </div>
             </div>
@@ -1324,7 +1339,11 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
                   )}
                   {(o.status === 'pending' || o.status === 'rejected') && (
                     <>
-                      {(o.offer_type ?? o.listing_type) === 'rent' && (
+                      {o.status === 'rejected' ? (
+                        <button className="btn btn-warning mb-1 fw-bold rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates(o)}>
+                          <i className="bi bi-arrow-repeat me-1"></i>Make Offer
+                        </button>
+                      ) : (o.offer_type ?? o.listing_type) === 'rent' && (
                         <button className="btn-yellow mb-1" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates(o)}>Change dates</button>
                       )}
                       <button className="btn-modern-cancel" onClick={() => onCancel(o)}>{o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}</button>
