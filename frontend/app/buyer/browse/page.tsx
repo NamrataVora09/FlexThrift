@@ -28,14 +28,65 @@ interface ListingType {
   type_name: string;
 }
 
+interface FilterOptions {
+  categories: Array<{ id: number; name: string; field_config?: string }>;
+  sub_categories: Array<{ id: number; name: string; category_id: number; field_config?: string }>;
+  brands: Array<{ id: number; brand_name: string }>;
+  colors: Array<{ id: number; name: string }>;
+  genders: Array<{ id: number; name: string }>;
+  sizes: string[];
+  price_range: { min_price: number; max_price: number };
+}
+
+interface DynamicAttribute {
+  name: string;
+  type: string;
+  options?: string[];
+  required?: boolean;
+}
+
 interface BrowseData {
   products: Product[];
   categories: Array<{ id: number; name: string }>;
   pagination: { page: number; total: number; total_pages: number };
+  filter_options?: FilterOptions;
+}
+
+interface ActiveFilters {
+  minPrice: string;
+  maxPrice: string;
+  categoryId: string;
+  subCategoryId: string;
+  brandId: string;
+  color: string;
+  size: string;
+  gender: string;
+  condition: string;
+  specs: Record<string, string>;
 }
 
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || `${BACKEND_URL}/api/v1`).replace(/\/$/, '');
+
+const emptyFilters: ActiveFilters = {
+  minPrice: '', maxPrice: '', categoryId: '', subCategoryId: '',
+  brandId: '', color: '', size: '', gender: '', condition: '', specs: {},
+};
+
+function filtersFromParams(sp: URLSearchParams): ActiveFilters {
+  return {
+    minPrice: sp.get('min_price') || '',
+    maxPrice: sp.get('max_price') || '',
+    categoryId: sp.get('category_id') || '',
+    subCategoryId: sp.get('sub_category_id') || '',
+    brandId: sp.get('brand_id') || '',
+    color: sp.get('color') || '',
+    size: sp.get('size') || '',
+    gender: sp.get('gender') || '',
+    condition: sp.get('condition') || '',
+    specs: (() => { try { return JSON.parse(sp.get('specs') || '{}'); } catch { return {}; } })(),
+  };
+}
 
 export default function BrowsePage() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -57,6 +108,14 @@ export default function BrowsePage() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
+
+  // ── Filter state ──────────────────────────────────────────────────────────
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
+  const [filters, setFilters] = useState<ActiveFilters>(() => filtersFromParams(searchParams as unknown as URLSearchParams));
+  const [priceInput, setPriceInput] = useState({ min: filters.minPrice, max: filters.maxPrice });
+  const [dynamicAttrs, setDynamicAttrs] = useState<DynamicAttribute[]>([]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Fuzzy match scorer
   const fuzzyMatch = (text: string, query: string): number => {
@@ -127,7 +186,6 @@ export default function BrowsePage() {
         router.replace('/admin');
         return;
       }
-      // Strictly seller check (not 'both' and not 'admin/super_admin')
       if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) {
         router.replace('/seller');
         return;
@@ -135,18 +193,63 @@ export default function BrowsePage() {
     }
   }, [isAuthenticated, user, router]);
 
+  // Load dynamic attributes when category/sub-category changes
+  useEffect(() => {
+    if (!filterOptions) { setDynamicAttrs([]); return; }
+    // Sub-category takes precedence
+    if (filters.subCategoryId) {
+      const sub = filterOptions.sub_categories.find(s => String(s.id) === filters.subCategoryId);
+      if (sub?.field_config) {
+        try { const cfg = JSON.parse(sub.field_config); setDynamicAttrs(cfg.attributes || []); return; } catch { }
+      }
+    }
+    if (filters.categoryId) {
+      const cat = filterOptions.categories.find(c => String(c.id) === filters.categoryId);
+      if (cat?.field_config) {
+        try { const cfg = JSON.parse(cat.field_config); setDynamicAttrs(cfg.attributes || []); return; } catch { }
+      }
+    }
+    setDynamicAttrs([]);
+  }, [filters.categoryId, filters.subCategoryId, filterOptions]);
 
+  // ── URL builder ───────────────────────────────────────────────────────────
+  const buildUrl = (
+    type: string, s: string, f: ActiveFilters
+  ): string => {
+    const p = new URLSearchParams();
+    if (type) p.set('listing_type', type);
+    if (s) p.set('search', s);
+    if (f.minPrice) p.set('min_price', f.minPrice);
+    if (f.maxPrice) p.set('max_price', f.maxPrice);
+    if (f.categoryId) p.set('category_id', f.categoryId);
+    if (f.subCategoryId) p.set('sub_category_id', f.subCategoryId);
+    if (f.brandId) p.set('brand_id', f.brandId);
+    if (f.color) p.set('color', f.color);
+    if (f.size) p.set('size', f.size);
+    if (f.gender) p.set('gender', f.gender);
+    if (f.condition) p.set('condition', f.condition);
+    const specsStr = JSON.stringify(f.specs);
+    if (specsStr !== '{}') p.set('specs', specsStr);
+    const qs = p.toString();
+    return `/buyer/browse${qs ? `?${qs}` : ''}`;
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
-  const load = (p: number, type: string, s: string) => {
+  const load = (p: number, sp: URLSearchParams) => {
     setLoading(true);
-    const params = new URLSearchParams();
-    params.set('page', String(p));
-    if (s) params.set('search', s);
-    if (type) params.set('listing_type', type);
-
-    fetch(`${API_BASE}/browse?${params}`)
+    const apiParams = new URLSearchParams(sp.toString());
+    apiParams.set('page', String(p));
+    fetch(`${API_BASE}/browse?${apiParams}`)
       .then(r => r.json())
-      .then(res => { if (res.success && res.data) setData(res.data); setLoading(false); })
+      .then(res => {
+        if (res.success && res.data) {
+          setData(res.data);
+          if (res.data.filter_options) {
+            setFilterOptions(prev => prev ?? res.data.filter_options);
+          }
+        }
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   };
 
@@ -154,22 +257,95 @@ export default function BrowsePage() {
   useEffect(() => {
     const s = searchParams.get('search') || '';
     const t = searchParams.get('listing_type') || '';
+    const f = filtersFromParams(searchParams as unknown as URLSearchParams);
     setSearch(s);
     setActiveType(t);
-    load(page, t, s);
+    setFilters(f);
+    setPriceInput({ min: f.minPrice, max: f.maxPrice });
+    load(page, new URLSearchParams(searchParams.toString()));
   }, [searchParams, page]);
 
-  const updateUrl = (type: string, s: string) => {
-    const params = new URLSearchParams();
-    if (type) params.set('listing_type', type);
-    if (s) params.set('search', s);
-    const qs = params.toString();
-    router.push(`/buyer/browse${qs ? `?${qs}` : ''}`, { scroll: false });
+  const navigate = (type: string, s: string, f: ActiveFilters) => {
+    router.push(buildUrl(type, s, f), { scroll: false });
   };
 
-  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); updateUrl(activeType, search); };
-  const handleHeaderSearch = (e: React.FormEvent) => { e.preventDefault(); if (headerSearch.trim()) { setSearch(headerSearch); setPage(1); updateUrl(activeType, headerSearch); } };
-  const handleTypeClick = (type: string) => { setActiveType(type); setPage(1); updateUrl(type, search); };
+  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); navigate(activeType, search, filters); };
+  const handleHeaderSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (headerSearch.trim()) { setSearch(headerSearch); setPage(1); navigate(activeType, headerSearch, filters); }
+  };
+  const handleTypeClick = (type: string) => { setActiveType(type); setPage(1); navigate(type, search, filters); };
+
+  // ── Filter helpers ────────────────────────────────────────────────────────
+  const setFilter = (key: keyof Omit<ActiveFilters, 'specs'>, val: string) => {
+    let newF = { ...filters, [key]: val };
+    if (key === 'categoryId') { newF.subCategoryId = ''; newF.specs = {}; }
+    if (key === 'subCategoryId') { newF.specs = {}; }
+    setFilters(newF);
+    setPage(1);
+    navigate(activeType, search, newF);
+  };
+
+  const setSpecFilter = (attrName: string, val: string) => {
+    const newSpecs = { ...filters.specs, [attrName]: val };
+    if (!val) delete newSpecs[attrName];
+    const newF = { ...filters, specs: newSpecs };
+    setFilters(newF);
+    setPage(1);
+    navigate(activeType, search, newF);
+  };
+
+  const applyPriceFilter = () => {
+    const newF = { ...filters, minPrice: priceInput.min, maxPrice: priceInput.max };
+    setFilters(newF);
+    setPage(1);
+    navigate(activeType, search, newF);
+  };
+
+  const clearAllFilters = () => {
+    setFilters(emptyFilters);
+    setPriceInput({ min: '', max: '' });
+    setPage(1);
+    navigate(activeType, search, emptyFilters);
+  };
+
+  const removeFilter = (key: string) => {
+    if (key.startsWith('spec:')) {
+      const attrName = key.slice(5);
+      const newSpecs = { ...filters.specs };
+      delete newSpecs[attrName];
+      const newF = { ...filters, specs: newSpecs };
+      setFilters(newF); setPage(1); navigate(activeType, search, newF);
+    } else {
+      const newF = { ...filters, [key]: '' };
+      if (key === 'minPrice' || key === 'maxPrice') setPriceInput(p => ({ ...p, [key === 'minPrice' ? 'min' : 'max']: '' }));
+      setFilters(newF); setPage(1); navigate(activeType, search, newF);
+    }
+  };
+
+  // Active filter chips data
+  const activeChips: { label: string; key: string }[] = [];
+  if (filters.minPrice || filters.maxPrice) {
+    activeChips.push({ label: `₹${filters.minPrice || '0'} – ₹${filters.maxPrice || '∞'}`, key: 'price' });
+  }
+  if (filters.categoryId && filterOptions) {
+    const cat = filterOptions.categories.find(c => String(c.id) === filters.categoryId);
+    if (cat) activeChips.push({ label: cat.name, key: 'categoryId' });
+  }
+  if (filters.subCategoryId && filterOptions) {
+    const sub = filterOptions.sub_categories.find(s => String(s.id) === filters.subCategoryId);
+    if (sub) activeChips.push({ label: sub.name, key: 'subCategoryId' });
+  }
+  if (filters.brandId && filterOptions) {
+    const brand = filterOptions.brands.find(b => String(b.id) === filters.brandId);
+    if (brand) activeChips.push({ label: brand.brand_name, key: 'brandId' });
+  }
+  if (filters.color) activeChips.push({ label: filters.color, key: 'color' });
+  if (filters.size) activeChips.push({ label: `Size: ${filters.size}`, key: 'size' });
+  if (filters.gender) activeChips.push({ label: filters.gender, key: 'gender' });
+  if (filters.condition) activeChips.push({ label: filters.condition === 'new' ? 'Brand New' : 'Pre-owned', key: 'condition' });
+  Object.entries(filters.specs).forEach(([k, v]) => { if (v) activeChips.push({ label: `${k}: ${v}`, key: `spec:${k}` }); });
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleAddToCart = (p: Product, e: React.MouseEvent) => {
     e.preventDefault();
@@ -184,6 +360,8 @@ export default function BrowsePage() {
     if (user.role === 'admin' && Number(user.blocked_buyer) === 1) return null;
     if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) return null;
   }
+
+  const subCatsForCategory = filterOptions?.sub_categories.filter(s => String(s.category_id) === filters.categoryId) || [];
 
   return (
     <>
@@ -233,6 +411,33 @@ export default function BrowsePage() {
         .btn-cart { background: transparent; border: 1px solid #eee; padding: 10px 14px; border-radius: 12px; font-weight: 700; transition: 0.3s; cursor: pointer; color: #000; }
         .btn-cart:hover { background: #000; color: #fff; border-color: #000; }
         .btn-cart.added { background: #000; color: #ffc63a; border-color: #000; }
+        /* ── Filter Sidebar ── */
+        .filter-sidebar { background: #fff; border: 1px solid #eee; border-radius: 20px; padding: 24px; position: sticky; top: 110px; max-height: calc(100vh - 130px); overflow-y: auto; scrollbar-width: thin; }
+        .filter-sidebar::-webkit-scrollbar { width: 4px; }
+        .filter-sidebar::-webkit-scrollbar-thumb { background: #eee; border-radius: 10px; }
+        .filter-section { border-bottom: 1px solid #f4f4f4; padding: 16px 0; }
+        .filter-section:last-child { border-bottom: none; }
+        .filter-section-title { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .filter-chip { display: inline-flex; align-items: center; gap: 6px; background: #000; color: #fff; border-radius: 20px; padding: 4px 12px; font-size: 0.78rem; font-weight: 700; margin: 3px; }
+        .filter-chip button { background: none; border: none; color: #fff; cursor: pointer; padding: 0; font-size: 0.9rem; line-height: 1; opacity: 0.7; }
+        .filter-chip button:hover { opacity: 1; }
+        .filter-btn-pill { background: #f8f9fa; border: 1px solid #eee; border-radius: 20px; padding: 5px 14px; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+        .filter-btn-pill:hover, .filter-btn-pill.active { background: var(--primary-yellow); border-color: var(--primary-yellow); color: #000; }
+        .filter-select { width: 100%; border: 1px solid #eee; border-radius: 10px; padding: 8px 12px; font-size: 0.88rem; outline: none; background: #fafafa; font-family: inherit; }
+        .filter-select:focus { border-color: var(--primary-yellow); background: #fff; }
+        .price-inputs { display: flex; gap: 8px; align-items: center; }
+        .price-input { flex: 1; border: 1px solid #eee; border-radius: 10px; padding: 8px 10px; font-size: 0.85rem; outline: none; background: #fafafa; width: 100%; }
+        .price-input:focus { border-color: var(--primary-yellow); background: #fff; }
+        .btn-apply-price { background: #000; color: #fff; border: none; border-radius: 10px; padding: 8px 14px; font-size: 0.82rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .btn-apply-price:hover { background: #333; }
+        .filter-toggle-btn { display: flex; align-items: center; gap: 8px; background: #f8f9fa; border: 1px solid #eee; border-radius: 12px; padding: 10px 18px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
+        .filter-toggle-btn:hover { background: var(--primary-yellow); border-color: var(--primary-yellow); }
+        .filter-drawer { position: fixed; left: 0; top: 0; bottom: 0; width: 320px; background: #fff; z-index: 1100; box-shadow: 4px 0 30px rgba(0,0,0,0.15); padding: 24px; overflow-y: auto; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); }
+        .filter-drawer.open { transform: translateX(0); }
+        .filter-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1090; display: none; }
+        .filter-overlay.open { display: block; }
+        .badge-count { background: #000; color: #ffc63a; border-radius: 20px; padding: 1px 8px; font-size: 0.72rem; font-weight: 800; }
+        /* ── Footer ── */
         .main-footer { background-color: #3D3B3B; color: #b2bec3; padding: 66px 0 4px; width: 100%; margin-top: 80px; }
         .footer-brand { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 25px; }
         .footer-description { font-size: 1rem; line-height: 1.8; max-width: 380px; color: #b2bec3; }
@@ -248,6 +453,7 @@ export default function BrowsePage() {
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-yellow); }
+        @media (max-width: 991px) { .filter-sidebar { display: none; } }
         @media (max-width: 768px) { .browse-hero { padding: 30px 0; } .browse-hero .display-4 { font-size: 2rem; } .search-container { flex-direction: column; border-radius: 20px; gap: 8px; } .search-input { padding: 10px 15px; } .btn-search { width: 100%; border-radius: 14px; } .card-img-box { height: 200px; } .search-wrapper-hdr { width: 100% !important; margin: 10px 0 !important; } }
       `}</style>
 
@@ -276,7 +482,6 @@ export default function BrowsePage() {
             </div>
 
             <div className="d-flex align-items-center gap-4">
-              {/* Cart Icon */}
               <Link href="/cart" className="position-relative text-dark" style={{ fontSize: '1.3rem' }}>
                 <i className="bi bi-heart"></i>
                 {cartCount > 0 && (
@@ -408,86 +613,172 @@ export default function BrowsePage() {
           </div>
         </div>
 
-        {/* ===== PRODUCT GRID ===== */}
-        <div className="container my-5">
-          <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.3s ease', pointerEvents: loading ? 'none' : 'auto', position: 'relative', minHeight: 200 }}>
-            {loading && (
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
-                <div className="spinner-grow text-warning" role="status" style={{ width: '2.5rem', height: '2.5rem' }}><span className="visually-hidden">Loading...</span></div>
-              </div>
-            )}
-            <div className="row g-4">
-              {data?.products && data.products.length > 0 ? (
-                data.products.map((p) => {
-                  const inCart = isInCart(p.id);
-                  return (
-                    <div key={p.id} className="col-md-6 col-lg-4 col-xl-3">
-                      <Link href={`/buyer/product/${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <div className="premium-card">
-                          <div className="card-img-box">
-                            {(p.image || p.primary_image) ? (
-                              <img src={(() => { const img = p.image || p.primary_image; if (!img) return ''; return img.startsWith('http') ? img : img.startsWith('uploads/') ? `${BACKEND_URL}/${img}` : `${BACKEND_URL}/uploads/products/${img}`; })()} alt={p.title} />
-                            ) : (
-                              <div style={{ width: '100%', height: '100%', borderRadius: 16, background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <i className="bi bi-image" style={{ fontSize: '3rem', color: '#ccc' }}></i>
-                              </div>
-                            )}
-                            <div className="listing-badge">{p.listing_type}</div>
-                          </div>
-                          <div className="p-4 pt-0">
-                            <div className="d-flex gap-2 flex-wrap">
-                              <span className="seller-badge"><i className="bi bi-patch-check-fill text-warning"></i> VERIFIED SELLER</span>
-                              {(p.brand_name || p.brand) && <span className="seller-badge"><i className="bi bi-award me-1" style={{ color: '#ffc63a' }}></i>{p.brand_name || p.brand}</span>}
-                            </div>
-                            <h5 className="fw-bold mb-3" style={{ height: 52, overflow: 'hidden' }}>{p.title}</h5>
-                            <div className="d-flex justify-content-between align-items-center">
-                              <div className="price-tag">
-                                &#8377;{Number(p.listing_type === 'sell' ? (p.selling_price || p.price || p.original_price || 0) : (p.rental_cost || p.price || 0)).toLocaleString('en-IN')}
-                                {p.listing_type === 'rent' && <small className="text-muted" style={{ fontSize: '0.85rem' }}>/day</small>}
-                              </div>
-                              <div className="d-flex gap-2">
-                                <button
-                                  className={`btn-cart ${inCart ? 'added' : ''}`}
-                                  onClick={(e) => handleAddToCart(p, e)}
-                                  title={inCart ? 'Already in cart' : 'Add to cart'}
-                                >
-                                  <i className={`bi ${inCart ? 'bi-heart-fill' : 'bi-heart'}`}></i>
-                                </button>
-                                <span className="btn-view">View</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
-                  );
-                })
-              ) : !loading ? (
-                <div className="col-12 text-center py-5">
-                  <i className="bi bi-search" style={{ fontSize: '4rem', opacity: 0.25 }}></i>
-                  <h3 className="mt-4 fw-bold">No results found</h3>
-                  <p className="text-muted">Try adjusting your search filters.</p>
-                </div>
-              ) : null}
-            </div>
+        {/* ===== FILTER BAR + LAYOUT ===== */}
+        <div className="container my-4">
 
-            {/* Pagination */}
-            {data && data.pagination && data.pagination.total_pages > 1 && (
-              <div className="d-flex justify-content-center py-5">
-                <nav>
-                  <ul className="pagination">
-                    <li className={`page-item ${page === 1 ? 'disabled' : ''}`}><button className="page-link" onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left"></i></button></li>
-                    {Array.from({ length: data.pagination.total_pages }, (_, i) => (
-                      <li key={i} className={`page-item ${page === i + 1 ? 'active' : ''}`}>
-                        <button className="page-link" onClick={() => setPage(i + 1)} style={page === i + 1 ? { background: 'var(--primary-yellow)', borderColor: 'var(--primary-yellow)', color: '#000' } : {}}>{i + 1}</button>
-                      </li>
-                    ))}
-                    <li className={`page-item ${page === data.pagination.total_pages ? 'disabled' : ''}`}><button className="page-link" onClick={() => setPage(page + 1)}><i className="bi bi-chevron-right"></i></button></li>
-                  </ul>
-                </nav>
-              </div>
+          {/* Mobile filter toggle + active chips bar */}
+          <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
+            <button className="filter-toggle-btn d-lg-none" onClick={() => setShowFilters(true)}>
+              <i className="bi bi-sliders"></i> Filters
+              {activeChips.length > 0 && <span className="badge-count">{activeChips.length}</span>}
+            </button>
+            {/* Active filter chips */}
+            {activeChips.map(chip => (
+              <span key={chip.key} className="filter-chip">
+                {chip.label}
+                <button onClick={() => {
+                  if (chip.key === 'price') {
+                    const newF = { ...filters, minPrice: '', maxPrice: '' };
+                    setPriceInput({ min: '', max: '' });
+                    setFilters(newF); setPage(1); navigate(activeType, search, newF);
+                  } else removeFilter(chip.key);
+                }}>×</button>
+              </span>
+            ))}
+            {activeChips.length > 1 && (
+              <button onClick={clearAllFilters} style={{ background: 'none', border: 'none', color: '#999', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+                Clear all
+              </button>
             )}
           </div>
+
+          <div className="row g-4">
+            {/* ===== FILTER SIDEBAR (desktop) ===== */}
+            <div className="col-lg-3 d-none d-lg-block">
+              <FilterPanel
+                filters={filters}
+                priceInput={priceInput}
+                setPriceInput={setPriceInput}
+                filterOptions={filterOptions}
+                dynamicAttrs={dynamicAttrs}
+                subCatsForCategory={subCatsForCategory}
+                setFilter={setFilter}
+                setSpecFilter={setSpecFilter}
+                applyPriceFilter={applyPriceFilter}
+                clearAllFilters={clearAllFilters}
+                activeChips={activeChips}
+              />
+            </div>
+
+            {/* ===== PRODUCT GRID ===== */}
+            <div className="col-lg-9">
+              <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.3s ease', pointerEvents: loading ? 'none' : 'auto', position: 'relative', minHeight: 200 }}>
+                {loading && (
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+                    <div className="spinner-grow text-warning" role="status" style={{ width: '2.5rem', height: '2.5rem' }}><span className="visually-hidden">Loading...</span></div>
+                  </div>
+                )}
+
+                {/* Result count */}
+                {!loading && data && (
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <p className="text-muted mb-0" style={{ fontSize: '0.88rem' }}>
+                      <strong>{data.pagination.total}</strong> product{data.pagination.total !== 1 ? 's' : ''} found
+                    </p>
+                  </div>
+                )}
+
+                <div className="row g-4">
+                  {data?.products && data.products.length > 0 ? (
+                    data.products.map((p) => {
+                      const inCart = isInCart(p.id);
+                      return (
+                        <div key={p.id} className="col-md-6 col-xl-4">
+                          <Link href={`/buyer/product/${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                            <div className="premium-card">
+                              <div className="card-img-box">
+                                {(p.image || p.primary_image) ? (
+                                  <img src={(() => { const img = p.image || p.primary_image; if (!img) return ''; return img.startsWith('http') ? img : img.startsWith('uploads/') ? `${BACKEND_URL}/${img}` : `${BACKEND_URL}/uploads/products/${img}`; })()} alt={p.title} />
+                                ) : (
+                                  <div style={{ width: '100%', height: '100%', borderRadius: 16, background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <i className="bi bi-image" style={{ fontSize: '3rem', color: '#ccc' }}></i>
+                                  </div>
+                                )}
+                                <div className="listing-badge">{p.listing_type}</div>
+                              </div>
+                              <div className="p-4 pt-0">
+                                <div className="d-flex gap-2 flex-wrap">
+                                  <span className="seller-badge"><i className="bi bi-patch-check-fill text-warning"></i> VERIFIED SELLER</span>
+                                  {(p.brand_name || p.brand) && <span className="seller-badge"><i className="bi bi-award me-1" style={{ color: '#ffc63a' }}></i>{p.brand_name || p.brand}</span>}
+                                </div>
+                                <h5 className="fw-bold mb-3" style={{ height: 52, overflow: 'hidden' }}>{p.title}</h5>
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <div className="price-tag">
+                                    &#8377;{Number(p.listing_type === 'sell' ? (p.selling_price || p.price || p.original_price || 0) : (p.rental_cost || p.price || 0)).toLocaleString('en-IN')}
+                                    {p.listing_type === 'rent' && <small className="text-muted" style={{ fontSize: '0.85rem' }}>/day</small>}
+                                  </div>
+                                  <div className="d-flex gap-2">
+                                    <button
+                                      className={`btn-cart ${inCart ? 'added' : ''}`}
+                                      onClick={(e) => handleAddToCart(p, e)}
+                                      title={inCart ? 'Already in cart' : 'Add to cart'}
+                                    >
+                                      <i className={`bi ${inCart ? 'bi-heart-fill' : 'bi-heart'}`}></i>
+                                    </button>
+                                    <span className="btn-view">View</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        </div>
+                      );
+                    })
+                  ) : !loading ? (
+                    <div className="col-12 text-center py-5">
+                      <i className="bi bi-search" style={{ fontSize: '4rem', opacity: 0.25 }}></i>
+                      <h3 className="mt-4 fw-bold">No results found</h3>
+                      <p className="text-muted">Try adjusting your search filters.</p>
+                      {activeChips.length > 0 && (
+                        <button onClick={clearAllFilters} style={{ background: '#000', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 24px', fontWeight: 700, cursor: 'pointer', marginTop: 12 }}>
+                          Clear Filters
+                        </button>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Pagination */}
+                {data && data.pagination && data.pagination.total_pages > 1 && (
+                  <div className="d-flex justify-content-center py-5">
+                    <nav>
+                      <ul className="pagination">
+                        <li className={`page-item ${page === 1 ? 'disabled' : ''}`}><button className="page-link" onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left"></i></button></li>
+                        {Array.from({ length: data.pagination.total_pages }, (_, i) => (
+                          <li key={i} className={`page-item ${page === i + 1 ? 'active' : ''}`}>
+                            <button className="page-link" onClick={() => setPage(i + 1)} style={page === i + 1 ? { background: 'var(--primary-yellow)', borderColor: 'var(--primary-yellow)', color: '#000' } : {}}>{i + 1}</button>
+                          </li>
+                        ))}
+                        <li className={`page-item ${page === data.pagination.total_pages ? 'disabled' : ''}`}><button className="page-link" onClick={() => setPage(page + 1)}><i className="bi bi-chevron-right"></i></button></li>
+                      </ul>
+                    </nav>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== MOBILE FILTER DRAWER ===== */}
+        <div className={`filter-overlay ${showFilters ? 'open' : ''}`} onClick={() => setShowFilters(false)} />
+        <div className={`filter-drawer ${showFilters ? 'open' : ''}`}>
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <h5 className="fw-bold mb-0">Filters {activeChips.length > 0 && <span className="badge-count">{activeChips.length}</span>}</h5>
+            <button style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer' }} onClick={() => setShowFilters(false)}>×</button>
+          </div>
+          <FilterPanel
+            filters={filters}
+            priceInput={priceInput}
+            setPriceInput={setPriceInput}
+            filterOptions={filterOptions}
+            dynamicAttrs={dynamicAttrs}
+            subCatsForCategory={subCatsForCategory}
+            setFilter={setFilter}
+            setSpecFilter={setSpecFilter}
+            applyPriceFilter={applyPriceFilter}
+            clearAllFilters={clearAllFilters}
+            activeChips={activeChips}
+          />
         </div>
 
         {/* ===== FOOTER ===== */}
@@ -534,5 +825,268 @@ export default function BrowsePage() {
         </footer>
       </div>
     </>
+  );
+}
+
+// ── Filter Panel Component ─────────────────────────────────────────────────────
+interface FilterPanelProps {
+  filters: ActiveFilters;
+  priceInput: { min: string; max: string };
+  setPriceInput: (v: { min: string; max: string }) => void;
+  filterOptions: FilterOptions | null;
+  dynamicAttrs: DynamicAttribute[];
+  subCatsForCategory: Array<{ id: number; name: string; category_id: number; field_config?: string }>;
+  setFilter: (key: keyof Omit<ActiveFilters, 'specs'>, val: string) => void;
+  setSpecFilter: (attrName: string, val: string) => void;
+  applyPriceFilter: () => void;
+  clearAllFilters: () => void;
+  activeChips: { label: string; key: string }[];
+}
+
+function FilterPanel({
+  filters, priceInput, setPriceInput, filterOptions, dynamicAttrs,
+  subCatsForCategory, setFilter, setSpecFilter, applyPriceFilter,
+  clearAllFilters, activeChips,
+}: FilterPanelProps) {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    price: true, category: true, brand: false, color: false, size: false, gender: false, condition: false,
+  });
+
+  const toggleSection = (key: string) => setOpenSections(p => ({ ...p, [key]: !p[key] }));
+
+  return (
+    <div className="filter-sidebar">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h6 className="fw-bold mb-0" style={{ fontFamily: "'Maven Pro', sans-serif" }}>
+          <i className="bi bi-sliders me-2"></i>Filters
+        </h6>
+        {activeChips.length > 0 && (
+          <button onClick={clearAllFilters} style={{ background: 'none', border: 'none', color: '#999', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {/* ── Price Range ── */}
+      <div className="filter-section">
+        <div className="filter-section-title" onClick={() => toggleSection('price')}>
+          Price Range <i className={`bi bi-chevron-${openSections.price ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
+        </div>
+        {openSections.price && (
+          <div>
+            <div className="price-inputs mb-2">
+              <input
+                type="number"
+                className="price-input"
+                placeholder="Min ₹"
+                value={priceInput.min}
+                onChange={(e) => setPriceInput({ ...priceInput, min: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()}
+                min={0}
+              />
+              <span style={{ color: '#ccc', fontSize: '0.8rem' }}>—</span>
+              <input
+                type="number"
+                className="price-input"
+                placeholder="Max ₹"
+                value={priceInput.max}
+                onChange={(e) => setPriceInput({ ...priceInput, max: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()}
+                min={0}
+              />
+            </div>
+            <button className="btn-apply-price w-100" onClick={applyPriceFilter}>Apply Price</button>
+            {filterOptions?.price_range && (
+              <p style={{ fontSize: '0.72rem', color: '#bbb', marginTop: 6, marginBottom: 0 }}>
+                Range: ₹{Number(filterOptions.price_range.min_price).toLocaleString('en-IN')} – ₹{Number(filterOptions.price_range.max_price).toLocaleString('en-IN')}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Category ── */}
+      {filterOptions && filterOptions.categories.length > 0 && (
+        <div className="filter-section">
+          <div className="filter-section-title" onClick={() => toggleSection('category')}>
+            Category <i className={`bi bi-chevron-${openSections.category ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
+          </div>
+          {openSections.category && (
+            <div>
+              <select
+                className="filter-select mb-2"
+                value={filters.categoryId}
+                onChange={(e) => setFilter('categoryId', e.target.value)}
+              >
+                <option value="">All Categories</option>
+                {filterOptions.categories.map(c => (
+                  <option key={c.id} value={String(c.id)}>{c.name}</option>
+                ))}
+              </select>
+
+              {/* Sub-Category */}
+              {filters.categoryId && subCatsForCategory.length > 0 && (
+                <select
+                  className="filter-select"
+                  value={filters.subCategoryId}
+                  onChange={(e) => setFilter('subCategoryId', e.target.value)}
+                >
+                  <option value="">All Sub-categories</option>
+                  {subCatsForCategory.map(s => (
+                    <option key={s.id} value={String(s.id)}>{s.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Dynamic Attributes (from category field_config) ── */}
+      {dynamicAttrs.length > 0 && dynamicAttrs.map((attr) => (
+        <div key={attr.name} className="filter-section">
+          <div className="filter-section-title" style={{ cursor: 'default' }}>{attr.name}</div>
+          {attr.type === 'select' && attr.options && attr.options.length > 0 ? (
+            <select
+              className="filter-select"
+              value={filters.specs[attr.name] || ''}
+              onChange={(e) => setSpecFilter(attr.name, e.target.value)}
+            >
+              <option value="">Any {attr.name}</option>
+              {attr.options.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          ) : attr.type === 'checkbox' && attr.options && attr.options.length > 0 ? (
+            <div className="d-flex flex-wrap gap-1">
+              {attr.options.map(opt => (
+                <button
+                  key={opt}
+                  className={`filter-btn-pill ${filters.specs[attr.name] === opt ? 'active' : ''}`}
+                  onClick={() => setSpecFilter(attr.name, filters.specs[attr.name] === opt ? '' : opt)}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <input
+              type="text"
+              className="price-input"
+              placeholder={`Enter ${attr.name}`}
+              value={filters.specs[attr.name] || ''}
+              onChange={(e) => setSpecFilter(attr.name, e.target.value)}
+            />
+          )}
+        </div>
+      ))}
+
+      {/* ── Brand ── */}
+      {filterOptions && filterOptions.brands.length > 0 && (
+        <div className="filter-section">
+          <div className="filter-section-title" onClick={() => toggleSection('brand')}>
+            Brand <i className={`bi bi-chevron-${openSections.brand ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
+          </div>
+          {openSections.brand && (
+            <select
+              className="filter-select"
+              value={filters.brandId}
+              onChange={(e) => setFilter('brandId', e.target.value)}
+            >
+              <option value="">All Brands</option>
+              {filterOptions.brands.map(b => (
+                <option key={b.id} value={String(b.id)}>{b.brand_name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      {/* ── Color ── */}
+      {filterOptions && filterOptions.colors.length > 0 && (
+        <div className="filter-section">
+          <div className="filter-section-title" onClick={() => toggleSection('color')}>
+            Color <i className={`bi bi-chevron-${openSections.color ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
+          </div>
+          {openSections.color && (
+            <div className="d-flex flex-wrap gap-1">
+              {filterOptions.colors.map(c => (
+                <button
+                  key={c.id}
+                  className={`filter-btn-pill ${filters.color.toLowerCase() === c.name.toLowerCase() ? 'active' : ''}`}
+                  onClick={() => setFilter('color', filters.color.toLowerCase() === c.name.toLowerCase() ? '' : c.name)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Size ── */}
+      {filterOptions && filterOptions.sizes.length > 0 && (
+        <div className="filter-section">
+          <div className="filter-section-title" onClick={() => toggleSection('size')}>
+            Size <i className={`bi bi-chevron-${openSections.size ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
+          </div>
+          {openSections.size && (
+            <div className="d-flex flex-wrap gap-1">
+              {filterOptions.sizes.map(s => (
+                <button
+                  key={s}
+                  className={`filter-btn-pill ${filters.size === s ? 'active' : ''}`}
+                  onClick={() => setFilter('size', filters.size === s ? '' : s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Gender ── */}
+      {filterOptions && filterOptions.genders.length > 0 && (
+        <div className="filter-section">
+          <div className="filter-section-title" onClick={() => toggleSection('gender')}>
+            Gender <i className={`bi bi-chevron-${openSections.gender ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
+          </div>
+          {openSections.gender && (
+            <div className="d-flex flex-wrap gap-1">
+              {filterOptions.genders.map(g => (
+                <button
+                  key={g.id}
+                  className={`filter-btn-pill ${filters.gender.toLowerCase() === g.name.toLowerCase() ? 'active' : ''}`}
+                  onClick={() => setFilter('gender', filters.gender.toLowerCase() === g.name.toLowerCase() ? '' : g.name)}
+                >
+                  {g.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Condition ── */}
+      <div className="filter-section">
+        <div className="filter-section-title" onClick={() => toggleSection('condition')}>
+          Condition <i className={`bi bi-chevron-${openSections.condition ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
+        </div>
+        {openSections.condition && (
+          <div className="d-flex gap-2 flex-wrap">
+            {(['', 'new', 'used'] as const).map((c) => (
+              <button
+                key={c || 'all'}
+                className={`filter-btn-pill ${filters.condition === c ? 'active' : ''}`}
+                onClick={() => setFilter('condition', c)}
+              >
+                {c === '' ? 'All' : c === 'new' ? 'Brand New' : 'Pre-owned'}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
