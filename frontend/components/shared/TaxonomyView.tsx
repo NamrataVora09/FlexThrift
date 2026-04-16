@@ -379,14 +379,14 @@ export default function TaxonomyView() {
                 </select>
               </div>
               <div className="col-md-2"><input name="image" type="file" accept="image/*" className="form-control" style={inputStyle} /></div>
-              <div className="col-md-2"><button type="submit" className="btn w-100 sa-filter-btn" style={btnGold}><i className="bi bi-plus-circle me-2"></i>Add</button></div>
+              <div className="col-md-2"><button type="submit" className="btn w-100 sa-filter-btn" style={btnGold}><i className="bi bi-plus-circle me-2"></i>Add Listing Type</button></div>
             </form>
             <div className="table-responsive"><table className="table table-hover mb-0">
               <thead><tr><th style={thStyle}>ID</th><th style={thStyle}>Image</th><th style={thStyle}>Name & Config</th><th style={thStyle}>Usage Label</th><th style={thStyle}>Created</th><th style={thStyle}>Actions</th></tr></thead>
               <tbody>{listing_types.length > 0 ? listing_types.map((lt) => {
                 const gender = getGenderConfig(lt.field_config);
-                const bc = gender === 'mandatory' ? '#dc3545' : gender === 'hidden' ? '#6c757d' : '#0dcaf0';
-                return (<tr key={lt.id}><td style={tdStyle}>{lt.id}</td><td style={tdStyle}>{lt.image ? <img src={`http://localhost:8080/${lt.image}`} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} /> : <div style={{ width: 50, height: 50, borderRadius: 8, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}><i className="bi bi-image"></i></div>}</td><td style={tdStyle}><strong>{lt.type_name || lt.name}</strong><div className="small text-muted mt-1">Gender: <span className="badge" style={{ background: bc }}>{gender}</span></div></td><td style={tdStyle}><span className="badge bg-light text-dark border">{lt.usage_label || 'Times Used'}</span></td><td style={tdStyle}>{fmtDate(lt.created_at)}</td><td style={tdStyle}><ActionBtns table="listing_types" id={lt.id} item={lt} type="listing_type" /></td></tr>);
+                const bcForGender = gender === 'mandatory' ? '#dc3545' : gender === 'hidden' ? '#6c757d' : '#0dcaf0';
+                return (<tr key={lt.id}><td style={tdStyle}>{lt.id}</td><td style={tdStyle}>{lt.image ? <img src={`http://localhost:8080/${lt.image}`} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} /> : <div style={{ width: 50, height: 50, borderRadius: 8, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}><i className="bi bi-image"></i></div>}</td><td style={tdStyle}><strong>{lt.type_name || lt.name}</strong><div className="small text-muted mt-1">Gender: <span className="badge" style={{ background: bcForGender }}>{gender}</span></div></td><td style={tdStyle}><span className="badge bg-light text-dark border">{lt.usage_label || 'Times Used'}</span></td><td style={tdStyle}>{fmtDate(lt.created_at)}</td><td style={tdStyle}><ActionBtns table="listing_types" id={lt.id} item={lt} type="listing_type" /></td></tr>);
               }) : <tr><td colSpan={5} className="text-center text-muted py-4">No listing types yet</td></tr>}</tbody>
             </table></div>
           </div>

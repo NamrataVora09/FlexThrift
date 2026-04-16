@@ -28,7 +28,6 @@ interface RentalPricingRule {
   depreciation_range_min: string;
   depreciation_range_max: string;
   depreciation_amount: string;
-  deposit_percentage: string;
   max_cost_cap_per_day: string;
   is_active: number;
 }
@@ -77,7 +76,6 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
   pricing_tiers: { label: 'Usage-Based Pricing Tiers (JSON)', type: 'textarea', hint: 'JSON array of {min, max, dep} objects.' },
   rental_base_deposit_deduction: { label: 'Base Deposit Deduction (%)', hint: 'Base deduction for deposit calculation.' },
   rental_suggested_cost_percent: { label: 'Suggested Cost (%)', hint: 'Suggested rental cost as % of deposit.' },
-  rental_deposit_percentage: { label: 'Deposit Percentage (%)', hint: '% of depreciated value that becomes rental deposit.' },
   rental_max_cost_cap_per_day: { label: 'Max Cost Cap/Day (%)', hint: 'Max rental cost per day as % of deposit.' },
   min_rental_days: { label: 'Min Rental Days' },
   rental_pricing_tiers: { label: 'Rental Pricing Tiers (JSON)', type: 'textarea', hint: 'JSON array of rental tier objects.' },
@@ -443,7 +441,7 @@ export default function BusinessSettingsView() {
 
   // ==================== RENTAL PRICING RULES CRUD ====================
   const openRentalModal = (rule?: RentalPricingRule) => {
-    setEditingRentalRule(rule || { filter_type: '', filter_value: '', deposit_deduction_threshold: '', depreciation_range_min: '', depreciation_range_max: '', depreciation_amount: '', deposit_percentage: '', max_cost_cap_per_day: '' });
+    setEditingRentalRule(rule || { filter_type: '', filter_value: '', deposit_deduction_threshold: '', depreciation_range_min: '', depreciation_range_max: '', depreciation_amount: '', max_cost_cap_per_day: '' });
     if (rule?.filter_type) {
       setRentalFilterValues(taxonomy[rule.filter_type as keyof typeof taxonomy] || []);
     } else {
@@ -454,8 +452,8 @@ export default function BusinessSettingsView() {
 
   const saveRentalRule = async () => {
     if (!editingRentalRule) return;
-    const { filter_type, filter_value, deposit_deduction_threshold, deposit_percentage, max_cost_cap_per_day } = editingRentalRule;
-    if (!deposit_deduction_threshold || !deposit_percentage || !max_cost_cap_per_day) {
+    const { filter_type, filter_value, deposit_deduction_threshold, max_cost_cap_per_day } = editingRentalRule;
+    if (!deposit_deduction_threshold || !max_cost_cap_per_day) {
       showToast.warning('Please fill all required fields'); return;
     }
     if (filter_type && !filter_value) {
@@ -751,7 +749,7 @@ export default function BusinessSettingsView() {
               <thead className="table-light">
                 <tr>
                   <th>Filter</th><th>Value</th><th>Deposit Deduction %</th><th>Depreciation Range</th>
-                  <th>Depreciation %</th><th>Deposit %</th><th>Max Rental/Day %</th><th>Status</th><th style={{ width: 100 }}>Actions</th>
+                  <th>Depreciation %</th><th>Max Rental/Day %</th><th>Status</th><th style={{ width: 100 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -768,7 +766,6 @@ export default function BusinessSettingsView() {
                     <td className="text-center">{rule.deposit_deduction_threshold}%</td>
                     <td className="text-center">{Number(rule.depreciation_range_max) > 0 ? `${rule.depreciation_range_min} – ${rule.depreciation_range_max}` : `${rule.depreciation_range_min}+`}</td>
                     <td className="text-center">{rule.depreciation_amount}%</td>
-                    <td className="text-center">{rule.deposit_percentage}%</td>
                     <td className="text-center">{rule.max_cost_cap_per_day}%</td>
                     <td className="text-center">
                       <span className={`badge bg-${Number(rule.is_active) ? 'success' : 'secondary'}`}>
@@ -1414,12 +1411,6 @@ export default function BusinessSettingsView() {
                   <div className="form-text">Additional depreciation % if usage count falls within the range above.</div>
                 </div>
                 <hr />
-                <div className="mb-3">
-                  <label className="form-label">Deposit Percentage (%) <span className="text-danger">*</span></label>
-                  <input type="number" step="0.1" className="form-control" value={editingRentalRule?.deposit_percentage || ''} min={0} max={100} placeholder="e.g. 40"
-                    onChange={e => setEditingRentalRule(r => ({ ...r!, deposit_percentage: e.target.value }))} />
-                  <div className="form-text">% of depreciated value that becomes the rental deposit.</div>
-                </div>
                 <div className="mb-3">
                   <label className="form-label">Max Rental Cost Per Day (%) <span className="text-danger">*</span></label>
                   <input type="number" step="0.1" className="form-control" value={editingRentalRule?.max_cost_cap_per_day || ''} min={0} max={100} placeholder="e.g. 14"

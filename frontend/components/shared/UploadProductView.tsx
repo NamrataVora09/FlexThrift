@@ -320,6 +320,20 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     ) ?? null;
     return r ? { rule: r, source: 'Default' } : null;
   };
+  
+  const getFieldConfigs = () => {
+    const lt = meta?.listing_types?.find(l => String(l.id) === f.listing_type_category);
+    if (!lt?.field_config) return { gender: 'optional' };
+    try {
+      const config = JSON.parse(lt.field_config);
+      return {
+        gender: config.gender || 'optional'
+      };
+    } catch {
+      return { gender: 'optional' };
+    }
+  };
+  const fieldConfigs = getFieldConfigs();
 
   const isInitialLoad = useRef(true);
   useEffect(() => {
@@ -368,21 +382,15 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (found) {
       const deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? 10);
       const depreciationAmount = Number(found.rule.depreciation_amount ?? 0);
-      const depositPct = (found.rule.deposit_percentage ? Number(found.rule.deposit_percentage) : 40) / 100;
       const maxCapPct = found.rule.max_cost_cap_per_day ? Number(found.rule.max_cost_cap_per_day) : 14;
-      const suggestedPct = 10;
 
-      const depreciatedValue = origPrice * (1 - (deductionThreshold + depreciationAmount) / 100);
-      deposit = Math.round(depreciatedValue * depositPct);
-      rental = Math.min(
-        Math.round(deposit * suggestedPct / 100),
-        Math.round(deposit * maxCapPct / 100)
-      );
+      deposit = Math.round(origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
+      rental = Math.round(deposit * (maxCapPct / 100));
     } else {
-      // Use fallback settings: Deposit = Original Price, Rental = Deposit - (Deposit * Fallback%)
-      const fallbackPct = parseFloat(meta.config.fallback_rental_cost_per_day || '0');
+      // Use fallback settings: Deposit = Original Price, Rental = Deposit * (FallbackMaxCap%)
+      const fallbackMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
       deposit = origPrice;
-      rental = Math.round(deposit - (deposit * (fallbackPct / 100)));
+      rental = Math.round(deposit * (fallbackMaxCap / 100));
     }
 
     setF(prev => ({
@@ -467,6 +475,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const configs = getFieldConfigs();
+    if (configs.gender === 'mandatory' && !f.gender) { setError('Gender is required'); setSubmitting(false); return; }
+
     // Validate sale price doesn't exceed max allowed (based on pricing rule)
     if (f.listing_type === 'sell' && f.original_price && f.price && meta) {
       const origPrice = parseFloat(f.original_price);
@@ -490,43 +501,29 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const found = findPricingRule(meta.rental_pricing_rules || [], usedTimes);
       
       // dynamic values from settings
-      let deductionThreshold = parseFloat(meta.config.rental_base_deposit_deduction || '10');
-      let depositPct = parseFloat(meta.config.rental_deposit_percentage || '40') / 100;
+      let deductionThreshold = found ? parseFloat(meta.config.rental_base_deposit_deduction || '10') : 0;
       let maxCapPct = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
 
       if (found) {
         deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? deductionThreshold);
-        if (found.rule.deposit_percentage) depositPct = Number(found.rule.deposit_percentage) / 100;
-        if (found.rule.max_cost_cap_per_day) maxCapPct = Number(found.rule.max_cost_cap_per_day);
+        maxCapPct = Number(found.rule.max_cost_cap_per_day || maxCapPct);
       }
 
-      // 1. Validate Rental Cost based 
+      // 1. Validate Deposit Amount based on base deduction threshold
       const enteredDeposit = parseFloat(f.rental_deposit || '0');
-      const maxPriceBasedOnThreshold = Math.round(origPrice - (origPrice * deductionThreshold / 100));
-      if (enteredDeposit > maxPriceBasedOnThreshold) {
-          setError(`Deposit cannot exceed ₹${maxPriceBasedOnThreshold.toLocaleString('en-IN')} (based on ${deductionThreshold}% deduction rule)`);
+      const maxDepositAllowed = Math.round(origPrice * (1 - deductionThreshold / 100));
+      if (enteredDeposit > maxDepositAllowed) {
+          setError(`Deposit cannot exceed ₹${maxDepositAllowed.toLocaleString('en-IN')} (based on ${deductionThreshold}% base deduction rule)`);
           setSubmitting(false);
           return;
       }
 
       // 2. Validate Rental Cost based on ENTERED deposit
-      // If no rule matches and fallback is set, we still allow the fallback cost even if it exceeds maxCapPct of custom deposit
-      const fallbackCost = parseFloat(meta.config.fallback_rental_cost_per_day || '0');
-      const maxRental = Math.round(enteredDeposit * maxCapPct / 100);
+      const maxRentalAllowed = Math.round(enteredDeposit * maxCapPct / 100);
       
-      if (!found && fallbackCost > 0) {
-        // Fallback mode: we primarily suggest the fallback, but cap at maxRental if it's very low?
-        // Actually, if it's a fallback, let's just let it be. 
-        // But for safety, let's just use maxRental as the hard limit unless fallback is specifically intended to override it.
-        // Based on user request, fallback IS the cost.
-        if (parseFloat(f.rental_cost) > Math.max(maxRental, fallbackCost)) {
-            setError(`Rental cost cannot exceed ₹${Math.max(maxRental, fallbackCost).toLocaleString('en-IN')} per day (System Fallback)`);
-            setSubmitting(false);
-            return;
-        }
-      } else if (parseFloat(f.rental_cost) > maxRental) {
+      if (parseFloat(f.rental_cost) > maxRentalAllowed) {
         const src = found ? found.source : 'Global Default';
-        setError(`Rental cost cannot exceed ₹${maxRental.toLocaleString('en-IN')} per day (${maxCapPct}% cap based on ${src})`);
+        setError(`Rental cost cannot exceed ₹${maxRentalAllowed.toLocaleString('en-IN')} per day (${maxCapPct}% cap based on ${src})`);
         setSubmitting(false);
         return;
       }
@@ -625,7 +622,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     // dynamic values from settings
     let deductionThreshold = parseFloat(cfg.rental_base_deposit_deduction || '10'); 
     let depreciationAmount = 0;
-    let depositPct = parseFloat(cfg.rental_deposit_percentage || '40') / 100;
     let maxCapPct = parseFloat(cfg.rental_max_cost_cap_per_day || '14');
     let suggestedPct = parseFloat(cfg.rental_suggested_cost_percent || '10');
     
@@ -635,43 +631,45 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (found) {
       deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? deductionThreshold);
       depreciationAmount = Number(found.rule.depreciation_amount ?? 0);
-      if (found.rule.deposit_percentage) depositPct = Number(found.rule.deposit_percentage) / 100;
-      if (found.rule.max_cost_cap_per_day) maxCapPct = Number(found.rule.max_cost_cap_per_day);
+      maxCapPct = Number(found.rule.max_cost_cap_per_day || maxCapPct);
       
-      const depreciatedValue = origPrice * (1 - (deductionThreshold + depreciationAmount) / 100);
-      const suggestedDeposit = Math.round(depreciatedValue * depositPct);
-      suggestedRental = Math.min(
-        Math.round(suggestedDeposit * suggestedPct / 100),
-        Math.round(suggestedDeposit * maxCapPct / 100)
-      );
+      const suggestedDeposit = Math.round(origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
+      const maxDeposit = Math.round(origPrice * (1 - deductionThreshold / 100));
+      
+      const suggestedRental = Math.round(suggestedDeposit * (maxCapPct / 100));
+      const maxRental = Math.round(maxDeposit * (maxCapPct / 100));
       
       return { 
         deductionThreshold, 
         depreciationAmount, 
-        depositPct: depositPct * 100, 
-        depreciatedValue: Math.round(depreciatedValue), 
+        depositPct: 100, 
         suggestedDeposit, 
+        maxDeposit,
         suggestedRental, 
+        maxRental,
         maxCapPct,
         source,
         ruleLabel: found.rule.filter_label || ''
       };
     } else {
-      // Use fallback settings: Deposit = Original Price, Rental = Deposit - (Deposit * Fallback%)
-      const fallbackPct = parseFloat(cfg.fallback_rental_cost_per_day || '0');
+      // Use fallback settings: Suggested/Max Deposit = Original (0% deduction for fallback), Rental = Deposit * (FallbackMaxCap%)
+      const fallbackMaxCap = parseFloat(cfg.rental_max_cost_cap_per_day || '14');
       const suggestedDeposit = origPrice;
-      const suggestedRental = Math.round(suggestedDeposit - (suggestedDeposit * (fallbackPct / 100)));
+      const maxDeposit = origPrice;
+      const suggestedRental = Math.round(suggestedDeposit * (fallbackMaxCap / 100));
+      const maxRental = Math.round(maxDeposit * (fallbackMaxCap / 100));
 
       return { 
         deductionThreshold: 0, 
         depreciationAmount: 0, 
         depositPct: 100, 
-        depreciatedValue: origPrice, 
         suggestedDeposit, 
+        maxDeposit,
         suggestedRental, 
-        maxCapPct: (100 - fallbackPct),
+        maxRental,
+        maxCapPct: fallbackMaxCap,
         source,
-        ruleLabel: fallbackPct > 0 ? `System Fallback (${fallbackPct}% Deduction)` : 'Global Default'
+        ruleLabel: 'Global Default'
       };
     }
   })();
@@ -766,12 +764,18 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   {subCategories.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
                 </select>
               </div>
-              <div className="col-md-3"><label className="form-label" style={labelStyle}>Gender {filteredGenders.length > 0 && <span className="text-danger">*</span>}</label>
-                <select className="form-select" style={inputStyle} name="gender" value={f.gender} onChange={handleChange} required={filteredGenders.length > 0} disabled={!f.category_id}>
-                  <option value="">{f.category_id ? 'Select Gender' : 'Select Category first'}</option>
-                  {filteredGenders.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
-                </select>
-              </div>
+              {fieldConfigs.gender !== 'hidden' && (
+                <div className="col-md-3">
+                  <label className="form-label" style={labelStyle}>
+                    Gender {fieldConfigs.gender === 'mandatory' && <span className="text-danger">*</span>}
+                  </label>
+                  <select className="form-select" style={inputStyle} name="gender" value={f.gender} onChange={handleChange} 
+                    required={fieldConfigs.gender === 'mandatory'} disabled={!f.category_id}>
+                    <option value="">{f.category_id ? 'Select Gender' : 'Select Category first'}</option>
+                    {filteredGenders.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div className="col-md-3"><label className="form-label" style={labelStyle}>Original Brand <small>(e.g. Adidas)</small></label>
                 <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                   <div className="input-group">
@@ -903,12 +907,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                     <div style={priceSuggestion}>
                       <div className="row">
                         <div className="col-md-6 mb-2">
-                          <small>Suggested Deposit</small>
-                          <h5 className="mb-0">₹{rentalPriceSuggestion.suggestedDeposit.toLocaleString('en-IN')}</h5>
+                          <small>Suggested (Deposit + Rent/Day)</small>
+                          <h5 className="mb-0">₹{rentalPriceSuggestion.suggestedDeposit.toLocaleString('en-IN')} + ₹{rentalPriceSuggestion.suggestedRental.toLocaleString('en-IN')}</h5>
                         </div>
                         <div className="col-md-6 mb-2">
-                          <small>Suggested Rental Cost (per day)</small>
-                          <h5 className="mb-0">₹{rentalPriceSuggestion.suggestedRental.toLocaleString('en-IN')}</h5>
+                          <small>Maximum (Deposit + Rent/Day)</small>
+                          <h5 className="mb-0">₹{rentalPriceSuggestion.maxDeposit.toLocaleString('en-IN')} + ₹{rentalPriceSuggestion.maxRental.toLocaleString('en-IN')}</h5>
                         </div>
                         {rentalPriceSuggestion.ruleLabel && (
                           <div className="col-12 mt-1 small" style={{ opacity: 0.9 }}>
@@ -923,15 +927,15 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 <div className="col-md-4">
                   <label className="form-label" style={labelStyle}>Deposit Amount</label>
                   <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="rental_deposit" step="0.01" value={f.rental_deposit} onChange={handleChange} /></div>
-                  <small className={(parseFloat(f.rental_deposit) > (origPrice - (origPrice * (rentalPriceSuggestion?.deductionThreshold || 10) / 100))) ? "text-danger fw-bold" : "text-muted"}>
-                    At least {rentalPriceSuggestion?.deductionThreshold || '10'}% less than original
-                    {origPrice > 0 && ` (Max: ₹${Math.round(origPrice - (origPrice * (rentalPriceSuggestion?.deductionThreshold || 10) / 100)).toLocaleString('en-IN')})`}
+                  <small className={(parseFloat(f.rental_deposit) > (origPrice - (origPrice * (rentalPriceSuggestion?.deductionThreshold ?? 0) / 100))) ? "text-danger fw-bold" : "text-muted"}>
+                    {rentalPriceSuggestion?.deductionThreshold ? `At least ${rentalPriceSuggestion.deductionThreshold}% less than original` : 'Maximum allowed is original price'}
+                    {origPrice > 0 && ` (Max: ₹${Math.round(origPrice - (origPrice * (rentalPriceSuggestion?.deductionThreshold ?? 0) / 100)).toLocaleString('en-IN')})`}
                   </small>
                 </div>
                 <div className="col-md-4">
                   <label className="form-label" style={labelStyle}>Rental Cost (per day)</label>
                   <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="rental_cost" step="0.01" value={f.rental_cost} onChange={handleChange} /></div>
-                  <small className="text-muted">
+                  <small className={(parseFloat(f.rental_cost) > (parseFloat(f.rental_deposit || '0') * (rentalPriceSuggestion?.maxCapPct || 14) / 100)) ? "text-danger fw-bold" : "text-muted"}>
                     {rentalPriceSuggestion?.source === 'System Fallback' ? 'Recommended daily rate' : `Max ${rentalPriceSuggestion?.maxCapPct || '14'}% of deposit per day`}
                   </small>
                 </div>
