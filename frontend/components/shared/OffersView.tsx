@@ -393,6 +393,13 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     if (!suggestModal) return;
     if (!sdStart || !sdEnd) { toast.error('Please select both start and end dates'); return; }
     if (sdEnd <= sdStart) { toast.error('End date must be after start date'); return; }
+    
+    const days = daysBetween(sdStart, sdEnd);
+    if (days < settings.minRentalDays) {
+      toast.error(`Minimum ${settings.minRentalDays} days rental required`);
+      return;
+    }
+
     setSdLoading(true);
     const res = await api.post(`/seller/suggest-dates/${suggestModal.offer.id}`, {
       rental_start_date: sdStart,

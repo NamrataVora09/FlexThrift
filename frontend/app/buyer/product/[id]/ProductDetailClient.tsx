@@ -196,6 +196,7 @@ interface Product {
   status: string;
   seller_id?: number;
   usage_label?: string;
+  allow_alter_fitting?: number;
 }
 
 interface ProductImage {
@@ -243,7 +244,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
     deposit_amount: product.rental_deposit || '',
     rental_start_date: '',
     rental_end_date: '',
-    delivery_address: '',
+    delivery_state: '',
+    delivery_city: '',
     delivery_pin_code: '',
   });
   const [offerLoading, setOfferLoading] = useState(false);
@@ -369,8 +371,12 @@ export default function ProductDetailClient({ product, images, similarProducts =
       setOfferError('Please select your rental dates on the calendar first.');
       return;
     }
-    if (!offerForm.delivery_address.trim()) {
-      setOfferError('Delivery address is mandatory.');
+    if (!offerForm.delivery_state.trim()) {
+      setOfferError('State is mandatory.');
+      return;
+    }
+    if (!offerForm.delivery_city.trim()) {
+      setOfferError('City is mandatory.');
       return;
     }
     if (!offerForm.delivery_pin_code.trim()) {
@@ -391,7 +397,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
       deposit_amount: product.listing_type === 'rent' ? offerForm.deposit_amount : undefined,
       rental_start_date: product.listing_type === 'rent' ? offerForm.rental_start_date : undefined,
       rental_end_date: product.listing_type === 'rent' ? offerForm.rental_end_date : undefined,
-      delivery_address: offerForm.delivery_address,
+      delivery_address: `${offerForm.delivery_city}, ${offerForm.delivery_state}`,
       delivery_pin_code: offerForm.delivery_pin_code,
     });
     setOfferLoading(false);
@@ -798,6 +804,17 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     </div>
                   </div>
                 </div>
+                {product.listing_type === 'rent' && (
+                  <div className="col-6">
+                    <div style={styles.specPill}>
+                      <i className={`bi ${Number(product.allow_alter_fitting) === 1 ? 'bi-scissors' : 'bi-slash-circle'} fs-4`} style={Number(product.allow_alter_fitting) === 1 ? { color: '#22c55e' } : { color: '#ef4444' }}></i>
+                      <div>
+                        <small className="text-muted d-block" style={{ lineHeight: 1 }}>ALTERATION</small>
+                        <strong>{Number(product.allow_alter_fitting) === 1 ? 'Allowed' : 'Not Allowed'}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ── Rental availability calendar (rent products only) ── */}
@@ -1226,31 +1243,44 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     </div>
                   )}
                 </div>
-                <div className="mb-3">
-                  <label className="form-label fw-bold small text-dark">Delivery Address <span className="text-danger">*</span></label>
-                  <textarea
-                    className="form-control rounded-3"
-                    rows={2}
-                    value={offerForm.delivery_address}
-                    onChange={(e) => setOfferForm({ ...offerForm, delivery_address: e.target.value })}
-                    placeholder="E.g. Flat No, Building, Area, City"
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label fw-bold small text-dark">PIN Code <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control rounded-3"
-                    value={offerForm.delivery_pin_code}
-                    maxLength={6}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').substring(0, 6);
-                      setOfferForm({ ...offerForm, delivery_pin_code: val });
-                    }}
-                    placeholder="6-digit PIN code"
-                    required
-                  />
+                <div className="row g-2 mb-3">
+                  <div className="col-6">
+                    <label className="form-label fw-bold small text-dark">State <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control rounded-3"
+                      value={offerForm.delivery_state}
+                      onChange={(e) => setOfferForm({ ...offerForm, delivery_state: e.target.value })}
+                      placeholder="e.g. Punjab"
+                      required
+                    />
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label fw-bold small text-dark">City <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control rounded-3"
+                      value={offerForm.delivery_city}
+                      onChange={(e) => setOfferForm({ ...offerForm, delivery_city: e.target.value })}
+                      placeholder="e.g. Amritsar"
+                      required
+                    />
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label fw-bold small text-dark">PIN Code <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control rounded-3"
+                      value={offerForm.delivery_pin_code}
+                      maxLength={6}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').substring(0, 6);
+                        setOfferForm({ ...offerForm, delivery_pin_code: val });
+                      }}
+                      placeholder="6-digit PIN code"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
               {offerError && (

@@ -854,7 +854,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 <div className="col-md-6">
                   <label className="form-label" style={labelStyle}>Sale Price <span className="text-danger">*</span></label>
                   <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="price" step="0.01" value={f.price} onChange={handleChange} /></div>
-                  <small className="text-muted">Must be at least {cfg.sale_base_discount || '5'}% less than original price</small>
+                  <small className="text-muted">Must be at least {salePriceSuggestion ? salePriceSuggestion.deductionThreshold : (cfg.sale_base_discount || '5')}% less than original price</small>
                 </div>
               </div>
             </div>
@@ -890,12 +890,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 <div className="col-md-4">
                   <label className="form-label" style={labelStyle}>Deposit Amount</label>
                   <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="rental_deposit" step="0.01" value={f.rental_deposit} onChange={handleChange} /></div>
-                  <small className="text-muted">At least {cfg.rental_base_deposit_deduction || '9'}% less than original</small>
+                  <small className="text-muted">At least {rentalPriceSuggestion ? rentalPriceSuggestion.deductionThreshold : (cfg.rental_base_deposit_deduction || '9')}% less than original</small>
                 </div>
                 <div className="col-md-4">
                   <label className="form-label" style={labelStyle}>Rental Cost (per day)</label>
                   <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="rental_cost" step="0.01" value={f.rental_cost} onChange={handleChange} /></div>
-                  <small className="text-muted">Max {cfg.rental_max_cost_cap_per_day || '14'}% of deposit per day</small>
+                  <small className="text-muted">Max {rentalPriceSuggestion ? rentalPriceSuggestion.maxCapPct : (cfg.rental_max_cost_cap_per_day || '14')}% of deposit per day</small>
                 </div>
                 <div className="col-md-12">
                   <div className="form-check"><input className="form-check-input" type="checkbox" name="allow_alter_fitting" checked={f.allow_alter_fitting as boolean} onChange={handleChange} /><label className="form-check-label">Allow buyer to alter the fitting</label></div>

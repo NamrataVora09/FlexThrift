@@ -523,6 +523,14 @@ class BuyerApi extends ResourceController
             return $this->respond(['success' => false, 'message' => 'Start and end dates are required.'], 400);
         }
 
+        // Enforce minimum rental days from system settings
+        helper('price_calculator');
+        $minDays = (int) getSystemSetting('min_rental_days', 3);
+        $days = (int)ceil((strtotime($endDate) - strtotime($startDate)) / 86400) + 1; // inclusive
+        if ($days < $minDays) {
+            return $this->respond(['success' => false, 'message' => "Minimum rental period is {$minDays} days. You selected {$days} day(s)."], 400);
+        }
+
         // Check for conflicts with already accepted offers
         $overlapping = $db->table('offers')
             ->where('product_id', $offer['product_id'])
