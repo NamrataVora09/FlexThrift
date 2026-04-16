@@ -278,14 +278,23 @@ if (!function_exists('calculateRentalPrices')) {
         $depositPercent = (float) getSystemSetting('rental_deposit_percentage', 40);
         $deposit = $depreciatedValue * ($depositPercent / 100);
 
-        // 3. Rental cost calculation (default: max 14% of deposit per day)
-        $maxRentalCapPerDay = (float) getSystemSetting('rental_max_cost_cap_per_day', 14);
-        $suggestedCostPercent = (float) getSystemSetting('rental_suggested_cost_percent', 10);
+        // 3. Rental cost calculation
+        $fallbackPct = (float) getSystemSetting('fallback_rental_cost_per_day', 0);
+        
+        if ($fallbackPct > 0) {
+            // New logic: Deposit = Original Price, Rental = Deposit - (Deposit * Fallback%)
+            $deposit = $originalPrice;
+            $rentalCost = $deposit - ($deposit * ($fallbackPct / 100));
+            $depreciatedValue = $originalPrice;
+        } else {
+            $maxRentalCapPerDay = (float) getSystemSetting('rental_max_cost_cap_per_day', 14);
+            $suggestedCostPercent = (float) getSystemSetting('rental_suggested_cost_percent', 10);
 
-        // Suggested rental cost
-        $suggestedRentalCost = $deposit * ($suggestedCostPercent / 100);
-        $maxRental = $deposit * ($maxRentalCapPerDay / 100);
-        $rentalCost = min($suggestedRentalCost, $maxRental);
+            // Suggested rental cost
+            $suggestedRentalCost = $deposit * ($suggestedCostPercent / 100);
+            $maxRental = $deposit * ($maxRentalCapPerDay / 100);
+            $rentalCost = min($suggestedRentalCost, $maxRental);
+        }
 
         return [
             'deposit' => round($deposit, 2),

@@ -253,7 +253,7 @@ class SharedApi extends ResourceController
 
         $groups = [
             'Pricing' => ['sale_base_discount', 'sale_depreciation_per_use', 'sale_max_additional_depreciation'],
-            'Rental' => ['rental_base_deposit_deduction', 'rental_suggested_cost_percent', 'rental_deposit_percentage', 'rental_max_cost_cap_per_day', 'min_rental_days'],
+            'Rental' => ['fallback_rental_cost_per_day', 'min_rental_days'],
             'Commission & Delivery' => ['commission_rate', 'delivery_charge', 'min_order_value'],
             'Referral' => ['referral_reward_amount', 'referral_expiry_days'],
             'Seller' => ['seller_rejection_window_hours'],

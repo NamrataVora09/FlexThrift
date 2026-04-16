@@ -222,11 +222,11 @@ export default function SettingsClient() {
                 <small className="text-muted">Minimum number of days a buyer must rent a product</small>
               </div>
               <div className="col-md-6">
-                <label className="form-label fw-semibold">Fallback Rental Cost Per Day (₹)</label>
-                <input type="number" min="0" step="0.01" className="form-control" style={inputStyle} value={settings.fallback_rental_cost_per_day || '0'} onChange={(e) => update('fallback_rental_cost_per_day', e.target.value)} />
+                <label className="form-label fw-semibold">Fallback Rental Cost Per Day (%)</label>
+                <input type="number" min="0" max="100" className="form-control" style={inputStyle} value={settings.fallback_rental_cost_per_day || '0'} onChange={(e) => update('fallback_rental_cost_per_day', e.target.value)} />
                 <small className="text-muted">
                   <i className="bi bi-info-circle me-1 text-warning"></i>
-                  Applied <strong>only</strong> when no Rent pricing rule exists. If a pricing rule is configured, it takes full priority.
+                  When no pricing rules exist: <strong>Deposit = Original Price</strong>, and <strong>Daily Rent = Deposit - {settings.fallback_rental_cost_per_day || '0'}%</strong>.
                 </small>
               </div>
             </div>

@@ -202,9 +202,9 @@ class SellerApi extends ResourceController
         foreach ($settings as $s) $config[$s['setting_key']] = $s['setting_value'];
 
         $defaults = [
-            'sale_base_discount' => 5, 'rental_base_deposit_deduction' => 9,
-            'rental_deposit_percentage' => 40, 'rental_suggested_cost_percent' => 13,
-            'rental_max_cost_cap_per_day' => 14, 'min_rental_days' => 3,
+            'sale_base_discount' => 5, 
+            'fallback_rental_cost_per_day' => 0,
+            'min_rental_days' => 3,
             'max_product_images' => 7,
         ];
         $config = array_merge($defaults, $config);
