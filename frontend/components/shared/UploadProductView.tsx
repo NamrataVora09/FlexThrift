@@ -935,7 +935,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 <div className="col-md-4">
                   <label className="form-label" style={labelStyle}>Rental Cost (per day)</label>
                   <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="rental_cost" step="0.01" value={f.rental_cost} onChange={handleChange} /></div>
-                  <small className={(parseFloat(f.rental_cost) > (parseFloat(f.rental_deposit || '0') * (rentalPriceSuggestion?.maxCapPct || 14) / 100)) ? "text-danger fw-bold" : "text-muted"}>
+                  <small className={(parseFloat(f.rental_cost) > Math.round(parseFloat(f.rental_deposit || '0') * (rentalPriceSuggestion?.maxCapPct || 14) / 100)) ? "text-danger fw-bold" : "text-muted"}>
                     {rentalPriceSuggestion?.source === 'System Fallback' ? 'Recommended daily rate' : `Max ${rentalPriceSuggestion?.maxCapPct || '14'}% of deposit per day`}
                   </small>
                 </div>
