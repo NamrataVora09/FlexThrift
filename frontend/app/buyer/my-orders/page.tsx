@@ -89,19 +89,19 @@ function MyOrdersInner() {
   };
 
   const handleReview = async () => {
-    if (!reviewModal || rating === 0) return;
+    if (!reviewModal) return;
     setReviewLoading(true);
     const res = await api.post('/buyer/submit-review', {
       order_id: reviewModal.orderId,
-      rating,
-      comment: reviewComment,
+      rating: 5,
+      comment: '',
     });
     setReviewLoading(false);
     if (res?.success) {
       setReviewModal(null);
       setRating(0);
       setReviewComment('');
-      toast.success('Thank you for your review!');
+      toast.success('Reward sent successfully!');
       load();
     } else {
       toast.error(res?.message || 'Failed to submit review');
@@ -364,52 +364,28 @@ function MyOrdersInner() {
               <div className="modal-header border-0 pb-0">
                 <button type="button" className="btn-close" onClick={() => setReviewModal(null)}></button>
               </div>
-              <div className="modal-body p-4 pt-0">
-                <div className="text-center mb-4">
-                  <div
-                    className="d-inline-flex p-3 mb-3"
-                    style={{ background: 'rgba(13,110,253,0.1)', borderRadius: '50%' }}
-                  >
-                    <i className="bi bi-patch-check-fill text-primary" style={{ fontSize: '2rem' }}></i>
-                  </div>
-                  <h4 className="fw-bold">Write a Review</h4>
-                  <p className="text-muted">{reviewModal.title}</p>
+              <div className="modal-body p-4 pt-0 text-center">
+                <div
+                  className="d-inline-flex p-3 mb-3"
+                  style={{ background: 'rgba(255,198,58,0.1)', borderRadius: '50%' }}
+                >
+                  <i className="bi bi-star-fill" style={{ fontSize: '2rem', color: '#ffc63a' }}></i>
                 </div>
-
-                <div className="mb-4 text-center">
-                  <label className="form-label d-block text-muted small fw-bold">HOW WAS YOUR EXPERIENCE?</label>
-                  <div style={{ cursor: 'pointer', fontSize: '1.8rem' }} onMouseLeave={() => setHoverRating(0)}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <i
-                        key={star}
-                        className={`bi bi-star${(hoverRating || rating) >= star ? '-fill' : ''} mx-1`}
-                        style={{ color: (hoverRating || rating) >= star ? '#ffc63a' : '#ccc' }}
-                        onClick={() => setRating(star)}
-                        onMouseEnter={() => setHoverRating(star)}
-                      ></i>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <textarea
-                    className="form-control border-0 bg-light p-3"
-                    style={{ borderRadius: '16px' }}
-                    rows={4}
-                    placeholder="Share your thoughts about this product/rental experience..."
-                    value={reviewComment}
-                    onChange={(e) => setReviewComment(e.target.value)}
-                  />
+                <h4 className="fw-bold">Reward Seller</h4>
+                <p className="text-muted">You are about to give <strong>+1 Point</strong> to the seller for <strong>{reviewModal.title}</strong>.</p>
+                <div className="h5 fw-bold mb-0 mt-3">
+                  Give +1 Point!
                 </div>
               </div>
               <div className="modal-footer border-0 p-4 pt-0 d-grid">
                 <button
-                  className="btn btn-primary rounded-pill py-3 fw-bold"
+                  className="btn btn-dark rounded-pill py-3 fw-bold"
                   onClick={handleReview}
-                  disabled={reviewLoading || rating === 0}
+                  disabled={reviewLoading}
                 >
-                  {reviewLoading ? 'Submitting...' : 'Submit Review'}
+                  {reviewLoading ? 'Submitting...' : 'Yes, Give Point'}
                 </button>
+                <button className="btn btn-link text-muted mt-2 small text-decoration-none" onClick={() => setReviewModal(null)}>Cancel</button>
               </div>
             </div>
           </div>

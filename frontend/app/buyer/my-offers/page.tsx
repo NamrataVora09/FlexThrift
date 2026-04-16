@@ -235,7 +235,7 @@ export default function Page() {
     setRatingLoading(true);
     const res = await api.post<any>('/buyer/rate-seller', {
       offer_id: ratingModal.id,
-      rating: ratingValue
+      rating: 5
     });
     setRatingLoading(false);
     if (res.success) {
@@ -808,39 +808,25 @@ export default function Page() {
 
       {/* Rating Modal */}
       {ratingModal && (
-        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
-          <div className="modal-dialog modal-dialog-centered">
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1060 }} onClick={() => setRatingModal(null)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
             <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1.25rem' }}>
               <div className="modal-header border-0 px-4 pt-4">
-                <h5 className="modal-title fw-bold">Rate Your Experience</h5>
+                <h5 className="modal-title fw-bold">Reward Seller</h5>
                 <button type="button" className="btn-close" onClick={() => setRatingModal(null)}></button>
               </div>
               <div className="modal-body p-4 text-center">
-                <p className="text-muted small mb-4">How was your interaction with the seller for <strong>{ratingModal.title}</strong>?</p>
-                <div className="d-flex justify-content-center gap-2 mb-4">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      className="btn p-1"
-                      style={{ fontSize: '2.5rem', color: s <= ratingValue ? '#ffc63a' : '#dee2e6', transition: 'transform 0.2s' }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                      onClick={() => setRatingValue(s)}
-                    >
-                      <i className={`bi bi-star${s <= ratingValue ? '-fill' : ''}`}></i>
-                    </button>
-                  ))}
+                <p className="text-muted small mb-4">You are about to give <strong>+1 Point</strong> to the seller for <strong>{ratingModal.title}</strong>.</p>
+                <div className="d-flex justify-content-center mb-4">
+                  <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#ffc63a22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className="bi bi-star-fill" style={{ fontSize: '3rem', color: '#ffc63a' }}></i>
+                  </div>
                 </div>
                 <div className="h5 fw-bold mb-0">
-                  {ratingValue === 5 && 'Outstanding! 🌟'}
-                  {ratingValue === 4 && 'Very Good! 😊'}
-                  {ratingValue === 3 && 'Decent Experience 😐'}
-                  {ratingValue === 2 && 'Could be better 😕'}
-                  {ratingValue === 1 && 'Poor Experience 😞'}
+                  Give +1 Point!
                 </div>
               </div>
-              <div className="modal-footer border-0 p-4 pt-0">
+              <div className="modal-footer border-0 p-4 pt-0 mt-2">
                 <button type="button" className="btn btn-light rounded-pill px-4 fw-bold" onClick={() => setRatingModal(null)}>Cancel</button>
                 <button 
                   type="button" 
@@ -848,7 +834,7 @@ export default function Page() {
                   onClick={handleRateSubmit}
                   disabled={ratingLoading}
                 >
-                  {ratingLoading ? 'Submitting...' : 'Submit Rating'}
+                  {ratingLoading ? 'Submitting…' : 'Yes, Give Point'}
                 </button>
               </div>
             </div>

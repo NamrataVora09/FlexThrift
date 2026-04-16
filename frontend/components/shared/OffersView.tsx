@@ -1023,7 +1023,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                       <div className="buyer-contact-info border-top pt-2 w-100">
                         <div className="buyer-contact-item"><i className="bi bi-telephone text-primary"></i><span>{offer.buyer_mobile || 'N/A'}</span></div>
                         <div className="buyer-contact-item"><i className="bi bi-envelope text-primary"></i><span className="text-truncate" style={{ maxWidth: 180, display: 'block' }}>{offer.buyer_email || 'N/A'}</span></div>
-                        <div className="buyer-contact-item"><i className="bi bi-geo-alt text-danger"></i><span>{offer.delivery_address ? `${offer.delivery_address}, ` : ''}{offer.delivery_city || 'N/A'}, {offer.delivery_pin_code || 'No Pin'} {offer.delivery_state || ''}</span></div>
+                        <div className="buyer-contact-item"><i className="bi bi-geo-alt text-danger"></i><span>{offer.delivery_city || 'N/A'}, {offer.delivery_pin_code || 'No Pin'} {offer.delivery_state || ''}</span></div>
                       </div>
                     </div>
 
@@ -1086,7 +1086,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                           <div className="d-flex align-items-center gap-2 small">
                             <i className="bi bi-truck text-primary"></i>
                             <span className="fw-bold">DELIVERY:</span>
-                            <span className="text-dark">{offer.delivery_address ? `${offer.delivery_address}, ` : ''}{offer.delivery_city ?? 'N/A'}, {offer.delivery_pin_code ?? 'No Pin'} {offer.delivery_state ?? ''}</span>
+                            <span className="text-dark">{offer.delivery_city ?? 'N/A'}, {offer.delivery_pin_code ?? 'No Pin'} {offer.delivery_state ?? ''}</span>
                           </div>
                         </div>
                       )}

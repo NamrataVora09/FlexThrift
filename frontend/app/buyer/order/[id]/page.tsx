@@ -104,15 +104,14 @@ export default function OrderDetailPage() {
   useEffect(() => { load(); }, [orderId]);
 
   const handleSubmitReview = async () => {
-    if (rating === 0) return;
     setReviewLoading(true);
-    const res = await api.post('/buyer/submit-review', { order_id: Number(orderId), rating, comment: reviewComment });
+    const res = await api.post('/buyer/submit-review', { order_id: Number(orderId), rating: 5, comment: '' });
     setReviewLoading(false);
     if (res?.success) {
       setShowReview(false);
       setRating(0);
       setReviewComment('');
-      toast.success('Review submitted!');
+      toast.success('Reward sent successfully!');
       load();
     } else {
       toast.error(res?.message || 'Failed to submit review');
@@ -394,35 +393,21 @@ export default function OrderDetailPage() {
                 <div className="d-inline-flex p-3 mb-3" style={{ background: 'rgba(255,198,58,0.15)', borderRadius: '50%' }}>
                   <i className="bi bi-star-fill" style={{ fontSize: '2rem', color: '#ffc63a' }}></i>
                 </div>
-                <h4 className="fw-bold">Review: {order.product_title}</h4>
-                <div className="mb-4 mt-3" style={{ fontSize: '2rem', cursor: 'pointer' }} onMouseLeave={() => setHoverRating(0)}>
-                  {[1,2,3,4,5].map((star) => (
-                    <i
-                      key={star}
-                      className={`bi bi-star${(hoverRating || rating) >= star ? '-fill' : ''} mx-1`}
-                      style={{ color: (hoverRating || rating) >= star ? '#ffc63a' : '#ccc' }}
-                      onClick={() => setRating(star)}
-                      onMouseEnter={() => setHoverRating(star)}
-                    ></i>
-                  ))}
+                <h4 className="fw-bold">Reward Seller</h4>
+                <p className="text-muted">You are about to give <strong>+1 Point</strong> to the seller for <strong>{order.product_title}</strong>.</p>
+                <div className="h5 fw-bold mb-0 mt-3">
+                  Give +1 Point!
                 </div>
-                <textarea
-                  className="form-control border-0 bg-light"
-                  style={{ borderRadius: 16 }}
-                  rows={4}
-                  placeholder="Share your experience..."
-                  value={reviewComment}
-                  onChange={(e) => setReviewComment(e.target.value)}
-                />
               </div>
               <div className="modal-footer border-0 p-4 pt-0 d-grid">
                 <button
                   className="btn btn-dark rounded-pill py-3 fw-bold"
                   onClick={handleSubmitReview}
-                  disabled={reviewLoading || rating === 0}
+                  disabled={reviewLoading}
                 >
-                  {reviewLoading ? 'Submitting...' : 'Submit Review'}
+                  {reviewLoading ? 'Submitting...' : 'Yes, Give Point'}
                 </button>
+                <button className="btn btn-link text-muted mt-2 small text-decoration-none" onClick={() => setShowReview(false)}>Cancel</button>
               </div>
             </div>
           </div>

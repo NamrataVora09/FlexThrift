@@ -301,34 +301,24 @@ export default function Page() {
                 >
                   <i className="bi bi-award-fill text-warning" style={{ fontSize: '2rem' }}></i>
                 </div>
-                <h3 className="fw-bold mb-3">Award Reliability Credit</h3>
+                <h3 className="fw-bold mb-3">Reward Seller</h3>
                 <p className="text-muted mb-4 small">
-                  Help the community by confirming that the transaction was handled professionally.
-                  This will boost the seller&apos;s visible reliability score.
+                  You are about to give <strong>+1 Reliability Point</strong> to this seller.
+                  This helps the community by confirming the transaction was handled professionally.
                 </p>
 
-                <div className="mb-4">
-                  <textarea
-                    className="form-control p-3 border-1"
-                    style={{ borderRadius: '12px' }}
-                    rows={3}
-                    placeholder="Briefly describe your experience (optional)..."
-                    value={ratingComment}
-                    onChange={(e) => setRatingComment(e.target.value)}
-                  />
-                </div>
                 <button
                   className="btn btn-warning w-100 py-3 rounded-pill fw-bold"
                   onClick={handleRate}
                   disabled={ratingLoading}
                 >
-                  {ratingLoading ? 'Submitting...' : 'Submit Endorsement'}
+                  {ratingLoading ? 'Submitting...' : 'Yes, Give Point'}
                 </button>
                 <button
                   className="btn btn-link text-muted mt-2 small text-decoration-none"
                   onClick={() => setRatingModal(null)}
                 >
-                  Maybe later
+                  Cancel
                 </button>
               </div>
             </div>
