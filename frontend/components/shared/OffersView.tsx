@@ -261,7 +261,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const [remarks, setRemarks] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [dateModal, setDateModal] = useState<{ id: number; title: string; start: string; end: string; price?: number | string; type?: string; status?: string } | null>(null);
+  const [dateModal, setDateModal] = useState<{ id: number; title: string; start: string; end: string; price?: number | string; type?: string; status?: string; rentalCostPerDay?: number } | null>(null);
   const [dateLoading, setDateLoading] = useState(false);
 
   /* ── change dates modal (buyer) ── */
@@ -339,10 +339,18 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const handleUpdateDates = async () => {
     if (!dateModal) return;
     setDateLoading(true);
-    const res = await api.post(`/buyer/update-offer-dates/${dateModal.id}`, {
+    // Recalculate price based on new dates × daily rental cost
+    let newPrice: number | undefined = undefined;
+    if (dateModal.type === 'rent' && dateModal.rentalCostPerDay && dateModal.start && dateModal.end) {
+      const days = daysBetween(dateModal.start, dateModal.end);
+      newPrice = Math.round(days * dateModal.rentalCostPerDay);
+    }
+    const payload: Record<string, unknown> = {
       rental_start_date: dateModal.start,
-      rental_end_date: dateModal.end
-    });
+      rental_end_date: dateModal.end,
+    };
+    if (newPrice !== undefined) payload.offer_price = newPrice;
+    const res = await api.post(`/buyer/update-offer-dates/${dateModal.id}`, payload);
     setDateLoading(false);
     if (res?.success) { 
       toast.success('Dates updated!');
@@ -482,27 +490,34 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
   const sorted = [...offers].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  const filtered = sorted.filter(o => {
-    // Role/Perspective filtering
-    // If perspective is set, we strictly filter. 
-    // However, for standard buyer/seller pages where 'perspective' might not be in the DB yet,
-    // we allow the filter to pass if the field is missing but we are in that specific view.
-    if (perspective === 'buyer' && o.perspective && o.perspective !== 'sent') return false;
-    if (perspective === 'seller' && o.perspective && o.perspective !== 'received') return false;
+  const filtered = (() => {
+    // Step 1: apply perspective + search to get the candidate pool
+    const pool = sorted.filter(o => {
+      if (perspective === 'buyer' && o.perspective && o.perspective !== 'sent') return false;
+      if (perspective === 'seller' && o.perspective && o.perspective !== 'received') return false;
+      if (!search.trim()) return true;
+      const q = search.trim().toLowerCase();
+      return (
+        o.product_title?.toLowerCase().includes(q) ||
+        o.buyer_name?.toLowerCase().includes(q) ||
+        o.seller_name?.toLowerCase().includes(q) ||
+        o.product_number?.toLowerCase().includes(q) ||
+        o.delivery_city?.toLowerCase().includes(q) ||
+        o.dispatch_city?.toLowerCase().includes(q)
+      );
+    });
 
-    const matchStatus = filter === '' || o.status === filter;
-    if (!matchStatus) return false;
-    if (!search.trim()) return true;
-    const q = search.trim().toLowerCase();
-    return (
-      o.product_title?.toLowerCase().includes(q) ||
-      o.buyer_name?.toLowerCase().includes(q) ||
-      o.seller_name?.toLowerCase().includes(q) ||
-      o.product_number?.toLowerCase().includes(q) ||
-      o.delivery_city?.toLowerCase().includes(q) ||
-      o.dispatch_city?.toLowerCase().includes(q)
+    // Step 2: when no status filter active, return everything
+    if (filter === '') return pool;
+
+    // Step 3 (product-level filter): find all product_ids that have ≥1 offer matching the status
+    const matchingProductIds = new Set(
+      pool.filter(o => o.status === filter).map(o => o.product_id)
     );
-  });
+
+    // Step 4: return ALL offers belonging to those qualifying products
+    return pool.filter(o => matchingProductIds.has(o.product_id));
+  })();
 
   /* ── render ── */
   const content = (
@@ -588,7 +603,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           isSoldOut={isSoldOut}
           onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
           onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '', price: o.offered_price ?? o.offer_price, type: o.offer_type ?? o.listing_type, status: o.status })}
+          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '', price: o.offered_price ?? o.offer_price, type: o.offer_type ?? o.listing_type, status: o.status, rentalCostPerDay: Number(o.product_rental_cost ?? 0) })}
           onAcceptDates={handleAcceptDates}
         />
       ) : (
@@ -603,7 +618,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
           onRateBuyer={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'buyer' }); setRatingValue(5); }}
           onRateSeller={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '', price: o.offered_price ?? o.offer_price, type: o.offer_type ?? o.listing_type, status: o.status })}
+          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '', price: o.offered_price ?? o.offer_price, type: o.offer_type ?? o.listing_type, status: o.status, rentalCostPerDay: Number(o.product_rental_cost ?? 0) })}
         />
       )}
     </div>
@@ -716,14 +731,8 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                     : `Modify your proposal dates for "${dateModal.title}"`}
                 </p>
                 
-                <div className="mb-3">
-                   <label className="form-label small fw-bold">Price (₹)</label>
-                   <input type="text" className="form-control bg-light" value={Number(dateModal.price).toLocaleString('en-IN')} readOnly style={{ cursor: 'not-allowed' }} />
-                   {dateModal.status === 'rejected' && <small className="text-info mt-1 d-block"><i className="bi bi-info-circle me-1"></i>Price is fixed for re-offering.</small>}
-                </div>
-
                 {dateModal.type === 'rent' && (
-                  <div className="row g-3">
+                  <div className="row g-3 mb-3">
                     <div className="col-6">
                       <label className="form-label small fw-bold">Start Date</label>
                       <input type="date" className="form-control" value={dateModal.start} onChange={e => setDateModal({ ...dateModal, start: e.target.value })} min={new Date().toISOString().split('T')[0]} />
@@ -734,6 +743,36 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                     </div>
                   </div>
                 )}
+
+                <div className="mb-3">
+                   <label className="form-label small fw-bold">Price (₹)
+                     {dateModal.type === 'rent' && dateModal.rentalCostPerDay && dateModal.start && dateModal.end && (
+                       <span className="text-muted fw-normal ms-2" style={{ fontSize: '0.78rem' }}>
+                         {daysBetween(dateModal.start, dateModal.end)} days × ₹{Number(dateModal.rentalCostPerDay).toLocaleString('en-IN')}/day
+                       </span>
+                     )}
+                   </label>
+                   {(() => {
+                     const computedPrice = (dateModal.type === 'rent' && dateModal.rentalCostPerDay && dateModal.start && dateModal.end)
+                       ? Math.round(daysBetween(dateModal.start, dateModal.end) * (dateModal.rentalCostPerDay ?? 0))
+                       : Number(dateModal.price ?? 0);
+                     return (
+                       <input
+                         type="text"
+                         className={`form-control ${dateModal.type === 'rent' && dateModal.rentalCostPerDay ? 'bg-warning bg-opacity-10 border-warning' : 'bg-light'}`}
+                         value={`₹${computedPrice.toLocaleString('en-IN')}`}
+                         readOnly
+                         style={{ cursor: 'default', fontWeight: 700 }}
+                       />
+                     );
+                   })()}
+                   {dateModal.status === 'rejected'
+                     ? <small className="text-info mt-1 d-block"><i className="bi bi-info-circle me-1"></i>Price is fixed for re-offering.</small>
+                     : dateModal.type === 'rent' && dateModal.rentalCostPerDay
+                       ? <small className="text-success mt-1 d-block"><i className="bi bi-arrow-repeat me-1"></i>Price updates automatically with dates.</small>
+                       : null
+                   }
+                </div>
               </div>
               <div className="modal-footer border-0 px-4 pb-4 mt-2">
                 <button className="btn btn-light rounded-pill px-4" onClick={() => setDateModal(null)}>Cancel</button>

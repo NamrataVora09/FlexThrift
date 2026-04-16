@@ -21,10 +21,11 @@ const tdStyle: React.CSSProperties = { padding: '1rem', verticalAlign: 'middle',
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  pending: { bg: '#fff3cd', color: '#856404' },
+  pending:  { bg: '#fff3cd', color: '#856404' },
   approved: { bg: '#d1e7dd', color: '#0f5132' },
   rejected: { bg: '#f8d7da', color: '#842029' },
-  sold: { bg: '#e2e3e5', color: '#41464b' },
+  sold:     { bg: '#e2e3e5', color: '#41464b' },
+  inactive: { bg: '#e9ecef', color: '#6c757d' },
 };
 
 const TABS = ['all', 'pending', 'approved', 'rejected', 'sold'];
@@ -126,7 +127,6 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                   </tr></thead>
                   <tbody>
                     {filtered.map((p) => {
-                      const sc = STATUS_COLORS[p.status] || STATUS_COLORS.sold;
                       return (
                         <tr key={p.id}>
                           {/* Product */}
@@ -153,14 +153,27 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
 
                           {/* Status */}
                           <td style={tdStyle}>
-                            <span className="badge" style={{ background: sc.bg, color: sc.color, fontWeight: 600, padding: '0.4rem 0.75rem', borderRadius: 6, display: 'inline-block', marginBottom: '0.25rem' }}>
-                              {p.status === 'sold' && p.listing_type === 'rent' ? 'Rented' : (p.status?.charAt(0).toUpperCase() + p.status?.slice(1))}
-                            </span>
-                            {p.status === 'rejected' && p.admin_remarks && (
-                              <div style={{ fontSize: '0.75rem', color: '#842029', background: 'rgba(248,215,218,0.5)', padding: '4px 8px', borderRadius: 4, marginTop: 4, maxWidth: 150, borderLeft: '3px solid #dc3545' }}>
-                                <i className="bi bi-info-circle me-1"></i>{p.admin_remarks}
-                              </div>
-                            )}
+                            {(() => {
+                              const rawStatus = p.status?.trim() || '';
+                              const sc = STATUS_COLORS[rawStatus] || { bg: '#e9ecef', color: '#6c757d' };
+                              const label = !rawStatus
+                                ? 'Unknown'
+                                : rawStatus === 'sold' && p.listing_type === 'rent'
+                                  ? 'Rented'
+                                  : rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+                              return (
+                                <>
+                                  <span className="badge" style={{ background: sc.bg, color: sc.color, fontWeight: 600, padding: '0.4rem 0.75rem', borderRadius: 6, display: 'inline-block', marginBottom: '0.25rem' }}>
+                                    {label}
+                                  </span>
+                                  {rawStatus === 'rejected' && p.admin_remarks && (
+                                    <div style={{ fontSize: '0.75rem', color: '#842029', background: 'rgba(248,215,218,0.5)', padding: '4px 8px', borderRadius: 4, marginTop: 4, maxWidth: 150, borderLeft: '3px solid #dc3545' }}>
+                                      <i className="bi bi-info-circle me-1"></i>{p.admin_remarks}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </td>
 
                           {/* Views */}

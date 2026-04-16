@@ -66,7 +66,7 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $products = $db->table('products p')
-            ->select('p.*, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as image, lt.usage_label')
+            ->select('p.id, p.seller_id, p.title, p.product_number, p.listing_type, p.listing_type_category, p.category, p.description, p.original_price, p.price, p.rental_cost, p.rental_deposit, p.dispatch_city, p.dispatch_state, p.views_count, p.is_featured, p.admin_remarks, p.created_at, p.updated_at, p.status AS status, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as image, lt.usage_label')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.seller_id', $jwtUser['user_id'])
             ->orderBy('p.created_at', 'DESC')
@@ -76,6 +76,10 @@ class SellerApi extends ResourceController
             $p['image_count'] = $db->table('product_images')->where('product_id', $p['id'])->countAllResults();
             $p['offer_count'] = $db->table('offers')->where('product_id', $p['id'])->countAllResults();
             $p['views_count'] = $p['views_count'] ?? 0;
+            // Normalize status: if NULL or empty (legacy data), treat as 'pending'
+            if (empty($p['status'])) {
+                $p['status'] = 'pending';
+            }
         }
         unset($p);
 

@@ -216,27 +216,18 @@ export default function SettingsClient() {
           {/* ── Rental Settings ── */}
           <Section title="Rental Settings" icon="bi-calendar-range">
             <div className="row g-3">
-              <div className="col-md-4">
+              <div className="col-md-6">
                 <label className="form-label fw-semibold">Minimum Rental Days</label>
                 <input type="number" min="1" className="form-control" style={inputStyle} value={settings.min_rental_days || '3'} onChange={(e) => update('min_rental_days', e.target.value)} />
+                <small className="text-muted">Minimum number of days a buyer must rent a product</small>
               </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Rental Deposit (%)</label>
-                <input type="number" min="0" max="100" className="form-control" style={inputStyle} value={settings.rental_deposit_percentage || '40'} onChange={(e) => update('rental_deposit_percentage', e.target.value)} />
-                <small className="text-muted">% of rental cost charged as security deposit</small>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Suggested Rental Cost (%)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.rental_suggested_cost_percent || '13'} onChange={(e) => update('rental_suggested_cost_percent', e.target.value)} />
-                <small className="text-muted">% of original price suggested as daily rental cost</small>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Max Daily Rental Cap (%)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.rental_max_cost_cap_per_day || '14'} onChange={(e) => update('rental_max_cost_cap_per_day', e.target.value)} />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Deposit Deduction Base (%)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.rental_base_deposit_deduction || '9'} onChange={(e) => update('rental_base_deposit_deduction', e.target.value)} />
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Fallback Rental Cost Per Day (₹)</label>
+                <input type="number" min="0" step="0.01" className="form-control" style={inputStyle} value={settings.fallback_rental_cost_per_day || '0'} onChange={(e) => update('fallback_rental_cost_per_day', e.target.value)} />
+                <small className="text-muted">
+                  <i className="bi bi-info-circle me-1 text-warning"></i>
+                  Applied <strong>only</strong> when no Rent pricing rule exists. If a pricing rule is configured, it takes full priority.
+                </small>
               </div>
             </div>
           </Section>
