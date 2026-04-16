@@ -186,7 +186,7 @@ class BuyerApi extends ResourceController
             ->get()->getResultArray();
 
         // ── Filter sidebar options ────────────────────────────────────────────
-        $categories    = $db->table('categories')->where('is_active', 1)->select('id, name, field_config')->orderBy('name')->get()->getResultArray();
+        $categories    = $db->table('categories')->select('id, category_name as name, field_config')->orderBy('category_name')->get()->getResultArray();
         $subCategories = $db->table('sub_categories')->select('id, name, category_id, field_config')->orderBy('name')->get()->getResultArray();
         $brands        = $db->table('orignal_brands')->where('is_active', 1)->select('id, brand_name')->orderBy('brand_name')->get()->getResultArray();
         $colors        = $db->table('colors')->select('id, name')->orderBy('name')->get()->getResultArray();

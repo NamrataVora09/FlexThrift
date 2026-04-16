@@ -19,7 +19,7 @@ class SharedApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $cats = $db->table('categories')
-            ->where('is_active', 1)
+            ->select('id, category_name as name, field_config')
             ->get()->getResultArray();
         return $this->respond(['success' => true, 'data' => $cats]);
     }
@@ -29,7 +29,6 @@ class SharedApi extends ResourceController
         $db = \Config\Database::connect();
         $subs = $db->table('sub_categories')
             ->where('category_id', $categoryId)
-            ->where('is_active', 1)
             ->get()->getResultArray();
         return $this->respond(['success' => true, 'data' => $subs]);
     }
@@ -631,7 +630,7 @@ class SharedApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $listingTypes = $db->table('listing_types')->get()->getResultArray();
-        $categories = $db->table('categories')->get()->getResultArray();
+        $categories = $db->table('categories')->select('id, category_name as name, field_config')->get()->getResultArray();
         $subCategories = $db->table('sub_categories')->get()->getResultArray();
         $productTypes = $db->table('product_types')->get()->getResultArray();
         $genders = $db->table('genders')->get()->getResultArray();

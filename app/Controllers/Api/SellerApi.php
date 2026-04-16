@@ -191,7 +191,7 @@ class SellerApi extends ResourceController
 
         $listingTypes = $db->table('listing_types')->get()->getResultArray();
         $productTypes = $db->table('product_types')->get()->getResultArray();
-        $categories = $db->table('categories')->get()->getResultArray();
+        $categories = $db->table('categories')->select('id, category_name as name, field_config, product_type_ids, applies_to')->get()->getResultArray();
         $subCategories = $db->table('sub_categories')->get()->getResultArray();
         $colors = $db->table('colors')->orderBy('name', 'ASC')->get()->getResultArray();
         $genders = $db->table('genders')->orderBy('name', 'ASC')->get()->getResultArray();
