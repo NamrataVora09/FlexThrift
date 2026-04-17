@@ -30,7 +30,7 @@ interface PricingRule {
 interface FormMeta {
   listing_types: Array<{ id: number; type_name: string; usage_label?: string; field_config?: string }>;
   product_types: Array<{ id: number; name: string; listing_type_id: number }>;
-  categories: Array<{ id: number; category_name: string; product_type_id?: number; product_type_ids?: string; applies_to?: string; field_config?: string }>;
+  categories: Array<{ id: number; name: string; product_type_id?: number; product_type_ids?: string; applies_to?: string; field_config?: string }>;
   sub_categories: Array<{ id: number; name: string; category_id?: number; category_ids?: string; field_config?: string }>;
   colors: Array<{ id: number; name: string; hex_code: string }>;
   genders: Array<{ id: number; name: string }>;
@@ -90,7 +90,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   // Cascading options
   const [productTypes, setProductTypes] = useState<Array<{ id: number; name: string }>>([]);
-  const [categories, setCategories] = useState<Array<{ id: number; category_name: string }>>([]);
+  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
   const [subCategories, setSubCategories] = useState<Array<{ id: number; name: string }>>([]);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
           // Resolve IDs from Names (DB stores names, but dropdowns use IDs)
           const ltId = meta.listing_types.find(lt => lt.type_name === product.listing_type_category)?.id || '';
           const ptId = meta.product_types.find(pt => pt.name === product.product_type)?.id || '';
-          const cId = meta.categories.find(c => c.category_name === product.category)?.id || '';
+          const cId = meta.categories.find(c => c.name === product.category)?.id || '';
           const scId = meta.sub_categories.find(sc => sc.name === product.sub_category)?.id || '';
 
           // Populate form with existing product data
@@ -754,7 +754,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               <div className="col-md-3"><label className="form-label" style={labelStyle}>Category <span className="text-danger">*</span></label>
                 <select className="form-select" style={inputStyle} name="category_id" value={f.category_id} onChange={handleChange} required disabled={!categories.length}>
                   <option value="">{categories.length ? 'Select' : 'Select Product Type first'}</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.category_name}</option>)}
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 

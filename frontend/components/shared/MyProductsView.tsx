@@ -28,7 +28,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   inactive: { bg: '#e9ecef', color: '#6c757d' },
 };
 
-const TABS = ['all', 'pending', 'approved', 'rejected', 'sold'];
+const TABS = ['all', 'pending', 'approved', 'rejected'];
 
 export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
@@ -61,11 +61,17 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
     }, 'Delete');
   };
 
-  const filtered = useMemo(() => filter === 'all' ? products : products.filter((p) => p.status === filter), [products, filter]);
+  const filtered = useMemo(() => {
+    if (filter === 'all') return products;
+    if (filter === 'approved') return products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status));
+    return products.filter((p) => p.status === filter);
+  }, [products, filter]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: products.length };
-    TABS.slice(1).forEach(s => { c[s] = products.filter(p => p.status === s).length; });
+    c.pending = products.filter(p => p.status === 'pending').length;
+    c.approved = products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status)).length;
+    c.rejected = products.filter(p => p.status === 'rejected').length;
     return c;
   }, [products]);
 
@@ -155,12 +161,12 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                           <td style={tdStyle}>
                             {(() => {
                               const rawStatus = p.status?.trim() || '';
-                              const sc = STATUS_COLORS[rawStatus] || { bg: '#e9ecef', color: '#6c757d' };
-                              const label = !rawStatus
+                              // Map lifecycle statuses to 'approved' for display as per user request
+                              const displayStatus = ['sold', 'rented', 'active'].includes(rawStatus) ? 'approved' : rawStatus;
+                              const sc = STATUS_COLORS[displayStatus] || { bg: '#e9ecef', color: '#6c757d' };
+                              const label = !displayStatus
                                 ? 'Unknown'
-                                : rawStatus === 'sold' && p.listing_type === 'rent'
-                                  ? 'Rented'
-                                  : rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+                                : displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1);
                               return (
                                 <>
                                   <span className="badge" style={{ background: sc.bg, color: sc.color, fontWeight: 600, padding: '0.4rem 0.75rem', borderRadius: 6, display: 'inline-block', marginBottom: '0.25rem' }}>

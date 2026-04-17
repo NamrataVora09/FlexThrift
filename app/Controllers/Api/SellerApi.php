@@ -696,9 +696,9 @@ class SellerApi extends ResourceController
                 ]);
             }
 
-            // Restore product to active status
+            // Restore product to approved status
             $db->table('products')->where('id', $offer['product_id'])->update([
-                'status' => 'active',
+                'status' => 'approved',
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
 
