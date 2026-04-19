@@ -9,20 +9,21 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/
 const STORAGE_KEY = 'flex_hp_v3';
 
 /* ─── Types ───────────────────────────────────────────────── */
-interface Category    { id: number; category_name: string; product_type_id: number; }
+interface Category { id: number; category_name: string; product_type_id: number; }
 interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
 interface ListingType { id: number; type_name: string; product_types?: ProductType[]; }
-interface CatCard     { name: string; tag: string; img: string; }
-interface Step        { icon: string; title: string; desc: string; }
+interface CatCard { name: string; tag: string; img: string; }
+interface Step { icon: string; title: string; desc: string; }
 interface Testimonial { quote: string; author: string; role: string; }
-interface FaqItem     { q: string; a: string; }
-interface Stat        { num: string; label: string; }
+interface FaqItem { q: string; a: string; }
+interface Stat { num: string; label: string; }
 
 interface PageContent {
   heroEyebrow: string; heroH1: string; heroBody: string;
   heroCtaExplore: string; heroCtaList: string; heroBgImage: string;
   catTitle: string; catSubtitle: string; cats: CatCard[];
   transTitle: string; transSub: string;
+  sellVideo: string; buyVideo: string;
   sellingSteps: Step[]; buyingSteps: Step[];
   testiTitle: string; testimonials: Testimonial[];
   rentalBadge: string; rentalTitle: string; rentalSub: string;
@@ -44,49 +45,51 @@ const DEFAULT: PageContent = {
   catTitle: 'THE WORLD OF FLEX',
   catSubtitle: 'Browse by curated universes. Every piece is vetted by our connoisseurs to ensure it meets the Flex standard of quality and prestige.',
   cats: [
-    { name: 'Clothes',     tag: 'Couture & Daily',  img: 'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=1600' },
-    { name: 'Accessories', tag: 'Style',             img: 'https://images.unsplash.com/photo-1596460107916-430662021049?q=80&w=1600' },
-    { name: 'Footwear',    tag: 'Limited Edition',   img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1600' },
-    { name: 'Electronics', tag: 'Premium Tech',      img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=1600' },
+    { name: 'Clothes', tag: 'Couture & Daily', img: 'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=1600' },
+    { name: 'Accessories', tag: 'Style', img: 'https://images.unsplash.com/photo-1596460107916-430662021049?q=80&w=1600' },
+    { name: 'Footwear', tag: 'Limited Edition', img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1600' },
+    { name: 'Electronics', tag: 'Premium Tech', img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=1600' },
   ],
   transTitle: 'THE ART OF THE TRANSACTION',
   transSub: 'Master the high-end exchange. Whether acquiring or liberating assets, our process is surgical.',
+  sellVideo: 'https://www.youtube.com/embed/tgbNymZ7vqY',
+  buyVideo: 'https://www.youtube.com/embed/tgbNymZ7vqY',
   sellingSteps: [
-    { icon: 'edit_note',       title: '1. Add Details',    desc: 'Provide provenance and technical specifications of your elite asset.' },
-    { icon: 'photo_camera',    title: '2. Upload Photos',  desc: 'High-resolution imagery capturing every meticulous detail and macro angle.' },
-    { icon: 'payments',        title: '3. Set Price',      desc: "Leverage our valuation algorithms to find the market's optimal premium point." },
-    { icon: 'local_shipping',  title: '4. Ship Securely',  desc: 'White-glove courier service ensures your asset arrives in pristine condition.' },
+    { icon: 'edit_note', title: '1. Add Details', desc: 'Provide provenance and technical specifications of your elite asset.' },
+    { icon: 'photo_camera', title: '2. Upload Photos', desc: 'High-resolution imagery capturing every meticulous detail and macro angle.' },
+    { icon: 'payments', title: '3. Set Price', desc: "Leverage our valuation algorithms to find the market's optimal premium point." },
+    { icon: 'local_shipping', title: '4. Ship Securely', desc: 'White-glove courier service ensures your asset arrives in pristine condition.' },
   ],
   buyingSteps: [
     { icon: 'search_insights', title: '1. Explore Curated', desc: 'Discover pieces that have survived our rigorous editorial selection process.' },
-    { icon: 'shopping_cart',   title: '2. Buy or Rent',     desc: 'Choose permanent ownership or dynamic access via our flexible plans.' },
-    { icon: 'verified',        title: '3. Authenticate',    desc: 'Every item is physically inspected by specialists before reaching your door.' },
-    { icon: 'auto_awesome',    title: '4. Receive & Revel', desc: 'Unbox perfection. A new standard of excellence added to your collection.' },
+    { icon: 'shopping_cart', title: '2. Buy or Rent', desc: 'Choose permanent ownership or dynamic access via our flexible plans.' },
+    { icon: 'verified', title: '3. Authenticate', desc: 'Every item is physically inspected by specialists before reaching your door.' },
+    { icon: 'auto_awesome', title: '4. Receive & Revel', desc: 'Unbox perfection. A new standard of excellence added to your collection.' },
   ],
   testiTitle: 'Voices of the Circle',
   testimonials: [
-    { quote: '"The rental service changed how I approach my seasonal wardrobe. Efficiency meets absolute luxury."',       author: 'Julian V.',  role: 'Tech Founder'  },
-    { quote: '"Authentication was my biggest fear. Flex Market\'s process is so transparent it removed all doubt."',     author: 'Elena K.',   role: 'Art Director'  },
-    { quote: '"Finally, a marketplace that understands the value of rare electronics as much as couture."',               author: 'Marcus L.',  role: 'Audiophile'    },
+    { quote: '"The rental service changed how I approach my seasonal wardrobe. Efficiency meets absolute luxury."', author: 'Julian V.', role: 'Tech Founder' },
+    { quote: '"Authentication was my biggest fear. Flex Market\'s process is so transparent it removed all doubt."', author: 'Elena K.', role: 'Art Director' },
+    { quote: '"Finally, a marketplace that understands the value of rare electronics as much as couture."', author: 'Marcus L.', role: 'Audiophile' },
   ],
   rentalBadge: 'Platinum Rental Services',
   rentalTitle: 'ELEVATED\nOWNERSHIP.',
   rentalSub: 'Experience luxury without commitment. Our rental plans provide exclusive access to rotating seasonal collections and top-tier technology.',
-  rentalF1Title: 'Flexible Terms',    rentalF1Desc: 'Rent for a night or a quarter. Tailored to your lifestyle.',
-  rentalF2Title: 'Concierge Care',    rentalF2Desc: 'Professional cleaning and maintenance included with every lease.',
+  rentalF1Title: 'Flexible Terms', rentalF1Desc: 'Rent for a night or a quarter. Tailored to your lifestyle.',
+  rentalF2Title: 'Concierge Care', rentalF2Desc: 'Professional cleaning and maintenance included with every lease.',
   rentalCta: 'VIEW RENTAL PLANS',
   faqTitle: 'Frequently Asked',
   faqItems: [
-    { q: 'How does the authentication process work?',       a: 'Every item is shipped to our central hub where master evaluators verify physical signatures, material composition, and provenance documents before release.' },
-    { q: 'What are the rental durations for electronics?',  a: 'We offer short-term leases (3–7 days) for high-end events and long-term fractional ownership plans (up to 6 months) for creative professionals.' },
-    { q: 'Is international shipping available?',            a: 'Yes, we partner with specialized high-value carriers for insured global delivery to over 45 countries, including customs management.' },
-    { q: 'How do I list a vintage item?',                   a: "Select 'Start Listing' from the menu. You'll need high-res imagery and any available certificates of authenticity. Our team will review within 24 hours." },
+    { q: 'How does the authentication process work?', a: 'Every item is shipped to our central hub where master evaluators verify physical signatures, material composition, and provenance documents before release.' },
+    { q: 'What are the rental durations for electronics?', a: 'We offer short-term leases (3–7 days) for high-end events and long-term fractional ownership plans (up to 6 months) for creative professionals.' },
+    { q: 'Is international shipping available?', a: 'Yes, we partner with specialized high-value carriers for insured global delivery to over 45 countries, including customs management.' },
+    { q: 'How do I list a vintage item?', a: "Select 'Start Listing' from the menu. You'll need high-res imagery and any available certificates of authenticity. Our team will review within 24 hours." },
   ],
   footerDesc: '© 2025 Flex Market. Curated Excellence.',
   stats: [
     { num: '10K+', label: 'Listings' },
-    { num: '5K+',  label: 'Sellers'  },
-    { num: '4.8★', label: 'Rating'   },
+    { num: '5K+', label: 'Sellers' },
+    { num: '4.8★', label: 'Rating' },
   ],
 };
 
@@ -94,15 +97,15 @@ const DEFAULT: PageContent = {
 function toSettings(c: PageContent): Record<string, string> {
   const j = JSON.stringify;
   return {
-    hero_slides:             j([{ eyebrow: c.heroEyebrow, h1: c.heroH1, body: c.heroBody, ctaExplore: c.heroCtaExplore, ctaList: c.heroCtaList, bgImage: c.heroBgImage }]),
-    display_categories:      j(c.cats),
-    section_title_categories:j({ title: c.catTitle, subtitle: c.catSubtitle }),
-    how_it_works_steps:      j({ transTitle: c.transTitle, transSub: c.transSub, selling: c.sellingSteps, buying: c.buyingSteps }),
-    testimonials:            j({ title: c.testiTitle, items: c.testimonials }),
-    cta_title:               j({ badge: c.rentalBadge, title: c.rentalTitle, sub: c.rentalSub, cta: c.rentalCta }),
-    trust_features:          j({ faqTitle: c.faqTitle, items: c.faqItems, features: [{ title: c.rentalF1Title, desc: c.rentalF1Desc }, { title: c.rentalF2Title, desc: c.rentalF2Desc }] }),
-    footer_description:      c.footerDesc,
-    stats_banner:            j(c.stats),
+    hero_slides: j([{ eyebrow: c.heroEyebrow, h1: c.heroH1, body: c.heroBody, ctaExplore: c.heroCtaExplore, ctaList: c.heroCtaList, bgImage: c.heroBgImage }]),
+    display_categories: j(c.cats),
+    section_title_categories: j({ title: c.catTitle, subtitle: c.catSubtitle }),
+    how_it_works_steps: j({ transTitle: c.transTitle, transSub: c.transSub, selling: c.sellingSteps, buying: c.buyingSteps, sellVideo: c.sellVideo, buyVideo: c.buyVideo }),
+    testimonials: j({ title: c.testiTitle, items: c.testimonials }),
+    cta_title: j({ badge: c.rentalBadge, title: c.rentalTitle, sub: c.rentalSub, cta: c.rentalCta }),
+    trust_features: j({ faqTitle: c.faqTitle, items: c.faqItems, features: [{ title: c.rentalF1Title, desc: c.rentalF1Desc }, { title: c.rentalF2Title, desc: c.rentalF2Desc }] }),
+    footer_description: c.footerDesc,
+    stats_banner: j(c.stats),
   };
 }
 
@@ -111,14 +114,14 @@ function fromSettings(data: Record<string, string>): Partial<PageContent> {
   try {
     if (data.hero_slides) {
       const s = JSON.parse(data.hero_slides);
-      if (s[0]) { 
-        if (s[0].eyebrow) p.heroEyebrow = s[0].eyebrow; 
-        if (s[0].h1) p.heroH1 = s[0].h1; 
-        if (s[0].body) p.heroBody = s[0].body; 
-        if (s[0].ctaExplore) p.heroCtaExplore = s[0].ctaExplore; 
-        if (s[0].ctaList) p.heroCtaList = s[0].ctaList; 
-        if (s[0].bgImage) p.heroBgImage = s[0].bgImage; 
-        
+      if (s[0]) {
+        if (s[0].eyebrow) p.heroEyebrow = s[0].eyebrow;
+        if (s[0].h1) p.heroH1 = s[0].h1;
+        if (s[0].body) p.heroBody = s[0].body;
+        if (s[0].ctaExplore) p.heroCtaExplore = s[0].ctaExplore;
+        if (s[0].ctaList) p.heroCtaList = s[0].ctaList;
+        if (s[0].bgImage) p.heroBgImage = s[0].bgImage;
+
         if (!p.heroBgImage || p.heroBgImage === 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2400') {
           p.heroBgImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAX8ObUzHARD6Wv3Xi6moDskagxeO3-dBXOHEcUdfFDMzuBf3j9H7IsHgZ82WduVBBEHf6W_GVV1HKyhqSigia1LrbEHrl7RnLRVEW9bCJSSdQM3JYLZ8W6Z4Fy3RtaDqJ7EEI0cdJyQDUVeTWbxO1C89qpQ4QB-ckzd5mlrwhXL1c3LiTv0tZ2BkwTuXhRSjYCNxsbEvRTZiqIuMcR3knRvxeVvAPo2CuR3j7cPZCRRIJchw16rQf3upPyA-Tkg6kiZbTDYyO1KTEH';
         }
@@ -126,13 +129,13 @@ function fromSettings(data: Record<string, string>): Partial<PageContent> {
     }
     if (data.display_categories) p.cats = JSON.parse(data.display_categories);
     if (data.section_title_categories) { const s = JSON.parse(data.section_title_categories); p.catTitle = s.title; p.catSubtitle = s.subtitle; }
-    if (data.how_it_works_steps) { const s = JSON.parse(data.how_it_works_steps); p.transTitle = s.transTitle; p.transSub = s.transSub; p.sellingSteps = s.selling; p.buyingSteps = s.buying; }
+    if (data.how_it_works_steps) { const s = JSON.parse(data.how_it_works_steps); p.transTitle = s.transTitle; p.transSub = s.transSub; p.sellingSteps = s.selling; p.buyingSteps = s.buying; p.sellVideo = s.sellVideo || 'https://www.youtube.com/embed/LXb3EKWsInQ'; p.buyVideo = s.buyVideo || 'https://www.youtube.com/embed/ysz5S6PUM-U'; }
     if (data.testimonials) { const s = JSON.parse(data.testimonials); p.testiTitle = s.title; p.testimonials = s.items; }
     if (data.cta_title) { const s = JSON.parse(data.cta_title); p.rentalBadge = s.badge; p.rentalTitle = s.title; p.rentalSub = s.sub; p.rentalCta = s.cta; }
     if (data.trust_features) { const s = JSON.parse(data.trust_features); p.faqTitle = s.faqTitle; p.faqItems = s.items; if (s.features) { p.rentalF1Title = s.features[0]?.title; p.rentalF1Desc = s.features[0]?.desc; p.rentalF2Title = s.features[1]?.title; p.rentalF2Desc = s.features[1]?.desc; } }
     if (data.footer_description) p.footerDesc = data.footer_description;
     if (data.stats_banner) p.stats = JSON.parse(data.stats_banner);
-  } catch {}
+  } catch { }
   return p;
 }
 
@@ -176,12 +179,12 @@ export default function HomePageClient() {
   const router = useRouter();
   const isSA = user?.role === 'super_admin';
 
-  const [listingTypes,  setListingTypes]  = useState<ListingType[]>([]);
+  const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [editMode,      setEditMode]      = useState(false);
-  const [content,       setContent]       = useState<PageContent>(DEFAULT);
-  const [saveStatus,    setSaveStatus]    = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [imgModal,      setImgModal]      = useState<{ type: 'cat' | 'hero'; idx?: number; url: string } | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [content, setContent] = useState<PageContent>(DEFAULT);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [imgModal, setImgModal] = useState<{ type: 'cat' | 'hero'; idx?: number; url: string } | null>(null);
 
   const isEdit = editMode && isSA;
 
@@ -194,7 +197,7 @@ export default function HomePageClient() {
           const merged = fromSettings(res.data as Record<string, string>);
           setContent(c => ({ ...c, ...merged }));
         }
-      }).catch(() => {});
+      }).catch(() => { });
   }, []);
 
   /* Load listing types for nav */
@@ -211,7 +214,7 @@ export default function HomePageClient() {
               .map(pt => ({ ...pt, categories: (categories as Category[]).filter(c => c.product_type_id === pt.id) })),
           })));
         }
-      }).catch(() => {});
+      }).catch(() => { });
   }, []);
 
   /* Save to DB */
@@ -231,13 +234,13 @@ export default function HomePageClient() {
   }, [content, token]);
 
   /* Field updaters */
-  const sf    = useCallback((f: keyof PageContent, v: string) => setContent(c => ({ ...c, [f]: v })), []);
-  const sCat  = useCallback((i: number, f: keyof CatCard, v: string) => setContent(c => { const cats = [...c.cats]; cats[i] = { ...cats[i], [f]: v }; return { ...c, cats }; }), []);
+  const sf = useCallback((f: keyof PageContent, v: string) => setContent(c => ({ ...c, [f]: v })), []);
+  const sCat = useCallback((i: number, f: keyof CatCard, v: string) => setContent(c => { const cats = [...c.cats]; cats[i] = { ...cats[i], [f]: v }; return { ...c, cats }; }), []);
   const sStep = useCallback((arr: 'sellingSteps' | 'buyingSteps', i: number, f: keyof Step, v: string) =>
     setContent(c => { const steps = [...c[arr]]; steps[i] = { ...steps[i], [f]: v }; return { ...c, [arr]: steps }; }), []);
   const sTesti = useCallback((i: number, f: keyof Testimonial, v: string) =>
     setContent(c => { const t = [...c.testimonials]; t[i] = { ...t[i], [f]: v }; return { ...c, testimonials: t }; }), []);
-  const sFaq  = useCallback((i: number, f: 'q' | 'a', v: string) =>
+  const sFaq = useCallback((i: number, f: 'q' | 'a', v: string) =>
     setContent(c => { const faqItems = [...c.faqItems]; faqItems[i] = { ...faqItems[i], [f]: v }; return { ...c, faqItems }; }), []);
   const sStat = useCallback((i: number, f: keyof Stat, v: string) =>
     setContent(c => { const stats = [...c.stats]; stats[i] = { ...stats[i], [f]: v }; return { ...c, stats }; }), []);
@@ -253,13 +256,13 @@ export default function HomePageClient() {
   const navLinks = listingTypes.length > 0
     ? listingTypes.slice(0, 6).map(lt => ({ label: lt.type_name, href: `/buyer/browse?listing_type=${lt.type_name.toLowerCase()}` }))
     : [
-        { label: 'Clothes',     href: '/buyer/browse?search=clothes'     },
-        { label: 'Accessories', href: '/buyer/browse?search=accessories' },
-        { label: 'Footwear',    href: '/buyer/browse?search=footwear'    },
-        { label: 'Electronics', href: '/buyer/browse?search=electronics' },
-        { label: 'Sell',        href: '/register'                        },
-        { label: 'Rent',        href: '/buyer/browse?listing_type=rent'  },
-      ];
+      { label: 'Clothes', href: '/buyer/browse?search=clothes' },
+      { label: 'Accessories', href: '/buyer/browse?search=accessories' },
+      { label: 'Footwear', href: '/buyer/browse?search=footwear' },
+      { label: 'Electronics', href: '/buyer/browse?search=electronics' },
+      { label: 'Sell', href: '/register' },
+      { label: 'Rent', href: '/buyer/browse?listing_type=rent' },
+    ];
 
   return (
     <>
@@ -701,6 +704,8 @@ export default function HomePageClient() {
           .hp3-bento-footwear    { grid-column: 1/2; grid-row: 2/3; aspect-ratio: 4/3; }
           .hp3-bento-electronics { grid-column: 2/3; grid-row: 2/3; aspect-ratio: 4/3; }
           .hp3-trans-grid { grid-template-columns: 1fr; gap: 64px; }
+          .hp3-buying-grid .hp3-buying-video { order: 2; }
+          .hp3-buying-grid .hp3-buying-text { order: 1; }
           .hp3-rental-grid { grid-template-columns: 1fr; }
           .hp3-testi-grid { grid-template-columns: 1fr; gap: 48px; }
         }
@@ -895,7 +900,7 @@ export default function HomePageClient() {
         <div className="hp3-trans-inner">
           <div className="hp3-trans-header">
             <CE value={content.transTitle} tag="h2" className="hp3-trans-title" onSave={v => sf('transTitle', v)} isEdit={isEdit} />
-            <CE value={content.transSub}   tag="p"  className="hp3-trans-sub"   onSave={v => sf('transSub', v)}   isEdit={isEdit} />
+            <CE value={content.transSub} tag="p" className="hp3-trans-sub" onSave={v => sf('transSub', v)} isEdit={isEdit} />
           </div>
 
           <div className="hp3-trans-grid">
@@ -910,15 +915,75 @@ export default function HomePageClient() {
                     </div>
                     <div>
                       <CE value={step.title} tag="h4" className="hp3-step-title" onSave={v => sStep('sellingSteps', i, 'title', v)} isEdit={isEdit} />
-                      <CE value={step.desc}  tag="p"  className="hp3-step-desc"  onSave={v => sStep('sellingSteps', i, 'desc', v)}  isEdit={isEdit} />
+                      <CE value={step.desc} tag="p" className="hp3-step-desc" onSave={v => sStep('sellingSteps', i, 'desc', v)} isEdit={isEdit} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* Selling Video */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <iframe
+                width="100%"
+                style={{ aspectRatio: '16/9', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
+                src={content.sellVideo}
+                title="Selling Process"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+              {isEdit && (
+                <div style={{ marginTop: 16 }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5a5c5c', marginBottom: 4, display: 'block', textTransform: 'uppercase' }}>Edit Selling Video URL</span>
+                  <input
+                    type="text"
+                    value={content.sellVideo}
+                    onChange={e => sf('sellVideo', e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px dashed #fdc003', background: '#fff', color: '#000', fontSize: '0.875rem' }}
+                    placeholder="https://www.youtube.com/embed/..."
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          BUYING & RENTING SECTION
+      ════════════════════════════════════════════════ */}
+      <section className="hp3-trans-section" style={{ background: '#fff', borderTop: '1px solid #e7e8e8' }}>
+        <div className="hp3-trans-inner">
+          <div className="hp3-trans-grid hp3-buying-grid">
+
+            {/* Buying Video */}
+            <div className="hp3-buying-video" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <iframe
+                width="100%"
+                style={{ aspectRatio: '16/9', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
+                src={content.buyVideo}
+                title="Buying & Renting Process"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+              {isEdit && (
+                <div style={{ marginTop: 16 }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#5a5c5c', marginBottom: 4, display: 'block', textTransform: 'uppercase' }}>Edit Buying Video URL</span>
+                  <input
+                    type="text"
+                    value={content.buyVideo}
+                    onChange={e => sf('buyVideo', e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px dashed #fdc003', background: '#f6f6f6', color: '#000', fontSize: '0.875rem' }}
+                    placeholder="https://www.youtube.com/embed/..."
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Buying */}
-            <div>
+            <div className="hp3-buying-text">
               <h3 className="hp3-trans-col-title">BUYING &amp; RENTING</h3>
               <div className="hp3-step-list">
                 {content.buyingSteps.map((step, i) => (
@@ -928,12 +993,13 @@ export default function HomePageClient() {
                     </div>
                     <div>
                       <CE value={step.title} tag="h4" className="hp3-step-title" onSave={v => sStep('buyingSteps', i, 'title', v)} isEdit={isEdit} />
-                      <CE value={step.desc}  tag="p"  className="hp3-step-desc"  onSave={v => sStep('buyingSteps', i, 'desc', v)}  isEdit={isEdit} />
+                      <CE value={step.desc} tag="p" className="hp3-step-desc" onSave={v => sStep('buyingSteps', i, 'desc', v)} isEdit={isEdit} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+
           </div>
         </div>
       </section>
@@ -948,14 +1014,14 @@ export default function HomePageClient() {
             {content.testimonials.map((t, i) => (
               <div key={i} className="hp3-testi-card">
                 <div className="hp3-testi-stars">
-                  {[1,2,3,4,5].map(s => <span key={s} className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>)}
+                  {[1, 2, 3, 4, 5].map(s => <span key={s} className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>)}
                 </div>
-                <CE value={t.quote}  tag="p"    className="hp3-testi-quote"  onSave={v => sTesti(i, 'quote', v)}  isEdit={isEdit} />
+                <CE value={t.quote} tag="p" className="hp3-testi-quote" onSave={v => sTesti(i, 'quote', v)} isEdit={isEdit} />
                 <div className="hp3-testi-author-row">
                   <div className="hp3-testi-avatar" />
                   <div>
                     <CE value={t.author} tag="span" className="hp3-testi-name" style={{ display: 'block' }} onSave={v => sTesti(i, 'author', v)} isEdit={isEdit} />
-                    <CE value={t.role}   tag="span" className="hp3-testi-role" style={{ display: 'block' }} onSave={v => sTesti(i, 'role', v)}   isEdit={isEdit} />
+                    <CE value={t.role} tag="span" className="hp3-testi-role" style={{ display: 'block' }} onSave={v => sTesti(i, 'role', v)} isEdit={isEdit} />
                   </div>
                 </div>
               </div>
@@ -980,15 +1046,15 @@ export default function HomePageClient() {
                 <CE value={content.rentalBadge} tag="span" className="hp3-rental-badge-text" onSave={v => sf('rentalBadge', v)} isEdit={isEdit} />
               </div>
               <CE value={content.rentalTitle} tag="h2" className="hp3-rental-h2" onSave={v => sf('rentalTitle', v)} isEdit={isEdit} />
-              <CE value={content.rentalSub}   tag="p"  className="hp3-rental-sub"  onSave={v => sf('rentalSub', v)}   isEdit={isEdit} />
+              <CE value={content.rentalSub} tag="p" className="hp3-rental-sub" onSave={v => sf('rentalSub', v)} isEdit={isEdit} />
               <div className="hp3-rental-features">
                 <div className="hp3-rental-feature">
                   <CE value={content.rentalF1Title} tag="h5" className="hp3-rental-feat-title" onSave={v => sf('rentalF1Title', v)} isEdit={isEdit} />
-                  <CE value={content.rentalF1Desc}  tag="p"  className="hp3-rental-feat-desc"  onSave={v => sf('rentalF1Desc', v)}  isEdit={isEdit} />
+                  <CE value={content.rentalF1Desc} tag="p" className="hp3-rental-feat-desc" onSave={v => sf('rentalF1Desc', v)} isEdit={isEdit} />
                 </div>
                 <div className="hp3-rental-feature">
                   <CE value={content.rentalF2Title} tag="h5" className="hp3-rental-feat-title" onSave={v => sf('rentalF2Title', v)} isEdit={isEdit} />
-                  <CE value={content.rentalF2Desc}  tag="p"  className="hp3-rental-feat-desc"  onSave={v => sf('rentalF2Desc', v)}  isEdit={isEdit} />
+                  <CE value={content.rentalF2Desc} tag="p" className="hp3-rental-feat-desc" onSave={v => sf('rentalF2Desc', v)} isEdit={isEdit} />
                 </div>
               </div>
               <Link href="/buyer/browse?listing_type=rent" className="hp3-rental-cta">
