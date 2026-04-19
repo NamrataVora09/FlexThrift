@@ -69,6 +69,7 @@ export default function RegisterPage() {
     { value: 'buyer', label: 'Buy', icon: 'bi-bag-heart', desc: 'Shop products' },
     { value: 'seller', label: 'Sell', icon: 'bi-shop-window', desc: 'List & sell items' },
     { value: 'both', label: 'Both', icon: 'bi-arrow-left-right', desc: 'Buy & sell' },
+
   ];
 
   const steps = [
