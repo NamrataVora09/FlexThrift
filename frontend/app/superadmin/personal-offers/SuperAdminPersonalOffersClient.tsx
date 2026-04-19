@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import OffersView from '@/components/shared/OffersView';
 
 export default function SuperAdminPersonalOffersClient() {
-  const [perspective, setPerspective] = useState<'buyer' | 'seller'>('seller');
+  const [perspective, setPerspective] = useState<'buyer' | 'seller' | 'combined'>('seller');
 
   return (
     <DashboardLayout requiredRoles={['super_admin']}>

@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 
 export default function AdminOffersClient() {
   const { user } = useAuth();
-  const [perspective, setPerspective] = useState<'buyer' | 'seller'>('seller');
+  const [perspective, setPerspective] = useState<'buyer' | 'seller' | 'combined'>('seller');
 
   const isBlockedBuyer = Number(user?.blocked_buyer) === 1;
   const isBlockedSeller = Number(user?.blocked_seller) === 1;

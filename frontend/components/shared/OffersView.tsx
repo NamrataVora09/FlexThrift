@@ -1131,7 +1131,7 @@ interface SellerViewProps {
   offers: Offer[];
   settings: { acceptanceLimitDays: number; ratingPeriod: number; rejectionWindowHours: number };
   isRentalBlocked: (o: Offer) => boolean;
-  getRentalConflict: (o: Offer) => { start: string; end: string; source: 'order' | 'offer' } | null;
+  getRentalConflict: (o: Offer) => { start: string; end: string; source: 'order' | 'offer'; id?: number } | null;
   onAccept: (o: Offer) => void;
   onReject: (o: Offer) => void;
   onRate: (o: Offer) => void;
@@ -1189,7 +1189,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
             {/* Offer rows */}
             <div className="offer-container">
               {productOffers.map(offer => {
-                const isBlockedRental = isRentalBlocked(offer);
+                const isBlockedRental = isRentalBlocked?.(offer);
 
                 // expiry logic (matching PHP exactly)
                 let isExpired = false;
@@ -1291,7 +1291,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                             {days > 0 && <span className="badge bg-secondary ms-1">{days} days</span>}
                           </div>
                           {(() => {
-                            const conflict = getRentalConflict(offer);
+                            const conflict = getRentalConflict?.(offer);
                             if (!conflict) return null;
                             return (
                               <div className="conflict-warning mt-2 w-100">
@@ -1457,7 +1457,7 @@ interface BuyerViewProps {
   settings: { acceptanceLimitDays: number; ratingPeriod: number; rejectionWindowHours: number; minRentalDays: number };
   role?: string;
   isRentalConflict: (o: Offer) => boolean;
-  getRentalConflict: (o: Offer) => { start: string; end: string; source: 'order' | 'offer' } | null;
+  getRentalConflict: (o: Offer) => { start: string; end: string; source: 'order' | 'offer'; id?: number } | null;
   isSoldOut: (o: Offer) => boolean;
   onAccept?: (o: Offer) => void;
   onReject?: (o: Offer) => void;
@@ -1474,8 +1474,8 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
       {offers.map(o => {
         const offeredPrice = o.offered_price ?? o.offer_price;
         const days = daysBetween(o.rental_start_date, o.rental_end_date);
-        const conflict = isRentalConflict(o);
-        const soldOut = isSoldOut(o);
+        const conflict = isRentalConflict?.(o);
+        const soldOut = isSoldOut?.(o);
         const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
         const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
         const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
@@ -1500,7 +1500,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                   <div>
                     <h5 className="fw-bold mb-1">{o.product_title}</h5>
                     <div className="d-flex flex-wrap gap-2 mb-2">
-                      <small className="text-muted">#REF-{o.id} • {o.offer_type ? o.offer_type.charAt(0).toUpperCase() + o.offer_type.slice(1) : o.listing_type?.charAt(0).toUpperCase() + (o.listing_type?.slice(1) ?? '')}</small>
+                      <small className="text-muted">#REF-{o.id} • {o.offer_type ? o.offer_type.charAt(0).toUpperCase() + o.offer_type.slice(1) : (o.listing_type ? o.listing_type.charAt(0).toUpperCase() + o.listing_type.slice(1) : '')}</small>
                       {isAdmin && (
                         <>
                           <span className="badge bg-light text-dark border fw-bold" style={{ fontSize: '0.65rem' }}>
@@ -1551,7 +1551,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
 
                   {/* conflict alert */}
                   {(() => {
-                    const c = getRentalConflict(o);
+                    const c = getRentalConflict?.(o);
                     if (!c) return null;
                     return (
                       <div className="conflict-alert mb-3">
@@ -1611,29 +1611,29 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                       <button
                         className="btn btn-success fw-bold rounded-pill"
                         style={{ fontSize: '0.875rem' }}
-                        onClick={() => onAcceptDates(o)}
+                        onClick={() => onAcceptDates?.(o)}
                       >
                         <i className="bi bi-check-circle-fill me-1"></i>Accept Dates
                       </button>
-                      <button className="btn-modern-cancel" style={{ fontSize: '0.8rem' }} onClick={() => onCancel(o)}>Decline</button>
+                      <button className="btn-modern-cancel" style={{ fontSize: '0.8rem' }} onClick={() => onCancel?.(o)}>Decline</button>
                     </>
                   )}
                   {(o.status === 'pending' || o.status === 'rejected' || o.status === 'negotiating') && (
                     <>
                       {o.status === 'rejected' ? (
-                        <button className="btn btn-warning mb-1 fw-bold rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates(o)}>
+                        <button className="btn btn-warning mb-1 fw-bold rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates?.(o)}>
                           <i className="bi bi-arrow-repeat me-1"></i>Make Offer
                         </button>
                       ) : (o.offer_type ?? o.listing_type) === 'rent' && (
-                        <button className="btn-yellow mb-1" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates(o)}>Change dates</button>
+                        <button className="btn-yellow mb-1" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates?.(o)}>Change dates</button>
                       )}
                       {(o.status === 'pending' || o.status === 'rejected') && (
-                        <button className="btn-modern-cancel" onClick={() => onCancel(o)}>{o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}</button>
+                        <button className="btn-modern-cancel" onClick={() => onCancel?.(o)}>{o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}</button>
                       )}
                     </>
                   )}
                   {canRate && !isAdmin && (
-                    <button className="btn btn-warning rounded-pill fw-bold" onClick={() => onRate(o)}>
+                    <button className="btn btn-warning rounded-pill fw-bold" onClick={() => onRate?.(o)}>
                       <i className="bi bi-star-fill me-1"></i>Rate Seller
                     </button>
                   )}
