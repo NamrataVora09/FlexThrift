@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { addToCart, isInCart } from '@/lib/cart';
+import { addToCart } from '@/lib/cart';
 
 interface Product {
   id: number;
@@ -18,8 +18,11 @@ interface Product {
   seller_rating_avg?: string;
   image?: string;
   primary_image?: string;
+  images?: string | string[];
   brand_name?: string;
   brand?: string;
+  category_name?: string;
+  gender?: string;
   status: string;
 }
 
@@ -88,6 +91,12 @@ function filtersFromParams(sp: URLSearchParams): ActiveFilters {
   };
 }
 
+function getProductPrice(p: Product): number {
+  return Number(p.listing_type === 'sell'
+    ? (p.selling_price || p.price || p.original_price || 0)
+    : (p.rental_cost || p.price || 0));
+}
+
 export default function BrowsePage() {
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
@@ -103,21 +112,22 @@ export default function BrowsePage() {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [cartUpdated, setCartUpdated] = useState(0);
   const [cartCount, setCartCount] = useState(0);
+  const [wishlist, setWishlist] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem('flex_wishlist') || '[]'); } catch { return []; }
+  });
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
+  const [sortBy, setSortBy] = useState('featured');
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
 
-  // ── Filter state ──────────────────────────────────────────────────────────
   const [showFilters, setShowFilters] = useState(false);
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   const [filters, setFilters] = useState<ActiveFilters>(() => filtersFromParams(searchParams as unknown as URLSearchParams));
   const [priceInput, setPriceInput] = useState({ min: filters.minPrice, max: filters.maxPrice });
   const [dynamicAttrs, setDynamicAttrs] = useState<DynamicAttribute[]>([]);
-  // ─────────────────────────────────────────────────────────────────────────
 
-  // Fuzzy match scorer
   const fuzzyMatch = (text: string, query: string): number => {
     const t = text.toLowerCase();
     const q = query.toLowerCase();
@@ -129,7 +139,6 @@ export default function BrowsePage() {
     return qi === q.length ? score : 0;
   };
 
-  // Debounced suggestion fetcher
   const fetchSuggestions = useCallback((query: string) => {
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     if (!query || query.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
@@ -153,7 +162,6 @@ export default function BrowsePage() {
     }, 300);
   }, []);
 
-  // Close suggestions on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) setShowSuggestions(false);
@@ -162,7 +170,6 @@ export default function BrowsePage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Track cart count
   useEffect(() => {
     const update = () => {
       try { setCartCount(JSON.parse(localStorage.getItem('flex_cart') || '[]').length); } catch { setCartCount(0); }
@@ -179,7 +186,6 @@ export default function BrowsePage() {
       .catch(() => { });
   }, []);
 
-  // Blocked admin or strict seller check
   useEffect(() => {
     if (isAuthenticated && user) {
       if (user.role === 'admin' && Number(user.blocked_buyer) === 1) {
@@ -193,10 +199,8 @@ export default function BrowsePage() {
     }
   }, [isAuthenticated, user, router]);
 
-  // Load dynamic attributes when category/sub-category changes
   useEffect(() => {
     if (!filterOptions) { setDynamicAttrs([]); return; }
-    // Sub-category takes precedence
     if (filters.subCategoryId) {
       const sub = filterOptions.sub_categories.find(s => String(s.id) === filters.subCategoryId);
       if (sub?.field_config) {
@@ -212,10 +216,7 @@ export default function BrowsePage() {
     setDynamicAttrs([]);
   }, [filters.categoryId, filters.subCategoryId, filterOptions]);
 
-  // ── URL builder ───────────────────────────────────────────────────────────
-  const buildUrl = (
-    type: string, s: string, f: ActiveFilters
-  ): string => {
+  const buildUrl = (type: string, s: string, f: ActiveFilters): string => {
     const p = new URLSearchParams();
     if (type) p.set('listing_type', type);
     if (s) p.set('search', s);
@@ -233,7 +234,6 @@ export default function BrowsePage() {
     const qs = p.toString();
     return `/buyer/browse${qs ? `?${qs}` : ''}`;
   };
-  // ─────────────────────────────────────────────────────────────────────────
 
   const load = (p: number, sp: URLSearchParams) => {
     setLoading(true);
@@ -253,7 +253,6 @@ export default function BrowsePage() {
       .catch(() => setLoading(false));
   };
 
-  // Single source of truth: URL drives data loading
   useEffect(() => {
     const s = searchParams.get('search') || '';
     const t = searchParams.get('listing_type') || '';
@@ -276,7 +275,6 @@ export default function BrowsePage() {
   };
   const handleTypeClick = (type: string) => { setActiveType(type); setPage(1); navigate(type, search, filters); };
 
-  // ── Filter helpers ────────────────────────────────────────────────────────
   const setFilter = (key: keyof Omit<ActiveFilters, 'specs'>, val: string) => {
     let newF = { ...filters, [key]: val };
     if (key === 'categoryId') { newF.subCategoryId = ''; newF.specs = {}; }
@@ -323,7 +321,6 @@ export default function BrowsePage() {
     }
   };
 
-  // Active filter chips data
   const activeChips: { label: string; key: string }[] = [];
   if (filters.minPrice || filters.maxPrice) {
     activeChips.push({ label: `₹${filters.minPrice || '0'} – ₹${filters.maxPrice || '∞'}`, key: 'price' });
@@ -345,17 +342,17 @@ export default function BrowsePage() {
   if (filters.gender) activeChips.push({ label: filters.gender, key: 'gender' });
   if (filters.condition) activeChips.push({ label: filters.condition === 'new' ? 'Brand New' : 'Pre-owned', key: 'condition' });
   Object.entries(filters.specs).forEach(([k, v]) => { if (v) activeChips.push({ label: `${k}: ${v}`, key: `spec:${k}` }); });
-  // ─────────────────────────────────────────────────────────────────────────
 
-  const handleAddToCart = (p: Product, e: React.MouseEvent) => {
+  const handleWishlist = (p: Product, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const price = p.listing_type === 'sell' ? (p.selling_price || p.price || p.original_price || '0') : (p.rental_cost || p.price || '0');
-    addToCart({ id: p.id, title: p.title, listing_type: p.listing_type, price, image: p.image || p.primary_image || '', seller_name: p.seller_name });
-    setCartUpdated(c => c + 1);
+    setWishlist(prev => {
+      const next = prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id];
+      try { localStorage.setItem('flex_wishlist', JSON.stringify(next)); } catch { }
+      return next;
+    });
   };
 
-  // Prevent rendering if blocked
   if (isAuthenticated && user) {
     if (user.role === 'admin' && Number(user.blocked_buyer) === 1) return null;
     if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) return null;
@@ -363,14 +360,21 @@ export default function BrowsePage() {
 
   const subCatsForCategory = filterOptions?.sub_categories.filter(s => String(s.category_id) === filters.categoryId) || [];
 
+  const sortedProducts = useMemo(() => {
+    if (!data?.products) return [];
+    const prods = [...data.products];
+    if (sortBy === 'price_asc') return prods.sort((a, b) => getProductPrice(a) - getProductPrice(b));
+    if (sortBy === 'price_desc') return prods.sort((a, b) => getProductPrice(b) - getProductPrice(a));
+    if (sortBy === 'newest') return prods.sort((a, b) => b.id - a.id);
+    return prods;
+  }, [data?.products, sortBy]);
+
+
   return (
     <>
       <style jsx global>{`
-        :root { --primary-yellow: #ffc63a; --primary-dark: #000; --bg-light: #f8f9fa; --text-muted: #6f6f6f; }
-        .browse-page { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #fff; color: #000; }
-        .browse-page h1,.browse-page h2,.browse-page h3,.browse-page h4,.browse-page h5,.browse-page h6,.browse-page .btn { font-family: "Maven Pro", sans-serif; }
-        .fw-800 { font-weight: 800 !important; }
-        .fw-900 { font-weight: 900 !important; }
+        /* ── Navbar styles (preserved from original) ── */
+        :root { --primary-yellow: #ffc63a; --primary-dark: #000; }
         .navbar-main { background: rgba(255,255,255,0.85); backdrop-filter: blur(25px) saturate(180%); -webkit-backdrop-filter: blur(25px) saturate(180%); border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0.7rem 0; z-index: 1050; position: fixed; top: 0; left: 0; right: 0; }
         .navbar-brand-main { font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 800; color: #000 !important; letter-spacing: -1.5px; position: relative; text-decoration: none; }
         .navbar-brand-main::after { content: '.'; color: var(--primary-yellow); font-size: 2.5rem; line-height: 0; position: absolute; bottom: 8px; }
@@ -385,83 +389,238 @@ export default function BrowsePage() {
         .user-dropdown { position: relative; }
         .user-dropdown-menu { position: absolute; right: 0; left: auto; top: 100%; min-width: 250px; background: #fff; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); padding: 8px; padding-top: 20px; z-index: 1060; animation: ddSlideDown 0.3s ease; }
         @keyframes ddSlideDown { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes suggestFadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
         .user-dropdown-menu .dd-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; color: #333; text-decoration: none; font-size: 0.9rem; transition: 0.2s; cursor: pointer; border: none; background: none; width: 100%; text-align: left; }
         .user-dropdown-menu .dd-item:hover { background: #f8f9fa; }
         .user-dropdown-menu .dd-item.text-danger { color: #dc3545 !important; }
         .user-dropdown-menu .dd-header { padding: 16px; border-bottom: 1px solid #f0f0f0; margin-bottom: 8px; }
-        .browse-hero { background: #fff; padding: 60px 0; border-bottom: 1px solid #eee; position: relative; overflow: visible; }
-        .search-container { background: #fff; border: 2px solid #000; border-radius: 100px; padding: 8px; display: flex; align-items: center; max-width: 700px; margin: 20px auto 0; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .search-input { border: none !important; box-shadow: none !important; padding: 10px 30px; font-size: 1.1rem; font-weight: 500; flex-grow: 1; outline: none; background: transparent; }
-        .btn-search { background: #000; color: #fff; border-radius: 100px; padding: 12px 35px; font-weight: 700; border: none; transition: 0.3s; cursor: pointer; }
-        .btn-search:hover { background: #333; }
-        .cat-pills { display: flex; overflow-x: auto; gap: 12px; padding: 20px 0; scrollbar-width: none; }
-        .cat-pills::-webkit-scrollbar { display: none; }
-        .cat-pill { background: white; padding: 12px 28px; border-radius: 50px; text-decoration: none; color: var(--text-muted); font-weight: 700; border: 1px solid #eee; transition: 0.3s; white-space: nowrap; cursor: pointer; font-size: 0.95rem; }
-        .cat-pill:hover, .cat-pill.active { background: var(--primary-yellow); color: #000 !important; border-color: var(--primary-yellow); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,198,58,0.2); }
-        .premium-card { background: white; border-radius: 20px; border: 1px solid #eee; transition: all 0.3s ease; position: relative; overflow: hidden; height: 100%; cursor: pointer; }
-        .premium-card:hover { transform: translateY(-8px); box-shadow: 0 15px 35px rgba(0,0,0,0.05); border-color: var(--primary-yellow); }
-        .card-img-box { height: 300px; padding: 10px; }
-        .card-img-box img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; }
-        .listing-badge { position: absolute; top: 20px; right: 20px; background: #fff; padding: 6px 14px; border-radius: 10px; font-weight: 800; font-size: 10px; text-transform: uppercase; color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid #eee; }
-        .price-tag { font-size: 1.4rem; font-weight: 800; color: #000; }
-        .seller-badge { background: #f8f9fa; color: #000; font-size: 10px; font-weight: 800; padding: 5px 12px; border-radius: 8px; display: inline-block; margin-bottom: 10px; border: 1px solid #eee; }
-        .btn-view { background: #f8f9fa; color: #000; border: 1px solid #eee; padding: 10px 20px; border-radius: 12px; font-weight: 700; transition: 0.3s; cursor: pointer; }
-        .premium-card:hover .btn-view { background: var(--primary-yellow); border-color: var(--primary-yellow); }
-        .btn-cart { background: transparent; border: 1px solid #eee; padding: 10px 14px; border-radius: 12px; font-weight: 700; transition: 0.3s; cursor: pointer; color: #000; }
-        .btn-cart:hover { background: #000; color: #fff; border-color: #000; }
-        .btn-cart.added { background: #000; color: #ffc63a; border-color: #000; }
-        /* ── Filter Sidebar ── */
-        .filter-sidebar { background: #fff; border: 1px solid #eee; border-radius: 20px; padding: 24px; position: sticky; top: 110px; max-height: calc(100vh - 130px); overflow-y: auto; scrollbar-width: thin; }
-        .filter-sidebar::-webkit-scrollbar { width: 4px; }
-        .filter-sidebar::-webkit-scrollbar-thumb { background: #eee; border-radius: 10px; }
-        .filter-section { border-bottom: 1px solid #f4f4f4; padding: 16px 0; }
-        .filter-section:last-child { border-bottom: none; }
-        .filter-section-title { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .filter-chip { display: inline-flex; align-items: center; gap: 6px; background: #000; color: #fff; border-radius: 20px; padding: 4px 12px; font-size: 0.78rem; font-weight: 700; margin: 3px; }
-        .filter-chip button { background: none; border: none; color: #fff; cursor: pointer; padding: 0; font-size: 0.9rem; line-height: 1; opacity: 0.7; }
-        .filter-chip button:hover { opacity: 1; }
-        .filter-btn-pill { background: #f8f9fa; border: 1px solid #eee; border-radius: 20px; padding: 5px 14px; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap; }
-        .filter-btn-pill:hover, .filter-btn-pill.active { background: var(--primary-yellow); border-color: var(--primary-yellow); color: #000; }
-        .filter-select { width: 100%; border: 1px solid #eee; border-radius: 10px; padding: 8px 12px; font-size: 0.88rem; outline: none; background: #fafafa; font-family: inherit; }
-        .filter-select:focus { border-color: var(--primary-yellow); background: #fff; }
-        .price-inputs { display: flex; gap: 8px; align-items: center; }
-        .price-input { flex: 1; border: 1px solid #eee; border-radius: 10px; padding: 8px 10px; font-size: 0.85rem; outline: none; background: #fafafa; width: 100%; }
-        .price-input:focus { border-color: var(--primary-yellow); background: #fff; }
-        .btn-apply-price { background: #000; color: #fff; border: none; border-radius: 10px; padding: 8px 14px; font-size: 0.82rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
-        .btn-apply-price:hover { background: #333; }
-        .filter-toggle-btn { display: flex; align-items: center; gap: 8px; background: #f8f9fa; border: 1px solid #eee; border-radius: 12px; padding: 10px 18px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
-        .filter-toggle-btn:hover { background: var(--primary-yellow); border-color: var(--primary-yellow); }
-        .filter-drawer { position: fixed; left: 0; top: 0; bottom: 0; width: 320px; background: #fff; z-index: 1100; box-shadow: 4px 0 30px rgba(0,0,0,0.15); padding: 24px; overflow-y: auto; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); }
-        .filter-drawer.open { transform: translateX(0); }
-        .filter-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1090; display: none; }
-        .filter-overlay.open { display: block; }
-        .badge-count { background: #000; color: #ffc63a; border-radius: 20px; padding: 1px 8px; font-size: 0.72rem; font-weight: 800; }
-        /* ── Footer ── */
-        .main-footer { background-color: #3D3B3B; color: #b2bec3; padding: 66px 0 4px; width: 100%; margin-top: 80px; }
-        .footer-brand { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 25px; }
-        .footer-description { font-size: 1rem; line-height: 1.8; max-width: 380px; color: #b2bec3; }
-        .footer-heading { font-weight: 600; font-size: 1.2rem; color: #fff; margin-bottom: 30px; }
-        .footer-links { list-style: none; padding: 0; margin: 0; }
-        .footer-links li { margin-bottom: 4px; }
-        .footer-links a { color: #fff; text-decoration: none; font-size: 1rem; transition: color 0.3s ease; }
-        .footer-links a:hover { color: #ffc63a; }
-        .social-icons-box a { color: #fff; font-size: 1.1rem; margin-right: 25px; transition: color 0.3s ease; text-decoration: none; }
-        .social-icons-box a:hover { color: #ffc63a; }
-        .copyright-bar { text-align: center; padding: 10px 0; margin-top: 12px; border-top: 1px solid #444; font-size: 0.95rem; color: #636e72; background-color: #1e2124; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary-yellow); }
-        @media (max-width: 991px) { .filter-sidebar { display: none; } }
-        @media (max-width: 768px) { .browse-hero { padding: 30px 0; } .browse-hero .display-4 { font-size: 2rem; } .search-container { flex-direction: column; border-radius: 20px; gap: 8px; } .search-input { padding: 10px 15px; } .btn-search { width: 100%; border-radius: 14px; } .card-img-box { height: 200px; } .search-wrapper-hdr { width: 100% !important; margin: 10px 0 !important; } }
+
+        /* ── Elite Browse Design ── */
+        .em-body { font-family: 'Inter', sans-serif; background: #f6f6f6; color: #2d2f2f; }
+        .em-heading { font-family: 'Manrope', sans-serif !important; }
+
+        /* Card hover effects */
+        .em-card { cursor: pointer; }
+        .em-card-img-wrap { position: relative; aspect-ratio: 4/5; overflow: hidden; border-radius: 16px; background: #f0f1f1; margin-bottom: 16px; }
+        .em-card .em-card-img {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%; object-fit: cover;
+          transition: opacity 0.45s ease, transform 700ms ease;
+        }
+        .em-card:hover .em-card-img { transform: scale(1.07); }
+        .em-card .em-card-overlay {
+          position: absolute; inset: 0; z-index: 1;
+          background-color: transparent;
+          transition: background-color 300ms ease;
+          pointer-events: none;
+        }
+        .em-card:hover .em-card-overlay { background-color: rgba(12,15,15,0.08); }
+
+        /* Wishlist button */
+        .em-card .em-wish-btn {
+          position: absolute; bottom: 20px; left: 50%; z-index: 3;
+          transform: translateX(-50%) translateY(12px);
+          opacity: 0;
+          transition: opacity 300ms ease, transform 300ms ease;
+          background: rgba(12,15,15,0.88); color: #fff;
+          padding: 10px 24px; border-radius: 9999px;
+          font-size: 0.82rem; font-weight: 700;
+          border: none; cursor: pointer;
+          backdrop-filter: blur(8px);
+          white-space: nowrap; font-family: 'Inter', sans-serif;
+          display: flex; align-items: center; gap: 7px;
+        }
+        .em-card:hover .em-wish-btn { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .em-card .em-wish-btn.wishlisted { background: #FFC107; color: #3d2b00; }
+
+        /* Listing type badge */
+        .em-type-badge {
+          position: absolute; top: 12px; left: 12px; z-index: 4;
+          padding: 4px 10px; border-radius: 9999px;
+          font-size: 0.62rem; font-weight: 800;
+          text-transform: uppercase; letter-spacing: 0.06em;
+          display: flex; align-items: center; gap: 4px;
+          cursor: help; user-select: none;
+          background: rgba(255,255,255,0.82);
+          color: #0c0f0f;
+          backdrop-filter: blur(6px);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+        /* Discount badge */
+        .em-disc-badge {
+          position: absolute; top: 12px; right: 12px; z-index: 4;
+          background: #b02500; color: #fff;
+          padding: 3px 9px; border-radius: 9999px;
+          font-size: 0.62rem; font-weight: 800;
+        }
+
+        /* Image dots */
+        .em-img-dots { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 4; display: flex; gap: 5px; }
+        .em-img-dot { height: 5px; border-radius: 9999px; background: rgba(255,255,255,0.6); transition: width 0.3s ease, background 0.3s ease; }
+        .em-img-dot.active { background: #FFC107; }
+
+        /* Product info */
+        .em-prod-brand { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #FFC107; margin: 0 0 5px; }
+        .em-title-price-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+        .em-prod-title { font-size: 1rem; font-weight: 800; color: #0c0f0f; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Manrope', sans-serif; letter-spacing: -0.02em; flex: 1; min-width: 0; }
+        .em-prod-price-block { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+        .em-prod-price { font-size: 0.97rem; font-weight: 800; color: #0c0f0f; white-space: nowrap; }
+        .em-prod-orig { font-size: 0.72rem; font-weight: 500; color: #acadad; text-decoration: line-through; white-space: nowrap; }
+        .em-prod-per { font-size: 0.65rem; font-weight: 500; color: #5a5c5c; }
+        .em-prod-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+        .em-prod-tag { padding: 3px 9px; border-radius: 9999px; font-size: 0.65rem; font-weight: 600; background: #f0f1f1; color: #5a5c5c; }
+        .em-prod-tag.brand { background: #fff8e1; color: #755700; border: 1px solid #FFC107; }
+
+        /* Filter section title */
+        .em-filter-title {
+          font-size: 0.75rem; font-weight: 800;
+          text-transform: uppercase; letter-spacing: 0.1em;
+          color: #0c0f0f; margin-bottom: 1rem;
+          font-family: 'Manrope', sans-serif;
+        }
+
+        /* Checkbox */
+        input[type="checkbox"].em-chk {
+          width: 20px; height: 20px;
+          accent-color: #FFC107; border-radius: 4px;
+          cursor: pointer; flex-shrink: 0;
+        }
+
+        /* Select / dropdown */
+        .em-select {
+          width: 100%; background: #fff;
+          border: 1px solid #acadad; border-radius: 12px;
+          padding: 9px 12px; font-size: 0.875rem;
+          font-family: 'Inter', sans-serif; outline: none; cursor: pointer;
+          color: #2d2f2f;
+        }
+        .em-select:focus { border-color: #FFC107; box-shadow: 0 0 0 2px rgba(255,193,7,0.15); }
+
+        /* Range input */
+        input[type="range"].em-range { accent-color: #FFC107; width: 100%; height: 4px; }
+
+        /* Price inputs */
+        .em-price-inp {
+          background: #fff; border: none; border-radius: 10px;
+          padding: 8px 8px 8px 22px; font-size: 0.75rem; font-weight: 700;
+          width: 100%; outline: none; box-shadow: inset 0 0 0 1px transparent;
+          font-family: 'Inter', sans-serif;
+        }
+        .em-price-inp:focus { box-shadow: inset 0 0 0 1px #FFC107; }
+
+        /* Pill buttons (for filter) */
+        .em-filter-pill {
+          background: #f8f9fa; border: 1px solid #eee;
+          border-radius: 9999px; padding: 5px 14px;
+          font-size: 0.82rem; font-weight: 700; cursor: pointer;
+          transition: background 0.2s, border-color 0.2s; white-space: nowrap;
+          font-family: 'Inter', sans-serif;
+        }
+        .em-filter-pill:hover, .em-filter-pill.active {
+          background: #FFC107; border-color: #FFC107; color: #0c0f0f;
+        }
+
+        /* Type pills in product area */
+        .em-type-pill {
+          background: #e7e8e8; color: #2d2f2f;
+          padding: 12px 24px; border-radius: 9999px; border: none;
+          font-weight: 500; font-size: 0.875rem; cursor: pointer;
+          transition: background 0.2s; font-family: 'Inter', sans-serif;
+          white-space: nowrap;
+        }
+        .em-type-pill:hover { background: #d2d5d5; }
+        .em-type-pill.active {
+          background: #FFC107; color: #3d2b00; font-weight: 700;
+        }
+
+        /* Sort select */
+        .em-sort-sel {
+          appearance: none; background: #fff; border: none;
+          border-radius: 9999px; padding: 12px 48px 12px 24px;
+          font-size: 0.875rem; font-weight: 700;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+          cursor: pointer; outline: none;
+          font-family: 'Inter', sans-serif; color: #2d2f2f;
+        }
+        .em-sort-sel:focus { box-shadow: 0 0 0 2px rgba(255,193,7,0.35); }
+
+        /* Pagination */
+        .em-pg-num {
+          width: 40px; height: 40px; border-radius: 9999px; border: none;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; font-weight: 700; font-size: 0.875rem;
+          background: transparent; color: #2d2f2f; transition: background 0.2s;
+          font-family: 'Inter', sans-serif;
+        }
+        .em-pg-num:hover { background: #e7e8e8; }
+        .em-pg-num.active { background: #0c0f0f; color: #fff; }
+        .em-pg-arrow {
+          width: 48px; height: 48px; border-radius: 9999px;
+          border: 1px solid #acadad; background: transparent;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: background 0.2s;
+        }
+        .em-pg-arrow:hover { background: #e7e8e8; }
+        .em-pg-arrow:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Active filter chips */
+        .em-chip {
+          display: inline-flex; align-items: center; gap: 6px;
+          background: #0c0f0f; color: #fff;
+          border-radius: 9999px; padding: 4px 12px;
+          font-size: 0.78rem; font-weight: 700;
+        }
+        .em-chip button {
+          background: none; border: none; color: rgba(255,255,255,0.7);
+          cursor: pointer; font-size: 1rem; line-height: 1; padding: 0;
+        }
+        .em-chip button:hover { color: #fff; }
+
+        /* Sidebar section */
+        .em-sidebar-section { border-bottom: 1px solid #e7e8e8; padding: 20px 0; }
+        .em-sidebar-section:last-child { border-bottom: none; }
+
+        /* Mobile drawer */
+        .em-drawer {
+          position: fixed; left: 0; top: 0; bottom: 0; width: 320px;
+          background: #fff; z-index: 1100;
+          box-shadow: 4px 0 30px rgba(0,0,0,0.15);
+          padding: 24px; overflow-y: auto;
+          transform: translateX(-100%);
+          transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+        }
+        .em-drawer.open { transform: translateX(0); }
+        .em-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1090; display: none; }
+        .em-overlay.open { display: block; }
+
+        /* Footer */
+        .em-footer { background: #0c0f0f; width: 100%; }
+        .em-footer a { color: rgba(255,255,255,0.5); text-decoration: none !important; font-size: 0.9rem; transition: color 0.2s; }
+        .em-footer a:hover { color: #fff; }
+
+        /* Responsive */
+        @media (max-width: 991px) { .em-sidebar-desk { display: none !important; } }
+        @media (max-width: 768px) {
+          .em-hero-title { font-size: 2.5rem !important; }
+          .em-layout { flex-direction: column !important; }
+          .em-grid { grid-template-columns: repeat(2,1fr) !important; gap: 16px 16px !important; }
+          .em-type-bar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; }
+        }
+        @media (max-width: 480px) { .em-grid { grid-template-columns: 1fr !important; } }
       `}</style>
 
-      <link href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400..900&family=Outfit:wght@100..900&family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap"
+        rel="stylesheet"
+      />
+      <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet"
+      />
 
-      <div className="browse-page" style={{ paddingTop: 100 }}>
-        {/* ===== HEADER ===== */}
+      <div className="em-body" style={{ paddingTop: 100 }}>
+
+        {/* ===== TOP NAVBAR — UNCHANGED ===== */}
         <nav className="navbar-main">
           <div className="container-fluid px-lg-5 d-flex align-items-center justify-content-between">
             <Link className="navbar-brand-main" href="/">Flex Market</Link>
@@ -477,7 +636,13 @@ export default function BrowsePage() {
             <div className="search-wrapper-hdr d-none d-xl-block">
               <form onSubmit={handleHeaderSearch}>
                 <i className="bi bi-search search-icon-fixed-hdr"></i>
-                <input className="search-input-premium-hdr" type="text" placeholder="Search curated collections..." value={headerSearch} onChange={(e) => setHeaderSearch(e.target.value)} />
+                <input
+                  className="search-input-premium-hdr"
+                  type="text"
+                  placeholder="Search curated collections..."
+                  value={headerSearch}
+                  onChange={(e) => setHeaderSearch(e.target.value)}
+                />
               </form>
             </div>
 
@@ -538,235 +703,235 @@ export default function BrowsePage() {
             </div>
           </div>
         </nav>
+        {/* ===== END TOP NAVBAR ===== */}
 
-        {/* ===== BROWSE HERO ===== */}
-        <section className="browse-hero text-center">
-          <div className="container">
-            <div className="row justify-content-center">
-              <div className="col-lg-10">
-                <h5 className="fw-bold text-muted mb-2 small" style={{ letterSpacing: 2 }}>MARKETPLACE</h5>
-                <h2 className="display-4 fw-900 mb-1">Elite Collections</h2>
-                <form onSubmit={(e) => { handleSearch(e); setShowSuggestions(false); }}>
-                  <div className="search-container" ref={searchBoxRef} style={{ position: 'relative' }}>
-                    <input
-                      type="text"
-                      className="search-input"
-                      placeholder="Search high-end fashion, items or brands..."
-                      value={search}
-                      onChange={(e) => { setSearch(e.target.value); fetchSuggestions(e.target.value); }}
-                      onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
-                      autoComplete="off"
-                    />
-                    <button type="submit" className="btn-search">Search</button>
+        {/* ===== MAIN CONTENT ===== */}
+        <main style={{ paddingTop: 48, paddingBottom: 96, paddingLeft: 32, paddingRight: 32, maxWidth: 1440, margin: '0 auto' }}>
 
-                    {/* Fuzzy Search Suggestions */}
-                    {showSuggestions && (
-                      <div style={{
-                        position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
-                        background: '#fff', borderRadius: 16, boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
-                        border: '1px solid #eee', zIndex: 1060, overflow: 'hidden',
-                        animation: 'suggestFadeIn 0.2s ease',
-                      }}>
-                        <div style={{ padding: '10px 16px 6px', fontSize: '0.7rem', fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>
-                          {suggestLoading ? 'Searching...' : `${suggestions.length} suggestion${suggestions.length !== 1 ? 's' : ''}`}
-                        </div>
-                        {suggestions.map((p) => {
-                          const slug = `${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${p.id}`;
-                          return (
-                            <Link
-                              key={p.id}
-                              href={`/buyer/product/${slug}`}
-                              onClick={() => setShowSuggestions(false)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', textDecoration: 'none', color: '#333', transition: 'background 0.15s', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500 }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = ''}
-                            >
-                              <i className="bi bi-search" style={{ color: '#ccc', fontSize: '0.8rem' }}></i>
-                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</span>
-                            </Link>
-                          );
-                        })}
-                        <div
-                          style={{ padding: '10px 16px', borderTop: '1px solid #f0f0f0', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, color: '#ffc63a', cursor: 'pointer', transition: 'background 0.15s' }}
-                          onClick={() => { handleSearch(new Event('submit') as any); setShowSuggestions(false); }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#fffdf5'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = ''}
-                        >
-                          View all results for &ldquo;{search}&rdquo; →
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </form>
+          {/* Hero Header */}
+          <header style={{ marginBottom: 64 }}>
+            <h1
+              className="em-heading em-hero-title"
+              style={{ fontSize: 'clamp(2.5rem, 6vw, 4.375rem)', fontWeight: 800, letterSpacing: '-0.04em', color: '#0c0f0f', marginBottom: 16, lineHeight: 1.1 }}
+            >
+              Elite Collections
+            </h1>
+            <p style={{ fontSize: '1.25rem', color: '#5a5c5c', fontWeight: 300, maxWidth: 640, margin: 0 }}>
+              Discover our curated high-end selection. Every piece is chosen for its exceptional craftsmanship and timeless design.
+            </p>
+          </header>
+
+          {/* Two-column layout */}
+          <div className="em-layout" style={{ display: 'flex', gap: 48 }}>
+
+            {/* ===== SIDEBAR (desktop) ===== */}
+            <aside className="em-sidebar-desk" style={{ width: 256, flexShrink: 0 }}>
+              <div style={{ position: 'sticky', top: 132 }}>
+                <EliteSidebar
+                  filters={filters}
+                  priceInput={priceInput}
+                  setPriceInput={setPriceInput}
+                  filterOptions={filterOptions}
+                  dynamicAttrs={dynamicAttrs}
+                  subCatsForCategory={subCatsForCategory}
+                  setFilter={setFilter}
+                  setSpecFilter={setSpecFilter}
+                  applyPriceFilter={applyPriceFilter}
+                  clearAllFilters={clearAllFilters}
+                  activeChips={activeChips}
+                />
               </div>
-            </div>
-          </div>
-        </section>
+            </aside>
 
-        {/* ===== CATEGORY PILLS ===== */}
-        <div className="container mt-4">
-          <div className="cat-pills">
-            <button className={`cat-pill ${activeType === '' ? 'active' : ''}`} onClick={() => handleTypeClick('')}>All Editions</button>
-            {listingTypes.map((lt) => (
-              <button key={lt.id} className={`cat-pill ${activeType.toLowerCase() === lt.type_name.toLowerCase() ? 'active' : ''}`} onClick={() => handleTypeClick(lt.type_name.toLowerCase())}>{lt.type_name}</button>
-            ))}
-          </div>
-        </div>
+            {/* ===== PRODUCT AREA ===== */}
+            <div style={{ flex: 1, minWidth: 0 }}>
 
-        {/* ===== FILTER BAR + LAYOUT ===== */}
-        <div className="container my-4">
+              {/* Type pills + sort row */}
+              <section style={{ marginBottom: 48, display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                {/* Left: mobile filter btn + type pills */}
+                <div className="em-type-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                  {/* Mobile filter toggle */}
+                  <button
+                    className="d-lg-none em-type-pill"
+                    onClick={() => setShowFilters(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <i className="bi bi-sliders"></i> Filters
+                    {activeChips.length > 0 && (
+                      <span style={{ background: '#0c0f0f', color: '#FFC107', borderRadius: 9999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>
+                        {activeChips.length}
+                      </span>
+                    )}
+                  </button>
 
-          {/* Mobile filter toggle + active chips bar */}
-          <div className="d-flex align-items-center flex-wrap gap-2 mb-3">
-            <button className="filter-toggle-btn d-lg-none" onClick={() => setShowFilters(true)}>
-              <i className="bi bi-sliders"></i> Filters
-              {activeChips.length > 0 && <span className="badge-count">{activeChips.length}</span>}
-            </button>
-            {/* Active filter chips */}
-            {activeChips.map(chip => (
-              <span key={chip.key} className="filter-chip">
-                {chip.label}
-                <button onClick={() => {
-                  if (chip.key === 'price') {
-                    const newF = { ...filters, minPrice: '', maxPrice: '' };
-                    setPriceInput({ min: '', max: '' });
-                    setFilters(newF); setPage(1); navigate(activeType, search, newF);
-                  } else removeFilter(chip.key);
-                }}>×</button>
-              </span>
-            ))}
-            {activeChips.length > 1 && (
-              <button onClick={clearAllFilters} style={{ background: 'none', border: 'none', color: '#999', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
-                Clear all
-              </button>
-            )}
-          </div>
-
-          <div className="row g-4">
-            {/* ===== FILTER SIDEBAR (desktop) ===== */}
-            <div className="col-lg-3 d-none d-lg-block">
-              <FilterPanel
-                filters={filters}
-                priceInput={priceInput}
-                setPriceInput={setPriceInput}
-                filterOptions={filterOptions}
-                dynamicAttrs={dynamicAttrs}
-                subCatsForCategory={subCatsForCategory}
-                setFilter={setFilter}
-                setSpecFilter={setSpecFilter}
-                applyPriceFilter={applyPriceFilter}
-                clearAllFilters={clearAllFilters}
-                activeChips={activeChips}
-              />
-            </div>
-
-            {/* ===== PRODUCT GRID ===== */}
-            <div className="col-lg-9">
-              <div style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.3s ease', pointerEvents: loading ? 'none' : 'auto', position: 'relative', minHeight: 200 }}>
-                {loading && (
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
-                    <div className="spinner-grow text-warning" role="status" style={{ width: '2.5rem', height: '2.5rem' }}><span className="visually-hidden">Loading...</span></div>
-                  </div>
-                )}
-
-                {/* Result count */}
-                {!loading && data && (
-                  <div className="d-flex align-items-center justify-content-between mb-3">
-                    <p className="text-muted mb-0" style={{ fontSize: '0.88rem' }}>
-                      <strong>{data.pagination.total}</strong> product{data.pagination.total !== 1 ? 's' : ''} found
-                    </p>
-                  </div>
-                )}
-
-                <div className="row g-4">
-                  {data?.products && data.products.length > 0 ? (
-                    data.products.map((p) => {
-                      const inCart = isInCart(p.id);
-                      return (
-                        <div key={p.id} className="col-md-6 col-xl-4">
-                          <Link href={`/buyer/product/${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                            <div className="premium-card">
-                              <div className="card-img-box">
-                                {(p.image || p.primary_image) ? (
-                                  <img src={(() => { const img = p.image || p.primary_image; if (!img) return ''; return img.startsWith('http') ? img : img.startsWith('uploads/') ? `${BACKEND_URL}/${img}` : `${BACKEND_URL}/uploads/products/${img}`; })()} alt={p.title} />
-                                ) : (
-                                  <div style={{ width: '100%', height: '100%', borderRadius: 16, background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <i className="bi bi-image" style={{ fontSize: '3rem', color: '#ccc' }}></i>
-                                  </div>
-                                )}
-                                <div className="listing-badge">{p.listing_type}</div>
-                              </div>
-                              <div className="p-4 pt-0">
-                                <div className="d-flex gap-2 flex-wrap">
-                                  <span className="seller-badge"><i className="bi bi-patch-check-fill text-warning"></i> VERIFIED SELLER</span>
-                                  {(p.brand_name || p.brand) && <span className="seller-badge"><i className="bi bi-award me-1" style={{ color: '#ffc63a' }}></i>{p.brand_name || p.brand}</span>}
-                                </div>
-                                <h5 className="fw-bold mb-3" style={{ height: 52, overflow: 'hidden' }}>{p.title}</h5>
-                                <div className="d-flex justify-content-between align-items-center">
-                                  <div className="price-tag">
-                                    &#8377;{Number(p.listing_type === 'sell' ? (p.selling_price || p.price || p.original_price || 0) : (p.rental_cost || p.price || 0)).toLocaleString('en-IN')}
-                                    {p.listing_type === 'rent' && <small className="text-muted" style={{ fontSize: '0.85rem' }}>/day</small>}
-                                  </div>
-                                  <div className="d-flex gap-2">
-                                    <button
-                                      className={`btn-cart ${inCart ? 'added' : ''}`}
-                                      onClick={(e) => handleAddToCart(p, e)}
-                                      title={inCart ? 'Already in cart' : 'Add to cart'}
-                                    >
-                                      <i className={`bi ${inCart ? 'bi-heart-fill' : 'bi-heart'}`}></i>
-                                    </button>
-                                    <span className="btn-view">View</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </Link>
-                        </div>
-                      );
-                    })
-                  ) : !loading ? (
-                    <div className="col-12 text-center py-5">
-                      <i className="bi bi-search" style={{ fontSize: '4rem', opacity: 0.25 }}></i>
-                      <h3 className="mt-4 fw-bold">No results found</h3>
-                      <p className="text-muted">Try adjusting your search filters.</p>
-                      {activeChips.length > 0 && (
-                        <button onClick={clearAllFilters} style={{ background: '#000', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 24px', fontWeight: 700, cursor: 'pointer', marginTop: 12 }}>
-                          Clear Filters
-                        </button>
-                      )}
-                    </div>
-                  ) : null}
+                  <button
+                    className={`em-type-pill ${activeType === '' ? 'active' : ''}`}
+                    onClick={() => handleTypeClick('')}
+                  >
+                    All Items
+                  </button>
+                  {listingTypes.map((lt) => (
+                    <button
+                      key={lt.id}
+                      className={`em-type-pill ${activeType.toLowerCase() === lt.type_name.toLowerCase() ? 'active' : ''}`}
+                      onClick={() => handleTypeClick(lt.type_name.toLowerCase())}
+                    >
+                      {lt.type_name}
+                    </button>
+                  ))}
                 </div>
 
-                {/* Pagination */}
-                {data && data.pagination && data.pagination.total_pages > 1 && (
-                  <div className="d-flex justify-content-center py-5">
-                    <nav>
-                      <ul className="pagination">
-                        <li className={`page-item ${page === 1 ? 'disabled' : ''}`}><button className="page-link" onClick={() => setPage(page - 1)}><i className="bi bi-chevron-left"></i></button></li>
-                        {Array.from({ length: data.pagination.total_pages }, (_, i) => (
-                          <li key={i} className={`page-item ${page === i + 1 ? 'active' : ''}`}>
-                            <button className="page-link" onClick={() => setPage(i + 1)} style={page === i + 1 ? { background: 'var(--primary-yellow)', borderColor: 'var(--primary-yellow)', color: '#000' } : {}}>{i + 1}</button>
-                          </li>
-                        ))}
-                        <li className={`page-item ${page === data.pagination.total_pages ? 'disabled' : ''}`}><button className="page-link" onClick={() => setPage(page + 1)}><i className="bi bi-chevron-right"></i></button></li>
-                      </ul>
-                    </nav>
+                {/* Right: Sort + result count */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                  {!loading && data && (
+                    <p style={{ fontSize: '0.78rem', color: '#5a5c5c', margin: 0 }}>
+                      <strong>{data.pagination.total}</strong> item{data.pagination.total !== 1 ? 's' : ''} found
+                    </p>
+                  )}
+                  <div style={{ position: 'relative' }}>
+                    <label style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#5a5c5c', display: 'block', marginBottom: 4, marginLeft: 16, fontWeight: 700 }}>
+                      Sort By
+                    </label>
+                    <select
+                      className="em-sort-sel"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                    >
+                      <option value="featured">Featured</option>
+                      <option value="newest">Newest</option>
+                      <option value="price_asc">Price: Low to High</option>
+                      <option value="price_desc">Price: High to Low</option>
+                    </select>
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ position: 'absolute', right: 16, bottom: 12, pointerEvents: 'none', color: '#5a5c5c', fontSize: 20 }}
+                    >
+                      expand_more
+                    </span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Active filter chips */}
+              {activeChips.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+                  {activeChips.map(chip => (
+                    <span key={chip.key} className="em-chip">
+                      {chip.label}
+                      <button onClick={() => {
+                        if (chip.key === 'price') {
+                          const newF = { ...filters, minPrice: '', maxPrice: '' };
+                          setPriceInput({ min: '', max: '' });
+                          setFilters(newF); setPage(1); navigate(activeType, search, newF);
+                        } else removeFilter(chip.key);
+                      }}>×</button>
+                    </span>
+                  ))}
+                  {activeChips.length > 1 && (
+                    <button
+                      onClick={clearAllFilters}
+                      style={{ background: 'none', border: 'none', color: '#5a5c5c', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Product Grid */}
+              <section
+                className="em-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '32px 32px',
+                  position: 'relative',
+                  minHeight: 200,
+                  opacity: loading ? 0.5 : 1,
+                  transition: 'opacity 0.3s ease',
+                  pointerEvents: loading ? 'none' : 'auto',
+                }}
+              >
+                {loading && (
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 10 }}>
+                    <div className="spinner-grow text-warning" role="status" style={{ width: '2.5rem', height: '2.5rem' }}>
+                      <span className="visually-hidden">Loading…</span>
+                    </div>
                   </div>
                 )}
-              </div>
+
+                {sortedProducts.length > 0 ? sortedProducts.map((p) => (
+                  <ProductCard
+                    key={p.id}
+                    p={p}
+                    wishlisted={wishlist.includes(p.id)}
+                    onWishlist={handleWishlist}
+                  />
+                )) : !loading ? (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px 0' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 64, color: '#acadad', display: 'block', marginBottom: 16 }}>search</span>
+                    <h3 className="em-heading" style={{ fontWeight: 700, color: '#0c0f0f', marginBottom: 8 }}>No results found</h3>
+                    <p style={{ color: '#5a5c5c' }}>Try adjusting your search or filters.</p>
+                    {activeChips.length > 0 && (
+                      <button
+                        onClick={clearAllFilters}
+                        style={{ background: '#0c0f0f', color: '#fff', border: 'none', borderRadius: 12, padding: '10px 24px', fontWeight: 700, cursor: 'pointer', marginTop: 12 }}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                ) : null}
+              </section>
+
+              {/* Pagination */}
+              {data && data.pagination && data.pagination.total_pages > 1 && (
+                <div style={{ marginTop: 64, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+                  <button
+                    className="em-pg-arrow"
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_left</span>
+                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {Array.from({ length: data.pagination.total_pages }, (_, i) => (
+                      <button
+                        key={i}
+                        className={`em-pg-num ${page === i + 1 ? 'active' : ''}`}
+                        onClick={() => setPage(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    className="em-pg-arrow"
+                    disabled={page === data.pagination.total_pages}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>chevron_right</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        </main>
 
         {/* ===== MOBILE FILTER DRAWER ===== */}
-        <div className={`filter-overlay ${showFilters ? 'open' : ''}`} onClick={() => setShowFilters(false)} />
-        <div className={`filter-drawer ${showFilters ? 'open' : ''}`}>
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h5 className="fw-bold mb-0">Filters {activeChips.length > 0 && <span className="badge-count">{activeChips.length}</span>}</h5>
-            <button style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer' }} onClick={() => setShowFilters(false)}>×</button>
+        <div className={`em-overlay ${showFilters ? 'open' : ''}`} onClick={() => setShowFilters(false)} />
+        <div className={`em-drawer ${showFilters ? 'open' : ''}`}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <h5 className="em-heading" style={{ fontWeight: 700, margin: 0, fontSize: '1.1rem' }}>
+              Filters {activeChips.length > 0 && (
+                <span style={{ background: '#0c0f0f', color: '#FFC107', borderRadius: 9999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800, marginLeft: 6 }}>
+                  {activeChips.length}
+                </span>
+              )}
+            </h5>
+            <button style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#0c0f0f' }} onClick={() => setShowFilters(false)}>×</button>
           </div>
-          <FilterPanel
+          <EliteSidebar
             filters={filters}
             priceInput={priceInput}
             setPriceInput={setPriceInput}
@@ -782,54 +947,221 @@ export default function BrowsePage() {
         </div>
 
         {/* ===== FOOTER ===== */}
-        <footer className="main-footer">
-          <div className="container">
-            <div className="row gx-5">
-              <div className="col-lg-4 col-md-6 mb-4 mb-lg-0">
-                <h2 className="footer-brand">Flex Market</h2>
-                <p className="footer-description">Premium curated marketplace for the elite. Discover high-end fashion, electronics, and lifestyle essentials reserved for those who value quality.</p>
-              </div>
-              <div className="col-lg-2 col-md-6 mb-4 mb-lg-0">
-                <h5 className="footer-heading">Quick Links</h5>
-                <ul className="footer-links">
-                  <li><Link href="/">Home</Link></li>
-                  <li><Link href="/buyer/browse">Explore</Link></li>
-                  <li><Link href="/cart">Cart</Link></li>
-                  <li><Link href="/login">Sign In</Link></li>
-                </ul>
-              </div>
-              <div className="col-lg-3 col-md-6 mb-4 mb-lg-0">
-                <h5 className="footer-heading">Categories</h5>
-                <ul className="footer-links">
-                  <li><Link href="/buyer/browse">All Products</Link></li>
-                  {listingTypes.slice(0, 5).map((lt) => (<li key={lt.id}><Link href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}>{lt.type_name}</Link></li>))}
-                </ul>
-              </div>
-              <div className="col-lg-3 col-md-6">
-                <h5 className="footer-heading">Our policies</h5>
-                <ul className="footer-links mb-5">
-                  <li><a href="#">Return policies</a></li>
-                  <li><a href="#">Cancellation policies</a></li>
-                  <li><a href="#">Terms of use</a></li>
-                </ul>
-                <div className="social-icons-box d-flex" style={{ marginTop: -33 }}>
-                  <a href="#"><i className="bi bi-facebook"></i></a>
-                  <a href="#"><i className="bi bi-twitter"></i></a>
-                  <a href="#"><i className="bi bi-instagram"></i></a>
-                  <a href="#"><i className="bi bi-linkedin"></i></a>
-                </div>
+        <footer className="em-footer" style={{ padding: '64px 32px 0' }}>
+          <div style={{ maxWidth: 1440, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 48, fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="em-heading" style={{ fontSize: '1.25rem', fontWeight: 900, color: '#fff' }}>Flex Market</div>
+              <p style={{ color: 'rgba(255,255,255,0.5)', textTransform: 'none', letterSpacing: 'normal', lineHeight: 1.7, maxWidth: 300, fontSize: '0.875rem' }}>
+                Redefining high-end retail through curated excellence and minimalist design.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <h4 style={{ color: '#FFC107', fontWeight: 700, marginBottom: 8, fontSize: '0.875rem' }}>Shop</h4>
+              <Link href="/buyer/browse">New Arrivals</Link>
+              <Link href="/buyer/browse">Bestsellers</Link>
+              <Link href="/buyer/browse">Collections</Link>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <h4 style={{ color: '#FFC107', fontWeight: 700, marginBottom: 8, fontSize: '0.875rem' }}>Support</h4>
+              <a href="#">Privacy Policy</a>
+              <a href="#">Terms of Service</a>
+              <a href="#">Shipping &amp; Returns</a>
+              <a href="#">Contact Us</a>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <h4 style={{ color: '#FFC107', fontWeight: 700, marginBottom: 8, fontSize: '0.875rem' }}>Newsletter</h4>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="email"
+                  placeholder="YOUR EMAIL"
+                  style={{
+                    width: '100%', background: 'rgba(255,255,255,0.05)',
+                    border: 'none', borderRadius: 9999,
+                    padding: '16px 24px', color: '#fff', fontSize: '0.75rem',
+                    outline: 'none', letterSpacing: '0.05em',
+                  }}
+                />
+                <button
+                  style={{
+                    position: 'absolute', right: 8, top: 8, bottom: 8,
+                    background: '#FFC107', color: '#0c0f0f',
+                    border: 'none', borderRadius: 9999,
+                    padding: '0 24px', fontWeight: 700, fontSize: '0.65rem',
+                    cursor: 'pointer', letterSpacing: '0.05em',
+                  }}
+                >
+                  JOIN
+                </button>
               </div>
             </div>
           </div>
-          <div className="copyright-bar"><div className="container text-center">&copy; {new Date().getFullYear()} Flex Market. All rights reserved.</div></div>
+
+          <div style={{ maxWidth: 1440, margin: '64px auto 0', paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', paddingBottom: 32 }}>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.625rem', margin: 0, letterSpacing: '0.05em' }}>
+              © {new Date().getFullYear()} Flex Market. Curated Excellence.
+            </p>
+          </div>
         </footer>
       </div>
     </>
   );
 }
 
-// ── Filter Panel Component ─────────────────────────────────────────────────────
-interface FilterPanelProps {
+// ── ProductCard ────────────────────────────────────────────────────────────────
+function resolveImg(img: string): string {
+  if (!img) return '';
+  if (img.startsWith('http')) return img;
+  if (img.startsWith('uploads/')) return `${BACKEND_URL}/${img}`;
+  return `${BACKEND_URL}/uploads/products/${img}`;
+}
+
+function parseImages(p: Product): string[] {
+  const arr: string[] = [];
+  if (p.images) {
+    if (Array.isArray(p.images)) {
+      arr.push(...p.images.filter(Boolean));
+    } else {
+      try {
+        const parsed = JSON.parse(p.images as string);
+        if (Array.isArray(parsed)) arr.push(...parsed.filter(Boolean));
+        else arr.push(p.images as string);
+      } catch {
+        arr.push(p.images as string);
+      }
+    }
+  }
+  if (arr.length === 0 && p.primary_image) arr.push(p.primary_image);
+  if (arr.length === 0 && p.image) arr.push(p.image);
+  return arr.filter(Boolean);
+}
+
+interface ProductCardProps {
+  p: Product;
+  wishlisted: boolean;
+  onWishlist: (p: Product, e: React.MouseEvent) => void;
+}
+
+function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
+  const [imgIdx, setImgIdx] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const images = useMemo(() => parseImages(p), [p]);
+
+  const startScroll = () => {
+    if (images.length <= 1) return;
+    timerRef.current = setInterval(() => setImgIdx(i => (i + 1) % images.length), 1600);
+  };
+  const stopScroll = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setImgIdx(0);
+  };
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+
+  const isRent = p.listing_type === 'rent';
+  const originalPrice = Number(p.original_price || 0);
+  const sellingPrice = Number(p.selling_price || p.price || p.original_price || 0);
+  const rentalPrice = Number(p.rental_cost || p.price || 0);
+  const hasDiscount = !isRent && sellingPrice < originalPrice && originalPrice > 0;
+  const discountPct = hasDiscount ? Math.round((1 - sellingPrice / originalPrice) * 100) : 0;
+  const brand = p.brand_name || p.brand;
+  const slug = `${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${p.id}`;
+  const tooltipText = isRent ? 'This item is available for Rent' : 'This item is available for Sale';
+
+  return (
+    <div className="em-card" style={{ display: 'flex', flexDirection: 'column' }} onMouseEnter={startScroll} onMouseLeave={stopScroll}>
+      <Link href={`/buyer/product/${slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}>
+
+        {/* ── Image carousel ── */}
+        <div className="em-card-img-wrap">
+          {images.length > 0 ? images.map((img, i) => (
+            <img
+              key={i}
+              className="em-card-img"
+              src={resolveImg(img)}
+              alt={p.title}
+              style={{ opacity: i === imgIdx ? 1 : 0 }}
+            />
+          )) : (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="bi bi-image" style={{ fontSize: '3rem', color: '#acadad' }}></i>
+            </div>
+          )}
+
+          <div className="em-card-overlay" />
+
+          {/* Listing type badge with tooltip */}
+          <div className="em-type-badge" title={tooltipText}>
+            <span className="material-symbols-outlined" style={{ fontSize: 11, fontVariationSettings: "'FILL' 1, 'wght' 500" }}>
+              {isRent ? 'schedule' : 'sell'}
+            </span>
+            {isRent ? 'Rent' : 'Buy'}
+          </div>
+
+
+
+          {/* Dot indicators */}
+          {images.length > 1 && (
+            <div className="em-img-dots">
+              {images.map((_, i) => (
+                <div key={i} className={`em-img-dot ${i === imgIdx ? 'active' : ''}`} style={{ width: i === imgIdx ? 14 : 5 }} />
+              ))}
+            </div>
+          )}
+
+          {/* Wishlist button */}
+          <button className={`em-wish-btn ${wishlisted ? 'wishlisted' : ''}`} onClick={(e) => onWishlist(p, e)}>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: 16, fontVariationSettings: wishlisted ? "'FILL' 1, 'wght' 600" : "'FILL' 0, 'wght' 400" }}
+            >
+              favorite
+            </span>
+            {wishlisted ? 'Wishlisted' : 'Wishlist'}
+          </button>
+        </div>
+
+        {/* ── Product info ── */}
+        <div style={{ padding: '0 2px' }}>
+
+          {/* Brand */}
+          {brand && <p className="em-prod-brand">{brand}</p>}
+
+          {/* Title + Price on one line */}
+          <div className="em-title-price-row">
+            <h3 className="em-prod-title">{p.title}</h3>
+            <div className="em-prod-price-block">
+              {isRent ? (
+                <>
+                  <span className="em-prod-price">₹{rentalPrice.toLocaleString('en-IN')}</span>
+                  <span className="em-prod-per">/day</span>
+                </>
+              ) : (
+                <>
+                  <span className="em-prod-price">₹{sellingPrice.toLocaleString('en-IN')}</span>
+                  {hasDiscount && (
+                    <span className="em-prod-orig">₹{originalPrice.toLocaleString('en-IN')}</span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Tags: category · gender · brand */}
+          <div className="em-prod-tags">
+            {p.category_name && <span className="em-prod-tag">{p.category_name}</span>}
+            {p.gender && <span className="em-prod-tag">{p.gender}</span>}
+            {brand && <span className="em-prod-tag brand">{brand}</span>}
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+// ── Elite Sidebar Component ────────────────────────────────────────────────────
+interface EliteSidebarProps {
   filters: ActiveFilters;
   priceInput: { min: string; max: string };
   setPriceInput: (v: { min: string; max: string }) => void;
@@ -843,136 +1175,164 @@ interface FilterPanelProps {
   activeChips: { label: string; key: string }[];
 }
 
-function FilterPanel({
+function EliteSidebar({
   filters, priceInput, setPriceInput, filterOptions, dynamicAttrs,
   subCatsForCategory, setFilter, setSpecFilter, applyPriceFilter,
   clearAllFilters, activeChips,
-}: FilterPanelProps) {
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    price: true, category: true, brand: false, color: false, size: false, gender: false, condition: false,
+}: EliteSidebarProps) {
+  const [open, setOpen] = useState<Record<string, boolean>>({
+    price: true, category: true, brand: false, color: false, size: false, gender: false,
   });
+  const toggle = (k: string) => setOpen(p => ({ ...p, [k]: !p[k] }));
 
-  const toggleSection = (key: string) => setOpenSections(p => ({ ...p, [key]: !p[key] }));
+  const SectionTitle = ({ id, label }: { id: string; label: string }) => (
+    <div
+      className="em-filter-title"
+      onClick={() => toggle(id)}
+      style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+    >
+      <span>{label}</span>
+      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#5a5c5c', fontVariationSettings: "'FILL' 0, 'wght' 400" }}>
+        {open[id] ? 'expand_less' : 'expand_more'}
+      </span>
+    </div>
+  );
+
+  /* Radio pills — dropdown if > 5 options */
+  const RadioPills = ({
+    items, activeVal, onSelect, placeholder = 'All',
+  }: {
+    items: Array<{ value: string; label: string }>;
+    activeVal: string;
+    onSelect: (v: string) => void;
+    placeholder?: string;
+  }) => {
+    if (items.length > 5) {
+      return (
+        <select className="em-select" value={activeVal} onChange={e => onSelect(e.target.value)}>
+          <option value="">{placeholder}</option>
+          {items.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+        </select>
+      );
+    }
+    return (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {items.map(item => (
+          <button
+            key={item.value}
+            className={`em-filter-pill ${activeVal === item.value ? 'active' : ''}`}
+            onClick={() => onSelect(activeVal === item.value ? '' : item.value)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="filter-sidebar">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h6 className="fw-bold mb-0" style={{ fontFamily: "'Maven Pro', sans-serif" }}>
-          <i className="bi bi-sliders me-2"></i>Filters
-        </h6>
+    <div>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #acadad', paddingBottom: 16, marginBottom: 8 }}>
+        <strong className="em-heading" style={{ fontSize: '0.875rem', fontWeight: 800, letterSpacing: '0.1em', color: '#0c0f0f', textTransform: 'uppercase' }}>
+          FILTERS
+        </strong>
         {activeChips.length > 0 && (
-          <button onClick={clearAllFilters} style={{ background: 'none', border: 'none', color: '#999', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
-            Clear all
+          <button
+            onClick={clearAllFilters}
+            style={{ background: 'none', border: 'none', color: '#b02500', fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer' }}
+          >
+            CLEAR ALL
           </button>
         )}
       </div>
 
-      {/* ── Price Range ── */}
-      <div className="filter-section">
-        <div className="filter-section-title" onClick={() => toggleSection('price')}>
-          Price Range <i className={`bi bi-chevron-${openSections.price ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
-        </div>
-        {openSections.price && (
+      {/* Price Range */}
+      <div className="em-sidebar-section">
+        <SectionTitle id="price" label="Price Range" />
+        {open.price && (
           <div>
-            <div className="price-inputs mb-2">
-              <input
-                type="number"
-                className="price-input"
-                placeholder="Min ₹"
-                value={priceInput.min}
-                onChange={(e) => setPriceInput({ ...priceInput, min: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()}
-                min={0}
-              />
-              <span style={{ color: '#ccc', fontSize: '0.8rem' }}>—</span>
-              <input
-                type="number"
-                className="price-input"
-                placeholder="Max ₹"
-                value={priceInput.max}
-                onChange={(e) => setPriceInput({ ...priceInput, max: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()}
-                min={0}
-              />
+            <input
+              type="range"
+              className="em-range"
+              min={filterOptions?.price_range?.min_price || 0}
+              max={filterOptions?.price_range?.max_price || 100000}
+              step={100}
+              value={priceInput.max || filterOptions?.price_range?.max_price || 100000}
+              onChange={(e) => setPriceInput({ ...priceInput, max: e.target.value })}
+              style={{ marginBottom: 16 }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#5a5c5c', fontSize: '0.75rem' }}>₹</span>
+                <input
+                  type="number" className="em-price-inp" placeholder="Min"
+                  value={priceInput.min} onChange={(e) => setPriceInput({ ...priceInput, min: e.target.value })}
+                  onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={0}
+                />
+              </div>
+              <span style={{ color: '#5a5c5c' }}>to</span>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#5a5c5c', fontSize: '0.75rem' }}>₹</span>
+                <input
+                  type="number" className="em-price-inp" placeholder="Max"
+                  value={priceInput.max} onChange={(e) => setPriceInput({ ...priceInput, max: e.target.value })}
+                  onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={0}
+                />
+              </div>
             </div>
-            <button className="btn-apply-price w-100" onClick={applyPriceFilter}>Apply Price</button>
-            {filterOptions?.price_range && (
-              <p style={{ fontSize: '0.72rem', color: '#bbb', marginTop: 6, marginBottom: 0 }}>
-                Range: ₹{Number(filterOptions.price_range.min_price).toLocaleString('en-IN')} – ₹{Number(filterOptions.price_range.max_price).toLocaleString('en-IN')}
-              </p>
-            )}
+            <button
+              onClick={applyPriceFilter}
+              style={{ marginTop: 12, width: '100%', background: '#0c0f0f', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 0', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+            >
+              Apply Price
+            </button>
           </div>
         )}
       </div>
 
-      {/* ── Category ── */}
+      {/* Categories */}
       {filterOptions && filterOptions.categories.length > 0 && (
-        <div className="filter-section">
-          <div className="filter-section-title" onClick={() => toggleSection('category')}>
-            Category <i className={`bi bi-chevron-${openSections.category ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
-          </div>
-          {openSections.category && (
+        <div className="em-sidebar-section">
+          <SectionTitle id="category" label="Categories" />
+          {open.category && (
             <div>
-              <select
-                className="filter-select mb-2"
-                value={filters.categoryId}
-                onChange={(e) => setFilter('categoryId', e.target.value)}
-              >
-                <option value="">All Categories</option>
-                {filterOptions.categories.map(c => (
-                  <option key={c.id} value={String(c.id)}>{c.name}</option>
-                ))}
-              </select>
-
-              {/* Sub-Category */}
+              <RadioPills
+                items={filterOptions.categories.map(c => ({ value: String(c.id), label: c.name }))}
+                activeVal={filters.categoryId}
+                onSelect={(v) => setFilter('categoryId', v)}
+                placeholder="All Categories"
+              />
               {filters.categoryId && subCatsForCategory.length > 0 && (
-                <select
-                  className="filter-select"
-                  value={filters.subCategoryId}
-                  onChange={(e) => setFilter('subCategoryId', e.target.value)}
-                >
-                  <option value="">All Sub-categories</option>
-                  {subCatsForCategory.map(s => (
-                    <option key={s.id} value={String(s.id)}>{s.name}</option>
-                  ))}
-                </select>
+                <div style={{ marginTop: 12 }}>
+                  <RadioPills
+                    items={subCatsForCategory.map(s => ({ value: String(s.id), label: s.name }))}
+                    activeVal={filters.subCategoryId}
+                    onSelect={(v) => setFilter('subCategoryId', v)}
+                    placeholder="All Sub-categories"
+                  />
+                </div>
               )}
             </div>
           )}
         </div>
       )}
 
-      {/* ── Dynamic Attributes (from category field_config) ── */}
-      {dynamicAttrs.length > 0 && dynamicAttrs.map((attr) => (
-        <div key={attr.name} className="filter-section">
-          <div className="filter-section-title" style={{ cursor: 'default' }}>{attr.name}</div>
-          {attr.type === 'select' && attr.options && attr.options.length > 0 ? (
-            <select
-              className="filter-select"
-              value={filters.specs[attr.name] || ''}
-              onChange={(e) => setSpecFilter(attr.name, e.target.value)}
-            >
-              <option value="">Any {attr.name}</option>
-              {attr.options.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-          ) : attr.type === 'checkbox' && attr.options && attr.options.length > 0 ? (
-            <div className="d-flex flex-wrap gap-1">
-              {attr.options.map(opt => (
-                <button
-                  key={opt}
-                  className={`filter-btn-pill ${filters.specs[attr.name] === opt ? 'active' : ''}`}
-                  onClick={() => setSpecFilter(attr.name, filters.specs[attr.name] === opt ? '' : opt)}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
+      {/* Dynamic Attributes */}
+      {dynamicAttrs.map((attr) => (
+        <div key={attr.name} className="em-sidebar-section">
+          <div className="em-filter-title" style={{ cursor: 'default' }}>{attr.name}</div>
+          {attr.options && attr.options.length > 0 ? (
+            <RadioPills
+              items={attr.options.map(o => ({ value: o, label: o }))}
+              activeVal={filters.specs[attr.name] || ''}
+              onSelect={(v) => setSpecFilter(attr.name, filters.specs[attr.name] === v ? '' : v)}
+              placeholder={`Any ${attr.name}`}
+            />
           ) : (
             <input
-              type="text"
-              className="price-input"
+              type="text" className="em-price-inp"
+              style={{ border: '1px solid #acadad', borderRadius: 10, paddingLeft: 12 }}
               placeholder={`Enter ${attr.name}`}
               value={filters.specs[attr.name] || ''}
               onChange={(e) => setSpecFilter(attr.name, e.target.value)}
@@ -981,112 +1341,65 @@ function FilterPanel({
         </div>
       ))}
 
-      {/* ── Brand ── */}
+      {/* Brand */}
       {filterOptions && filterOptions.brands.length > 0 && (
-        <div className="filter-section">
-          <div className="filter-section-title" onClick={() => toggleSection('brand')}>
-            Brand <i className={`bi bi-chevron-${openSections.brand ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
-          </div>
-          {openSections.brand && (
-            <select
-              className="filter-select"
-              value={filters.brandId}
-              onChange={(e) => setFilter('brandId', e.target.value)}
-            >
-              <option value="">All Brands</option>
-              {filterOptions.brands.map(b => (
-                <option key={b.id} value={String(b.id)}>{b.brand_name}</option>
-              ))}
-            </select>
+        <div className="em-sidebar-section">
+          <SectionTitle id="brand" label="Brand" />
+          {open.brand && (
+            <RadioPills
+              items={filterOptions.brands.map(b => ({ value: String(b.id), label: b.brand_name }))}
+              activeVal={filters.brandId}
+              onSelect={(v) => setFilter('brandId', v)}
+              placeholder="All Brands"
+            />
           )}
         </div>
       )}
 
-      {/* ── Color ── */}
+      {/* Color */}
       {filterOptions && filterOptions.colors.length > 0 && (
-        <div className="filter-section">
-          <div className="filter-section-title" onClick={() => toggleSection('color')}>
-            Color <i className={`bi bi-chevron-${openSections.color ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
-          </div>
-          {openSections.color && (
-            <div className="d-flex flex-wrap gap-1">
-              {filterOptions.colors.map(c => (
-                <button
-                  key={c.id}
-                  className={`filter-btn-pill ${filters.color.toLowerCase() === c.name.toLowerCase() ? 'active' : ''}`}
-                  onClick={() => setFilter('color', filters.color.toLowerCase() === c.name.toLowerCase() ? '' : c.name)}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
+        <div className="em-sidebar-section">
+          <SectionTitle id="color" label="Color" />
+          {open.color && (
+            <RadioPills
+              items={filterOptions.colors.map(c => ({ value: c.name, label: c.name }))}
+              activeVal={filters.color}
+              onSelect={(v) => setFilter('color', v)}
+              placeholder="All Colors"
+            />
           )}
         </div>
       )}
 
-      {/* ── Size ── */}
+      {/* Size */}
       {filterOptions && filterOptions.sizes.length > 0 && (
-        <div className="filter-section">
-          <div className="filter-section-title" onClick={() => toggleSection('size')}>
-            Size <i className={`bi bi-chevron-${openSections.size ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
-          </div>
-          {openSections.size && (
-            <div className="d-flex flex-wrap gap-1">
-              {filterOptions.sizes.map(s => (
-                <button
-                  key={s}
-                  className={`filter-btn-pill ${filters.size === s ? 'active' : ''}`}
-                  onClick={() => setFilter('size', filters.size === s ? '' : s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+        <div className="em-sidebar-section">
+          <SectionTitle id="size" label="Size" />
+          {open.size && (
+            <RadioPills
+              items={filterOptions.sizes.map(s => ({ value: s, label: s }))}
+              activeVal={filters.size}
+              onSelect={(v) => setFilter('size', v)}
+              placeholder="Any Size"
+            />
           )}
         </div>
       )}
 
-      {/* ── Gender ── */}
+      {/* Gender */}
       {filterOptions && filterOptions.genders.length > 0 && (
-        <div className="filter-section">
-          <div className="filter-section-title" onClick={() => toggleSection('gender')}>
-            Gender <i className={`bi bi-chevron-${openSections.gender ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
-          </div>
-          {openSections.gender && (
-            <div className="d-flex flex-wrap gap-1">
-              {filterOptions.genders.map(g => (
-                <button
-                  key={g.id}
-                  className={`filter-btn-pill ${filters.gender.toLowerCase() === g.name.toLowerCase() ? 'active' : ''}`}
-                  onClick={() => setFilter('gender', filters.gender.toLowerCase() === g.name.toLowerCase() ? '' : g.name)}
-                >
-                  {g.name}
-                </button>
-              ))}
-            </div>
+        <div className="em-sidebar-section">
+          <SectionTitle id="gender" label="Gender" />
+          {open.gender && (
+            <RadioPills
+              items={filterOptions.genders.map(g => ({ value: g.name, label: g.name }))}
+              activeVal={filters.gender}
+              onSelect={(v) => setFilter('gender', v)}
+              placeholder="All Genders"
+            />
           )}
         </div>
       )}
-
-      {/* ── Condition ── */}
-      <div className="filter-section">
-        <div className="filter-section-title" onClick={() => toggleSection('condition')}>
-          Condition <i className={`bi bi-chevron-${openSections.condition ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
-        </div>
-        {openSections.condition && (
-          <div className="d-flex gap-2 flex-wrap">
-            {(['', 'new', 'used'] as const).map((c) => (
-              <button
-                key={c || 'all'}
-                className={`filter-btn-pill ${filters.condition === c ? 'active' : ''}`}
-                onClick={() => setFilter('condition', c)}
-              >
-                {c === '' ? 'All' : c === 'new' ? 'Brand New' : 'Pre-owned'}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

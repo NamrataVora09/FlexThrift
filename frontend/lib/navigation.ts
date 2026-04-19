@@ -114,7 +114,6 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'Subscription Plans', href: '/superadmin/subscription-plans', icon: 'bi bi-card-checklist' },
             { label: 'User Subscriptions', href: '/superadmin/user-subscriptions', icon: 'bi bi-person-check-fill' },
             { label: 'Coupons', href: '/superadmin/coupons', icon: 'bi bi-ticket-perforated-fill' },
-            { label: 'Fee Management', href: '/superadmin/fee-management', icon: 'bi bi-cash-coin' },
             { label: 'Financial Reports', href: '/superadmin/transactions', icon: 'bi bi-graph-up-arrow' },
             { label: 'Ad Scripts', href: '/superadmin/ad-settings', icon: 'bi bi-code-square' },
             { label: 'Advertisements', href: '/superadmin/advertisements', icon: 'bi bi-megaphone-fill' },
