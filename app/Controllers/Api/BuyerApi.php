@@ -599,6 +599,8 @@ class BuyerApi extends ResourceController
             'rental_start_date' => $data['rental_start_date'] ?? null,
             'rental_end_date' => $data['rental_end_date'] ?? null,
             'delivery_address' => $data['delivery_address'] ?? null,
+            'delivery_city' => $data['delivery_city'] ?? null,
+            'delivery_state' => $data['delivery_state'] ?? null,
             'delivery_pin_code' => $data['delivery_pin_code'] ?? null,
             'status' => 'pending',
             'created_at' => date('Y-m-d H:i:s'),
@@ -629,9 +631,16 @@ class BuyerApi extends ResourceController
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
 
-        $offer = $db->table('offers')->where('id', $id)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
+        
+        $query = $db->table('offers')->where('id', $id);
+        if (!$isAdmin) {
+            $query->where('buyer_id', $jwtUser['user_id']);
+        }
+        $offer = $query->get()->getRowArray();
+
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+            return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
 
         if (!in_array($offer['status'], ['pending', 'negotiating', 'rejected'])) {
             return $this->respond(['success' => false, 'message' => 'Dates can only be updated for active or rejected offers.'], 400);
@@ -733,9 +742,15 @@ class BuyerApi extends ResourceController
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
 
-        $offer = $db->table('offers')->where('id', $id)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
+        $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
+        $query = $db->table('offers')->where('id', $id);
+        if (!$isAdmin) {
+            $query->where('buyer_id', $jwtUser['user_id']);
+        }
+        $offer = $query->get()->getRowArray();
+
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+            return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
         if (!in_array($offer['status'], ['pending', 'negotiating', 'accepted', 'rejected']))
             return $this->respond(['success' => false, 'message' => 'This offer can no longer be cancelled'], 400);
 

@@ -79,6 +79,7 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
   rental_max_cost_cap_per_day: { label: 'Max Cost Cap/Day (%)', hint: 'Max rental cost per day as % of deposit.' },
   min_rental_days: { label: 'Min Rental Days' },
   rental_pricing_tiers: { label: 'Rental Pricing Tiers (JSON)', type: 'textarea', hint: 'JSON array of rental tier objects.' },
+  fallback_rental_cost_per_day: { label: 'Fallback Rental Cost Per Day (%)', hint: 'Default rental cost as % of deposit if no pricing rule matches.' },
   offer_acceptance_limit_days: { label: 'Offer Acceptance Window (Days)', hint: 'Seller window to accept/reject an offer.' },
   seller_rating_period_days: { label: 'Seller Rating Window (Days)', hint: 'Days an accepted seller has to rate a buyer.' },
   seller_rejection_window_hours: { label: 'Seller Rejection Window (Hours)', hint: 'Hours a seller has to reject after accepting.' },
@@ -109,7 +110,7 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
 };
 
 const TAB_FIELDS: Record<string, string[]> = {
-  pricing: [],
+  pricing: ['sale_base_discount', 'usage_no_dep_max', 'sale_depreciation_per_use', 'sale_max_additional_depreciation', 'rental_base_deposit_deduction', 'rental_suggested_cost_percent', 'rental_max_cost_cap_per_day', 'fallback_rental_cost_per_day', 'min_rental_days'],
   offers: ['offer_acceptance_limit_days', 'seller_rating_period_days', 'seller_rejection_window_hours', 'buyer_rating_period_days'],
   images: ['max_product_images', 'max_image_size_mb', 'image_upload_guidelines'],
   smtp: ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name'],
@@ -302,9 +303,9 @@ export default function BusinessSettingsView() {
 
   // Returns true if [minA, maxA] overlaps [minB, maxB] (0 means ∞)
   const rangesOverlap = (minA: number, maxA: number, minB: number, maxB: number) => {
-    const endA = maxA === 0 ? Infinity : maxA;
-    const endB = maxB === 0 ? Infinity : maxB;
-    return minA < endB && minB < endA;
+    const endA = maxA === 0 ? 999999999 : maxA;
+    const endB = maxB === 0 ? 999999999 : maxB;
+    return minA <= endB && minB <= endA;
   };
 
   const saveSaleRule = async () => {
@@ -359,10 +360,7 @@ export default function BusinessSettingsView() {
       const nMax = Number(newRange.max) || 0;
 
       // Ensure sequential consistency: new ranges should generally start after existing ones if adding new
-      if (!editingSaleRule.id && nMin <= currentMax) {
-        showToast.warning(`New rule min (${nMin}) must be greater than the current maximum range (${currentMax === 999999 ? '∞' : currentMax}) for this category.`);
-        return;
-      }
+
 
       for (const existing of existingForSameValue) {
         if (rangesOverlap(nMin, nMax, Number(existing.depreciation_range_min), Number(existing.depreciation_range_max))) {
@@ -478,10 +476,7 @@ export default function BusinessSettingsView() {
     const sortedExistingRental = [...existingRentalSameValue].sort((a,b) => Number(a.depreciation_range_min) - Number(b.depreciation_range_min));
     const currentRentalMax = sortedExistingRental.length > 0 ? Math.max(...sortedExistingRental.map(r => Number(r.depreciation_range_max) === 0 ? 999999 : Number(r.depreciation_range_max))) : -1;
 
-    if (!editingRentalRule.id && newMin <= currentRentalMax) {
-      showToast.warning(`New rule min (${newMin}) must be greater than current maximum range (${currentRentalMax === 999999 ? '∞' : currentRentalMax})`);
-      return;
-    }
+
 
     for (const existing of existingRentalSameValue) {
       if (rangesOverlap(newMin, newMax, Number(existing.depreciation_range_min), Number(existing.depreciation_range_max))) {
@@ -638,6 +633,19 @@ export default function BusinessSettingsView() {
   // ==================== PRICING TAB CONTENT ====================
   const renderPricingTab = () => (
     <>
+      {/* Global Defaults Section */}
+      <div className="card border-0 mb-4" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        <div className="card-header bg-white d-flex align-items-center gap-2" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>
+          <i className="bi bi-gear" style={{ color: '#ffc63a' }}></i>
+          <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>Global Pricing & Rental Defaults</h5>
+        </div>
+        <div className="card-body" style={{ padding: '1.25rem' }}>
+          <div className="row">
+            {(TAB_FIELDS['pricing'] || []).map((key) => renderField(key))}
+          </div>
+        </div>
+      </div>
+
       {/* ===== Filter-Based Sale Pricing Rules ===== */}
       <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1rem' }}>
         <div className="card-header bg-white d-flex justify-content-between align-items-center" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>

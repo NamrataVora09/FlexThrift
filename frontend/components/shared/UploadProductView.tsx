@@ -388,7 +388,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       rental = Math.round(deposit * (maxCapPct / 100));
     } else {
       // Use fallback settings: Deposit = Original Price, Rental = Deposit * (FallbackMaxCap%)
-      const fallbackMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
+      const fallbackMaxCap = parseFloat(meta.config.fallback_rental_cost_per_day || '10');
       deposit = origPrice;
       rental = Math.round(deposit * (fallbackMaxCap / 100));
     }
@@ -653,7 +653,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       };
     } else {
       // Use fallback settings: Suggested/Max Deposit = Original (0% deduction for fallback), Rental = Deposit * (FallbackMaxCap%)
-      const fallbackMaxCap = parseFloat(cfg.rental_max_cost_cap_per_day || '14');
+      const fallbackMaxCap = parseFloat(cfg.fallback_rental_cost_per_day || '10');
       const suggestedDeposit = origPrice;
       const maxDeposit = origPrice;
       const suggestedRental = Math.round(suggestedDeposit * (fallbackMaxCap / 100));

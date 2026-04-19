@@ -24,7 +24,7 @@ class SellerApi extends ResourceController
         ];
 
         $pendingOffers = $db->table('offers o')
-            ->select('o.*, p.title as product_title, p.listing_type, u.name as buyer_name')
+            ->select('o.id, o.buyer_id, o.seller_id, o.offer_price, o.counter_price, o.rental_start_date, o.rental_end_date, o.message, o.status, o.offer_type, o.delivery_pin_code, o.delivery_country, o.delivery_state, o.delivery_city, o.deposit_amount, o.accepted_at, o.rejected_at, o.seller_remarks, o.created_at, o.updated_at, p.title as product_title, p.listing_type, u.name as buyer_name')
             ->join('products p', 'p.id = o.product_id', 'left')
             ->join('users u', 'u.id = o.buyer_id', 'left')
             ->where('o.seller_id', $userId)
@@ -92,7 +92,7 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $offers = $db->table('offers o')
-            ->select('o.*, o.offer_price as offered_price, p.title as product_title, p.product_number, p.category, p.listing_type, p.original_price, p.price as product_price, p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit, p.views_count as product_views, p.dispatch_city, p.dispatch_state')
+            ->select('o.id, o.product_id, o.buyer_id, o.seller_id, o.offer_price, o.counter_price, o.rental_start_date, o.rental_end_date, o.message, o.status, o.offer_type, o.delivery_pin_code, o.delivery_country, o.delivery_state, o.delivery_city, o.deposit_amount, o.accepted_at, o.rejected_at, o.seller_remarks, o.created_at, o.updated_at, o.offer_price as offered_price, p.title as product_title, p.product_number, p.category, p.listing_type, p.original_price, p.price as product_price, p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit, p.views_count as product_views, p.dispatch_city, p.dispatch_state')
             ->select('(SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image')
             ->select('(SELECT ord.status FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != \'cancelled\' ORDER BY ord.created_at DESC LIMIT 1) as linked_order_status')
             ->select('u.name as buyer_name, u.mobile as buyer_mobile, u.email as buyer_email, u.buyer_rating_avg, u.buyer_rating_count, u.renter_reliability_score as buyer_reliability_score')
@@ -191,7 +191,7 @@ class SellerApi extends ResourceController
 
         $listingTypes = $db->table('listing_types')->get()->getResultArray();
         $productTypes = $db->table('product_types')->get()->getResultArray();
-        $categories = $db->table('categories')->select('id, category_name as name, field_config, product_type_ids, applies_to')->get()->getResultArray();
+        $categories = $db->table('categories')->select('id, category_name as name, field_config, product_type_id, product_type_ids, applies_to')->get()->getResultArray();
         $subCategories = $db->table('sub_categories')->get()->getResultArray();
         $colors = $db->table('colors')->orderBy('name', 'ASC')->get()->getResultArray();
         $genders = $db->table('genders')->orderBy('name', 'ASC')->get()->getResultArray();
@@ -202,8 +202,8 @@ class SellerApi extends ResourceController
         foreach ($settings as $s) $config[$s['setting_key']] = $s['setting_value'];
 
         $defaults = [
-            'sale_base_discount' => 5, 
-            'fallback_rental_cost_per_day' => 0,
+            'sale_base_discount' => 0, 
+            'fallback_rental_cost_per_day' => 10,
             'min_rental_days' => 3,
             'max_product_images' => 7,
         ];
@@ -440,8 +440,14 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?? [];
 
-        $offer = $db->table('offers')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+        $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
+        $query = $db->table('offers')->where('id', $id);
+        if (!$isAdmin) {
+            $query->where('seller_id', $jwtUser['user_id']);
+        }
+        $offer = $query->get()->getRowArray();
+        
+        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $offerType = $offer['offer_type'] ?? $product['listing_type'];
 
@@ -569,8 +575,14 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?? [];
 
-        $offer = $db->table('offers')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+        $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
+        $query = $db->table('offers')->where('id', $id);
+        if (!$isAdmin) {
+            $query->where('seller_id', $jwtUser['user_id']);
+        }
+        $offer = $query->get()->getRowArray();
+
+        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
         if ($offer['status'] !== 'pending') return $this->respond(['success' => false, 'message' => 'Date suggestions are only allowed on pending offers'], 400);
 
         $newStart  = $data['rental_start_date'] ?? null;
@@ -658,8 +670,14 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?? [];
 
-        $offer = $db->table('offers')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+        $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
+        $query = $db->table('offers')->where('id', $id);
+        if (!$isAdmin) {
+            $query->where('seller_id', $jwtUser['user_id']);
+        }
+        $offer = $query->get()->getRowArray();
+
+        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
 
         if ($offer['status'] === 'accepted') {
             // Seller retraction: only allowed within the rejection window

@@ -219,9 +219,11 @@ export default function TaxonomyView() {
     } else if (type === 'product_type') {
       setEditForm({ name: item.name, listing_type_id: item.listing_type_id });
     } else if (type === 'category') {
-      setEditForm({ name: item.category_name || item.name || '', product_type_ids: parseJson(item.product_type_ids), applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
+      const ptIds = item.product_type_ids ? parseJson(item.product_type_ids) : (item.product_type_id ? [item.product_type_id] : []);
+      setEditForm({ name: item.category_name || item.name || '', product_type_ids: ptIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
     } else if (type === 'sub_category') {
-      setEditForm({ name: item.name, category_ids: parseJson(item.category_ids), applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
+      const catIds = item.category_ids ? parseJson(item.category_ids) : (item.category_id ? [item.category_id] : []);
+      setEditForm({ name: item.name, category_ids: catIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
     } else if (type === 'color') {
       setEditForm({ name: item.name, hex_code: item.hex_code });
     }

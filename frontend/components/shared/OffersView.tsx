@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, ChangeEvent, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
+import { RentalCalendar } from './RentalCalendar';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
 
@@ -109,6 +110,49 @@ function daysBetween(start?: string, end?: string) {
   if (!start || !end) return 0;
   // Use +1 to count days inclusively (e.g., 15th to 17th is 3 days)
   return Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1;
+}
+
+/** 
+ * Robust date comparison helper: converts "YYYY-MM-DD" to YYYYMMDD number.
+ * Avoids all timezone/parsing issues of the JS Date object.
+ */
+function toDateVal(d?: any): number {
+  if (!d) return 0;
+  try {
+    const s = String(d).trim();
+    if (!s) return 0;
+
+    // 1. Try ISO format (YYYY-MM-DD)
+    const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      return Number(`${isoMatch[1]}${isoMatch[2]}${isoMatch[3]}`);
+    }
+
+    // 2. Try common formats (DD-MM-YYYY or DD/MM/YYYY)
+    const commonMatch = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+    if (commonMatch) {
+      return Number(`${commonMatch[3]}${commonMatch[2]}${commonMatch[1]}`);
+    }
+
+    // 3. Last resort: JS Date object
+    const date = new Date(s);
+    if (!isNaN(date.getTime())) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return Number(`${y}${m}${day}`);
+    }
+
+    // 4. Ultimate fallback: just strip non-digits
+    const clean = s.split(' ')[0].replace(/\D/g, '');
+    if (clean.length === 8) {
+      if (Number(clean.substring(0, 4)) > 1900) return Number(clean); // likely YYYYMMDD
+      return Number(clean.substring(4, 8) + clean.substring(2, 4) + clean.substring(0, 2)); // likely DDMMYYYY
+    }
+    return Number(clean) || 0;
+  } catch (e) {
+    return 0;
+  }
 }
 
 function getImageUrl(path?: string) {
@@ -261,7 +305,21 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const [remarks, setRemarks] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [dateModal, setDateModal] = useState<{ id: number; title: string; start: string; end: string; price?: number | string; type?: string; status?: string; rentalCostPerDay?: number } | null>(null);
+  const [dateModal, setDateModal] = useState<{ 
+    id: number; 
+    title: string; 
+    start: string; 
+    end: string; 
+    price?: number | string; 
+    type?: string; 
+    status?: string; 
+    rentalCostPerDay?: number;
+    depositAmount?: number;
+    delivery_address?: string;
+    delivery_city?: string;
+    delivery_state?: string;
+    delivery_pin_code?: string;
+  } | null>(null);
   const [dateLoading, setDateLoading] = useState(false);
 
   /* ── change dates modal (buyer) ── */
@@ -277,7 +335,19 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const [sdStart, setSdStart] = useState('');
   const [sdEnd, setSdEnd] = useState('');
   const [sdRemarks, setSdRemarks] = useState('');
+  const [bookedRanges, setBookedRanges] = useState<{ start: string; end: string }[]>([]);
   const [sdLoading, setSdLoading] = useState(false);
+
+  useEffect(() => {
+    const productId = dateModal?.id || suggestModal?.offer?.product_id;
+    if (productId) {
+      api.get<{ booked_ranges: { start: string; end: string }[] }>(`/product/${productId}/booked-dates`)
+        .then(res => { if (res.success && res.data) setBookedRanges(res.data.booked_ranges); })
+        .catch(() => { });
+    } else {
+      setBookedRanges([]);
+    }
+  }, [dateModal?.id, suggestModal?.offer?.product_id]);
 
   /* ── accept-or-suggest choice modal (seller, rent only) ── */
   const [acceptChoiceModal, setAcceptChoiceModal] = useState<{ offer: Offer } | null>(null);
@@ -339,21 +409,25 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const handleUpdateDates = async () => {
     if (!dateModal) return;
     setDateLoading(true);
-    // Recalculate price based on new dates × daily rental cost
-    let newPrice: number | undefined = undefined;
-    if (dateModal.type === 'rent' && dateModal.rentalCostPerDay && dateModal.start && dateModal.end) {
-      const days = daysBetween(dateModal.start, dateModal.end);
-      newPrice = Math.round(days * dateModal.rentalCostPerDay);
-    }
-    const payload: Record<string, unknown> = {
+
+    const dailyRate = Number(dateModal.rentalCostPerDay || 0);
+    const days = daysBetween(dateModal.start, dateModal.end);
+    const computedPrice = (dateModal.type === 'rent' && dailyRate > 0 && days > 0) ? Math.round(days * dailyRate) : Number(dateModal.price || 0);
+
+    const payload = {
       rental_start_date: dateModal.start,
       rental_end_date: dateModal.end,
+      offer_price: computedPrice,
+      delivery_address: dateModal.delivery_address,
+      delivery_city: dateModal.delivery_city,
+      delivery_state: dateModal.delivery_state,
+      delivery_pin_code: dateModal.delivery_pin_code
     };
-    if (newPrice !== undefined) payload.offer_price = newPrice;
+
     const res = await api.post(`/buyer/update-offer-dates/${dateModal.id}`, payload);
     setDateLoading(false);
     if (res?.success) { 
-      toast.success('Dates updated!');
+      toast.success('Offer updated successfully!');
       setDateModal(null); 
       load(); 
     }
@@ -438,55 +512,91 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
   /* ── computed ── */
   const productStatusMap = useMemo(() => {
-    const map: Record<number, { isSold: boolean; bookedRanges: { start: number; end: number }[] }> = {};
+    const map: Record<number, { isSold: boolean; bookedRanges: { start: number; end: number; id: number }[] }> = {};
     offers.forEach(o => {
       if (o.status === 'accepted') {
-        if (!map[o.product_id]) map[o.product_id] = { isSold: false, bookedRanges: [] };
-        if (o.listing_type === 'sell') map[o.product_id].isSold = true;
+        const pid = Number(o.product_id);
+        if (!map[pid]) map[pid] = { isSold: false, bookedRanges: [] };
+        if (o.listing_type === 'sell') map[pid].isSold = true;
         else if (o.listing_type === 'rent' && o.rental_start_date && o.rental_end_date) {
-          map[o.product_id].bookedRanges.push({ start: new Date(o.rental_start_date).getTime(), end: new Date(o.rental_end_date).getTime() });
+          map[pid].bookedRanges.push({ 
+            start: toDateVal(o.rental_start_date), 
+            end: toDateVal(o.rental_end_date),
+            id: o.id 
+          });
         }
       }
     });
     return map;
   }, [offers]);
 
-  const isRentalBlocked = (o: Offer, acceptedRentalRanges: { start: number; end: number }[]) => {
-    if ((o.offer_type ?? o.listing_type) !== 'rent' || o.status !== 'pending') return false;
-    const s1 = new Date(o.rental_start_date!).getTime();
-    const e1 = new Date(o.rental_end_date!).getTime();
-    // check bookedDates (from orders)
+  /**
+   * Unified conflict detection logic.
+   * Returns conflict info if found, else null.
+   */
+  const getRentalConflict = (o: Offer): { start: string; end: string; source: 'order' | 'offer'; id?: number } | null => {
+    if ((o.offer_type ?? o.listing_type) !== 'rent') return null;
+    const status = o.status;
+    if (status !== 'pending' && status !== 'negotiating') return null;
+    
+    if (!o.rental_start_date || !o.rental_end_date) return null;
+
+    const s1 = toDateVal(o.rental_start_date);
+    const e1 = toDateVal(o.rental_end_date);
+    
+    // Safety check: if dates are invalid or start > end, we can't check for conflict
+    if (!s1 || !e1 || s1 > e1) return null;
+
+    // 1. Check backend-confirmed bookedDates (from orders table)
     for (const b of bookedDates) {
-      if (b.product_id === o.product_id) {
-        const s2 = new Date(b.rental_start_date).getTime();
-        const e2 = new Date(b.rental_end_date).getTime();
-        if (s1 <= e2 && e1 >= s2) return true;
+      if (Number(b.product_id) === Number(o.product_id)) {
+        const s2 = toDateVal(b.rental_start_date);
+        const e2 = toDateVal(b.rental_end_date);
+        
+        if (s2 && e2) {
+          // Standard overlap check: (Start1 <= End2) AND (End1 >= Start2)
+          const overlap = (s1 <= e2 && e1 >= s2);
+          if (overlap) {
+            return { start: b.rental_start_date, end: b.rental_end_date, source: 'order' };
+          }
+        }
       }
     }
-    // check accepted offers in same product group
-    for (const r of acceptedRentalRanges) {
-      if (s1 <= r.end && e1 >= r.start) return true;
+
+    // 2. Check accepted offers in the current list
+    const pid = Number(o.product_id);
+    const ps = productStatusMap[pid];
+    if (ps && ps.bookedRanges) {
+      for (const r of ps.bookedRanges) {
+        // Self-exclusion: Don't conflict with yourself
+        if (Number(r.id) === Number(o.id)) continue;
+        
+        // Standard overlap check: (Start1 <= End2) AND (End1 >= Start2)
+        const overlap = (s1 <= r.end && e1 >= r.start);
+        if (overlap) {
+          // find the offer to get raw date strings for display
+          const other = offers.find(x => Number(x.id) === Number(r.id));
+          return { 
+            start: other?.rental_start_date || '?', 
+            end: other?.rental_end_date || '?', 
+            source: 'offer',
+            id: r.id
+          };
+        }
+      }
     }
-    return false;
+
+    return null;
   };
+
+  const isRentalBlocked = (o: Offer) => !!getRentalConflict(o);
+  const isRentalConflict = (o: Offer) => !!getRentalConflict(o);
 
   const isSoldOut = (o: Offer) => {
     if (o.listing_type !== 'sell') return false;
     return !!(productStatusMap[o.product_id]?.isSold || (o.is_product_sold && o.is_product_sold > 0));
   };
 
-  const isRentalConflict = (o: Offer) => {
-    // If it's already accepted, it's not a conflict, it IS the booking.
-    if (o.status === 'accepted') return false;
-    
-    if (o.is_rental_blocked && o.is_rental_blocked > 0) return true;
-    if (o.listing_type !== 'rent' || !o.rental_start_date) return false;
-    const ps = productStatusMap[o.product_id];
-    if (!ps) return false;
-    const s = new Date(o.rental_start_date).getTime();
-    const e = new Date(o.rental_end_date!).getTime();
-    return ps.bookedRanges.some(r => s <= r.end && e >= r.start);
-  };
 
   const sorted = [...offers].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -584,6 +694,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           offers={filtered}
           settings={settings}
           isRentalBlocked={isRentalBlocked}
+          getRentalConflict={getRentalConflict}
           onAccept={o => {
             if ((o.offer_type ?? o.listing_type) === 'rent') {
               setAcceptChoiceModal({ offer: o });
@@ -600,25 +711,55 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           offers={filtered}
           settings={settings}
           isRentalConflict={isRentalConflict}
+          getRentalConflict={getRentalConflict}
           isSoldOut={isSoldOut}
           onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
           onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '', price: o.offered_price ?? o.offer_price, type: o.offer_type ?? o.listing_type, status: o.status, rentalCostPerDay: Number(o.product_rental_cost ?? 0) })}
+          onUpdateDates={o => setDateModal({ 
+            id: o.id, 
+            title: o.product_title, 
+            start: o.rental_start_date || '', 
+            end: o.rental_end_date || '', 
+            price: o.offered_price ?? o.offer_price, 
+            type: o.offer_type ?? o.listing_type, 
+            status: o.status, 
+            rentalCostPerDay: Number(o.product_rental_cost ?? o.rental_cost ?? 0),
+            depositAmount: Number(o.product_rental_deposit ?? o.deposit_amount ?? 0),
+            delivery_address: o.delivery_address || '',
+            delivery_city: o.delivery_city || '',
+            delivery_state: o.delivery_state || '',
+            delivery_pin_code: o.delivery_pin_code || ''
+          })}
           onAcceptDates={handleAcceptDates}
         />
       ) : (
-        <CombinedView
+        <BuyerView
           offers={filtered}
           settings={settings}
-          isRentalBlocked={isRentalBlocked}
+          role={role}
           isRentalConflict={isRentalConflict}
+          getRentalConflict={getRentalConflict}
           isSoldOut={isSoldOut}
-          onAccept={o => { setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o }); setRemarks(''); }}
+          onAccept={o => (o.offer_type ?? o.listing_type) === 'rent' ? setAcceptChoiceModal({ offer: o }) : setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o })}
           onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
           onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
-          onRateBuyer={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'buyer' }); setRatingValue(5); }}
-          onRateSeller={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({ id: o.id, title: o.product_title, start: o.rental_start_date || '', end: o.rental_end_date || '', price: o.offered_price ?? o.offer_price, type: o.offer_type ?? o.listing_type, status: o.status, rentalCostPerDay: Number(o.product_rental_cost ?? 0) })}
+          onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
+          onUpdateDates={o => setDateModal({ 
+            id: o.id, 
+            title: o.product_title, 
+            start: o.rental_start_date || '', 
+            end: o.rental_end_date || '', 
+            price: o.offered_price ?? o.offer_price, 
+            type: o.offer_type ?? o.listing_type, 
+            status: o.status, 
+            rentalCostPerDay: Number(o.product_rental_cost ?? o.rental_cost ?? 0),
+            depositAmount: Number(o.product_rental_deposit ?? o.deposit_amount ?? 0),
+            delivery_address: o.delivery_address || '',
+            delivery_city: o.delivery_city || '',
+            delivery_state: o.delivery_state || '',
+            delivery_pin_code: o.delivery_pin_code || ''
+          })}
+          onAcceptDates={handleAcceptDates}
         />
       )}
     </div>
@@ -718,70 +859,103 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       {/* ── Date/Offer Update Modal ── */}
       {dateModal && (
         <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setDateModal(null)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable" onClick={e => e.stopPropagation()}>
             <div className="modal-content border-0 shadow-lg rounded-4">
-              <div className="modal-header border-0 pb-0 px-4 pt-4">
-                <h5 className="modal-title fw-bold">{dateModal.status === 'rejected' ? 'Make Offer Again' : 'Update Rental Dates'}</h5>
+              <div className="modal-header border-bottom px-4 pt-4">
+                <h5 className="modal-title fw-bold">
+                  <i className="bi bi-calendar3 me-2" style={{ color: '#ffc63a' }}></i>
+                  {dateModal.status === 'rejected' ? 'Make Offer Again' : 'Update Rental Details'}
+                </h5>
                 <button type="button" className="btn-close" onClick={() => setDateModal(null)}></button>
               </div>
-              <div className="modal-body px-4 pt-3">
-                <p className="text-muted small mb-3">
+              <div className="modal-body p-4">
+                <p className="text-muted small mb-4">
                   {dateModal.status === 'rejected' 
                     ? `You are re-submitting your offer for "${dateModal.title}".`
-                    : `Modify your proposal dates for "${dateModal.title}"`}
+                    : `Modify the proposal details for "${dateModal.title}"`}
                 </p>
                 
                 {dateModal.type === 'rent' && (
-                  <div className="row g-3 mb-3">
-                    <div className="col-6">
-                      <label className="form-label small fw-bold">Start Date</label>
-                      <input type="date" className="form-control" value={dateModal.start} onChange={e => setDateModal({ ...dateModal, start: e.target.value })} min={new Date().toISOString().split('T')[0]} />
+                  <div className="mb-4">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="fw-bold small">Select Rental Dates</span>
                     </div>
-                    <div className="col-6">
-                      <label className="form-label small fw-bold">End Date</label>
-                      <input type="date" className="form-control" value={dateModal.end} onChange={e => setDateModal({ ...dateModal, end: e.target.value })} min={dateModal.start || new Date().toISOString().split('T')[0]} />
+                    <RentalCalendar
+                      bookedRanges={bookedRanges}
+                      startDate={dateModal.start}
+                      endDate={dateModal.end}
+                      onRangeChange={(start, end) => setDateModal({ ...dateModal, start, end })}
+                      minRentalDays={settings.minRentalDays || 3}
+                    />
+                    
+                    <div className="mt-4 mb-3">
+                      <label className="form-label fw-bold small">Deposit Amount (₹)</label>
+                      <input
+                        type="text"
+                        className="form-control bg-light rounded-3"
+                        value={Number(dateModal.depositAmount || 0).toLocaleString('en-IN')}
+                        readOnly
+                        style={{ cursor: 'not-allowed' }}
+                      />
                     </div>
                   </div>
                 )}
 
-                <div className="mb-3">
-                   <label className="form-label small fw-bold">Price (₹)
-                     {dateModal.type === 'rent' && dateModal.rentalCostPerDay && dateModal.start && dateModal.end && (
-                       <span className="text-muted fw-normal ms-2" style={{ fontSize: '0.78rem' }}>
-                         {daysBetween(dateModal.start, dateModal.end)} days × ₹{Number(dateModal.rentalCostPerDay).toLocaleString('en-IN')}/day
-                       </span>
-                     )}
-                   </label>
+                <div className="mb-4">
+                   <label className="form-label fw-bold small">Offer Price (₹)</label>
                    {(() => {
-                     const computedPrice = (dateModal.type === 'rent' && dateModal.rentalCostPerDay && dateModal.start && dateModal.end)
-                       ? Math.round(daysBetween(dateModal.start, dateModal.end) * (dateModal.rentalCostPerDay ?? 0))
-                       : Number(dateModal.price ?? 0);
+                     const daily = Number(dateModal.rentalCostPerDay ?? 0);
+                     const days = daysBetween(dateModal.start, dateModal.end);
+                     const computed = (dateModal.type === 'rent' && daily > 0 && days > 0) 
+                       ? Math.round(days * daily) 
+                       : Number(dateModal.price || 0);
                      return (
                        <input
                          type="text"
-                         className={`form-control ${dateModal.type === 'rent' && dateModal.rentalCostPerDay ? 'bg-warning bg-opacity-10 border-warning' : 'bg-light'}`}
-                         value={`₹${computedPrice.toLocaleString('en-IN')}`}
+                         className="form-control bg-warning bg-opacity-10 border-warning fw-bold"
+                         value={`₹${computed.toLocaleString('en-IN')}`}
                          readOnly
-                         style={{ cursor: 'default', fontWeight: 700 }}
+                         style={{ cursor: 'default' }}
                        />
                      );
                    })()}
-                   {dateModal.status === 'rejected'
-                     ? <small className="text-info mt-1 d-block"><i className="bi bi-info-circle me-1"></i>Price is fixed for re-offering.</small>
-                     : dateModal.type === 'rent' && dateModal.rentalCostPerDay
-                       ? <small className="text-success mt-1 d-block"><i className="bi bi-arrow-repeat me-1"></i>Price updates automatically with dates.</small>
-                       : null
-                   }
+                    {dateModal.type === 'rent' && (dateModal.rentalCostPerDay ?? 0) > 0 && dateModal.start && dateModal.end && (
+                      <small className="text-muted mt-1 d-block">
+                        Calculated: ₹{Number(dateModal.rentalCostPerDay || 0).toLocaleString('en-IN')} × {daysBetween(dateModal.start, dateModal.end)} days
+                      </small>
+                   )}
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-bold small">Delivery Address</label>
+                  <textarea
+                    className="form-control rounded-3 mb-2"
+                    rows={2}
+                    value={dateModal.delivery_address}
+                    onChange={e => setDateModal({ ...dateModal, delivery_address: e.target.value })}
+                    placeholder="Street, House No, Landmark"
+                  />
+                  <div className="row g-2">
+                    <div className="col-6">
+                      <input type="text" className="form-control rounded-3" value={dateModal.delivery_city} onChange={e => setDateModal({ ...dateModal, delivery_city: e.target.value })} placeholder="City" />
+                    </div>
+                    <div className="col-6">
+                      <input type="text" className="form-control rounded-3" value={dateModal.delivery_state} onChange={e => setDateModal({ ...dateModal, delivery_state: e.target.value })} placeholder="State" />
+                    </div>
+                    <div className="col-12">
+                      <input type="text" className="form-control rounded-3" value={dateModal.delivery_pin_code} maxLength={6} onChange={e => setDateModal({ ...dateModal, delivery_pin_code: e.target.value.replace(/\D/g, '') })} placeholder="PIN Code" />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="modal-footer border-0 px-4 pb-4 mt-2">
+              <div className="modal-footer border-0 px-4 pb-4 mt-0">
                 <button className="btn btn-light rounded-pill px-4" onClick={() => setDateModal(null)}>Cancel</button>
                 <button 
                   className="btn btn-dark rounded-pill px-4 fw-bold" 
                   onClick={handleUpdateDates} 
                   disabled={dateLoading || (dateModal.type === 'rent' && (!dateModal.start || !dateModal.end))}
                 >
-                  {dateLoading ? 'Wait…' : (dateModal.status === 'rejected' ? 'Submit Offer' : 'Update Dates')}
+                  {dateLoading ? 'Wait…' : (dateModal.status === 'rejected' ? 'Submit Offer' : 'Update Offer')}
                 </button>
               </div>
             </div>
@@ -841,44 +1015,51 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       {/* ── Seller suggest-dates modal ── */}
       {suggestModal && (
         <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setSuggestModal(null)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable" onClick={e => e.stopPropagation()}>
             <div className="modal-content border-0 shadow-lg rounded-4">
-              <div className="modal-header border-0 pb-0 px-4 pt-4">
-                <h5 className="modal-title fw-bold"><i className="bi bi-calendar-range me-2"></i>Suggest New Dates</h5>
+              <div className="modal-header border-bottom px-4 pt-4">
+                <h5 className="modal-title fw-bold">
+                  <i className="bi bi-calendar-plus me-2" style={{ color: '#ffc63a' }}></i>
+                  Suggest New Dates
+                </h5>
                 <button type="button" className="btn-close" onClick={() => setSuggestModal(null)}></button>
               </div>
-              <div className="modal-body px-4 pt-3">
-                <p className="text-muted small mb-3">
-                  Suggest alternate rental dates for <strong>{suggestModal.offer.product_title}</strong>. The buyer will be notified and must accept before the deal is finalised.
+              <div className="modal-body p-4">
+                <p className="text-muted small mb-4">
+                  Suggest alternate dates for <strong>{suggestModal.offer.product_title}</strong>. The buyer will need to accept these before the deal is finalised.
                 </p>
-                <div className="row g-3 mb-3">
-                  <div className="col-6">
-                    <label className="form-label fw-bold small">New Start Date <span className="text-danger">*</span></label>
-                    <input
-                      type="date"
-                      className="form-control rounded-3"
-                      value={sdStart}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={e => setSdStart(e.target.value)}
-                    />
-                  </div>
-                  <div className="col-6">
-                    <label className="form-label fw-bold small">New End Date <span className="text-danger">*</span></label>
-                    <input
-                      type="date"
-                      className="form-control rounded-3"
-                      value={sdEnd}
-                      min={sdStart || new Date().toISOString().split('T')[0]}
-                      onChange={e => setSdEnd(e.target.value)}
-                    />
-                  </div>
+                <div className="mb-4">
+                  <RentalCalendar
+                    bookedRanges={bookedRanges}
+                    startDate={sdStart}
+                    endDate={sdEnd}
+                    onRangeChange={(start, end) => { setSdStart(start); setSdEnd(end); }}
+                    minRentalDays={settings.minRentalDays || 3}
+                  />
                 </div>
-                {sdStart && sdEnd && sdEnd > sdStart && (
-                  <div className="alert alert-warning py-2 px-3 rounded-3 small border-0 mb-3">
-                    <i className="bi bi-info-circle me-1"></i>
-                    <strong>{daysBetween(sdStart, sdEnd)} days</strong> — Price will be recalculated automatically.
-                  </div>
-                )}
+                <div className="mb-4">
+                  <label className="form-label small fw-bold">Estimated Price (₹)</label>
+                  {(() => {
+                    const daily = Number(suggestModal.offer.product_rental_cost ?? 0);
+                    const days = daysBetween(sdStart, sdEnd);
+                    const computed = (daily > 0 && days > 0) ? Math.round(days * daily) : 0;
+                    return (
+                      <input
+                        type="text"
+                        className="form-control bg-warning bg-opacity-10 border-warning fw-bold"
+                        value={`₹${computed.toLocaleString('en-IN')}`}
+                        readOnly
+                        style={{ cursor: 'default' }}
+                      />
+                    );
+                  })()}
+                  {sdStart && sdEnd && (
+                    <small className="text-muted mt-1 d-block">
+                      Recalculated: ₹{Number(suggestModal.offer.product_rental_cost ?? 0).toLocaleString('en-IN')} × {daysBetween(sdStart, sdEnd)} days
+                    </small>
+                  )}
+                </div>
+
                 <label className="form-label fw-bold small">Note to Buyer (optional)</label>
                 <textarea
                   className="form-control rounded-3"
@@ -888,12 +1069,12 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                   placeholder="e.g. Original dates not available, suggest alternative…"
                 />
               </div>
-              <div className="modal-footer border-0 px-4 pb-4">
+              <div className="modal-footer border-0 px-4 pb-4 mt-0">
                 <button className="btn btn-light rounded-pill px-4" onClick={() => setSuggestModal(null)}>Cancel</button>
                 <button
-                  className="btn btn-primary rounded-pill px-4 fw-bold"
+                  className="btn btn-dark rounded-pill px-4 fw-bold"
                   onClick={submitSuggestDates}
-                  disabled={sdLoading || !sdStart || !sdEnd || sdEnd <= sdStart}
+                  disabled={sdLoading || !sdStart || !sdEnd}
                 >
                   {sdLoading ? 'Sending…' : 'Send Suggestion'}
                 </button>
@@ -949,13 +1130,14 @@ function RejectionCountdown({ acceptedAt, windowHours }: { acceptedAt: string; w
 interface SellerViewProps {
   offers: Offer[];
   settings: { acceptanceLimitDays: number; ratingPeriod: number; rejectionWindowHours: number };
-  isRentalBlocked: (o: Offer, acceptedRanges: { start: number; end: number }[]) => boolean;
+  isRentalBlocked: (o: Offer) => boolean;
+  getRentalConflict: (o: Offer) => { start: string; end: string; source: 'order' | 'offer' } | null;
   onAccept: (o: Offer) => void;
   onReject: (o: Offer) => void;
   onRate: (o: Offer) => void;
 }
 
-function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onRate }: SellerViewProps) {
+function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAccept, onReject, onRate }: SellerViewProps) {
   // group by product_id, each group sorted newest-first, groups ordered by their newest offer
   const grouped = useMemo(() => {
     const m: Record<number, Offer[]> = {};
@@ -980,7 +1162,11 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
         const isGroupSold = productOffers.some(o => o.status === 'accepted' && (o.offer_type ?? o.listing_type) === 'sell');
         const acceptedRentalRanges = productOffers
           .filter(o => o.status === 'accepted' && (o.offer_type ?? o.listing_type) === 'rent' && o.rental_start_date && o.rental_end_date)
-          .map(o => ({ start: new Date(o.rental_start_date!).getTime(), end: new Date(o.rental_end_date!).getTime() }));
+          .map(o => ({ 
+            start: toDateVal(o.rental_start_date!), 
+            end: toDateVal(o.rental_end_date!),
+            id: o.id 
+          }));
 
         return (
           <div key={pid} className="product-group">
@@ -1003,7 +1189,7 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
             {/* Offer rows */}
             <div className="offer-container">
               {productOffers.map(offer => {
-                const isBlockedRental = isRentalBlocked(offer, acceptedRentalRanges);
+                const isBlockedRental = isRentalBlocked(offer);
 
                 // expiry logic (matching PHP exactly)
                 let isExpired = false;
@@ -1104,11 +1290,30 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
                             <strong>{fmtFull(offer.rental_end_date)}</strong>
                             {days > 0 && <span className="badge bg-secondary ms-1">{days} days</span>}
                           </div>
-                          {isBlockedRental && (
-                            <div className="conflict-warning mt-2 w-100">
-                              <i className="bi bi-exclamation-triangle-fill"></i> Booking Overlap Detected!
-                            </div>
-                          )}
+                          {(() => {
+                            const conflict = getRentalConflict(offer);
+                            if (!conflict) return null;
+                            return (
+                              <div className="conflict-warning mt-2 w-100">
+                                <i className="bi bi-exclamation-triangle-fill"></i> Booking Overlap Detected!
+                                <div style={{ fontSize: '0.7rem', fontWeight: 'normal', marginTop: '2px' }}>
+                                  Conflicts with: {fmtShort(conflict.start)} - {fmtShort(conflict.end)} ({conflict.source === 'order' ? 'Confirmed Booking' : `Accepted Offer #${conflict.id}`})
+                                  {conflict.source === 'offer' && (
+                                    <button 
+                                      className="btn btn-link p-0 ms-2 text-danger fw-bold" 
+                                      style={{ fontSize: '0.7rem', textDecoration: 'none' }}
+                                      onClick={() => {
+                                        const other = offers.find(x => Number(x.id) === Number(conflict.id));
+                                        if (other) onReject(other);
+                                      }}
+                                    >
+                                      [Retract & Resolve]
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -1249,16 +1454,21 @@ function SellerView({ offers, settings, isRentalBlocked, onAccept, onReject, onR
 
 interface BuyerViewProps {
   offers: Offer[];
-  settings: { acceptanceLimitDays: number; ratingPeriod: number; rejectionWindowHours: number };
+  settings: { acceptanceLimitDays: number; ratingPeriod: number; rejectionWindowHours: number; minRentalDays: number };
+  role?: string;
   isRentalConflict: (o: Offer) => boolean;
+  getRentalConflict: (o: Offer) => { start: string; end: string; source: 'order' | 'offer' } | null;
   isSoldOut: (o: Offer) => boolean;
+  onAccept?: (o: Offer) => void;
+  onReject?: (o: Offer) => void;
   onCancel: (o: Offer) => void;
   onRate: (o: Offer) => void;
   onUpdateDates: (o: Offer) => void;
   onAcceptDates: (o: Offer) => void;
 }
 
-function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, onRate, onUpdateDates, onAcceptDates }: BuyerViewProps) {
+function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict, isSoldOut, onAccept, onReject, onCancel, onRate, onUpdateDates, onAcceptDates }: BuyerViewProps) {
+  const isAdmin = role === 'admin' || role === 'super_admin';
   return (
     <>
       {offers.map(o => {
@@ -1289,7 +1499,21 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
                 <div className="d-flex justify-content-between align-items-start mb-2">
                   <div>
                     <h5 className="fw-bold mb-1">{o.product_title}</h5>
-                    <small className="text-muted d-block mb-2">#REF-{o.id} • {o.offer_type ? o.offer_type.charAt(0).toUpperCase() + o.offer_type.slice(1) : o.listing_type?.charAt(0).toUpperCase() + (o.listing_type?.slice(1) ?? '')}</small>
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                      <small className="text-muted">#REF-{o.id} • {o.offer_type ? o.offer_type.charAt(0).toUpperCase() + o.offer_type.slice(1) : o.listing_type?.charAt(0).toUpperCase() + (o.listing_type?.slice(1) ?? '')}</small>
+                      {isAdmin && (
+                        <>
+                          <span className="badge bg-light text-dark border fw-bold" style={{ fontSize: '0.65rem' }}>
+                            <i className="bi bi-person-fill text-primary me-1"></i>
+                            Buyer: {o.buyer_name || 'N/A'}
+                          </span>
+                          <span className="badge bg-light text-dark border fw-bold" style={{ fontSize: '0.65rem' }}>
+                            <i className="bi bi-shop text-success me-1"></i>
+                            Seller: {o.seller_name || 'N/A'}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                   <span className={pillClass}>{pillLabel}</span>
                 </div>
@@ -1303,11 +1527,15 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
                     </div>
                     <div className="col-md-8 ps-md-4">
                       {(o.offer_type ?? o.listing_type) === 'rent' && o.rental_start_date && (
-                        <p className="mb-0 small fw-bold text-muted">
+                        <div className="mb-0 small fw-bold text-muted">
                           <i className="bi bi-calendar-event me-1 text-primary"></i>
                           {fmtShort(o.rental_start_date)} to {fmtFull(o.rental_end_date)}
-                        </p>
+                        </div>
                       )}
+                      <p className="mb-0 mt-1 small text-muted fw-semibold">
+                        <i className="bi bi-geo-alt me-1 text-danger"></i>
+                        {o.delivery_city || 'N/A'}, {o.delivery_state || ''} {o.delivery_pin_code ? `(${o.delivery_pin_code})` : ''}
+                      </p>
                       {o.status === 'negotiating' ? (
                         <div className="alert alert-info py-2 px-3 mt-2 rounded-3 border-0 small">
                           <i className="bi bi-info-circle-fill me-2"></i>
@@ -1322,15 +1550,19 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
                   </div>
 
                   {/* conflict alert */}
-                  {conflict && (
-                    <div className="conflict-alert mb-3">
-                      <i className="bi bi-exclamation-triangle-fill fs-5"></i>
-                      <div>
-                        These rental dates overlap with an accepted booking.
-                        {conflict && <><br /><small className="fw-normal opacity-75">You can try changing your dates to something else.</small></>}
+                  {(() => {
+                    const c = getRentalConflict(o);
+                    if (!c) return null;
+                    return (
+                      <div className="conflict-alert mb-3">
+                        <i className="bi bi-exclamation-triangle-fill fs-5"></i>
+                        <div>
+                          Rental Conflict: These dates overlap with an existing booking ({fmtShort(c.start)} - {fmtShort(c.end)} {c.source === 'offer' ? `#${c.id}` : ''}).
+                          <br /><small className="fw-normal opacity-75">Please select different dates to proceed.</small>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                   {soldOut && o.status === 'pending' && (
                     <div className="conflict-alert mb-3">
                       <i className="bi bi-slash-circle-fill fs-5"></i>
@@ -1364,6 +1596,16 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
               {/* action buttons */}
               <div className="col-md-2 text-end">
                 <div className="d-grid gap-2">
+                  {isAdmin && o.status === 'pending' && (
+                    <div className="d-grid gap-2 mb-2">
+                      <button className="btn btn-warning fw-bold rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onAccept?.(o)}>
+                        <i className="bi bi-check-circle-fill me-1"></i>Accept
+                      </button>
+                      <button className="btn btn-outline-danger rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onReject?.(o)}>
+                        <i className="bi bi-x-circle me-1"></i>Reject
+                      </button>
+                    </div>
+                  )}
                   {o.status === 'negotiating' && (
                     <>
                       <button
@@ -1376,7 +1618,7 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
                       <button className="btn-modern-cancel" style={{ fontSize: '0.8rem' }} onClick={() => onCancel(o)}>Decline</button>
                     </>
                   )}
-                  {(o.status === 'pending' || o.status === 'rejected') && (
+                  {(o.status === 'pending' || o.status === 'rejected' || o.status === 'negotiating') && (
                     <>
                       {o.status === 'rejected' ? (
                         <button className="btn btn-warning mb-1 fw-bold rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates(o)}>
@@ -1385,15 +1627,17 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
                       ) : (o.offer_type ?? o.listing_type) === 'rent' && (
                         <button className="btn-yellow mb-1" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates(o)}>Change dates</button>
                       )}
-                      <button className="btn-modern-cancel" onClick={() => onCancel(o)}>{o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}</button>
+                      {(o.status === 'pending' || o.status === 'rejected') && (
+                        <button className="btn-modern-cancel" onClick={() => onCancel(o)}>{o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}</button>
+                      )}
                     </>
                   )}
-                  {canRate && (
+                  {canRate && !isAdmin && (
                     <button className="btn btn-warning rounded-pill fw-bold" onClick={() => onRate(o)}>
                       <i className="bi bi-star-fill me-1"></i>Rate Seller
                     </button>
                   )}
-                  {o.status === 'accepted' && Number(o.buyer_rated_seller) === 1 ? (
+                  {o.status === 'accepted' && Number(o.buyer_rated_seller) === 1 && !isAdmin ? (
                     <span className="badge bg-light text-dark rounded-pill border py-2 px-3">
                       <i className="bi bi-check-circle-fill text-success me-1"></i>Rated
                     </span>
@@ -1409,154 +1653,5 @@ function BuyerView({ offers, settings, isRentalConflict, isSoldOut, onCancel, on
         );
       })}
     </>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   COMBINED VIEW  —  table for admin / superadmin
-═══════════════════════════════════════════════════════════════ */
-
-interface CombinedViewProps {
-  offers: Offer[];
-  settings: { acceptanceLimitDays: number; ratingPeriod: number; rejectionWindowHours: number };
-  isRentalBlocked: (o: Offer, acceptedRanges: { start: number; end: number }[]) => boolean;
-  isRentalConflict: (o: Offer) => boolean;
-  isSoldOut: (o: Offer) => boolean;
-  onAccept: (o: Offer) => void;
-  onReject: (o: Offer) => void;
-  onCancel: (o: Offer) => void;
-  onRateBuyer: (o: Offer) => void;
-  onRateSeller: (o: Offer) => void;
-  onUpdateDates: (o: Offer) => void;
-}
-
-function CombinedView({ offers, settings, isRentalBlocked, isRentalConflict, isSoldOut, onAccept, onReject, onCancel, onRateBuyer, onRateSeller, onUpdateDates }: CombinedViewProps) {
-  // Pre-calculate per-product accepted ranges for conflict detection in flat list
-  const productAcceptedRanges = useMemo(() => {
-    const map: Record<number, { start: number; end: number }[]> = {};
-    offers.forEach(o => {
-      if (o.status === 'accepted' && (o.offer_type ?? o.listing_type) === 'rent' && o.rental_start_date && o.rental_end_date) {
-        (map[o.product_id] = map[o.product_id] || []).push({
-          start: new Date(o.rental_start_date).getTime(),
-          end: new Date(o.rental_end_date).getTime()
-        });
-      }
-    });
-    return map;
-  }, [offers]);
-
-  return (
-    <div className="card border-0 shadow-sm rounded-4 overflow-hidden mt-2">
-      <div className="table-responsive">
-        <table className="table table-hover align-middle mb-0 admin-table">
-          <thead>
-            <tr>
-               <th style={{ width: 60 }}>Type</th>
-               <th style={{ width: 80 }}>Ref ID</th>
-               <th>Product</th>
-               <th>Counterpart</th>
-               <th>Price & Dates</th>
-               <th>Status</th>
-               <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {offers.map(o => {
-              const isSent = o.perspective === 'sent';
-              const directionTitle = isSent ? 'Offer Sent' : 'Offer Received';
-              const directionIcon = isSent ? 'bi-arrow-up-right' : 'bi-arrow-down-left';
-              const typeClass = isSent ? 'direction-sent' : 'direction-received';
-              
-              const offeredPrice = o.offered_price ?? o.offer_price;
-              const days = daysBetween(o.rental_start_date, o.rental_end_date);
-              
-              // For received offers, check if blocked by other accepted offers
-              const conflict = isSent ? isRentalConflict(o) : isRentalBlocked(o, productAcceptedRanges[o.product_id] || []);
-              const sold = isSent ? isSoldOut(o) : false; // groupsold logic in SellerView is more complex but this is basic check
-
-              // Common status classes
-              const statusClass = `status-pill ${isSent ? `pill-${o.status}` : `status-${o.status === 'pending' && conflict ? 'rejected' : o.status}`}`;
-              const label = o.status === 'negotiating' ? (isSent ? 'action required' : 'waiting') : o.status;
-
-              return (
-                <tr key={o.id}>
-                  <td>
-                    <div className={`direction-icon ${typeClass}`} title={directionTitle} data-bs-toggle="tooltip">
-                      <i className={`bi ${directionIcon}`}></i>
-                    </div>
-                  </td>
-                  <td className="text-muted small fw-bold">#REF-{o.id}</td>
-                  <td>
-                    <div className="d-flex align-items-center gap-3">
-                      {o.product_image ? (
-                        <img src={getImageUrl(o.product_image)} className="product-img shadow-sm" alt="" />
-                      ) : (
-                        <div className="product-img bg-light d-flex align-items-center justify-content-center border">
-                          <i className="bi bi-image text-muted"></i>
-                        </div>
-                      )}
-                      <div>
-                        <div className="fw-bold text-dark">{o.product_title}</div>
-                        <div className="badge bg-light text-dark border-0 p-0 text-uppercase" style={{ fontSize: '0.65rem', opacity: 0.7 }}>{o.listing_type}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="d-flex align-items-center gap-2">
-                      <div className="buyer-avatar" style={{ width: 30, height: 30, fontSize: '0.8rem' }}>
-                        {((isSent ? o.seller_name : o.buyer_name) || '?').charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="fw-semibold small">{isSent ? (o.seller_name || 'Unknown Seller') : (o.buyer_name || 'Unknown Buyer')}</div>
-                        <div className="text-muted" style={{ fontSize: '0.7rem' }}>{isSent ? 'Seller' : 'Buyer'}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="fw-bold">₹{Number(offeredPrice).toLocaleString('en-IN')}</div>
-                    {o.rental_start_date && (
-                      <div className="text-muted small" style={{ fontSize: '0.7rem' }}>
-                        <i className="bi bi-calendar-event me-1"></i>
-                        {fmtShort(o.rental_start_date)} - {fmtShort(o.rental_end_date)}
-                      </div>
-                    )}
-                  </td>
-                  <td>
-                    <span className={statusClass} style={{ fontSize: '0.65rem' }}>{label}</span>
-                    {conflict && o.status === 'pending' && <div className="text-danger mt-1 fw-bold" style={{ fontSize: '0.6rem' }}>Overlap Detected</div>}
-                  </td>
-                  <td className="text-end">
-                    <div className="d-flex justify-content-end gap-2">
-                      {/* Perspective-based actions */}
-                      {!isSent && o.status === 'pending' && (
-                        <div className="d-flex flex-column align-items-end gap-1">
-                          {(conflict || sold) && (
-                            <div className="text-danger fw-bold text-end mb-1" style={{ fontSize: '0.6rem', lineHeight: 1.1 }}>
-                              {sold ? 'SOLD OUT' : 'DATES BOOKED'}
-                            </div>
-                          )}
-                          <div className="d-flex gap-2">
-                            <button className="btn btn-sm btn-warning rounded-pill px-3 fw-bold" onClick={() => onAccept(o)}>Accept</button>
-                            <button className="btn btn-sm btn-outline-danger rounded-pill px-3" onClick={() => onReject(o)}>Reject</button>
-                          </div>
-                        </div>
-                      )}
-
-                      {isSent && (o.status === 'pending' || o.status === 'negotiating' || o.status === 'rejected') && (
-                        <button className="btn btn-sm btn-outline-danger rounded-pill px-3" onClick={() => onCancel(o)}>{o.status === 'rejected' ? 'Close' : 'Withdraw'}</button>
-                      )}
-
-                      {o.status === 'accepted' && (
-                        <i className="bi bi-check-circle-fill text-success fs-5"></i>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }

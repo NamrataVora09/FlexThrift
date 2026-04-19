@@ -752,6 +752,7 @@ class SuperAdminApi extends ResourceController
         $data = [
             'category_name' => $this->request->getPost('category_name'),
             'product_type_ids' => json_encode($ptIds),
+            'product_type_id' => !empty($ptIds) ? $ptIds[0] : null,
             'applies_to' => json_encode($appliesTo),
         ];
         if ($attrs !== null) {
@@ -770,6 +771,7 @@ class SuperAdminApi extends ResourceController
         $data = [
             'name' => $this->request->getPost('name'),
             'category_ids' => json_encode($catIds),
+            'category_id' => !empty($catIds) ? $catIds[0] : null,
             'applies_to' => json_encode($appliesTo),
         ];
         if ($attrs !== null) {

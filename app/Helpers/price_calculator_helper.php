@@ -238,8 +238,8 @@ if (!function_exists('validateRentalCostWithRules')) {
 if (!function_exists('calculateSalePrice')) {
     function calculateSalePrice(float $originalPrice, int $usedTimes): float
     {
-        // Sale Base Deduction Threshold (default: 5%)
-        $baseDiscountPercent = (float) getSystemSetting('sale_base_discount', 5);
+        // Sale Base Deduction Threshold (default: 0%)
+        $baseDiscountPercent = (float) getSystemSetting('sale_base_discount', 0);
 
         // Tiered Depreciation
         $usageDepPercent = calculateDepreciationPercent($usedTimes);
@@ -282,9 +282,9 @@ if (!function_exists('calculateRentalPrices')) {
         $fallbackPct = (float) getSystemSetting('fallback_rental_cost_per_day', 0);
         
         if ($fallbackPct > 0) {
-            // New logic: Deposit = Original Price, Rental = Deposit - (Deposit * Fallback%)
+            // New logic: Rental Cost is a percentage of deposit (which defaults to original price in fallback mode)
             $deposit = $originalPrice;
-            $rentalCost = $deposit - ($deposit * ($fallbackPct / 100));
+            $rentalCost = $deposit * ($fallbackPct / 100);
             $depreciatedValue = $originalPrice;
         } else {
             $maxRentalCapPerDay = (float) getSystemSetting('rental_max_cost_cap_per_day', 14);
@@ -310,7 +310,7 @@ if (!function_exists('calculateRentalPrices')) {
 if (!function_exists('validateSalePrice')) {
     function validateSalePrice(float $originalPrice, float $salePrice): bool
     {
-        $baseDiscountPercent = (float) getSystemSetting('sale_base_discount', 5);
+        $baseDiscountPercent = (float) getSystemSetting('sale_base_discount', 0);
         $maxAllowed = $originalPrice * (1 - ($baseDiscountPercent / 100));
         return $salePrice <= (round($maxAllowed, 2) + 0.01); // allow small rounding diff
     }

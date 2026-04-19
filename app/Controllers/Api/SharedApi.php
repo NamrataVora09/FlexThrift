@@ -251,8 +251,8 @@ class SharedApi extends ResourceController
             $config[$s['setting_key']] = $s['setting_value'];
 
         $groups = [
-            'Pricing' => ['sale_base_discount', 'sale_depreciation_per_use', 'sale_max_additional_depreciation'],
-            'Rental' => ['fallback_rental_cost_per_day', 'min_rental_days'],
+            'Pricing' => ['sale_base_discount', 'usage_no_dep_max', 'sale_depreciation_per_use', 'sale_max_additional_depreciation'],
+            'Rental' => ['fallback_rental_cost_per_day', 'min_rental_days', 'rental_base_deposit_deduction', 'rental_suggested_cost_percent', 'rental_max_cost_cap_per_day'],
             'Commission & Delivery' => ['commission_rate', 'delivery_charge', 'min_order_value'],
             'Referral' => ['referral_reward_amount', 'referral_expiry_days'],
             'Seller' => ['seller_rejection_window_hours'],
@@ -630,8 +630,8 @@ class SharedApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $listingTypes = $db->table('listing_types')->get()->getResultArray();
-        $categories = $db->table('categories')->select('id, category_name as name, field_config')->get()->getResultArray();
-        $subCategories = $db->table('sub_categories')->get()->getResultArray();
+        $categories = $db->table('categories')->select('id, category_name as name, field_config, product_type_id, product_type_ids, applies_to')->get()->getResultArray();
+        $subCategories = $db->table('sub_categories')->select('id, name, field_config, category_id, category_ids, applies_to')->get()->getResultArray();
         $productTypes = $db->table('product_types')->get()->getResultArray();
         $genders = $db->table('genders')->get()->getResultArray();
         $colors = $db->table('colors')->get()->getResultArray();
