@@ -108,6 +108,8 @@ function getProductPrice(p: Product): number {
     : (p.rental_cost || p.price || 0));
 }
 
+
+
 export default function BrowsePage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -888,6 +890,7 @@ export default function BrowsePage() {
                 ) : null}
               </section>
 
+
               {/* Pagination */}
               {data && data.pagination && data.pagination.total_pages > 1 && (
                 <div style={{ marginTop: 64, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
@@ -921,6 +924,7 @@ export default function BrowsePage() {
             </div>
           </div>
         </main>
+
 
         {/* ===== MOBILE FILTER DRAWER ===== */}
         <div className={`em-overlay ${showFilters ? 'open' : ''}`} onClick={() => setShowFilters(false)} />

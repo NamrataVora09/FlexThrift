@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, createElement } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -9,6 +9,7 @@ import LandingNavbar from '../layout/LandingNavbar';
 import Footer from '../layout/Footer';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
+const STORAGE_KEY = 'flex_hp_v3';
 
 interface AotStep { icon: string; title: string; desc: string; }
 interface AotGuide { id: string; label: string; videoUrl: string; steps: AotStep[]; }
@@ -331,7 +332,7 @@ const CATEGORY_CARDS = [
 
 
 export default function HomePageClient() {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, token, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const isSuperAdmin = user?.role === 'super_admin';
 
