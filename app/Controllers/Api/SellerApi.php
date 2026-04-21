@@ -212,6 +212,14 @@ class SellerApi extends ResourceController
         $pricingRules = $db->table('pricing_rules')->where('is_active', 1)->orderBy('filter_type', 'ASC')->get()->getResultArray();
         $rentalPricingRules = $db->table('rental_pricing_rules')->where('is_active', 1)->orderBy('filter_type', 'ASC')->get()->getResultArray();
 
+        $originalBrands = $db->table('orignal_brands')->where('is_active', 1)->orderBy('brand_name', 'ASC')->get()->getResultArray();
+        
+        $sellerBrandsBuilder = $db->table('brands')->where('is_blocked', 0);
+        if ($this->request->jwt_user['role'] !== 'super_admin') {
+            $sellerBrandsBuilder->where('seller_id', $this->request->jwt_user['user_id']);
+        }
+        $sellerBrands = $sellerBrandsBuilder->orderBy('brand_name', 'ASC')->get()->getResultArray();
+
         return $this->respond([
             'success' => true,
             'data' => [
@@ -221,7 +229,8 @@ class SellerApi extends ResourceController
                 'sub_categories'      => $subCategories,
                 'colors'              => $colors,
                 'genders'             => $genders,
-                'brands'              => $brands,
+                'original_brands'     => $originalBrands,
+                'seller_brands'       => $sellerBrands,
                 'config'              => $config,
                 'pricing_rules'       => $pricingRules,
                 'rental_pricing_rules'=> $rentalPricingRules,
@@ -329,7 +338,8 @@ class SellerApi extends ResourceController
             'rental_deposit' => $data['rental_deposit'] ?: null,
             'rental_cost' => $data['rental_cost'] ?: null,
             'used_times' => $data['times_used'],
-            'brand_id' => $data['orignal_brand_id'] ?: null,
+            'brand_id' => $data['brand_id'] ?: null,
+            'orignal_brand_id' => $data['orignal_brand_id'] ?: null,
             'color' => $data['color'] ?? null,
             'size' => $data['size'] ?? null,
             'allow_alter_fitting' => !empty($data['allow_alter_fitting']) ? 1 : 0,

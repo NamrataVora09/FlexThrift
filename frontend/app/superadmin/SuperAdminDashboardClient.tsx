@@ -332,7 +332,7 @@ export default function SuperAdminDashboardClient() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              background: '#f4f6f9',
+                              // background: '#f4f6f9',
                               color: '#ffc63a',
                               fontSize: '1.1rem',
                             }}

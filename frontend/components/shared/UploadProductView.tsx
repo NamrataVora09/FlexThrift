@@ -34,7 +34,8 @@ interface FormMeta {
   sub_categories: Array<{ id: number; name: string; category_id?: number; category_ids?: string; field_config?: string }>;
   colors: Array<{ id: number; name: string; hex_code: string }>;
   genders: Array<{ id: number; name: string }>;
-  brands: Array<{ id: number; brand_name: string; brand_image?: string; listing_type_id?: number | string | null; listing_type_ids?: string | null }>;
+  original_brands: Array<{ id: number; brand_name: string; brand_image?: string; listing_type_id?: number | string | null; listing_type_ids?: string | null }>;
+  seller_brands: Array<{ id: number; brand_name: string; brand_image?: string; listing_type_id?: number | string | null; listing_type_ids?: string | null }>;
   config: Record<string, string>;
   pricing_rules: PricingRule[];
   rental_pricing_rules: PricingRule[];
@@ -61,6 +62,18 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Summary box
+  const brandSummary = (
+    <div style={{ background: '#f8f9fa', padding: '15px 20px', borderRadius: 10, marginBottom: 25, borderLeft: '4px solid #ffc63a', fontSize: '0.9rem', color: '#555' }}>
+      <p style={{ margin: 0, fontWeight: 600, color: '#333', marginBottom: 5 }}>Brand Classification Summary</p>
+      <ul style={{ margin: 0, paddingLeft: 20 }}>
+        <li><strong>Original Brands:</strong> Global industry giants (e.g. Nike, Apple, Zara).</li>
+        <li><strong>Brands:</strong> Your own shop or seller-specific brands.</li>
+        <li><em>Note: Changes to original brands will not affect your seller-specific brands.</em></li>
+      </ul>
+    </div>
+  );
+
   // Edit mode
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -74,7 +87,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   // Form state
   const [f, setF] = useState({
     listing_type: 'sell', title: '', gender: '', listing_type_category: '', product_type: '',
-    category_id: '', sub_category_id: '', orignal_brand_id: '', description: '',
+    category_id: '', sub_category_id: '', orignal_brand_id: '', brand_id: '', description: '',
     color: '', used_times: '0', original_price: '', price: '', rental_deposit: '',
     rental_cost: '', allow_alter_fitting: false, dispatch_address: '', dispatch_state: '',
     dispatch_city: '', dispatch_pin_code: '', has_bill: false,
@@ -83,10 +96,15 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [attributeValues, setAttributeValues] = useState<Record<string, string>>({});
   const [dynamicAttributes, setDynamicAttributes] = useState<Attribute[]>([]);
 
-  // Brand search
-  const [brandSearch, setBrandSearch] = useState('');
-  const [brandOpen, setBrandOpen] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState<{ id: number; name: string } | null>(null);
+  // Original Brand search
+  const [obSearch, setObSearch] = useState('');
+  const [obOpen, setObOpen] = useState(false);
+  const [selectedOb, setSelectedOb] = useState<{ id: number; name: string } | null>(null);
+
+  // Seller Brand search
+  const [sbSearch, setSbSearch] = useState('');
+  const [sbOpen, setSbOpen] = useState(false);
+  const [selectedSb, setSelectedSb] = useState<{ id: number; name: string } | null>(null);
 
   // Cascading options
   const [productTypes, setProductTypes] = useState<Array<{ id: number; name: string }>>([]);
@@ -128,6 +146,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             category_id: String(cId),
             sub_category_id: String(scId),
             orignal_brand_id: product.orignal_brand_id || '',
+            brand_id: product.brand_id || '',
             description: product.description || product.condition_description || '',
             color: product.color || '',
             used_times: String(product.used_times || product.times_used || '0'),
@@ -171,11 +190,19 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             }
           }
 
-          // Set selected brand if exists
+          // Set selected original brand if exists
           if (product.orignal_brand_id) {
-            const brand = meta.brands.find(b => String(b.id) === String(product.orignal_brand_id));
+            const brand = meta.original_brands.find(b => String(b.id) === String(product.orignal_brand_id));
             if (brand) {
-              setSelectedBrand({ id: brand.id, name: brand.brand_name });
+              setSelectedOb({ id: brand.id, name: brand.brand_name });
+            }
+          }
+
+          // Set selected seller brand if exists
+          if (product.brand_id) {
+            const brand = meta.seller_brands.find(b => String(b.id) === String(product.brand_id));
+            if (brand) {
+              setSelectedSb({ id: brand.id, name: brand.brand_name });
             }
           }
 
@@ -414,8 +441,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         next.category_id = '';
         next.sub_category_id = '';
         next.orignal_brand_id = '';
-        setSelectedBrand(null);
-        setBrandSearch('');
+        next.brand_id = '';
+        setSelectedOb(null);
+        setSelectedSb(null);
+        setObSearch('');
+        setSbSearch('');
       } else if (name === 'product_type') {
         next.category_id = '';
         next.sub_category_id = '';
@@ -444,34 +474,50 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     setPreviews(next.map(f => URL.createObjectURL(f)));
   };
 
-  const selectBrand = (b: { id: number; brand_name: string }) => {
-    setSelectedBrand({ id: b.id, name: b.brand_name });
-    setF(prev => ({ ...prev, orignal_brand_id: String(b.id) }));
-    setBrandOpen(false);
-    setBrandSearch('');
-  };
-
-  const clearBrand = () => {
-    setSelectedBrand(null);
-    setF(prev => ({ ...prev, orignal_brand_id: '' }));
-  };
-
-  const filteredBrands = (meta?.brands || []).filter(b => {
-    if (brandSearch && !b.brand_name.toLowerCase().includes(brandSearch.toLowerCase())) return false;
+  const filteredOriginalBrands = (meta?.original_brands || []).filter(b => {
+    if (obSearch && !b.brand_name.toLowerCase().includes(obSearch.toLowerCase())) return false;
     if (f.listing_type_category) {
       const ltId = Number(f.listing_type_category);
       if (b.listing_type_ids) {
-        // Has explicit multi-type config — filter strictly by it
         const ids: number[] = (typeof b.listing_type_ids === 'string' ? JSON.parse(b.listing_type_ids) : b.listing_type_ids).map(Number);
         if (!ids.includes(ltId)) return false;
       } else if (b.listing_type_id != null && b.listing_type_id !== '') {
-        // Legacy single listing type — filter by it (coerce to number for safe comparison)
         if (Number(b.listing_type_id) !== ltId) return false;
       }
-      // Both null/empty → show for all listing types
     }
     return true;
   });
+
+  const filteredSellerBrands = (meta?.seller_brands || []).filter(b => {
+    if (sbSearch && !b.brand_name.toLowerCase().includes(sbSearch.toLowerCase())) return false;
+    if (f.listing_type_category) {
+      const ltId = Number(f.listing_type_category);
+      if (b.listing_type_ids) {
+        const ids: number[] = (typeof b.listing_type_ids === 'string' ? JSON.parse(b.listing_type_ids) : b.listing_type_ids).map(Number);
+        if (!ids.includes(ltId)) return false;
+      } else if (b.listing_type_id != null && b.listing_type_id !== '') {
+        if (Number(b.listing_type_id) !== ltId) return false;
+      }
+    }
+    return true;
+  });
+
+  const selectOb = (b: { id: number; brand_name: string }) => {
+    setSelectedOb({ id: b.id, name: b.brand_name });
+    setF(prev => ({ ...prev, orignal_brand_id: String(b.id) }));
+    setObOpen(false);
+    setObSearch('');
+  };
+
+  const selectSb = (b: { id: number; brand_name: string }) => {
+    setSelectedSb({ id: b.id, name: b.brand_name });
+    setF(prev => ({ ...prev, brand_id: String(b.id) }));
+    setSbOpen(false);
+    setSbSearch('');
+  };
+
+  const clearOb = () => { setSelectedOb(null); setF(prev => ({ ...prev, orignal_brand_id: '' })); };
+  const clearSb = () => { setSelectedSb(null); setF(prev => ({ ...prev, brand_id: '' })); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -676,21 +722,25 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   return (
     <DashboardLayout requiredRoles={[role]}>
-      <div className="container-fluid">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h2 style={{ fontWeight: 700 }}>
-              <i className={isEditMode ? "bi bi-pencil-square" : "bi bi-cloud-upload"} style={{ color: '#ffc63a' }}></i>
-              {isEditMode ? 'Edit Product' : 'Upload New Product'}
-            </h2>
-            <p className="text-muted mb-0">
-              {isEditMode ? 'Update your product details' : 'List your item on Flex Market'}
-            </p>
+      <div className="container-fluid p-4 p-md-5">
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h2 style={{ fontWeight: 800, margin: 0, color: '#1a1a1a' }}>
+                <i className={isEditMode ? "bi bi-pencil-square" : "bi bi-cloud-upload"} style={{ color: '#ffc63a', marginRight: 15 }}></i>
+                {isEditMode ? 'Edit Product' : 'Upload New Product'}
+              </h2>
+              <p className="text-muted mb-0">
+                {isEditMode ? 'Update your product details' : 'List your item on Flex Market'}
+              </p>
+            </div>
+            <button className="btn btn-outline-secondary btn-sm" onClick={() => router.back()} style={{ borderRadius: 8, padding: '8px 16px' }}>
+              <i className="bi bi-arrow-left me-1"></i> Back
+            </button>
           </div>
-          <a href={redirectPath} className="btn" style={{ border: '2px solid #ffc63a', color: '#000', borderRadius: 10, padding: '10px 20px', fontWeight: 600 }}>
-            <i className="bi bi-arrow-left me-1"></i> Back
-          </a>
-        </div>
+
+          {brandSummary}
+
 
         {role === 'super_admin' && (
           <BulkCsvUpload
@@ -776,28 +826,57 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   </select>
                 </div>
               )}
-              <div className="col-md-3"><label className="form-label" style={labelStyle}>Original Brand <small>(e.g. Adidas)</small></label>
+              <div className="col-md-3">
+                <label className="form-label" style={labelStyle}>Original Brand <small>(Industry Giants)</small></label>
                 <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                   <div className="input-group">
                     <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
-                    <input className="form-control border-start-0 border-end-0" style={inputStyle} placeholder="Search brands..." value={brandSearch} onChange={(e) => { setBrandSearch(e.target.value); setBrandOpen(true); }} onFocus={() => setBrandOpen(true)} />
+                    <input className="form-control border-start-0 border-end-0" style={inputStyle} placeholder="Search original brands..." value={obSearch} onChange={(e) => { setObSearch(e.target.value); setObOpen(true); }} onFocus={() => setObOpen(true)} />
                     <span className="input-group-text bg-white border-start-0 text-muted"><i className="bi bi-chevron-down small"></i></span>
                   </div>
-                  {brandOpen && (
+                  {obOpen && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ced4da', borderTop: 'none', borderRadius: '0 0 8px 8px', zIndex: 1050, maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                      {filteredBrands.map(b => (
-                        <div key={b.id} onClick={() => selectBrand(b)} style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: '1px solid #f1f3f5', transition: 'background 0.15s' }}
+                      {filteredOriginalBrands.map(b => (
+                        <div key={b.id} onClick={() => selectOb(b)} style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: '1px solid #f1f3f5', transition: 'background 0.15s' }}
                           onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'} onMouseLeave={e => e.currentTarget.style.background = ''}>
                           <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#333' }}>{b.brand_name}</span>
                         </div>
                       ))}
-                      {filteredBrands.length === 0 && <div className="text-center text-muted py-3 small">No brands found</div>}
+                      {filteredOriginalBrands.length === 0 && <div className="text-center text-muted py-3 small">No original brands found</div>}
                     </div>
                   )}
-                  {selectedBrand && (
+                  {selectedOb && (
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: '#f1f3f5', border: '1px solid #dee2e6', borderRadius: 6, marginTop: 6, fontSize: '0.85rem', color: '#495057' }}>
-                      <span>{selectedBrand.name}</span>
-                      <button type="button" onClick={clearBrand} style={{ background: 'none', border: 'none', color: '#adb5bd', padding: 0, lineHeight: 1, fontSize: '1.1rem', cursor: 'pointer' }}><i className="bi bi-x"></i></button>
+                      <span>{selectedOb.name}</span>
+                      <button type="button" onClick={clearOb} style={{ background: 'none', border: 'none', color: '#adb5bd', padding: 0, lineHeight: 1, fontSize: '1.1rem', cursor: 'pointer' }}><i className="bi bi-x"></i></button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="col-md-3">
+                <label className="form-label" style={labelStyle}>Brand <small>(Your/Seller Shop)</small></label>
+                <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                  <div className="input-group">
+                    <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
+                    <input className="form-control border-start-0 border-end-0" style={inputStyle} placeholder="Search your brands..." value={sbSearch} onChange={(e) => { setSbSearch(e.target.value); setSbOpen(true); }} onFocus={() => setSbOpen(true)} />
+                    <span className="input-group-text bg-white border-start-0 text-muted"><i className="bi bi-chevron-down small"></i></span>
+                  </div>
+                  {sbOpen && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ced4da', borderTop: 'none', borderRadius: '0 0 8px 8px', zIndex: 1050, maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                      {filteredSellerBrands.map(b => (
+                        <div key={b.id} onClick={() => selectSb(b)} style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: '1px solid #f1f3f5', transition: 'background 0.15s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'} onMouseLeave={e => e.currentTarget.style.background = ''}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#333' }}>{b.brand_name}</span>
+                        </div>
+                      ))}
+                      {filteredSellerBrands.length === 0 && <div className="text-center text-muted py-3 small">No brands found</div>}
+                    </div>
+                  )}
+                  {selectedSb && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: '#e7f5ff', border: '1px solid #a5d8ff', borderRadius: 6, marginTop: 6, fontSize: '0.85rem', color: '#1971c2' }}>
+                      <span>{selectedSb.name}</span>
+                      <button type="button" onClick={clearSb} style={{ background: 'none', border: 'none', color: '#74c0fc', padding: 0, lineHeight: 1, fontSize: '1.1rem', cursor: 'pointer' }}><i className="bi bi-x"></i></button>
                     </div>
                   )}
                 </div>
@@ -1023,6 +1102,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             </button>
           </div>
         </form>
+        </div>
       </div>
     </DashboardLayout>
   );

@@ -1,499 +1,319 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { getCartCount } from '@/lib/cart';
-import { confirmToast } from '@/lib/toast-utils';
 
-interface ListingType {
-  id: number;
-  type_name: string;
-  image?: string;
-  product_types?: ProductType[];
-}
+interface Category { id: number; category_name: string; product_type_id: number; }
+interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
+interface ListingType { id: number; type_name: string; product_types?: ProductType[]; }
+interface SearchResult { id: number; title: string; listing_type: string; selling_price?: string; rental_cost?: string; original_price?: string; primary_image?: string; image?: string; brand_name?: string; }
 
-interface ProductType {
-  id: number;
-  name: string;
-  listing_type_id: number;
-  categories?: Category[];
-}
-
-interface Category {
-  id: number;
-  category_name: string;
-  product_type_id: number;
-}
-
-const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 
 export default function LandingNavbar() {
-  const { user, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
-  const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
 
-  useEffect(() => {
-    const update = () => setCartCount(getCartCount());
-    update();
-    window.addEventListener('cart-updated', update);
-    return () => window.removeEventListener('cart-updated', update);
-  }, []);
+  const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
+  const [showMegaMenu, setShowMegaMenu] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [showAuthDropdown, setShowAuthDropdown] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const megaRef = useRef<HTMLLIElement>(null);
+  const authRef = useRef<HTMLDivElement>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/taxonomy`)
       .then(r => r.json())
-      .then(r => {
-        if (r.success && r.data) {
-          const { listing_types, product_types, categories } = r.data;
-          const enriched = listing_types.map((lt: any) => ({
+      .then(res => {
+        if (res.success && res.data) {
+          const { listing_types, product_types, categories } = res.data;
+          setListingTypes((listing_types as ListingType[]).map(lt => ({
             ...lt,
-            product_types: product_types
-              .filter((pt: any) => pt.listing_type_id == lt.id)
-              .map((pt: any) => ({
-                ...pt,
-                categories: categories.filter((c: any) => c.product_type_id == pt.id),
-              })),
-          }));
-          setListingTypes(enriched);
+            product_types: (product_types as ProductType[])
+              .filter(pt => pt.listing_type_id === lt.id)
+              .map(pt => ({ ...pt, categories: (categories as Category[]).filter(c => c.product_type_id === pt.id) })),
+          })));
         }
-      })
-      .catch(() => {});
+      }).catch(() => { });
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (megaRef.current && !megaRef.current.contains(e.target as Node)) setShowMegaMenu(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
+      if (authRef.current && !authRef.current.contains(e.target as Node)) setShowAuthDropdown(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const doSearch = useCallback((q: string) => {
+    if (!q.trim()) { setSearchResults([]); setSearchLoading(false); return; }
+    setSearchLoading(true);
+    fetch(`${API_BASE}/products?search=${encodeURIComponent(q)}&limit=6&status=approved`)
+      .then(r => r.json())
+      .then(res => { setSearchResults(res.success && res.data?.products ? res.data.products.slice(0, 6) : []); })
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearchLoading(false));
+  }, []);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    setSearchOpen(true);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => doSearch(val), 320);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      setSearchOpen(false);
       router.push(`/buyer/browse?search=${encodeURIComponent(searchQuery)}`);
     }
   };
 
+  const getImg = (p: SearchResult) => {
+    const raw = p.primary_image || p.image || '';
+    if (!raw) return null;
+    if (raw.startsWith('http')) return raw;
+    return `${BACKEND_URL}/uploads/${raw}`;
+  };
+
+  const getPrice = (p: SearchResult) => {
+    const v = p.listing_type === 'rent' ? p.rental_cost : (p.selling_price || p.original_price);
+    return v ? `₹${parseFloat(v).toLocaleString('en-IN')}` : '';
+  };
+
   return (
-    <>
-      <style jsx global>{`
-        :root {
-          --primary-yellow: #ffc63a;
-          --primary-dark: #000;
-        }
-        .landing-nav {
-          position: fixed; top: 0; left: 0; right: 0; z-index: 1050;
-          background: rgba(255,255,255,0.92); backdrop-filter: blur(25px) saturate(180%);
-          -webkit-backdrop-filter: blur(25px) saturate(180%);
-          border-bottom: 1px solid rgba(0,0,0,0.08);
-        }
-        .landing-nav-links {
-          display: flex; align-items: center; gap: 4px; flex-shrink: 0;
-        }
-        .landing-nav-link {
-          font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.9rem;
-          color: #333; text-decoration: none; padding: 8px 16px; border-radius: 10px;
-          transition: all 0.2s ease; white-space: nowrap;
-        }
-        .landing-nav-link:hover { color: #000; background: #f4f4f4; }
-        .landing-nav-catalog { position: relative; }
-        .landing-nav-search { flex-shrink: 0; width: 260px; margin: 0 16px; }
-        .landing-nav-actions {
-          display: flex; align-items: center; gap: 20px; flex-shrink: 0;
-        }
-        .user-action-link { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: #000; text-decoration: none; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
-        .user-action-link:hover { color: var(--primary-yellow); }
+    <nav className=' flex  px-28 py-3 left-0 font-semibold  text-black items-center justify-between  shadow-md fixed top-0 z-50 w-full bg-white'>
 
-        .mobile-nav-toggle {
-          display: none; width: 40px; height: 40px; border: none; background: #f4f4f4; border-radius: 10px;
-          align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0;
-        }
-        .mobile-nav-toggle:hover { background: var(--primary-yellow); }
+      {/* Brand */}
+      <Link href="/" className=' text-[40px]   text-nowrap '>Flex Market</Link>
 
-        .mobile-nav-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1055; backdrop-filter: blur(2px); animation: lnFadeIn 0.2s ease; }
-        .mobile-nav-drawer {
-          position: fixed; top: 0; right: 0; bottom: 0; width: 300px; max-width: 85vw;
-          background: #fff; z-index: 1060; padding: 0; overflow-y: auto;
-          transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-          box-shadow: -10px 0 40px rgba(0,0,0,0.15);
-        }
-        .mobile-nav-drawer.open { transform: translateX(0); }
-        .mobile-nav-drawer-header {
-          display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 16px;
-          border-bottom: 1px solid #f0f0f0;
-        }
-        .mobile-nav-drawer-close {
-          width: 36px; height: 36px; border: none; background: #f4f4f4; border-radius: 50%;
-          display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
-        }
-        .mobile-nav-drawer-close:hover { background: #fee2e2; color: #dc3545; }
-        .mobile-nav-drawer-body { padding: 16px 20px; }
-        .mobile-nav-drawer-body .mobile-nav-item {
-          display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px;
-          color: #333; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: 0.2s;
-          font-family: 'Inter', sans-serif; border: none; background: none; width: 100%; text-align: left; cursor: pointer;
-        }
-        .mobile-nav-drawer-body .mobile-nav-item:hover { background: #f8f9fa; color: #000; }
-        .mobile-nav-drawer-body .mobile-nav-item.active { background: var(--primary-yellow); color: #000; }
-        .mobile-nav-drawer-search { position: relative; margin-bottom: 16px; }
-        .mobile-nav-drawer-search input {
-          width: 100%; background: #f4f4f4; border: 1px solid transparent; border-radius: 12px;
-          padding: 12px 16px 12px 42px; font-size: 0.9rem; outline: none; transition: 0.3s;
-        }
-        .mobile-nav-drawer-search input:focus { border-color: var(--primary-yellow); background: #fff; }
-        .mobile-nav-drawer-search i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #999; }
-        .mobile-nav-section-title {
-          font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #999;
-          padding: 16px 16px 6px; margin: 0;
-        }
-        .mobile-nav-divider { height: 1px; background: #f0f0f0; margin: 8px 0; }
+      {/* Mobile toggle */}
+      <button className='md:hidden' onClick={() => setMobileNavOpen(v => !v)}>
+        <i className="bi bi-list"></i>
+      </button>
 
-        .mega-menu { position: absolute; left: 50%; transform: translateX(-50%); top: 100%; width: 90vw; max-width: 1200px; padding: 50px 40px; border: none; border-radius: 0 0 30px 30px; box-shadow: 0 30px 60px rgba(0,0,0,0.12); background: rgba(255,255,255,0.98); backdrop-filter: blur(10px); border-top: 1px solid rgba(0,0,0,0.05); z-index: 1060; animation: lnMegaFadeIn 0.2s ease; }
-        @keyframes lnMegaFadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .mega-title { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1rem; color: #000; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-        .mega-link { font-family: 'Inter', sans-serif; color: #666; text-decoration: none; font-size: 0.88rem; display: block; padding: 6px 0; transition: 0.2s ease; }
-        .mega-link:hover { color: #000; transform: translateX(4px); }
-        .mega-pt-label { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.85rem; color: #000; margin-bottom: 4px; display: block; text-decoration: none; }
-        .mega-pt-label:hover { color: var(--primary-yellow); }
-
-        .user-dropdown { position: relative; }
-        .user-dropdown-menu { position: absolute; right: 0; left: auto; top: 100%; min-width: 250px; background: #fff; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); padding: 8px; padding-top: 20px; z-index: 1060; animation: lnDdSlideDown 0.3s ease; }
-        @keyframes lnDdSlideDown { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .user-dropdown-menu .dd-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; color: #333; text-decoration: none; font-size: 0.9rem; transition: 0.2s; cursor: pointer; border: none; background: none; width: 100%; text-align: left; }
-        .user-dropdown-menu .dd-item:hover { background: #f8f9fa; }
-        .user-dropdown-menu .dd-item.text-danger { color: #dc3545 !important; }
-        .user-dropdown-menu .dd-header { padding: 16px; border-bottom: 1px solid #f0f0f0; margin-bottom: 8px; }
-
-        @keyframes lnFadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        @media (max-width: 991px) {
-          .mobile-nav-toggle { display: flex; }
-          .landing-nav-links { display: none !important; }
-          .landing-nav-search { display: none !important; }
-          .mobile-nav-overlay { display: block; }
-          .mega-menu { display: none !important; }
-        }
-        @media (max-width: 575px) {
-          .user-action-link span { display: none; }
-          .mobile-nav-drawer { width: 280px; }
-        }
-      `}</style>
-
-      <link href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400..900&family=Outfit:wght@100..900&family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
-
-      <nav className="landing-nav">
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', height: 70 }}>
-          {/* Logo */}
-          <Link href="/" style={{ fontFamily: "'Maven Pro', sans-serif", fontWeight: 900, fontSize: '1.6rem', color: '#000', textDecoration: 'none', letterSpacing: '-0.5px', flexShrink: 0, marginRight: 32 }}>
-            Flex<span style={{ color: '#ffc63a' }}>.</span>Market
-          </Link>
-
-          {/* Center Nav — desktop only */}
-          <div className="landing-nav-links">
-            {/* Catalog with mega menu */}
-            <div
-              className="landing-nav-catalog"
-              onMouseEnter={() => { const el = document.getElementById('megaMenu'); if (el) el.style.display = 'block'; }}
-              onMouseLeave={() => { const el = document.getElementById('megaMenu'); if (el) el.style.display = 'none'; }}
+      {/* Desktop nav */}
+      <div className=' flex w-full items-center grow justify-between'>
+        <ul className=' flex items-center grow pt-4  justify-start gap-6 ml-10'>
+          {/* Mega menu trigger */}
+          <li ref={megaRef}>
+            <a
+              href="#"
+              onClick={e => { e.preventDefault(); setShowMegaMenu(v => !v); }}
+              onMouseEnter={() => setShowMegaMenu(true)}
+              className="flex items-center gap-1 cursor-pointer hover:text-gold transition-colors duration-200"
             >
-              <a href="#" onClick={e => e.preventDefault()} className="landing-nav-link">
-                Catalog <i className="bi bi-chevron-down" style={{ fontSize: '0.6rem', marginLeft: 4 }}></i>
-              </a>
-              <div id="megaMenu" className="mega-menu" style={{ display: 'none', position: 'fixed', left: 0, right: 0, top: 70, transform: 'none', width: '100vw', maxWidth: '100vw' }}>
-                <div className="container">
-                  <div className="row g-4 justify-content-center">
-                    {listingTypes.map((lt) => (
-                      <div key={lt.id} className="col-lg-2">
-                        <span className="mega-title"><i className="bi bi-stars text-warning"></i> {lt.type_name}</span>
-                        {lt.product_types?.map((pt) => (
-                          <div key={pt.id} className="mb-3">
-                            <Link href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`} className="mega-pt-label">{pt.name}</Link>
-                            {pt.categories?.map((cat) => (
-                              <Link key={cat.id} href={`/buyer/browse?category=${cat.id}`} className="mega-link">{cat.category_name}</Link>
-                            ))}
-                          </div>
+              All Products
+              <i className="bi bi-chevron-down text-[0.65rem]"></i>
+            </a>
+
+            {showMegaMenu && (
+              <div
+                className="fixed left-0 right-0 top-[90px] w-screen bg-white shadow-[0_10px_30px_rgba(0,0,0,0.1)] rounded-b-2xl px-28 py-10 z-[1060]"
+                onMouseLeave={() => setShowMegaMenu(false)}
+              >
+                <div className="grid grid-cols-3 gap-10">
+                  {listingTypes.slice(0, 3).map(lt => (
+                    <div key={lt.id}>
+                      <span className="font-bold text-base text-black border-b-2 border-gold pb-2 mb-4 inline-block">
+                        {lt.type_name}
+                      </span>
+                      <ul className="list-none p-0 space-y-3">
+                        {lt.product_types?.map(pt => (
+                          <li key={pt.id}>
+                            <Link
+                              href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
+                              className="font-bold text-[0.95rem] text-black hover:text-gold transition-colors duration-200 block mb-1"
+                              onClick={() => setShowMegaMenu(false)}
+                            >
+                              {pt.name}
+                            </Link>
+                            <ul className="list-none pl-2 mt-1 space-y-1">
+                              {pt.categories?.slice(0, 4).map(cat => (
+                                <li key={cat.id}>
+                                  <Link
+                                    href={`/buyer/browse?category=${cat.id}`}
+                                    className="text-[0.88rem] text-gray-500 hover:text-gold transition-colors duration-200 block py-0.5"
+                                    onClick={() => setShowMegaMenu(false)}
+                                  >
+                                    {cat.category_name}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </li>
                         ))}
-                      </div>
-                    ))}
-                    <div className="col-lg-3">
-                      <div className="p-4 rounded-4 text-white text-center position-relative overflow-hidden h-100 d-flex flex-column justify-content-center" style={{ background: '#000' }}>
-                        <div className="position-absolute top-0 start-0 w-100 h-100 opacity-25" style={{ background: "url('https://www.transparenttextures.com/patterns/carbon-fibre.png')" }}></div>
-                        <h5 className="fw-bold mb-2 position-relative">Elite Services</h5>
-                        <p className="small text-white-50 position-relative mb-4">Personalized luxury consultations.</p>
-                        <Link href="/buyer/browse" className="btn btn-warning fw-bold btn-sm rounded-pill position-relative mx-auto" style={{ width: 'fit-content' }}>Learn More</Link>
-                      </div>
+                      </ul>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            )}
+          </li>
 
-            {/* Listing type links */}
-            {listingTypes.slice(0, 4).map((lt) => (
-              <Link key={lt.id} className="landing-nav-link" href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}>
+          {/* Listing type links */}
+          {listingTypes.slice(0, 6).map(lt => (
+            <li key={lt.id}>
+              <Link href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}>
                 {lt.type_name}
               </Link>
-            ))}
-          </div>
+            </li>
+          ))}
 
-          {/* Search — desktop only */}
-          <div className="landing-nav-search">
-            <form onSubmit={handleSearch} style={{ position: 'relative' }}>
-              <i className="bi bi-search" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#999', fontSize: '0.95rem' }}></i>
-              <input
-                type="text"
-                placeholder="Search collections..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: '100%', background: '#f4f4f4', border: '1px solid transparent', borderRadius: 12, padding: '10px 16px 10px 40px', fontSize: '0.88rem', outline: 'none', transition: '0.3s' }}
-              />
-            </form>
-          </div>
+        </ul>
+        {/* Right: search + login */}
+        <div>
 
-          {/* Spacer */}
-          <div style={{ flex: 1 }} />
 
-          {/* Right Actions */}
-          <div className="landing-nav-actions">
-            {/* Wishlist Icon */}
-            <Link href="/cart" className="position-relative text-dark" style={{ fontSize: '1.3rem' }}>
-              <i className="bi bi-heart"></i>
-              {cartCount > 0 && (
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill" style={{ background: '#ffc63a', color: '#000', fontSize: '0.65rem' }}>
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-
-            {user ? (
-              <div className="user-dropdown" onMouseLeave={() => setShowUserDropdown(false)}>
-                <a
-                  href="#"
-                  className="d-flex align-items-center gap-2 text-decoration-none"
-                  onClick={(e) => { e.preventDefault(); setShowUserDropdown(!showUserDropdown); }}
+          {/* Login / Portal */}
+          {/* User Auth Dropdown */}
+          <div className="relative" ref={authRef}>
+            {isAuthenticated && user ? (
+              <>
+                <button
+                  onClick={() => setShowAuthDropdown(!showAuthDropdown)}
+                  className="flex items-center gap-3 border border-[#008080] rounded-full! px-2 py-1 pr-4 hover:border-[#008080] transition-all duration-300 bg-white shadow-sm"
                 >
-                  <div
-                    className="rounded-circle overflow-hidden shadow-sm"
-                    style={{ width: 38, height: 38, border: '2px solid var(--primary-yellow)' }}
-                  >
-                    <img
-                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'U')}&background=000&color=fff&bold=true`}
-                      alt=""
-                      style={{ width: '100%', height: '100%' }}
-                    />
+                  <div className='w-9 h-9 flex items-center justify-center bg-[#008080] text-white rounded-full font-bold text-xs'>
+                    {user.name ? user.name.substring(0, 2).toUpperCase() : 'ME'}
                   </div>
-                  <div className="d-none d-xxl-block">
-                    <span className="d-block text-dark fw-bold small" style={{ lineHeight: 1 }}>
-                      {user.name?.split(' ')[0]}
-                    </span>
-                    <small className="text-muted" style={{ fontSize: 10 }}>
-                      {user.role === 'seller' ? 'SELLER' : user.role === 'super_admin' ? 'SUPER ADMIN' : user.role === 'admin' ? 'ADMIN' : 'BUYER'}
-                    </small>
-                  </div>
-                </a>
+                  <span className="text-sm font-bold text-gray-800 hidden md:block">
+                    {user.name}
+                  </span>
+                  <i className={`bi bi-chevron-down text-[0.7rem] text-gray-400 transition-transform duration-300 ${showAuthDropdown ? 'rotate-180' : ''}`}></i>
+                </button>
 
-                {showUserDropdown && (
-                  <div className="user-dropdown-menu">
-                    <div className="dd-header">
-                      <h6 className="mb-1 fw-bold" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                        {user.name}
-                      </h6>
-                      <small className="text-muted" style={{ fontSize: 10, fontFamily: 'monospace' }}>
-                        {user.email}
-                      </small>
-                    </div>
+                {showAuthDropdown && (
+                  <div className="absolute right-0 top-8 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                     <Link
-                      href={
-                        user.role === 'super_admin' ? '/superadmin'
-                        : user.role === 'admin' ? '/admin'
-                        : user.role === 'seller' ? '/seller'
-                        : '/buyer'
-                      }
-                      className="dd-item"
-                      onClick={() => setShowUserDropdown(false)}
+                      href={user.role === 'super_admin' ? '/admin/profile' : user.role === 'admin' ? '/admin/profile' : user.role === 'seller' ? '/seller/profile' : user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile'}
+                      className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                      onClick={() => setShowAuthDropdown(false)}
                     >
-                      <i className="bi bi-lightning-charge text-warning"></i> My Portal
+                      <i className="bi bi-person-fill"></i>
+                      <span className="text-xs text-nowrap font-semibold text-gray-800 hidden md:block">
+                        {user.name}
+                      </span>
                     </Link>
-                    {!['admin', 'super_admin'].includes(user.role) && (
-                      <>
-                        <Link
-                          href={user.role === 'seller' ? '/seller/offers' : '/buyer/my-offers'}
-                          className="dd-item"
-                          onClick={() => setShowUserDropdown(false)}
-                        >
-                          <i className="bi bi-handbag"></i> My Offers
-                        </Link>
-                        {user.role === 'seller' && (
-                          <Link href="/buyer" className="dd-item" onClick={() => setShowUserDropdown(false)}>
-                            <i className="bi bi-bag"></i> Buyer Portal
-                          </Link>
-                        )}
-                        {user.role === 'buyer' && user.user_type === 'both' && (
-                          <Link href="/seller" className="dd-item" onClick={() => setShowUserDropdown(false)}>
-                            <i className="bi bi-shop"></i> Seller Hub
-                          </Link>
-                        )}
-                      </>
-                    )}
-                    <hr style={{ margin: '4px 16px', borderColor: '#f0f0f0' }} />
-                    <button
-                      className="dd-item text-danger"
-                      onClick={() => {
-                        confirmToast('Are you sure you want to log out?', () => {
-                          logout();
-                          window.location.href = '/login';
-                        }, 'Logout');
-                      }}
+
+                    <Link
+                      href="/wishlist"
+                      className="flex   items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                      onClick={() => setShowAuthDropdown(false)}
                     >
-                      <i className="bi bi-power"></i> Sign Out
+                      <i className="bi bi-heart-fill"></i>
+                      <span className="text-xs text-nowrap font-semibold">Wishlist</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setShowAuthDropdown(false);
+                        router.push('/');
+                      }}
+                      className="w-full flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
+                      <i className="bi bi-box-arrow-right"></i>
+                      <span className="text-xs text-nowrap font-semibold">Logout</span>
                     </button>
                   </div>
                 )}
-              </div>
+              </>
             ) : (
-              <Link href="/login" className="user-action-link">
-                <i className="bi bi-person-circle" style={{ fontSize: '1.2rem' }}></i>
-                <span>Sign In</span>
-              </Link>
+              <div>
+                <button
+                  onClick={() => setShowAuthDropdown(!showAuthDropdown)}
+                  className='text-[#008080] border-2 flex items-center gap-2 border-[#008080] rounded-full! px-4 py-2 hover:bg-[#008080] hover:text-white transition-all duration-300'
+                >
+                  <i className="bi bi-person-fill"></i>
+                  <span>Login / Register</span>
+                  <i className={`bi bi-chevron-down text-[0.7rem] transition-transform duration-300 ${showAuthDropdown ? 'rotate-180' : ''}`}></i>
+                </button>
+
+                {showAuthDropdown && (
+                  <div className="absolute right-0 top-8 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Link
+                      href="/login"
+                      className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                      onClick={() => setShowAuthDropdown(false)}
+                    >
+                      <i className="bi bi-box-arrow-in-right"></i>
+                      <span className="font-medium">Login</span>
+                    </Link>
+                    <div className="h-[1px] bg-gray-100 mx-4 my-1"></div>
+                    <Link
+                      href="/register"
+                      className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                      onClick={() => setShowAuthDropdown(false)}
+                    >
+                      <i className="bi bi-person-plus"></i>
+                      <span className="font-medium">Register</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
             )}
-
-            {/* Mobile Nav Toggle */}
-            <button
-              className="mobile-nav-toggle"
-              onClick={() => setMobileNavOpen(true)}
-              aria-label="Open menu"
-            >
-              <i className="bi bi-list" style={{ fontSize: '1.3rem' }}></i>
-            </button>
           </div>
         </div>
-      </nav>
 
-      {/* Mobile Nav Overlay */}
+      </div>
+
+
+      {/* Mobile drawer
       {mobileNavOpen && (
-        <div className="mobile-nav-overlay" onClick={() => setMobileNavOpen(false)} />
-      )}
-
-      {/* Mobile Nav Drawer */}
-      <div className={`mobile-nav-drawer ${mobileNavOpen ? 'open' : ''}`}>
-        <div className="mobile-nav-drawer-header">
-          <Link
-            href="/"
-            onClick={() => setMobileNavOpen(false)}
-            style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.4rem', color: '#000', textDecoration: 'none' }}
-          >
-            Flex Market<span style={{ color: 'var(--primary-yellow)' }}>.</span>
-          </Link>
-          <button className="mobile-nav-drawer-close" onClick={() => setMobileNavOpen(false)}>
-            <i className="bi bi-x-lg" style={{ fontSize: '0.9rem' }}></i>
-          </button>
-        </div>
-        <div className="mobile-nav-drawer-body">
-          {/* Search */}
-          <div className="mobile-nav-drawer-search">
+        <div>
+          <form onSubmit={handleSearchSubmit}>
             <i className="bi bi-search"></i>
-            <form onSubmit={(e) => { e.preventDefault(); setMobileNavOpen(false); router.push(`/buyer/browse?search=${searchQuery}`); }}>
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </form>
-          </div>
-
-          <p className="mobile-nav-section-title">Browse</p>
-          <Link href="/buyer/browse" className="mobile-nav-item" onClick={() => setMobileNavOpen(false)}>
-            <i className="bi bi-grid-3x3-gap" style={{ color: 'var(--primary-yellow)' }}></i>
-            Catalog
-          </Link>
-          {listingTypes.slice(0, 4).map((lt) => (
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </form>
+          <Link href="/buyer/browse" onClick={() => setMobileNavOpen(false)}>All Products</Link>
+          {listingTypes.slice(0, 6).map(lt => (
             <Link
               key={lt.id}
               href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
-              className="mobile-nav-item"
               onClick={() => setMobileNavOpen(false)}
             >
-              <i className="bi bi-tag" style={{ color: '#6c757d' }}></i>
               {lt.type_name}
             </Link>
           ))}
-
-          <div className="mobile-nav-divider" />
-          <p className="mobile-nav-section-title">Account</p>
-
-          {user ? (
-            <>
-              <Link
-                href={
-                  user.role === 'super_admin' ? '/superadmin'
-                  : user.role === 'admin' ? '/admin'
-                  : user.role === 'seller' ? '/seller'
-                  : '/buyer'
-                }
-                className="mobile-nav-item"
-                onClick={() => setMobileNavOpen(false)}
-              >
-                <i className="bi bi-speedometer2" style={{ color: 'var(--primary-yellow)' }}></i>
-                My Portal
-              </Link>
-              {!['admin', 'super_admin'].includes(user.role) && (
-                <Link
-                  href={user.role === 'seller' ? '/seller/offers' : '/buyer/my-offers'}
-                  className="mobile-nav-item"
-                  onClick={() => setMobileNavOpen(false)}
-                >
-                  <i className="bi bi-handbag" style={{ color: '#6c757d' }}></i>
-                  My Offers
-                </Link>
-              )}
-              <Link href="/cart" className="mobile-nav-item" onClick={() => setMobileNavOpen(false)}>
-                <i className="bi bi-heart" style={{ color: '#6c757d' }}></i>
-                Wishlist {cartCount > 0 && <span className="badge rounded-pill" style={{ background: 'var(--primary-yellow)', color: '#000', fontSize: '0.7rem' }}>{cartCount}</span>}
-              </Link>
-              {user.role === 'seller' && (
-                <Link href="/buyer" className="mobile-nav-item" onClick={() => setMobileNavOpen(false)}>
-                  <i className="bi bi-bag" style={{ color: '#6c757d' }}></i>
-                  Buyer Portal
-                </Link>
-              )}
-              {user.role === 'buyer' && user.user_type === 'both' && (
-                <Link href="/seller" className="mobile-nav-item" onClick={() => setMobileNavOpen(false)}>
-                  <i className="bi bi-shop" style={{ color: '#6c757d' }}></i>
-                  Seller Hub
-                </Link>
-              )}
-              <div className="mobile-nav-divider" />
-              <button
-                className="mobile-nav-item"
-                style={{ color: '#dc3545' }}
-                onClick={() => {
-                  setMobileNavOpen(false);
-                  confirmToast('Are you sure you want to log out?', () => {
-                    logout();
-                    window.location.href = '/login';
-                  }, 'Logout');
-                }}
-              >
-                <i className="bi bi-power" style={{ color: '#dc3545' }}></i>
-                Sign Out
-              </button>
-            </>
+          <hr />
+          {isAuthenticated && user ? (
+            <Link
+              href={user.role === 'super_admin' ? '/superadmin' : user.role === 'admin' ? '/admin' : '/buyer/dashboard'}
+              onClick={() => setMobileNavOpen(false)}
+            >
+              My Portal
+            </Link>
           ) : (
-            <>
-              <Link href="/login" className="mobile-nav-item" onClick={() => setMobileNavOpen(false)}>
-                <i className="bi bi-person-circle" style={{ color: 'var(--primary-yellow)' }}></i>
-                Sign In
-              </Link>
-              <Link href="/register" className="mobile-nav-item" onClick={() => setMobileNavOpen(false)}>
-                <i className="bi bi-person-plus" style={{ color: '#6c757d' }}></i>
-                Create Account
-              </Link>
-            </>
+            <Link href="/login" onClick={() => setMobileNavOpen(false)}>Login / Register</Link>
           )}
         </div>
-      </div>
-    </>
+      )} */}
+    </nav>
   );
 }

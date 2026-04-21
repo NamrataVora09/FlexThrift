@@ -9,7 +9,17 @@ import { api } from '@/lib/api';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, isAuthenticated, user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user) {
+      if (user.role === 'super_admin') router.replace('/superadmin');
+      else if (user.role === 'admin') router.replace('/admin');
+      else if (user.role === 'delivery') router.replace('/delivery');
+      else if (user.user_type === 'seller') router.replace('/seller');
+      else router.replace('/buyer/dashboard');
+    }
+  }, [isLoading, isAuthenticated, user]);
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({

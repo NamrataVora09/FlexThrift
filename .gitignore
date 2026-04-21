@@ -109,6 +109,7 @@ _modules/*
 /nbactions.xml
 /nb-configuration.xml
 /.nb-gradle/
+/new ui
 
 # Sublime Text
 *.tmlanguage.cache

@@ -90,9 +90,10 @@ class BuyerApi extends ResourceController
         // ─────────────────────────────────────────────────────────────────────
 
         $builder = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.seller_rating_avg, ob.brand_name as brand_name, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as image')
+            ->select('p.*, u.name as seller_name, u.seller_rating_avg, ob.brand_name as orignal_brand, b.brand_name as seller_brand, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as image')
             ->join('users u', 'u.id = p.seller_id', 'left')
-            ->join('orignal_brands ob', 'ob.id = p.brand_id AND ob.is_active = 1', 'left')
+            ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id AND ob.is_active = 1', 'left')
+            ->join('brands b', 'b.id = p.brand_id AND b.is_blocked = 0', 'left')
             ->where('p.status', 'approved');
 
         // Exclude blocked sellers if user is authenticated
@@ -137,29 +138,88 @@ class BuyerApi extends ResourceController
             $maxVal = (float) $maxPrice;
             $builder->where("COALESCE(p.price, p.original_price, p.rental_cost) <= $maxVal", null, false);
         }
+
+        // Category — multi-value OR (e.g. category_id=1,3,5)
         if ($categoryId) {
-            $catIdInt = (int) $categoryId;
-            $builder->groupStart()
-                ->like('p.category_ids', "\"$catIdInt\"")
-                ->orWhere('p.category', $categoryId)
-                ->groupEnd();
+            $catIds = array_values(array_filter(array_map('intval', explode(',', $categoryId))));
+            $builder->groupStart();
+            foreach ($catIds as $idx => $catIdInt) {
+                $catName = $db->table('categories')->where('id', $catIdInt)->get()->getRowArray()['category_name'] ?? null;
+                $fn = $idx === 0 ? 'groupStart' : 'orGroupStart';
+                $builder->$fn()
+                    ->like('p.category_ids', "\"$catIdInt\"")
+                    ->orWhere('p.category', (string)$catIdInt);
+                if ($catName) $builder->orWhere('p.category', $catName);
+                $builder->groupEnd();
+            }
+            $builder->groupEnd();
         }
+
+        // Sub-category — multi-value OR
         if ($subCatId) {
-            $subCatIdInt = (int) $subCatId;
-            $builder->groupStart()
-                ->like('p.sub_category_ids', "\"$subCatIdInt\"")
-                ->orWhere('p.sub_category', $subCatId)
-                ->groupEnd();
+            $subCatIds = array_values(array_filter(array_map('intval', explode(',', $subCatId))));
+            $builder->groupStart();
+            foreach ($subCatIds as $idx => $subCatIdInt) {
+                $subCatName = $db->table('sub_categories')->where('id', $subCatIdInt)->get()->getRowArray()['name'] ?? null;
+                $fn = $idx === 0 ? 'groupStart' : 'orGroupStart';
+                $builder->$fn()
+                    ->like('p.sub_category_ids', "\"$subCatIdInt\"")
+                    ->orWhere('p.sub_category', (string)$subCatIdInt);
+                if ($subCatName) $builder->orWhere('p.sub_category', $subCatName);
+                $builder->groupEnd();
+            }
+            $builder->groupEnd();
         }
-        if ($brandId)   $builder->where('p.brand_id', (int) $brandId);
-        if ($color)     $builder->like('p.color', $color);
-        if ($size)      $builder->like('p.size', $size);
+
+        // Brand — multi-value OR
+        if ($brandId) {
+            $brandIds = array_values(array_filter(array_map('intval', explode(',', $brandId))));
+            $builder->whereIn('p.brand_id', $brandIds);
+        }
+
+        // Original brand — multi-value OR
+        $originalBrandId = $this->request->getGet('original_brand_id');
+        if ($originalBrandId) {
+            $obIds = array_values(array_filter(array_map('intval', explode(',', $originalBrandId))));
+            $builder->whereIn('p.orignal_brand_id', $obIds);
+        }
+
+        // Color — multi-value OR
+        if ($color) {
+            $colors = array_values(array_filter(array_map('trim', explode(',', $color))));
+            $builder->groupStart();
+            foreach ($colors as $idx => $c) {
+                if ($idx === 0) $builder->like('p.color', $c);
+                else            $builder->orLike('p.color', $c);
+            }
+            $builder->groupEnd();
+        }
+
+        // Size — multi-value OR
+        if ($size) {
+            $sizes = array_values(array_filter(array_map('trim', explode(',', $size))));
+            $builder->groupStart();
+            foreach ($sizes as $idx => $s) {
+                if ($idx === 0) $builder->like('p.size', $s);
+                else            $builder->orLike('p.size', $s);
+            }
+            $builder->groupEnd();
+        }
+
+        // Gender — multi-value OR
         if ($gender) {
-            $builder->groupStart()
-                ->like('p.gender', $gender)
-                ->orLike('p.gender_ids', $gender)
-                ->groupEnd();
+            $genders = array_values(array_filter(array_map('trim', explode(',', $gender))));
+            $builder->groupStart();
+            foreach ($genders as $idx => $g) {
+                $fn = $idx === 0 ? 'groupStart' : 'orGroupStart';
+                $builder->$fn()
+                    ->like('p.gender', $g)
+                    ->orLike('p.gender_ids', $g)
+                    ->groupEnd();
+            }
+            $builder->groupEnd();
         }
+
         if ($condition === 'new') {
             $builder->groupStart()
                 ->where('p.used_times', 0)
@@ -168,14 +228,25 @@ class BuyerApi extends ResourceController
         } elseif ($condition === 'used') {
             $builder->where('p.used_times >', 0);
         }
-        // Dynamic attribute filtering via JSON specifications column
+
+        // Dynamic specs: AND between keys, OR within each key's values array
         if ($specs) {
             $specsArr = json_decode($specs, true) ?: [];
             foreach ($specsArr as $key => $val) {
-                if ($key !== '' && $val !== '') {
-                    $path = '$.' . json_encode($key);
-                    $builder->where('JSON_UNQUOTE(JSON_EXTRACT(p.specifications, ' . $db->escape($path) . '))', $val);
+                if ($key === '') continue;
+                $path         = '$.' . json_encode($key);
+                $escapedPath  = $db->escape($path);
+                $vals = is_array($val) ? array_filter($val, fn($v) => $v !== '') : ($val !== '' ? [$val] : []);
+                if (empty($vals)) continue;
+                $builder->groupStart();
+                $first = true;
+                foreach ($vals as $v) {
+                    $escapedVal = $db->escape($v);
+                    $expr = "JSON_UNQUOTE(JSON_EXTRACT(p.specifications, $escapedPath)) = $escapedVal";
+                    if ($first) { $builder->where($expr, null, false); $first = false; }
+                    else        { $builder->orWhere($expr, null, false); }
                 }
+                $builder->groupEnd();
             }
         }
         // ─────────────────────────────────────────────────────────────────────
@@ -188,7 +259,8 @@ class BuyerApi extends ResourceController
         // ── Filter sidebar options ────────────────────────────────────────────
         $categories    = $db->table('categories')->select('id, category_name as name, field_config')->orderBy('category_name')->get()->getResultArray();
         $subCategories = $db->table('sub_categories')->select('id, name, category_id, field_config')->orderBy('name')->get()->getResultArray();
-        $brands        = $db->table('orignal_brands')->where('is_active', 1)->select('id, brand_name')->orderBy('brand_name')->get()->getResultArray();
+        $originalBrands = $db->table('orignal_brands')->where('is_active', 1)->select('id, brand_name')->orderBy('brand_name')->get()->getResultArray();
+        $sellerBrands   = $db->table('brands')->where('is_blocked', 0)->select('id, brand_name')->orderBy('brand_name')->get()->getResultArray();
         $colors        = $db->table('colors')->select('id, name')->orderBy('name')->get()->getResultArray();
         $genders       = $db->table('genders')->select('id, name')->get()->getResultArray();
         $sizesRaw      = $db->query("SELECT DISTINCT size FROM products WHERE status = 'approved' AND size IS NOT NULL AND size != '' AND size != '[]' ORDER BY size")->getResultArray();
@@ -209,7 +281,8 @@ class BuyerApi extends ResourceController
                 'filter_options' => [
                     'categories'     => $categories,
                     'sub_categories' => $subCategories,
-                    'brands'         => $brands,
+                    'brands'         => $sellerBrands,
+                    'original_brands'=> $originalBrands,
                     'colors'         => $colors,
                     'genders'        => $genders,
                     'sizes'          => array_column($sizesRaw, 'size'),
@@ -266,9 +339,10 @@ class BuyerApi extends ResourceController
 
         // 2. Fetch product details
         $product = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as brand, lt.usage_label')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, b.brand_name as seller_brand, lt.usage_label, lt.type_name as listing_type_name')
             ->join('users u', 'u.id = p.seller_id', 'left')
-            ->join('orignal_brands ob', 'ob.id = p.brand_id AND ob.is_active = 1 AND ob.is_blocked = 0', 'left')
+            ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id AND ob.is_active = 1 AND ob.is_blocked = 0', 'left')
+            ->join('brands b', 'b.id = p.brand_id AND b.is_active = 1 AND b.is_blocked = 0', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.id', $id)
             ->get()->getRowArray();
@@ -305,10 +379,11 @@ class BuyerApi extends ResourceController
         // Build a scored similarity query
         // Priority: same category > same brand > same listing type > same gender
         $builder = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.seller_rating_avg, ob.brand_name as brand_name,
+            ->select('p.*, u.name as seller_name, u.seller_rating_avg, ob.brand_name as orignal_brand, b.brand_name as seller_brand,
                 (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as image')
             ->join('users u', 'u.id = p.seller_id', 'left')
-            ->join('orignal_brands ob', 'ob.id = p.brand_id AND ob.is_active = 1', 'left')
+            ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id AND ob.is_active = 1', 'left')
+            ->join('brands b', 'b.id = p.brand_id AND b.is_blocked = 0', 'left')
             ->where('p.status', 'approved')
             ->where('p.id !=', $id);
 

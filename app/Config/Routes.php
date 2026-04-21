@@ -265,22 +265,22 @@ function register_api_routes($routes) {
         $routes->post('update-sub-category/(:num)', 'Api\SuperAdminApi::updateSubCategory/$1');
         $routes->post('update-color/(:num)', 'Api\SuperAdminApi::updateColor/$1');
         // Brands
-        $routes->get('brands', 'Api\SuperAdminApi::brands');
-        $routes->post('create-brand', 'Api\SuperAdminApi::createBrand');
-        $routes->post('update-brand/(:num)', 'Api\SuperAdminApi::updateBrand/$1');
-        $routes->post('delete-brand/(:num)', 'Api\SuperAdminApi::deleteBrand/$1');
-        $routes->post('deactivate-brand/(:num)', 'Api\SuperAdminApi::deactivateBrand/$1');
-        $routes->post('activate-brand/(:num)', 'Api\SuperAdminApi::activateBrand/$1');
-        $routes->post('block-brand/(:num)', 'Api\SuperAdminApi::blockBrand/$1');
-        $routes->post('unblock-brand/(:num)', 'Api\SuperAdminApi::unblockBrand/$1');
+        $routes->get('brands', 'Api\SuperAdminApi::sellerBrands');
+        $routes->post('create-brand', 'Api\SuperAdminApi::createSellerBrand');
+        $routes->post('update-brand/(:num)', 'Api\SuperAdminApi::updateSellerBrand/$1');
+        $routes->post('delete-brand/(:num)', 'Api\SuperAdminApi::deleteSellerBrand/$1');
+        $routes->post('deactivate-brand/(:num)', 'Api\SuperAdminApi::deactivateSellerBrand/$1');
+        $routes->post('activate-brand/(:num)', 'Api\SuperAdminApi::activateSellerBrand/$1');
+        $routes->post('block-brand/(:num)', 'Api\SuperAdminApi::blockSellerBrand/$1');
+        $routes->post('unblock-brand/(:num)', 'Api\SuperAdminApi::unblockSellerBrand/$1');
         $routes->get('sellers-list', 'Api\SuperAdminApi::sellersList');
         $routes->get('get-products-by-user/(:num)', 'Api\SuperAdminApi::getProductsByUser/$1');
         $routes->post('bulk-tag-products', 'Api\SuperAdminApi::bulkTagProducts');
         // Original Brands
-        $routes->get('original-brands', 'Api\SuperAdminApi::originalBrands');
-        $routes->post('add-original-brand', 'Api\SuperAdminApi::addOriginalBrand');
-        $routes->post('update-original-brand/(:num)', 'Api\SuperAdminApi::updateOriginalBrand/$1');
-        $routes->post('delete-original-brand/(:num)', 'Api\SuperAdminApi::deleteOriginalBrand/$1');
+        $routes->get('original-brands', 'Api\SuperAdminApi::originalBrandsList');
+        $routes->post('add-original-brand', 'Api\SuperAdminApi::createBrand');
+        $routes->post('update-original-brand/(:num)', 'Api\SuperAdminApi::updateBrand/$1');
+        $routes->post('delete-original-brand/(:num)', 'Api\SuperAdminApi::deleteOriginalBrandLegacy/$1');
         // User Subscriptions
         $routes->get('user-subscriptions', 'Api\SuperAdminApi::userSubscriptions');
         $routes->post('assign-subscription', 'Api\SuperAdminApi::assignSubscription');

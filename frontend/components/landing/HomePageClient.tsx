@@ -4,623 +4,553 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/api';
+import LandingNavbar from '../layout/LandingNavbar';
+import Footer from '../layout/Footer';
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
 
-interface Category    { id: number; category_name: string; product_type_id: number; }
-interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
-interface ListingType { id: number; type_name: string; product_types?: ProductType[]; }
+interface AotStep { icon: string; title: string; desc: string; }
+interface AotGuide { id: string; label: string; videoUrl: string; steps: AotStep[]; }
+interface AotSection { id: string; headline: string; subtitle: string; guides: AotGuide[]; reversed?: boolean; }
+
+const DEFAULT_AOT: AotSection[] = [
+  {
+    id: 'aot-1',
+    headline: 'The Art of the Transaction',
+    subtitle: 'Master the high-end exchange. Whether acquiring or liberating assets, our process is surgical.',
+    guides: [
+      {
+        id: 'guide-2',
+        label: 'How to buy',
+        videoUrl: '',
+        steps: [
+          { icon: 'bi-search-heart', title: 'Explore Curated', desc: 'Discover pieces that have survived our rigorous editorial selection process.' },
+          { icon: 'bi-cart-check', title: 'Buy or Rent', desc: 'Choose permanent ownership or dynamic access via our flexible plans.' },
+          { icon: 'bi-patch-check', title: 'Authenticate', desc: 'Every item is physically inspected by specialists before reaching your door.' },
+        ],
+      },
+    ],
+  },
+];
+
+function uid() { return Math.random().toString(36).slice(2); }
+
+const videoPlaceholder = (isSuperAdmin: boolean) => (
+  <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400">
+    <i className="bi bi-play-circle text-4xl text-[#D7B467]" />
+    <span className="text-sm">{isSuperAdmin ? 'Add video URL in Edit' : 'Video coming soon'}</span>
+  </div>
+);
+
+const videoBlock = (url: string, label: string, isSuperAdmin: boolean) => (
+  <div className="w-full aspect-video rounded-xl overflow-hidden bg-gray-100">
+    {url
+      ? <iframe className="w-full h-full" src={url} title={label} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+      : videoPlaceholder(isSuperAdmin)
+    }
+  </div>
+);
+
+function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
+  section: AotSection; isSuperAdmin: boolean; onEdit: () => void; onDelete: () => void;
+}) {
+  return (
+    <section className="relative pb-16 pt-20 bg-white w-full  ">
+
+      {/* Superadmin controls */}
+      {isSuperAdmin && (
+        <div className="absolute top-4 right-6 flex gap-2">
+          <button onClick={onEdit} className="bg-[#ffc63a] text-black text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-[#e6b035] transition-colors">
+            ✏️ Edit Section
+          </button>
+          <button onClick={onDelete} className="bg-red-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-red-600 transition-colors">
+            🗑 Delete
+          </button>
+        </div>
+      )}
+
+      <div className="max-w-[1400px] mx-auto  overflow-hidden">
+        {/* Heading */}
+        <h2 className="text-3xl font-bold  text-[80px]!  text-black text-center mb-3">{section.headline}</h2>
+        <p className="text-gray-500 text-center text-[20px]! mb-[100px]! max-w-xl mx-auto mb-12">{section.subtitle}</p>
+
+        {/* All guides have no steps → show videos in a row */}
+        {section.guides.every(g => g.steps.length === 0) ? (
+          <div className={`grid gap-5 w-full`} style={{ gridTemplateColumns: `repeat(${Math.min(section.guides.length, 3)}, 1fr)` }}>
+            {section.guides.map(guide => (
+              <div key={guide.id}>
+                {guide.label && (
+                  <div className="flex items-center justify-center gap-3 mb-3">
+                    <div className="w-[50px] h-[1.5px] bg-[#D7B467]"></div>
+                    <p className="text-center pt-2 text-sm font-semibold text-[#D7B467] uppercase tracking-widest"> {guide.label}</p>
+                    <div className="w-[50px] h-[1.5px] bg-[#D7B467]"></div>
+                  </div>
+                )}
+                {videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col w-full">
+            {section.guides.map((guide, gi) => (
+              <div key={guide.id} className=' mb-10'>
+                {guide.label && (
+                  <div className="flex items-center justify-center gap-4 mb-8">
+                    <div className="w-[50px] h-[2px] bg-[#D7B467]"></div>
+                    <p className="text-center text-sm font-semibold text-[30px] text-[#D7B467] uppercase tracking-widest">{guide.label}</p>
+                    <div className="w-[50px] h-[2px] bg-[#D7B467]"></div>
+                  </div>
+                )}
+
+                {guide.steps.length > 0 ? (
+                  <div className={`grid grid-cols-1 lg:grid-cols-[4fr_5fr] gap-12 w-full items-center ${section.reversed ? 'lg:direction-rtl' : ''}`}>
+                    {/* Video — 40% */}
+                    <div className="min-w-0">{videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}</div>
+
+                    {/* Steps — 50% */}
+                    <div className="flex flex-col gap-3 w-full min-w-0" >
+                      {guide.steps.map((s, idx) => (
+                        <div key={idx} className="flex gap-4 justify-start items-start text-left w-full min-w-0">
+                          <h4 className="font-bold text-[18px]! text-black shrink-0 pt-1.5">
+                            {idx + 1})
+                          </h4>
+                          <p className="text-[16px]! text-gray-500 leading-relaxed flex-1 break-words">
+                            {s.desc}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="max-w-2xl mx-auto min-w-0">{videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}</div>
+                )}
+
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+    </section>
+  );
+}
+
+function AotEditModal({ section, onClose, onSave }: {
+  section: AotSection; onClose: () => void; onSave: (s: AotSection) => void;
+}) {
+  const [draft, setDraft] = useState<AotSection>(JSON.parse(JSON.stringify(section)));
+  const [activeGuide, setActiveGuide] = useState(0);
+
+  const setField = (f: 'headline' | 'subtitle', v: string) => setDraft(d => ({ ...d, [f]: v }));
+  const setGuideField = (gi: number, f: 'label' | 'videoUrl', v: string) =>
+    setDraft(d => ({ ...d, guides: d.guides.map((g, i) => i === gi ? { ...g, [f]: v } : g) }));
+  const addGuide = () => {
+    const next: AotGuide = { id: uid(), label: 'New guide', videoUrl: '', steps: [] };
+    setDraft(d => ({ ...d, guides: [...d.guides, next] }));
+    setActiveGuide(draft.guides.length);
+  };
+  const removeGuide = (gi: number) => {
+    setDraft(d => ({ ...d, guides: d.guides.filter((_, i) => i !== gi) }));
+    setActiveGuide(Math.max(0, activeGuide - 1));
+  };
+  const addStep = (gi: number) =>
+    setDraft(d => ({ ...d, guides: d.guides.map((g, i) => i === gi ? { ...g, steps: [...g.steps, { icon: 'bi-star', title: 'New step', desc: 'Description.' }] } : g) }));
+  const removeStep = (gi: number, si: number) =>
+    setDraft(d => ({ ...d, guides: d.guides.map((g, i) => i === gi ? { ...g, steps: g.steps.filter((_, j) => j !== si) } : g) }));
+  const setStep = (gi: number, si: number, f: keyof AotStep, v: string) =>
+    setDraft(d => ({ ...d, guides: d.guides.map((g, i) => i === gi ? { ...g, steps: g.steps.map((s, j) => j === si ? { ...s, [f]: v } : s) } : g) }));
+
+  const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#ffc63a] transition-colors";
+  const labelCls = "block text-xs font-semibold text-gray-500 mb-1";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h5 className="font-bold text-base text-black">Edit Section</h5>
+          <button onClick={onClose} className="text-gray-400 hover:text-black text-2xl leading-none">&times;</button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-6 py-5 flex flex-col gap-4">
+
+          <div>
+            <label className={labelCls}>Headline</label>
+            <input className={inputCls} value={draft.headline} onChange={e => setField('headline', e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Subtitle</label>
+            <textarea className={inputCls} rows={2} value={draft.subtitle} onChange={e => setField('subtitle', e.target.value)} />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              id="reversedToggle"
+              checked={!!draft.reversed}
+              onChange={e => setDraft(d => ({ ...d, reversed: e.target.checked }))}
+              className="accent-[#ffc63a]"
+            />
+            Reverse layout (steps left, video right)
+          </label>
+
+          {/* Guide tabs */}
+          <div className="flex flex-wrap gap-2">
+            {draft.guides.map((g, gi) => (
+              <button
+                key={g.id}
+                onClick={() => setActiveGuide(gi)}
+                className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${activeGuide === gi ? 'bg-[#ffc63a] border-[#ffc63a] font-bold' : 'bg-white border-gray-200 text-gray-500 hover:border-[#ffc63a]'}`}
+              >
+                {g.label || `Guide ${gi + 1}`}
+              </button>
+            ))}
+            <button onClick={addGuide} className="px-4 py-1.5 rounded-full text-sm border border-dashed border-gray-300 text-gray-400 hover:border-[#ffc63a] hover:text-[#ffc63a] transition-colors">
+              + Add Guide
+            </button>
+          </div>
+
+          {/* Active guide editor */}
+          {draft.guides[activeGuide] && (
+            <div className="border border-gray-100 rounded-xl p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h6 className="font-bold text-sm">Guide: {draft.guides[activeGuide].label}</h6>
+                {draft.guides.length > 1 && (
+                  <button onClick={() => removeGuide(activeGuide)} className="text-xs text-red-500 border border-red-200 rounded-lg px-3 py-1 hover:bg-red-50 transition-colors">
+                    Remove guide
+                  </button>
+                )}
+              </div>
+              <div>
+                <label className={labelCls}>Guide Label</label>
+                <input className={inputCls} value={draft.guides[activeGuide].label} onChange={e => setGuideField(activeGuide, 'label', e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Video Embed URL</label>
+                <input className={inputCls} placeholder="https://www.youtube.com/embed/VIDEO_ID" value={draft.guides[activeGuide].videoUrl} onChange={e => setGuideField(activeGuide, 'videoUrl', e.target.value)} />
+              </div>
+
+              <label className={labelCls + " mt-1"}>Steps</label>
+              {draft.guides[activeGuide].steps.map((s, si) => (
+                <div key={si} className="bg-gray-50 rounded-xl p-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-400">Step {si + 1}</span>
+                    {draft.guides[activeGuide].steps.length > 0 && (
+                      <button onClick={() => removeStep(activeGuide, si)} className="text-xs text-red-400 hover:text-red-600 transition-colors">✕ Remove</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className={labelCls}>Icon class</label>
+                      <input className={inputCls} placeholder="bi-star" value={s.icon} onChange={e => setStep(activeGuide, si, 'icon', e.target.value)} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className={labelCls}>Title</label>
+                      <input className={inputCls} value={s.title} onChange={e => setStep(activeGuide, si, 'title', e.target.value)} />
+                    </div>
+                    <div className="col-span-3">
+                      <label className={labelCls}>Description</label>
+                      <textarea className={inputCls} rows={2} value={s.desc} onChange={e => setStep(activeGuide, si, 'desc', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => addStep(activeGuide)} className="text-sm border border-dashed border-gray-300 rounded-lg py-2 text-gray-400 hover:border-[#ffc63a] hover:text-[#ffc63a] transition-colors">
+                + Add Step
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-5 py-2 rounded-lg border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors">Cancel</button>
+          <button onClick={() => onSave(draft)} className="px-5 py-2 rounded-lg bg-[#ffc63a] hover:bg-[#e6b035] text-black font-bold text-sm transition-colors">Save Section</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const CATEGORY_CARDS = [
-  { name: 'Clothes',     img: 'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=1200', reverse: false },
-  { name: 'Accessories', img: 'https://images.unsplash.com/photo-1596460107916-430662021049?q=80&w=1200', reverse: true  },
-  { name: 'Footwear',    img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1200', reverse: false },
-  { name: 'Electronics', img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=1200', reverse: true  },
+  {
+    name: 'Clothes',
+    slug: 'clothes',
+    label: 'Explore Clothing',
+    desc: 'Curated fashion from top brands',
+    reverse: false,
+    imgs: [
+      'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=1200',
+      'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?q=80&w=1200',
+      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=1200',
+    ],
+  },
+  {
+    name: 'Accessories',
+    slug: 'accessories',
+    label: 'Shop Accessories',
+    desc: 'Watches, bags & more',
+    reverse: true,
+    imgs: [
+      'https://images.unsplash.com/photo-1596460107916-430662021049?q=80&w=1200',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=1200',
+      'https://images.unsplash.com/photo-1509941943102-10c232535736?q=80&w=1200',
+    ],
+  },
+  {
+    name: 'Footwear',
+    slug: 'footwear',
+    label: 'Find Your Fit',
+    desc: 'Sneakers, heels & boots',
+    reverse: false,
+    imgs: [
+      'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1200',
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200',
+      'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?q=80&w=1200',
+    ],
+  },
+  {
+    name: 'Electronics',
+    slug: 'electronics',
+    label: 'Shop Electronics',
+    desc: 'Gadgets & premium tech',
+    reverse: true,
+    imgs: [
+      'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=1200',
+      'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?q=80&w=1200',
+      'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?q=80&w=1200',
+    ],
+  },
 ];
+
+
 
 export default function HomePageClient() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
+  const isSuperAdmin = user?.role === 'super_admin';
 
-  const [listingTypes,   setListingTypes]   = useState<ListingType[]>([]);
-  const [showMegaMenu,   setShowMegaMenu]   = useState(false);
-  const [sidebarMode,    setSidebarMode]    = useState<'sell' | 'rent'>('sell');
-  const [sidebarName,    setSidebarName]    = useState('');
-  const [sidebarEmail,   setSidebarEmail]   = useState('');
-  const [mobileNavOpen,  setMobileNavOpen]  = useState(false);
-
-  /* ── Taxonomy ─────────────────────────────────────────────────────── */
   useEffect(() => {
-    fetch(`${API_BASE}/taxonomy`)
+    if (!isLoading && isAuthenticated && user) {
+      if (user.role === 'admin') router.replace('/admin');
+      else if (user.role === 'delivery') router.replace('/delivery');
+      else if (user.user_type === 'seller') router.replace('/seller');
+      else if (user.user_type === 'buyer' || user.role === 'both') router.replace('/buyer/dashboard');
+    }
+  }, [isLoading, isAuthenticated, user]);
+
+  const [sidebarMode, setSidebarMode] = useState<'sell' | 'rent'>('sell');
+  const [sidebarName, setSidebarName] = useState('');
+  const [sidebarEmail, setSidebarEmail] = useState('');
+  const [catImgIdx, setCatImgIdx] = useState<number[]>(CATEGORY_CARDS.map(() => 0));
+
+  const [aotSections, setAotSections] = useState<AotSection[]>(DEFAULT_AOT);
+  const [editingSection, setEditingSection] = useState<AotSection | null>(null);
+  const [savingAot, setSavingAot] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/landing-content`)
       .then(r => r.json())
       .then(res => {
-        if (res.success && res.data) {
-          const { listing_types, product_types, categories } = res.data;
-          const enriched = (listing_types as ListingType[]).map(lt => ({
-            ...lt,
-            product_types: (product_types as ProductType[])
-              .filter(pt => pt.listing_type_id === lt.id)
-              .map(pt => ({
-                ...pt,
-                categories: (categories as Category[]).filter(c => c.product_type_id === pt.id),
-              })),
-          }));
-          setListingTypes(enriched);
+        if (res.success && res.data?.aot_sections) {
+          try { setAotSections(JSON.parse(res.data.aot_sections)); } catch { }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
-  /* ── Close mega menu on outside click ───────────────────────────── */
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.hp-mega-wrap')) setShowMegaMenu(false);
+  const persistSections = async (next: AotSection[]) => {
+    setSavingAot(true);
+    setAotSections(next); // update UI immediately regardless of API result
+    try {
+      await api.post('/superadmin/update-landing-content', { aot_sections: JSON.stringify(next) });
+    } catch {
+      // API save failed — UI already updated, changes persist until page refresh
+    }
+    setSavingAot(false);
+  };
+
+  const handleSaveSection = async (updated: AotSection) => {
+    await persistSections(aotSections.map(s => s.id === updated.id ? updated : s));
+    setEditingSection(null);
+  };
+
+  const handleDeleteSection = async (id: string) => {
+    if (!confirm('Delete this section?')) return;
+    await persistSections(aotSections.filter(s => s.id !== id));
+  };
+
+  const handleAddSection = async () => {
+    const fresh: AotSection = {
+      id: uid(),
+      headline: 'New Section',
+      subtitle: 'Section subtitle goes here.',
+      guides: [{ id: uid(), label: 'New guide', videoUrl: '', steps: [] }],
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const next = [...aotSections, fresh];
+    setSavingAot(true);
+    await api.post('/superadmin/update-landing-content', { aot_sections: JSON.stringify(next) });
+    setAotSections(next);
+    setSavingAot(false);
+    setEditingSection(fresh);
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCatImgIdx(prev => prev.map((idx, i) => (idx + 1) % CATEGORY_CARDS[i].imgs.length));
+    }, 3500);
+    return () => clearInterval(interval);
   }, []);
 
   if (isLoading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#fff' }}>
-        <div className="spinner-grow text-warning" role="status" style={{ width: '3rem', height: '3rem' }}>
-          <span className="visually-hidden">Loading…</span>
-        </div>
-      </div>
-    );
+    return <div><span>Loading…</span></div>;
   }
 
   return (
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400..900&display=swap" rel="stylesheet" />
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+      <main className=' pt-25 px-28'>
+        <LandingNavbar />
 
-      <style jsx global>{`
-        * { box-sizing: border-box; }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-          background-color: #ffffff !important;
-          color: #000;
-          overflow-x: hidden;
-        }
-        a { text-decoration: none !important; }
+        {/* Category Cards + Sidebar */}
+        <div className='flex relative justify-end px-2 py-10 gap-30 items-start'>
 
-        /* ── Wide container (matching PHP) ── */
-        @media (min-width: 1400px) {
-          .container, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
-            max-width: 1457px !important;
-          }
-        }
-        @media (min-width: 1200px) {
-          .container, .container-lg, .container-md, .container-sm, .container-xl {
-            max-width: 1366px !important;
-          }
-        }
+          {/* Left: Category Cards */}
 
-        /* ════════ NAVBAR ════════ */
-        .hp-navbar {
-          background: #fff;
-          padding: 1.2rem 0;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-          position: sticky;
-          top: 0;
-          z-index: 1050;
-        }
-        .hp-brand {
-          font-family: "Maven Pro", sans-serif;
-          font-weight: 700;
-          font-size: 40px;
-          color: #000 !important;
-          line-height: 1.3;
-        }
-        .hp-nav-link {
-          font-weight: 600;
-          color: #000 !important;
-          font-size: 16px;
-          font-family: "Maven Pro", sans-serif;
-          padding: 4px 15px;
-          transition: color 0.3s;
-          display: block;
-          white-space: nowrap;
-        }
-        .hp-nav-link:hover { color: #D7B467 !important; }
-
-        /* Mega menu */
-        .hp-mega-wrap { position: static; }
-        .hp-mega-menu {
-          position: fixed;
-          left: 0; right: 0;
-          top: 80px;
-          width: 100vw;
-          border: none;
-          border-radius: 0 0 15px 15px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-          padding: 40px 100px;
-          background-color: #fff;
-          z-index: 1060;
-          animation: hmFadeIn 0.25s ease;
-        }
-        @keyframes hmFadeIn {
-          from { opacity: 0; transform: translateY(-8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .hp-mega-title {
-          font-weight: 700;
-          font-size: 1.1rem;
-          color: #000;
-          font-family: "Maven Pro", sans-serif;
-          border-bottom: 2px solid #ffc63a;
-          padding-bottom: 8px;
-          margin-bottom: 20px;
-          display: inline-block;
-        }
-        .hp-mega-pt {
-          font-weight: 700;
-          color: #000 !important;
-          font-size: 0.95rem;
-          font-family: "Maven Pro", sans-serif;
-          display: block;
-          margin-bottom: 4px;
-        }
-        .hp-mega-pt:hover { color: #ffc63a !important; }
-        .hp-mega-cat {
-          color: #666;
-          font-size: 0.9rem;
-          font-family: "Maven Pro", sans-serif;
-          display: block;
-          padding: 2px 0;
-          transition: color 0.3s;
-        }
-        .hp-mega-cat:hover { color: #ffc63a !important; }
-
-        /* Search / login icons */
-        .hp-search-icon { font-size: 1.3rem; color: #000; }
-        .hp-login-link {
-          font-weight: 700;
-          color: #000 !important;
-          font-size: 16px;
-          font-family: Arial, sans-serif;
-          white-space: nowrap;
-          transition: color 0.3s;
-        }
-        .hp-login-link:hover { color: #ffbe6e !important; }
-
-        /* ════════ CATEGORY CARDS ════════ */
-        .hp-cat-card {
-          height: 380px;
-          border-radius: 12px;
-          overflow: hidden;
-          box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-          display: flex;
-          margin-bottom: 40px;
-        }
-        .hp-cat-bg {
-          background-color: #e7efe5;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex: 0 0 30.666667%;
-        }
-        .hp-cat-title {
-          font-family: "Maven Pro", sans-serif;
-          font-weight: 500;
-          font-size: 20px;
-          color: #000;
-        }
-        .hp-cat-photo {
-          background-size: cover;
-          background-position: center;
-          flex: 1;
-        }
-
-        /* ════════ SIDEBAR ════════ */
-        .hp-sidebar-wrap {
-          position: sticky;
-          top: 100px;
-          align-self: flex-start;
-          height: fit-content;
-          margin-left: -4px;
-        }
-        .hp-sidebar-box {
-          background-color: #fff;
-          border-radius: 14px;
-          padding: 30px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-        .hp-fw-semi { font-weight: 500 !important; font-size: 18px !important; }
-        .hp-sub-text { color: #302e2e; font-size: 15px; font-weight: 400; }
-        .hp-sec-label { font-weight: 500 !important; margin-bottom: 10px; color: #000; font-size: 15px; }
-        .hp-btn-sell {
-          background-color: #ffc63a; color: #fff;
-          padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px;
-          font-size: 14px; cursor: pointer; transition: all 0.3s; font-weight: 600;
-        }
-        .hp-btn-sell.inactive { background-color: #fff; color: #000; }
-        .hp-btn-rent {
-          background-color: #fff; color: #000;
-          padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px;
-          font-size: 13px; cursor: pointer; transition: all 0.3s;
-        }
-        .hp-btn-rent.active { background-color: #ffc63a; color: #fff; }
-        .hp-btn-sell:hover, .hp-btn-rent:hover { background-color: #000; color: #fff; }
-        .hp-input {
-          width: 100%; border-radius: 8px; padding: 10px 12px;
-          border: 1px solid #ddd; font-size: 13px; height: 40px;
-          outline: none; transition: border-color 0.2s; display: block;
-        }
-        .hp-input:focus { border-color: #ffc63a; }
-        .hp-btn-start {
-          background-color: #ffc63a; color: #fff; border: none;
-          border-radius: 10px; padding: 15px; font-weight: 500;
-          width: 100%; font-size: 14px; cursor: pointer;
-          transition: all 0.3s; line-height: 1;
-        }
-        .hp-btn-start:hover { background-color: #000; color: #fff; transform: translateY(-2px); }
-        .hp-login-note { color: #302e2e; font-size: 15px; font-weight: 400; text-align: center; margin-top: 16px; }
-        .hp-login-lnk { color: #ffc107 !important; text-decoration: underline !important; }
-
-        /* ════════ HOW TO SELL ════════ */
-        .hp-section-title {
-          text-align: center;
-          font-size: 32px;
-          font-weight: 600;
-          margin-bottom: 60px;
-          letter-spacing: 1px;
-        }
-        .hp-step-icon { font-size: 3rem; color: #2c3e50; margin-bottom: 20px; display: block; }
-        .hp-step-title { font-weight: 600; font-size: 1.3rem; color: #2c3e50; margin-bottom: 15px; }
-        .hp-step-desc { font-size: 1rem; color: #555; line-height: 1.6; max-width: 300px; margin: 0 auto; }
-
-        /* Timeline (replaces number.png) */
-        .hp-timeline {
-          position: relative;
-          max-width: 70%;
-          margin: 10px auto 0;
-          height: 40px;
-        }
-        .hp-timeline-line {
-          position: absolute;
-          top: 50%; left: 0; width: 100%;
-          height: 1px; background: #999;
-        }
-        .hp-dot-1 { position: absolute; top: 50%; transform: translate(-50%, -50%); left: 0%; }
-        .hp-dot-2 { position: absolute; top: 50%; transform: translate(-50%, -50%); left: 50%; }
-        .hp-dot-3 { position: absolute; top: 50%; transform: translate(-50%, -50%); left: 100%; }
-        .hp-dot {
-          width: 36px; height: 36px; background: #d6b06b; color: #fff;
-          border-radius: 50%; display: flex; align-items: center; justify-content: center;
-          font-weight: 600; position: relative; z-index: 2;
-        }
-
-        /* ════════ FOOTER ════════ */
-        .hp-footer {
-          background-color: #3D3B3B;
-          color: #b2bec3;
-          padding: 66px 0 4px;
-          width: 100%;
-          margin-top: 60px;
-        }
-        .hp-footer-brand { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 25px; }
-        .hp-footer-desc  { font-size: 1rem; line-height: 1.8; max-width: 380px; color: #b2bec3; }
-        .hp-footer-hdg   { font-weight: 600; font-size: 1.2rem; color: #fff; margin-bottom: 30px; }
-        .hp-footer-links { list-style: none; padding: 0; margin: 0; }
-        .hp-footer-links li { margin-bottom: 4px; }
-        .hp-footer-links a { color: #fff !important; font-size: 1rem; transition: color 0.3s; font-family: Arial, sans-serif; }
-        .hp-footer-links a:hover { color: #ffc63a !important; }
-        .hp-social { margin-top: -33px; margin-left: -11px; }
-        .hp-social a { color: #fff !important; font-size: 1.1rem; margin-right: 25px; transition: color 0.3s; }
-        .hp-social a:hover { color: #ffc63a !important; }
-        .hp-copyright {
-          text-align: center; padding: 10px 0; margin-top: 12px;
-          border-top: 1px solid #444; font-size: 0.95rem;
-          color: #636e72; background-color: #1e2124;
-        }
-
-        /* ════════ RESPONSIVE ════════ */
-        @media (max-width: 991px) {
-          .hp-brand { font-size: 28px; }
-          .hp-sidebar-wrap { position: static; }
-          .hp-cat-card { height: 220px; margin-bottom: 20px; }
-          .hp-mega-menu { padding: 20px 20px; }
-          .hp-section-title { font-size: 24px; margin-bottom: 30px; }
-        }
-        @media (max-width: 575px) {
-          .hp-cat-card { height: 160px; }
-          .hp-cat-title { font-size: 15px; }
-        }
-      `}</style>
-
-      {/* ══════════════════ NAVBAR ══════════════════ */}
-      <nav className="hp-navbar">
-        <div className="container d-flex align-items-center justify-content-between">
-
-          {/* Brand */}
-          <Link href="/" className="hp-brand">Flex Market</Link>
-
-          {/* Mobile toggle */}
-          <button
-            className="d-lg-none border-0 bg-transparent ms-auto me-2"
-            style={{ cursor: 'pointer' }}
-            onClick={() => setMobileNavOpen(v => !v)}
-          >
-            <i className="bi bi-list" style={{ fontSize: '1.6rem' }}></i>
-          </button>
-
-          {/* Desktop nav */}
-          <div className="d-none d-lg-flex align-items-center flex-grow-1 ps-3 gap-0">
-            <ul className="list-unstyled d-flex align-items-center m-0 p-0 flex-grow-1">
-
-              {/* All Products mega dropdown */}
-              <li className="hp-mega-wrap">
-                <a
-                  href="#"
-                  className="hp-nav-link d-flex align-items-center gap-1"
-                  onClick={e => { e.preventDefault(); setShowMegaMenu(v => !v); }}
-                  onMouseEnter={() => setShowMegaMenu(true)}
-                >
-                  All Products
-                  <i className="bi bi-chevron-down" style={{ fontSize: '0.65rem' }}></i>
-                </a>
-                {showMegaMenu && (
-                  <div className="hp-mega-menu" onMouseLeave={() => setShowMegaMenu(false)}>
-                    <div className="container-fluid">
-                      <div className="row">
-                        {listingTypes.slice(0, 3).map(lt => (
-                          <div key={lt.id} className="col-lg-4">
-                            <span className="hp-mega-title">{lt.type_name}</span>
-                            <ul className="list-unstyled p-0">
-                              {lt.product_types?.map(pt => (
-                                <li key={pt.id} className="mb-3">
-                                  <Link
-                                    href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}&product_type=${pt.id}`}
-                                    className="hp-mega-pt"
-                                    onClick={() => setShowMegaMenu(false)}
-                                  >
-                                    {pt.name}
-                                  </Link>
-                                  <ul className="list-unstyled ps-2 mt-1">
-                                    {pt.categories?.slice(0, 4).map(cat => (
-                                      <li key={cat.id}>
-                                        <Link
-                                          href={`/buyer/browse?category=${cat.id}`}
-                                          className="hp-mega-cat"
-                                          onClick={() => setShowMegaMenu(false)}
-                                        >
-                                          {cat.category_name}
-                                        </Link>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </li>
-
-              {/* Listing type links (up to 6) */}
-              {listingTypes.slice(0, 6).map(lt => (
-                <li key={lt.id}>
-                  <Link href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`} className="hp-nav-link">
-                    {lt.type_name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            {/* Right actions */}
-            <div className="d-flex align-items-center gap-3 flex-shrink-0">
-              <Link href="/buyer/browse" className="text-dark">
-                <i className="bi bi-search hp-search-icon"></i>
-              </Link>
-              {isAuthenticated && user ? (
-                <Link href={
-                  user.role === 'super_admin' ? '/superadmin' :
-                  user.role === 'admin'       ? '/admin'       : '/buyer/dashboard'
-                } className="hp-login-link">
-                  <i className="bi bi-person-fill me-1"></i>
-                  MY PORTAL
-                </Link>
-              ) : (
-                <Link href="/login" className="hp-login-link">
-                  <i className="bi bi-person-fill me-1"></i>
-                  LOGIN / REGISTER
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile drawer */}
-        {mobileNavOpen && (
-          <div className="container mt-2 pb-3 border-top d-lg-none" style={{ borderColor: '#eee' }}>
-            <Link href="/buyer/browse" className="hp-nav-link d-block py-2" onClick={() => setMobileNavOpen(false)}>All Products</Link>
-            {listingTypes.slice(0, 6).map(lt => (
-              <Link key={lt.id} href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`} className="hp-nav-link d-block py-2" onClick={() => setMobileNavOpen(false)}>
-                {lt.type_name}
-              </Link>
-            ))}
-            <hr className="my-2" />
-            {isAuthenticated && user ? (
-              <Link href={user.role === 'super_admin' ? '/superadmin' : user.role === 'admin' ? '/admin' : '/buyer/dashboard'} className="hp-nav-link d-block py-2" onClick={() => setMobileNavOpen(false)}>My Portal</Link>
-            ) : (
-              <Link href="/login" className="hp-nav-link d-block py-2" onClick={() => setMobileNavOpen(false)}>Login / Register</Link>
-            )}
-          </div>
-        )}
-      </nav>
-
-      {/* ══════════════════ MAIN CONTENT ══════════════════ */}
-      <div className="container my-5">
-        <div className="row g-5">
-
-          {/* ── Left: Category Cards ── */}
-          <div className="col-lg-8">
-            {CATEGORY_CARDS.map(cat => (
+          <div className="w-2/3   flex flex-col gap-16">
+            {CATEGORY_CARDS.map((cat, i) => (
               <Link
                 key={cat.name}
-                href={`/buyer/browse?search=${cat.name.toLowerCase()}`}
-                className="hp-cat-card"
-                style={{ flexDirection: cat.reverse ? 'row-reverse' : 'row' }}
+                href={`/buyer/browse?listing_type=${cat.slug}`}
+                className={`flex ${i % 2 == 1 ? 'flex-row-reverse' : ''} h-[380px] rounded-lg overflow-hidden shadow group relative`}
               >
-                <div className="hp-cat-bg">
-                  <h2 className="hp-cat-title">{cat.name}</h2>
+                {/* Left: category name — centered vertically & horizontally */}
+                <div className="w-[30%] shrink-0 flex items-center justify-center bg-[#e7efe5] z-10 px-4">
+                  <h2 className="text-xl font-[Maven Pro] text-[20px]! font-bold text-black text-center">{cat.name}</h2>
                 </div>
-                <div className="hp-cat-photo" style={{ backgroundImage: `url('${cat.img}')` }} />
+
+                {/* Right: single auto-scrolling image */}
+                <div className="relative flex-1 overflow-hidden">
+                  <img
+                    src={cat.imgs[catImgIdx[i]]}
+                    alt={cat.name}
+                    className="w-full h-full object-cover transition-opacity duration-500"
+                  />
+
+                  {/* Dot indicators */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                    {cat.imgs.map((_, j) => (
+                      <div
+                        key={j}
+                        onClick={e => { e.preventDefault(); setCatImgIdx(prev => prev.map((v, k) => k === i ? j : v)); }}
+                        className={`w-2 h-2 rounded-full cursor-pointer transition-colors ${catImgIdx[i] === j ? 'bg-white' : 'bg-white/40'}`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Prev / Next arrows */}
+                  <button
+                    onClick={e => { e.preventDefault(); setCatImgIdx(prev => prev.map((idx, k) => k === i ? (idx - 1 + cat.imgs.length) % cat.imgs.length : idx)); }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white w-7 h-7 rounded-full flex items-center justify-center z-10 transition-colors"
+                  >
+                    <i className="bi bi-chevron-left text-sm"></i>
+                  </button>
+                  <button
+                    onClick={e => { e.preventDefault(); setCatImgIdx(prev => prev.map((idx, k) => k === i ? (idx + 1) % cat.imgs.length : idx)); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white w-7 h-7 rounded-full flex items-center justify-center z-10 transition-colors"
+                  >
+                    <i className="bi bi-chevron-right text-sm"></i>
+                  </button>
+                </div>
               </Link>
             ))}
           </div>
 
-          {/* ── Right: Sticky Sidebar ── */}
-          <div className="col-lg-4">
-            <div className="hp-sidebar-wrap">
-              <div className="hp-sidebar-box">
-                <h5 className="hp-fw-semi mb-2">Start listing your product, it&apos;s free</h5>
-                <p className="hp-sub-text mb-4">You&apos;re looking to ...</p>
 
-                <div className="d-flex gap-3 mb-4">
-                  <button
-                    className={`hp-btn-sell${sidebarMode === 'sell' ? '' : ' inactive'}`}
-                    onClick={() => setSidebarMode('sell')}
-                  >
-                    Sell
-                  </button>
-                  <button
-                    className={`hp-btn-rent${sidebarMode === 'rent' ? ' active' : ''}`}
-                    onClick={() => setSidebarMode('rent')}
-                  >
-                    Rent
-                  </button>
-                </div>
-
-                <h6 className="hp-sec-label">Your contact details</h6>
+          <div className='w-[33%] h-fit sticky top-37.5 shadow bg-white flex flex-col px-6 py-10 rounded-[15px] justify-start'>
+            <h5 className=' font-semibold' style={{ fontSize: 18, fontFamily: 'Segoe UI' }} >Start listing your product, it&apos;s free</h5>
+            <p style={{ fontSize: 14, fontFamily: 'Segoe UI' }} className=' font-semibold  '>You&apos;re looking to ...</p>
+            <div className=' flex gap-4 pb-2 mb-3'>
+              <button className='  rounded-[20px]! hover:text-white!  text-[14px]!  border text-black! px-2.5 py-2  hover:bg-black' onClick={() => setSidebarMode('sell')}>Sell</button>
+              <button className=' rounded-[20px]! hover:text-white!  text-[14px]!  border text-black! px-2.5  py-2  hover:bg-black' onClick={() => setSidebarMode('rent')}>Rent</button>
+            </div>
+            <div className=' flex-col flex  justify-start'>
+              <label className=' font-semibold mb-2' style={{ fontFamily: 'Segoe UI' }}>Your contact details</label>
+              <div className=' flex  flex-col gap-2.5 '>
                 <input
                   type="text"
-                  className="hp-input mb-3"
                   placeholder="Your Name"
                   value={sidebarName}
+                  className='border rounded-md!  px-2 py-1 mb-2 placeholder:text-[14px]    placeholder:font-[Segoe UI]'
                   onChange={e => setSidebarName(e.target.value)}
                 />
                 <input
                   type="email"
-                  className="hp-input mb-4"
                   placeholder="Enter Your Email"
+                  className='border rounded-md!  px-2 py-1 mb-4 placeholder:text-[14px]    placeholder:font-[Segoe UI]'
+
                   value={sidebarEmail}
                   onChange={e => setSidebarEmail(e.target.value)}
                 />
-
-                <button className="hp-btn-start" onClick={() => router.push('/register')}>
-                  Start now
-                </button>
-
-                <p className="hp-login-note">
-                  Are you a registered user?{' '}
-                  <Link href="/login" className="hp-login-lnk">Login</Link>
-                </p>
               </div>
+              <button className='bg-[#ffc63a] rounded-lg! text-white px-4 py-2.5 font-[Segoe UI] text-[14px]!  hover:bg-black mb-4 ' onClick={() => router.push('/register')}>Start now</button>
             </div>
-          </div>
-
-          {/* ── HOW TO SELL ── */}
-          <div className="col-12">
-            <h1 className="hp-section-title">HOW TO SELL</h1>
-
-            <div className="row text-center justify-content-center">
-              <div className="col-lg-4 col-md-4 mb-5">
-                <i className="bi bi-clipboard2-data hp-step-icon"></i>
-                <h5 className="hp-step-title">Add Product Details</h5>
-                <p className="hp-step-desc">
-                  Start by entering basic information like product name, and specifications to help buyers
-                  understand your product better
-                </p>
-              </div>
-              <div className="col-lg-4 col-md-4 mb-5">
-                <i className="bi bi-cloud-arrow-up-fill hp-step-icon"></i>
-                <h5 className="hp-step-title">Upload Photos &amp; Videos</h5>
-                <p className="hp-step-desc">
-                  Upload clear images and videos of your product from your mobile or desktop to attract more
-                  genuine buyers.
-                </p>
-              </div>
-              <div className="col-lg-4 col-md-4 mb-5">
-                <i className="bi bi-tag-fill hp-step-icon"></i>
-                <h5 className="hp-step-title">Set Price &amp; Publish</h5>
-                <p className="hp-step-desc">
-                  Add your selling price, stock details, and publish your product to start receiving enquiries
-                  instantly.
-                </p>
-              </div>
-            </div>
-
-            {/* Timeline – replaces number.png */}
-            <div className="hp-timeline">
-              <div className="hp-timeline-line"></div>
-              <div className="hp-dot-1"><div className="hp-dot">1</div></div>
-              <div className="hp-dot-2"><div className="hp-dot">2</div></div>
-              <div className="hp-dot-3"><div className="hp-dot">3</div></div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ══════════════════ FOOTER ══════════════════ */}
-      <footer className="hp-footer">
-        <div className="container">
-          <div className="row gx-5">
-            <div className="col-lg-4 col-md-6 mb-4 mb-lg-0">
-              <h2 className="hp-footer-brand">Flex Market</h2>
-              <p className="hp-footer-desc">
-                Premium curated marketplace for the elite. Discover high-end fashion, electronics, and
-                lifestyle essentials reserved for those who value quality.
-              </p>
-            </div>
-            <div className="col-lg-2 col-md-6 mb-4 mb-lg-0">
-              <h5 className="hp-footer-hdg">Quick Links</h5>
-              <ul className="hp-footer-links">
-                <li><Link href="/">Home</Link></li>
-                <li><Link href="/">About</Link></li>
-                <li><Link href="/seller/upload-product">Sell</Link></li>
-                <li><Link href="/buyer/browse?listing_type=rent">Rent</Link></li>
-                <li><Link href="/buyer/browse">Explore</Link></li>
-              </ul>
-            </div>
-            <div className="col-lg-3 col-md-6 mb-4 mb-lg-0">
-              <h5 className="hp-footer-hdg">Categories</h5>
-              <ul className="hp-footer-links">
-                <li><Link href="/buyer/browse">All Products</Link></li>
-                {listingTypes.slice(0, 5).map(lt => (
-                  <li key={lt.id}>
-                    <Link href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}>{lt.type_name}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="col-lg-3 col-md-6">
-              <h5 className="hp-footer-hdg">Our Policies</h5>
-              <ul className="hp-footer-links mb-5">
-                <li><a href="#">Return policies</a></li>
-                <li><a href="#">Cancellation policies</a></li>
-                <li><a href="#">Terms of use</a></li>
-              </ul>
-              <div className="hp-social d-flex">
-                <a href="#"><i className="bi bi-facebook"></i></a>
-                <a href="#"><i className="bi bi-twitter"></i></a>
-                <a href="#"><i className="bi bi-instagram"></i></a>
-                <a href="#"><i className="bi bi-linkedin"></i></a>
-              </div>
-            </div>
+            <p className=' text-center'>
+              Are you a registered user?{' '}
+              <Link className=' font-bold text-[18px] ' href="/login">Login</Link>
+            </p>
           </div>
         </div>
-        <div className="hp-copyright">
-          &copy; {new Date().getFullYear()} Flex Market. All rights reserved.
-        </div>
-      </footer>
+
+
+        {/* AoT Sections */}
+        {aotSections.map(section => (
+          <AotSectionBlock
+            key={section.id}
+            section={section}
+            isSuperAdmin={isSuperAdmin}
+            onEdit={() => setEditingSection(section)}
+            onDelete={() => handleDeleteSection(section.id)}
+          />
+        ))}
+
+        {isSuperAdmin && (
+          <div className="flex justify-center py-10 bg-gray-50 border-t border-gray-100">
+            <button
+              onClick={handleAddSection}
+              disabled={savingAot}
+              className="flex items-center gap-2 bg-[#ffc63a] hover:bg-[#e6b035] disabled:opacity-50 text-black font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-sm"
+            >
+              {savingAot ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-plus-lg" />
+                  Add New Section
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+
+        {editingSection && (
+          <AotEditModal
+            section={editingSection}
+            onClose={() => setEditingSection(null)}
+            onSave={handleSaveSection}
+          />
+        )}
+      </main>
+      <Footer />
+
     </>
   );
 }

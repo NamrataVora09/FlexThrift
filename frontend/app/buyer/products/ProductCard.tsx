@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { addToCart, isInCart } from '@/lib/cart';
 import { addToWishlist, removeFromWishlist, isInWishlist } from '@/lib/wishlist';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Product {
   id: number;
@@ -38,6 +39,7 @@ function formatPrice(val: string | number) {
 export default function ProductCard({ product }: { product: Product }) {
   const [inCart, setInCart] = useState(false);
   const [inWishlist, setInWishlist] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     // Blocked admin check

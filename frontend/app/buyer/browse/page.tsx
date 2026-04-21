@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { addToCart } from '@/lib/cart';
+import LandingNavbar from '@/components/layout/LandingNavbar';
+import Footer from '@/components/layout/Footer';
 
 interface Product {
   id: number;
@@ -21,9 +23,11 @@ interface Product {
   images?: string | string[];
   brand_name?: string;
   brand?: string;
-  category_name?: string;
+  category?: string;
   gender?: string;
   status: string;
+  orignal_brand?: string;
+  seller_brand?: string;
 }
 
 interface ListingType {
@@ -35,6 +39,7 @@ interface FilterOptions {
   categories: Array<{ id: number; name: string; field_config?: string }>;
   sub_categories: Array<{ id: number; name: string; category_id: number; field_config?: string }>;
   brands: Array<{ id: number; brand_name: string }>;
+  original_brands: Array<{ id: number; brand_name: string }>;
   colors: Array<{ id: number; name: string }>;
   genders: Array<{ id: number; name: string }>;
   sizes: string[];
@@ -44,7 +49,7 @@ interface FilterOptions {
 interface DynamicAttribute {
   name: string;
   type: string;
-  options?: string[];
+  options?: string[] | string;
   required?: boolean;
 }
 
@@ -58,34 +63,40 @@ interface BrowseData {
 interface ActiveFilters {
   minPrice: string;
   maxPrice: string;
-  categoryId: string;
-  subCategoryId: string;
-  brandId: string;
-  color: string;
-  size: string;
-  gender: string;
+  categoryIds: string[];
+  subCategoryIds: string[];
+  brandIds: string[];
+  originalBrandIds: string[];
+  colors: string[];
+  sizes: string[];
+  genders: string[];
   condition: string;
-  specs: Record<string, string>;
+  specs: Record<string, string[]>;
 }
 
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || `${BACKEND_URL}/api/v1`).replace(/\/$/, '');
 
 const emptyFilters: ActiveFilters = {
-  minPrice: '', maxPrice: '', categoryId: '', subCategoryId: '',
-  brandId: '', color: '', size: '', gender: '', condition: '', specs: {},
+  minPrice: '', maxPrice: '', categoryIds: [], subCategoryIds: [],
+  brandIds: [], originalBrandIds: [], colors: [], sizes: [], genders: [], condition: '', specs: {},
 };
 
 function filtersFromParams(sp: URLSearchParams): ActiveFilters {
+  const getArr = (key: string) => {
+    const val = sp.get(key) || sp.get(key + '_id');
+    return val ? val.split(',').filter(Boolean) : [];
+  };
   return {
     minPrice: sp.get('min_price') || '',
     maxPrice: sp.get('max_price') || '',
-    categoryId: sp.get('category_id') || '',
-    subCategoryId: sp.get('sub_category_id') || '',
-    brandId: sp.get('brand_id') || '',
-    color: sp.get('color') || '',
-    size: sp.get('size') || '',
-    gender: sp.get('gender') || '',
+    categoryIds: getArr('category'),
+    subCategoryIds: getArr('sub_category'),
+    brandIds: getArr('brand'),
+    originalBrandIds: getArr('original_brand'),
+    colors: getArr('color'),
+    sizes: getArr('size'),
+    genders: getArr('gender'),
     condition: sp.get('condition') || '',
     specs: (() => { try { return JSON.parse(sp.get('specs') || '{}'); } catch { return {}; } })(),
   };
@@ -98,7 +109,7 @@ function getProductPrice(p: Product): number {
 }
 
 export default function BrowsePage() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -108,10 +119,7 @@ export default function BrowsePage() {
   const [activeType, setActiveType] = useState(searchParams.get('listing_type') || '');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [headerSearch, setHeaderSearch] = useState('');
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [cartUpdated, setCartUpdated] = useState(0);
-  const [cartCount, setCartCount] = useState(0);
   const [wishlist, setWishlist] = useState<number[]>(() => {
     try { return JSON.parse(localStorage.getItem('flex_wishlist') || '[]'); } catch { return []; }
   });
@@ -127,6 +135,13 @@ export default function BrowsePage() {
   const [filters, setFilters] = useState<ActiveFilters>(() => filtersFromParams(searchParams as unknown as URLSearchParams));
   const [priceInput, setPriceInput] = useState({ min: filters.minPrice, max: filters.maxPrice });
   const [dynamicAttrs, setDynamicAttrs] = useState<DynamicAttribute[]>([]);
+  const [modalConfig, setModalConfig] = useState<{
+    type: 'brand' | 'color' | 'spec' | 'category' | 'size' | 'gender';
+    title: string;
+    items: Array<{ id: string | number; name: string }>;
+    selectedIds: string[];
+    specKey?: string;
+  } | null>(null);
 
   const fuzzyMatch = (text: string, query: string): number => {
     const t = text.toLowerCase();
@@ -170,14 +185,7 @@ export default function BrowsePage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  useEffect(() => {
-    const update = () => {
-      try { setCartCount(JSON.parse(localStorage.getItem('flex_cart') || '[]').length); } catch { setCartCount(0); }
-    };
-    update();
-    window.addEventListener('cart-updated', update);
-    return () => window.removeEventListener('cart-updated', update);
-  }, []);
+
 
   useEffect(() => {
     fetch(`${API_BASE}/listing-types`)
@@ -201,20 +209,49 @@ export default function BrowsePage() {
 
   useEffect(() => {
     if (!filterOptions) { setDynamicAttrs([]); return; }
-    if (filters.subCategoryId) {
-      const sub = filterOptions.sub_categories.find(s => String(s.id) === filters.subCategoryId);
+
+    const catId = filters.categoryIds[filters.categoryIds.length - 1];
+    const subId = filters.subCategoryIds[filters.subCategoryIds.length - 1];
+
+    // Selected sub-category → use its attrs only
+    if (subId) {
+      const sub = filterOptions.sub_categories.find(s => String(s.id) === subId);
       if (sub?.field_config) {
-        try { const cfg = JSON.parse(sub.field_config); setDynamicAttrs(cfg.attributes || []); return; } catch { }
+        try { const cfg = JSON.parse(sub.field_config); if (cfg.attributes?.length) { setDynamicAttrs(cfg.attributes); return; } } catch { }
       }
     }
-    if (filters.categoryId) {
-      const cat = filterOptions.categories.find(c => String(c.id) === filters.categoryId);
+    // Selected category → use its attrs only
+    if (catId) {
+      const cat = filterOptions.categories.find(c => String(c.id) === catId);
       if (cat?.field_config) {
-        try { const cfg = JSON.parse(cat.field_config); setDynamicAttrs(cfg.attributes || []); return; } catch { }
+        try { const cfg = JSON.parse(cat.field_config); if (cfg.attributes?.length) { setDynamicAttrs(cfg.attributes); return; } } catch { }
       }
     }
-    setDynamicAttrs([]);
-  }, [filters.categoryId, filters.subCategoryId, filterOptions]);
+
+    // Nothing selected → aggregate all unique attrs from every category & sub-category
+    const merged: Record<string, DynamicAttribute> = {};
+    const parseOpts = (o: string[] | string | undefined): string[] => {
+      if (!o) return [];
+      if (Array.isArray(o)) return o;
+      return o.split(',').map(s => s.trim()).filter(Boolean);
+    };
+    [...filterOptions.categories, ...filterOptions.sub_categories].forEach(item => {
+      if (!item.field_config) return;
+      try {
+        const cfg = JSON.parse(item.field_config);
+        (cfg.attributes || []).forEach((attr: DynamicAttribute) => {
+          if (!merged[attr.name]) {
+            merged[attr.name] = { ...attr };
+          } else {
+            const existOpts = parseOpts(merged[attr.name].options);
+            const newOpts = parseOpts(attr.options);
+            merged[attr.name] = { ...merged[attr.name], options: Array.from(new Set([...existOpts, ...newOpts])) };
+          }
+        });
+      } catch { }
+    });
+    setDynamicAttrs(Object.values(merged));
+  }, [filters.categoryIds, filters.subCategoryIds, filterOptions]);
 
   const buildUrl = (type: string, s: string, f: ActiveFilters): string => {
     const p = new URLSearchParams();
@@ -222,12 +259,13 @@ export default function BrowsePage() {
     if (s) p.set('search', s);
     if (f.minPrice) p.set('min_price', f.minPrice);
     if (f.maxPrice) p.set('max_price', f.maxPrice);
-    if (f.categoryId) p.set('category_id', f.categoryId);
-    if (f.subCategoryId) p.set('sub_category_id', f.subCategoryId);
-    if (f.brandId) p.set('brand_id', f.brandId);
-    if (f.color) p.set('color', f.color);
-    if (f.size) p.set('size', f.size);
-    if (f.gender) p.set('gender', f.gender);
+    if (f.categoryIds.length) p.set('category_id', f.categoryIds.join(','));
+    if (f.subCategoryIds.length) p.set('sub_category_id', f.subCategoryIds.join(','));
+    if (f.brandIds.length) p.set('brand_id', f.brandIds.join(','));
+    if (f.originalBrandIds.length) p.set('original_brand_id', f.originalBrandIds.join(','));
+    if (f.colors.length) p.set('color', f.colors.join(','));
+    if (f.sizes.length) p.set('size', f.sizes.join(','));
+    if (f.genders.length) p.set('gender', f.genders.join(','));
     if (f.condition) p.set('condition', f.condition);
     const specsStr = JSON.stringify(f.specs);
     if (specsStr !== '{}') p.set('specs', specsStr);
@@ -269,28 +307,36 @@ export default function BrowsePage() {
   };
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); navigate(activeType, search, filters); };
-  const handleHeaderSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (headerSearch.trim()) { setSearch(headerSearch); setPage(1); navigate(activeType, headerSearch, filters); }
-  };
   const handleTypeClick = (type: string) => { setActiveType(type); setPage(1); navigate(type, search, filters); };
 
   const setFilter = (key: keyof Omit<ActiveFilters, 'specs'>, val: string) => {
-    let newF = { ...filters, [key]: val };
-    if (key === 'categoryId') { newF.subCategoryId = ''; newF.specs = {}; }
-    if (key === 'subCategoryId') { newF.specs = {}; }
-    setFilters(newF);
-    setPage(1);
-    navigate(activeType, search, newF);
+    setFilters(prev => {
+      const current = prev[key];
+      let updated: any;
+      if (Array.isArray(current)) {
+        updated = current.includes(val) ? current.filter(x => x !== val) : [...current, val];
+      } else {
+        updated = val;
+      }
+      const next = { ...prev, [key]: updated };
+      if (key === 'categoryIds') { next.subCategoryIds = []; next.specs = {}; }
+      if (key === 'subCategoryIds') { next.specs = {}; }
+      setPage(1);
+      navigate(activeType, search, next);
+      return next;
+    });
   };
 
   const setSpecFilter = (attrName: string, val: string) => {
-    const newSpecs = { ...filters.specs, [attrName]: val };
-    if (!val) delete newSpecs[attrName];
-    const newF = { ...filters, specs: newSpecs };
-    setFilters(newF);
-    setPage(1);
-    navigate(activeType, search, newF);
+    setFilters(prev => {
+      const current = prev.specs[attrName] || [];
+      const updated = current.includes(val) ? current.filter(x => x !== val) : [...current, val];
+      const next = { ...prev, specs: { ...prev.specs, [attrName]: updated } };
+      if (updated.length === 0) delete (next.specs as any)[attrName];
+      setPage(1);
+      navigate(activeType, search, next);
+      return next;
+    });
   };
 
   const applyPriceFilter = () => {
@@ -307,41 +353,63 @@ export default function BrowsePage() {
     navigate(activeType, search, emptyFilters);
   };
 
-  const removeFilter = (key: string) => {
-    if (key.startsWith('spec:')) {
-      const attrName = key.slice(5);
-      const newSpecs = { ...filters.specs };
-      delete newSpecs[attrName];
-      const newF = { ...filters, specs: newSpecs };
-      setFilters(newF); setPage(1); navigate(activeType, search, newF);
-    } else {
-      const newF = { ...filters, [key]: '' };
-      if (key === 'minPrice' || key === 'maxPrice') setPriceInput(p => ({ ...p, [key === 'minPrice' ? 'min' : 'max']: '' }));
-      setFilters(newF); setPage(1); navigate(activeType, search, newF);
-    }
+  const removeFilter = (key: string, val?: string) => {
+    setFilters(prev => {
+      const next = { ...prev };
+      if (key.startsWith('spec:')) {
+        const attrName = key.slice(5);
+        if (val) {
+          next.specs[attrName] = (next.specs[attrName] || []).filter(x => x !== val);
+          if (next.specs[attrName].length === 0) delete next.specs[attrName];
+        } else {
+          delete next.specs[attrName];
+        }
+      } else if (Array.isArray((next as any)[key])) {
+        if (val) {
+          (next as any)[key] = ((next as any)[key] as string[]).filter(x => x !== val);
+        } else {
+          (next as any)[key] = [];
+        }
+      } else {
+        (next as any)[key] = '';
+        if (key === 'minPrice' || key === 'maxPrice') setPriceInput(p => ({ ...p, [key === 'minPrice' ? 'min' : 'max']: '' }));
+      }
+      setPage(1);
+      navigate(activeType, search, next);
+      return next;
+    });
   };
 
-  const activeChips: { label: string; key: string }[] = [];
+  const activeChips: { label: string; key: string; val?: string }[] = [];
   if (filters.minPrice || filters.maxPrice) {
     activeChips.push({ label: `₹${filters.minPrice || '0'} – ₹${filters.maxPrice || '∞'}`, key: 'price' });
   }
-  if (filters.categoryId && filterOptions) {
-    const cat = filterOptions.categories.find(c => String(c.id) === filters.categoryId);
-    if (cat) activeChips.push({ label: cat.name, key: 'categoryId' });
+  if (filterOptions) {
+    filters.categoryIds.forEach(id => {
+      const cat = filterOptions.categories.find(c => String(c.id) === id);
+      if (cat) activeChips.push({ label: cat.name, key: 'categoryIds', val: id });
+    });
+    filters.subCategoryIds.forEach(id => {
+      const sub = filterOptions.sub_categories.find(s => String(s.id) === id);
+      if (sub) activeChips.push({ label: sub.name, key: 'subCategoryIds', val: id });
+    });
+    filters.brandIds.forEach(id => {
+      const brand = filterOptions.brands.find(b => String(b.id) === id);
+      if (brand) activeChips.push({ label: brand.brand_name, key: 'brandIds', val: id });
+    });
+    filters.originalBrandIds.forEach(id => {
+      const ob = filterOptions.original_brands?.find(b => String(b.id) === id);
+      if (ob) activeChips.push({ label: `OB: ${ob.brand_name}`, key: 'originalBrandIds', val: id });
+    });
   }
-  if (filters.subCategoryId && filterOptions) {
-    const sub = filterOptions.sub_categories.find(s => String(s.id) === filters.subCategoryId);
-    if (sub) activeChips.push({ label: sub.name, key: 'subCategoryId' });
-  }
-  if (filters.brandId && filterOptions) {
-    const brand = filterOptions.brands.find(b => String(b.id) === filters.brandId);
-    if (brand) activeChips.push({ label: brand.brand_name, key: 'brandId' });
-  }
-  if (filters.color) activeChips.push({ label: filters.color, key: 'color' });
-  if (filters.size) activeChips.push({ label: `Size: ${filters.size}`, key: 'size' });
-  if (filters.gender) activeChips.push({ label: filters.gender, key: 'gender' });
+  filters.colors.forEach(c => activeChips.push({ label: c, key: 'colors', val: c }));
+  filters.sizes.forEach(s => activeChips.push({ label: `Size: ${s}`, key: 'sizes', val: s }));
+  filters.genders.forEach(g => activeChips.push({ label: g, key: 'genders', val: g }));
   if (filters.condition) activeChips.push({ label: filters.condition === 'new' ? 'Brand New' : 'Pre-owned', key: 'condition' });
-  Object.entries(filters.specs).forEach(([k, v]) => { if (v) activeChips.push({ label: `${k}: ${v}`, key: `spec:${k}` }); });
+
+  Object.entries(filters.specs).forEach(([k, vals]) => {
+    vals.forEach(v => activeChips.push({ label: `${k}: ${v}`, key: `spec:${k}`, val: v }));
+  });
 
   const handleWishlist = (p: Product, e: React.MouseEvent) => {
     e.preventDefault();
@@ -358,7 +426,7 @@ export default function BrowsePage() {
     if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) return null;
   }
 
-  const subCatsForCategory = filterOptions?.sub_categories.filter(s => String(s.category_id) === filters.categoryId) || [];
+  const subCatsForCategory = filterOptions?.sub_categories.filter(s => filters.categoryIds.includes(String(s.category_id))) || [];
 
   const sortedProducts = useMemo(() => {
     if (!data?.products) return [];
@@ -398,78 +466,50 @@ export default function BrowsePage() {
         .em-body { font-family: 'Inter', sans-serif; background: #f6f6f6; color: #2d2f2f; }
         .em-heading { font-family: 'Manrope', sans-serif !important; }
 
-        /* Card hover effects */
-        .em-card { cursor: pointer; }
-        .em-card-img-wrap { position: relative; aspect-ratio: 4/5; overflow: hidden; border-radius: 16px; background: #f0f1f1; margin-bottom: 16px; }
-        .em-card .em-card-img {
-          position: absolute; inset: 0;
-          width: 100%; height: 100%; object-fit: cover;
-          transition: opacity 0.45s ease, transform 700ms ease;
-        }
-        .em-card:hover .em-card-img { transform: scale(1.07); }
-        .em-card .em-card-overlay {
-          position: absolute; inset: 0; z-index: 1;
-          background-color: transparent;
-          transition: background-color 300ms ease;
-          pointer-events: none;
-        }
-        .em-card:hover .em-card-overlay { background-color: rgba(12,15,15,0.08); }
-
-        /* Wishlist button */
-        .em-card .em-wish-btn {
-          position: absolute; bottom: 20px; left: 50%; z-index: 3;
-          transform: translateX(-50%) translateY(12px);
+        /* Product card wish button hover */
+        .product-card .wish-btn {
           opacity: 0;
+          transform: translateX(-50%) translateY(12px);
           transition: opacity 300ms ease, transform 300ms ease;
-          background: rgba(12,15,15,0.88); color: #fff;
-          padding: 10px 24px; border-radius: 9999px;
-          font-size: 0.82rem; font-weight: 700;
-          border: none; cursor: pointer;
-          backdrop-filter: blur(8px);
-          white-space: nowrap; font-family: 'Inter', sans-serif;
-          display: flex; align-items: center; gap: 7px;
         }
-        .em-card:hover .em-wish-btn { opacity: 1; transform: translateX(-50%) translateY(0); }
-        .em-card .em-wish-btn.wishlisted { background: #FFC107; color: #3d2b00; }
-
-        /* Listing type badge */
-        .em-type-badge {
-          position: absolute; top: 12px; left: 12px; z-index: 4;
-          padding: 4px 10px; border-radius: 9999px;
-          font-size: 0.62rem; font-weight: 800;
-          text-transform: uppercase; letter-spacing: 0.06em;
-          display: flex; align-items: center; gap: 4px;
-          cursor: help; user-select: none;
-          background: rgba(255,255,255,0.82);
-          color: #0c0f0f;
-          backdrop-filter: blur(6px);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        .product-card:hover .wish-btn {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
         }
+        .product-card:hover .card-img { transform: scale(1.1); }
+        .product-card:hover .card-overlay { background-color: rgba(12,15,15,0.08); }
 
-        /* Discount badge */
-        .em-disc-badge {
-          position: absolute; top: 12px; right: 12px; z-index: 4;
-          background: #b02500; color: #fff;
-          padding: 3px 9px; border-radius: 9999px;
-          font-size: 0.62rem; font-weight: 800;
+        /* Checkbox Filters */
+        .em-checkbox-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor: pointer; user-select: none; }
+        .em-checkbox { width: 18px; height: 18px; border: 1px solid #acadad; border-radius: 2px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; background: #fff; flex-shrink: 0; }
+        .em-checkbox.active { background: #fff; border-color: #ef4444; }
+        .em-checkbox-inner { width: 10px; height: 10px; background: #ef4444; border-radius: 1px; }
+        .em-label-text { font-size: 0.875rem; color: #5a5c5c; }
+        .em-label-text.active { color: #0c0f0f; font-weight: 700; }
+        .em-count { color: #acadad; font-size: 0.75rem; margin-left: 4px; }
+        .em-more-link { color: #ff3f6c; font-size: 0.875rem; font-weight: 700; cursor: pointer; margin-top: 8px; display: block; border: none; background: none; padding: 0; }
+
+        /* Filter Modal */
+        .em-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .em-modal-card { background: #fff; width: 90%; max-width: 1000px; height: 85vh; border-radius: 4px; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .em-modal-header { padding: 20px 30px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
+        .em-modal-search-wrap { display: flex; align-items: center; gap: 15px; flex: 1; }
+        .em-modal-search { border: 1px solid #acadad; border-radius: 2px; padding: 8px 12px; width: 250px; font-size: 0.875rem; outline: none; }
+        .em-modal-search:focus { border-color: #ef4444; }
+        .em-alpha-index { display: flex; gap: 10px; flex-wrap: wrap; margin-left: 20px; }
+        .em-alpha-btn { background: none; border: none; color: #acadad; font-size: 0.8rem; font-weight: 700; cursor: pointer; padding: 4px 6px; transition: color 0.2s; }
+        .em-alpha-btn.active { color: #ef4444; }
+        .em-modal-body::-webkit-scrollbar { width: 6px; }
+        .em-modal-body::-webkit-scrollbar-track { background: #f9f9f9; }
+        .em-modal-body::-webkit-scrollbar-thumb { background: #ef4444; border-radius: 9999px; }
+        .em-modal-body { 
+          flex: 1; overflow-y: auto; padding: 30px; display: grid; 
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+          gap: 15px; align-content: start; 
+          scrollbar-width: thin; scrollbar-color: #ef4444 #f9f9f9; 
         }
-
-        /* Image dots */
-        .em-img-dots { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 4; display: flex; gap: 5px; }
-        .em-img-dot { height: 5px; border-radius: 9999px; background: rgba(255,255,255,0.6); transition: width 0.3s ease, background 0.3s ease; }
-        .em-img-dot.active { background: #FFC107; }
-
-        /* Product info */
-        .em-prod-brand { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #FFC107; margin: 0 0 5px; }
-        .em-title-price-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-        .em-prod-title { font-size: 1rem; font-weight: 800; color: #0c0f0f; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Manrope', sans-serif; letter-spacing: -0.02em; flex: 1; min-width: 0; }
-        .em-prod-price-block { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-        .em-prod-price { font-size: 0.97rem; font-weight: 800; color: #0c0f0f; white-space: nowrap; }
-        .em-prod-orig { font-size: 0.72rem; font-weight: 500; color: #acadad; text-decoration: line-through; white-space: nowrap; }
-        .em-prod-per { font-size: 0.65rem; font-weight: 500; color: #5a5c5c; }
-        .em-prod-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-        .em-prod-tag { padding: 3px 9px; border-radius: 9999px; font-size: 0.65rem; font-weight: 600; background: #f0f1f1; color: #5a5c5c; }
-        .em-prod-tag.brand { background: #fff8e1; color: #755700; border: 1px solid #FFC107; }
+        .em-modal-close { background: none; border: none; cursor: pointer; color: #5a5c5c; font-size: 24px; }
+        .em-group-title { grid-column: 1 / -1; font-size: 0.875rem; font-weight: 800; color: #0c0f0f; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; margin-top: 15px; }
 
         /* Filter section title */
         .em-filter-title {
@@ -494,10 +534,33 @@ export default function BrowsePage() {
           font-family: 'Inter', sans-serif; outline: none; cursor: pointer;
           color: #2d2f2f;
         }
-        .em-select:focus { border-color: #FFC107; box-shadow: 0 0 0 2px rgba(255,193,7,0.15); }
+        .em-select:focus { border-color: #ef4444; box-shadow: 0 0 0 2px rgba(176,37,0,0.15); }
 
         /* Range input */
-        input[type="range"].em-range { accent-color: #FFC107; width: 100%; height: 4px; }
+        input[type="range"].em-range {
+          -webkit-appearance: none; appearance: none;
+          width: 100%; height: 4px; border-radius: 9999px;
+          background: #f0f0f0; outline: none; cursor: pointer;
+          margin-bottom: 16px;
+        }
+        input[type="range"].em-range::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          width: 18px; height: 18px; border-radius: 50%;
+          background: #ef4444; cursor: pointer;
+          transition: background 0.2s ease, transform 0.15s ease;
+          box-shadow: 0 1px 4px rgba(239,68,68,0.35);
+          border: 2px solid #fff;
+        }
+        input[type="range"].em-range:hover::-webkit-slider-thumb {
+          background: #b91c1c;
+          transform: scale(1.15);
+        }
+        input[type="range"].em-range::-moz-range-thumb {
+          width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff;
+          background: #ef4444; cursor: pointer;
+          transition: background 0.2s ease;
+          box-shadow: 0 1px 4px rgba(239,68,68,0.35);
+        }
 
         /* Price inputs */
         .em-price-inp {
@@ -517,7 +580,7 @@ export default function BrowsePage() {
           font-family: 'Inter', sans-serif;
         }
         .em-filter-pill:hover, .em-filter-pill.active {
-          background: #FFC107; border-color: #FFC107; color: #0c0f0f;
+          background: #fff; border-color: #ef4444; color: #ef4444;
         }
 
         /* Type pills in product area */
@@ -580,6 +643,12 @@ export default function BrowsePage() {
         .em-sidebar-section { border-bottom: 1px solid #e7e8e8; padding: 20px 0; }
         .em-sidebar-section:last-child { border-bottom: none; }
 
+        /* Sidebar scrollbar */
+        .em-sidebar-scroll::-webkit-scrollbar { width: 3px; }
+        .em-sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .em-sidebar-scroll::-webkit-scrollbar-thumb { background: #ef4444; border-radius: 9999px; }
+        .em-sidebar-scroll { scrollbar-width: thin; scrollbar-color: #ef4444 transparent; }
+
         /* Mobile drawer */
         .em-drawer {
           position: fixed; left: 0; top: 0; bottom: 0; width: 320px;
@@ -593,10 +662,6 @@ export default function BrowsePage() {
         .em-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1090; display: none; }
         .em-overlay.open { display: block; }
 
-        /* Footer */
-        .em-footer { background: #0c0f0f; width: 100%; }
-        .em-footer a { color: rgba(255,255,255,0.5); text-decoration: none !important; font-size: 0.9rem; transition: color 0.2s; }
-        .em-footer a:hover { color: #fff; }
 
         /* Responsive */
         @media (max-width: 991px) { .em-sidebar-desk { display: none !important; } }
@@ -617,116 +682,26 @@ export default function BrowsePage() {
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
         rel="stylesheet"
       />
+      <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+        rel="stylesheet"
+      />
 
-      <div className="em-body" style={{ paddingTop: 100 }}>
+      <div className="" >
 
-        {/* ===== TOP NAVBAR — UNCHANGED ===== */}
-        <nav className="navbar-main">
-          <div className="container-fluid px-lg-5 d-flex align-items-center justify-content-between">
-            <Link className="navbar-brand-main" href="/">Flex Market</Link>
-
-            <div className="d-none d-lg-flex align-items-center gap-0">
-              {listingTypes.slice(0, 4).map((lt) => (
-                <Link key={lt.id} className="nav-link-main" href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}>
-                  {lt.type_name}
-                </Link>
-              ))}
-            </div>
-
-            <div className="search-wrapper-hdr d-none d-xl-block">
-              <form onSubmit={handleHeaderSearch}>
-                <i className="bi bi-search search-icon-fixed-hdr"></i>
-                <input
-                  className="search-input-premium-hdr"
-                  type="text"
-                  placeholder="Search curated collections..."
-                  value={headerSearch}
-                  onChange={(e) => setHeaderSearch(e.target.value)}
-                />
-              </form>
-            </div>
-
-            <div className="d-flex align-items-center gap-4">
-              <Link href="/cart" className="position-relative text-dark" style={{ fontSize: '1.3rem' }}>
-                <i className="bi bi-heart"></i>
-                {cartCount > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill" style={{ background: '#ffc63a', color: '#000', fontSize: '0.65rem' }}>
-                    {cartCount}
-                  </span>
-                )}
-              </Link>
-
-              {user ? (
-                <div className="user-dropdown" onMouseLeave={() => setShowUserDropdown(false)}>
-                  <a href="#" className="d-flex align-items-center gap-2 text-decoration-none" onClick={(e) => { e.preventDefault(); setShowUserDropdown(!showUserDropdown); }}>
-                    {(user.role === 'super_admin' || user.role === 'admin') && (
-                      <span style={{ background: user.role === 'super_admin' ? '#1e293b' : '#6366f1', color: '#fff', padding: '3px 10px', borderRadius: 20, fontSize: '0.7rem', fontWeight: 800, letterSpacing: 0.5 }}>
-                        {user.role === 'super_admin' ? 'SA' : 'Admin'}
-                      </span>
-                    )}
-                    <div className="rounded-circle overflow-hidden shadow-sm" style={{ width: 38, height: 38, border: '2px solid var(--primary-yellow)' }}>
-                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'U')}&background=000&color=fff&bold=true`} alt="" style={{ width: '100%', height: '100%' }} />
-                    </div>
-                  </a>
-                  {showUserDropdown && (
-                    <div className="user-dropdown-menu">
-                      <div className="dd-header">
-                        {(user.role === 'super_admin' || user.role === 'admin') && (
-                          <span style={{ background: user.role === 'super_admin' ? '#1e293b' : '#6366f1', color: '#fff', padding: '2px 10px', borderRadius: 12, fontSize: '0.65rem', fontWeight: 800, display: 'inline-block', marginBottom: 6 }}>
-                            {user.role === 'super_admin' ? 'Super Admin' : 'Admin'}
-                          </span>
-                        )}
-                        <h6 className="mb-1 fw-bold" style={{ fontFamily: "'Outfit', sans-serif" }}>{user.name}</h6>
-                        <small className="text-muted" style={{ fontSize: 10, fontFamily: 'monospace' }}>{user.email}</small>
-                      </div>
-                      <Link href={`/${user.role === 'super_admin' ? 'superadmin' : user.role === 'admin' ? 'admin' : 'buyer'}`} className="dd-item" onClick={() => setShowUserDropdown(false)}>
-                        <i className="bi bi-speedometer2 text-warning"></i> My Portal
-                      </Link>
-                      {!['admin', 'super_admin'].includes(user.role) && (
-                        <Link href="/cart" className="dd-item" onClick={() => setShowUserDropdown(false)}>
-                          <i className="bi bi-cart3"></i> My Cart
-                        </Link>
-                      )}
-                      <hr style={{ margin: '4px 16px', borderColor: '#f0f0f0' }} />
-                      <button className="dd-item text-danger" onClick={() => { logout(); window.location.href = '/login'; }}>
-                        <i className="bi bi-power"></i> Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Link href="/login" className="user-action-link">
-                  <i className="bi bi-person-circle" style={{ fontSize: '1.2rem' }}></i>
-                  <span>Sign In</span>
-                </Link>
-              )}
-            </div>
-          </div>
-        </nav>
-        {/* ===== END TOP NAVBAR ===== */}
+        <LandingNavbar />
 
         {/* ===== MAIN CONTENT ===== */}
-        <main style={{ paddingTop: 48, paddingBottom: 96, paddingLeft: 32, paddingRight: 32, maxWidth: 1440, margin: '0 auto' }}>
+        <main className=' pt-37.5 px-28'>
 
-          {/* Hero Header */}
-          <header style={{ marginBottom: 64 }}>
-            <h1
-              className="em-heading em-hero-title"
-              style={{ fontSize: 'clamp(2.5rem, 6vw, 4.375rem)', fontWeight: 800, letterSpacing: '-0.04em', color: '#0c0f0f', marginBottom: 16, lineHeight: 1.1 }}
-            >
-              Elite Collections
-            </h1>
-            <p style={{ fontSize: '1.25rem', color: '#5a5c5c', fontWeight: 300, maxWidth: 640, margin: 0 }}>
-              Discover our curated high-end selection. Every piece is chosen for its exceptional craftsmanship and timeless design.
-            </p>
-          </header>
+
 
           {/* Two-column layout */}
-          <div className="em-layout" style={{ display: 'flex', gap: 48 }}>
+          <div className="em-layout" style={{ display: 'flex', gap: 100 }}>
 
             {/* ===== SIDEBAR (desktop) ===== */}
             <aside className="em-sidebar-desk" style={{ width: 256, flexShrink: 0 }}>
-              <div style={{ position: 'sticky', top: 132 }}>
+              <div style={{ position: 'sticky', top: 132, maxHeight: 'calc(100vh - 150px)', overflowY: 'auto', overflowX: 'hidden', paddingRight: 6 }} className="em-sidebar-scroll">
                 <EliteSidebar
                   filters={filters}
                   priceInput={priceInput}
@@ -739,6 +714,10 @@ export default function BrowsePage() {
                   applyPriceFilter={applyPriceFilter}
                   clearAllFilters={clearAllFilters}
                   activeChips={activeChips}
+                  onShowMore={(cfg) => setModalConfig(cfg as any)}
+                  listingTypes={listingTypes}
+                  activeType={activeType}
+                  onTypeChange={handleTypeClick}
                 />
               </div>
             </aside>
@@ -746,95 +725,120 @@ export default function BrowsePage() {
             {/* ===== PRODUCT AREA ===== */}
             <div style={{ flex: 1, minWidth: 0 }}>
 
-              {/* Type pills + sort row */}
-              <section style={{ marginBottom: 48, display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                {/* Left: mobile filter btn + type pills */}
-                <div className="em-type-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                  {/* Mobile filter toggle */}
-                  <button
-                    className="d-lg-none em-type-pill"
-                    onClick={() => setShowFilters(true)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
-                    <i className="bi bi-sliders"></i> Filters
-                    {activeChips.length > 0 && (
-                      <span style={{ background: '#0c0f0f', color: '#FFC107', borderRadius: 9999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>
-                        {activeChips.length}
-                      </span>
-                    )}
-                  </button>
-
-                  <button
-                    className={`em-type-pill ${activeType === '' ? 'active' : ''}`}
-                    onClick={() => handleTypeClick('')}
-                  >
-                    All Items
-                  </button>
-                  {listingTypes.map((lt) => (
+              {/* Breadcrumb + sort row */}
+              <section style={{ marginBottom: 48 }}>
+                {/* Row 1: mobile filter + breadcrumbs + sort */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  {/* Left: mobile filter btn + breadcrumbs — all on one line */}
+                  <div className="em-type-bar" style={{ display: 'flex', flexWrap: 'nowrap', gap: 12, alignItems: 'center', overflow: 'hidden' }}>
+                    {/* Mobile filter toggle */}
                     <button
-                      key={lt.id}
-                      className={`em-type-pill ${activeType.toLowerCase() === lt.type_name.toLowerCase() ? 'active' : ''}`}
-                      onClick={() => handleTypeClick(lt.type_name.toLowerCase())}
+                      className="d-lg-none em-type-pill"
+                      onClick={() => setShowFilters(true)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
                     >
-                      {lt.type_name}
+                      <i className="bi bi-sliders"></i> Filters
+                      {activeChips.length > 0 && (
+                        <span style={{ background: '#0c0f0f', color: '#FFC107', borderRadius: 9999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>
+                          {activeChips.length}
+                        </span>
+                      )}
                     </button>
-                  ))}
-                </div>
 
-                {/* Right: Sort + result count */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  {!loading && data && (
-                    <p style={{ fontSize: '0.78rem', color: '#5a5c5c', margin: 0 }}>
-                      <strong>{data.pagination.total}</strong> item{data.pagination.total !== 1 ? 's' : ''} found
-                    </p>
-                  )}
-                  <div style={{ position: 'relative' }}>
-                    <label style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#5a5c5c', display: 'block', marginBottom: 4, marginLeft: 16, fontWeight: 700 }}>
-                      Sort By
-                    </label>
+                    {/* Breadcrumbs — single line, no wrap */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', flexWrap: 'nowrap' }}>
+                      <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none' }}>Home</Link>
+
+                      {activeType && (
+                        <>
+                          <span style={{ color: '#acadad' }}>/</span>
+                          <span
+                            style={{ color: filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
+                            onClick={() => setFilter('categoryIds', '')}
+                          >
+                            {activeType}
+                          </span>
+                        </>
+                      )}
+
+                      {filters.categoryIds.length > 0 && filterOptions?.categories.find(c => String(c.id) === filters.categoryIds[0]) && (
+                        <>
+                          <span style={{ color: '#acadad' }}>/</span>
+                          <span
+                            style={{ color: filters.subCategoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' }}
+                            onClick={() => setFilter('subCategoryIds', '')}
+                          >
+                            {filterOptions.categories.find(c => String(c.id) === filters.categoryIds[0])?.name}
+                          </span>
+                        </>
+                      )}
+
+                      {filters.subCategoryIds.length > 0 && filterOptions?.sub_categories.find(c => String(c.id) === filters.subCategoryIds[0]) && (
+                        <>
+                          <span style={{ color: '#acadad' }}>/</span>
+                          <span style={{ color: '#0c0f0f' }}>
+                            {filterOptions.sub_categories.find(c => String(c.id) === filters.subCategoryIds[0])?.name}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Sort only */}
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <select
                       className="em-sort-sel"
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
+                      style={{ padding: '8px 36px 8px 16px', border: '1px solid #e7e8e8', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600, background: '#fff', color: '#0c0f0f', boxShadow: 'none' }}
                     >
-                      <option value="featured">Featured</option>
-                      <option value="newest">Newest</option>
-                      <option value="price_asc">Price: Low to High</option>
-                      <option value="price_desc">Price: High to Low</option>
+                      <option value="featured">Sort by: Recommended</option>
+                      <option value="newest">Sort by: Newest</option>
+                      <option value="price_asc">Sort by: Price (Low to High)</option>
+                      <option value="price_desc">Sort by: Price (High to Low)</option>
                     </select>
                     <span
                       className="material-symbols-outlined"
-                      style={{ position: 'absolute', right: 16, bottom: 12, pointerEvents: 'none', color: '#5a5c5c', fontSize: 20 }}
+                      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#0c0f0f', fontSize: 20 }}
                     >
                       expand_more
                     </span>
                   </div>
                 </div>
+
+                {/* Row 2: result count — centered */}
+                {!loading && data && (
+                  <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#5a5c5c', margin: 0, fontWeight: 500 }}>
+                    {data.pagination.total > 0
+                      ? <>Showing <strong>{(page - 1) * 12 + 1}–{Math.min(page * 12, data.pagination.total)}</strong> of <strong>{data.pagination.total}</strong> results</>
+                      : <>Showing <strong>0</strong> results</>}
+                  </p>
+                )}
               </section>
 
               {/* Active filter chips */}
               {activeChips.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
                   {activeChips.map(chip => (
-                    <span key={chip.key} className="em-chip">
+                    <span key={chip.key + (chip.val || '')} className="em-chip">
                       {chip.label}
                       <button onClick={() => {
                         if (chip.key === 'price') {
                           const newF = { ...filters, minPrice: '', maxPrice: '' };
                           setPriceInput({ min: '', max: '' });
                           setFilters(newF); setPage(1); navigate(activeType, search, newF);
-                        } else removeFilter(chip.key);
+                        } else removeFilter(chip.key, chip.val);
                       }}>×</button>
                     </span>
                   ))}
-                  {activeChips.length > 1 && (
-                    <button
-                      onClick={clearAllFilters}
-                      style={{ background: 'none', border: 'none', color: '#5a5c5c', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Clear all
-                    </button>
-                  )}
+
+                  <button
+                    onClick={clearAllFilters}
+                    style={{ background: 'none', border: 'none', color: '#5a5c5c', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Clear all
+                  </button>
+
                 </div>
               )}
 
@@ -844,7 +848,7 @@ export default function BrowsePage() {
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '32px 32px',
+                  gap: '70px 45px',
                   position: 'relative',
                   minHeight: 200,
                   opacity: loading ? 0.5 : 1,
@@ -920,7 +924,7 @@ export default function BrowsePage() {
 
         {/* ===== MOBILE FILTER DRAWER ===== */}
         <div className={`em-overlay ${showFilters ? 'open' : ''}`} onClick={() => setShowFilters(false)} />
-        <div className={`em-drawer ${showFilters ? 'open' : ''}`}>
+        <div className={`em-drawer em-sidebar-scroll ${showFilters ? 'open' : ''}`}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <h5 className="em-heading" style={{ fontWeight: 700, margin: 0, fontSize: '1.1rem' }}>
               Filters {activeChips.length > 0 && (
@@ -943,72 +947,126 @@ export default function BrowsePage() {
             applyPriceFilter={applyPriceFilter}
             clearAllFilters={clearAllFilters}
             activeChips={activeChips}
+            onShowMore={(cfg) => setModalConfig(cfg as any)}
+            listingTypes={listingTypes}
+            activeType={activeType}
+            onTypeChange={handleTypeClick}
           />
         </div>
 
-        {/* ===== FOOTER ===== */}
-        <footer className="em-footer" style={{ padding: '64px 32px 0' }}>
-          <div style={{ maxWidth: 1440, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 48, fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className="em-heading" style={{ fontSize: '1.25rem', fontWeight: 900, color: '#fff' }}>Flex Market</div>
-              <p style={{ color: 'rgba(255,255,255,0.5)', textTransform: 'none', letterSpacing: 'normal', lineHeight: 1.7, maxWidth: 300, fontSize: '0.875rem' }}>
-                Redefining high-end retail through curated excellence and minimalist design.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h4 style={{ color: '#FFC107', fontWeight: 700, marginBottom: 8, fontSize: '0.875rem' }}>Shop</h4>
-              <Link href="/buyer/browse">New Arrivals</Link>
-              <Link href="/buyer/browse">Bestsellers</Link>
-              <Link href="/buyer/browse">Collections</Link>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h4 style={{ color: '#FFC107', fontWeight: 700, marginBottom: 8, fontSize: '0.875rem' }}>Support</h4>
-              <a href="#">Privacy Policy</a>
-              <a href="#">Terms of Service</a>
-              <a href="#">Shipping &amp; Returns</a>
-              <a href="#">Contact Us</a>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <h4 style={{ color: '#FFC107', fontWeight: 700, marginBottom: 8, fontSize: '0.875rem' }}>Newsletter</h4>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="email"
-                  placeholder="YOUR EMAIL"
-                  style={{
-                    width: '100%', background: 'rgba(255,255,255,0.05)',
-                    border: 'none', borderRadius: 9999,
-                    padding: '16px 24px', color: '#fff', fontSize: '0.75rem',
-                    outline: 'none', letterSpacing: '0.05em',
-                  }}
-                />
-                <button
-                  style={{
-                    position: 'absolute', right: 8, top: 8, bottom: 8,
-                    background: '#FFC107', color: '#0c0f0f',
-                    border: 'none', borderRadius: 9999,
-                    padding: '0 24px', fontWeight: 700, fontSize: '0.65rem',
-                    cursor: 'pointer', letterSpacing: '0.05em',
-                  }}
-                >
-                  JOIN
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ maxWidth: 1440, margin: '64px auto 0', paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', paddingBottom: 32 }}>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.625rem', margin: 0, letterSpacing: '0.05em' }}>
-              © {new Date().getFullYear()} Flex Market. Curated Excellence.
-            </p>
-          </div>
-        </footer>
+        <Footer />
       </div>
+      {modalConfig && (
+        <FilterModal
+          title={modalConfig.title}
+          items={modalConfig.items.map(it => ({ id: Number(it.id) || String(it.id), name: it.name }))}
+          selectedIds={modalConfig.selectedIds}
+          onSelect={(id) => {
+            if (modalConfig.type === 'brand') setFilter('brandIds', id);
+            else if (modalConfig.type === 'color') setFilter('colors', id);
+            else if (modalConfig.type === 'spec' && modalConfig.specKey) setSpecFilter(modalConfig.specKey, id);
+            else if (modalConfig.type === 'category') setFilter('categoryIds', id);
+            else if (modalConfig.type === 'size') setFilter('sizes', id);
+            else if (modalConfig.type === 'gender') setFilter('genders', id);
+          }}
+          onClose={() => setModalConfig(null)}
+        />
+      )}
     </>
   );
 }
+
+function FilterModal({
+  title, items, selectedIds, onSelect, onClose
+}: {
+  title: string;
+  items: Array<{ id: number | string; name: string }>;
+  selectedIds: string[];
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [activeLetter, setActiveLetter] = useState('');
+
+  const filtered = items.filter(item =>
+    item.name.toLowerCase().includes(search.toLowerCase()) &&
+    (activeLetter ? item.name.toUpperCase().startsWith(activeLetter) : true)
+  );
+
+  const alphabet = ['All', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
+
+  const grouped = filtered.reduce((acc, item) => {
+    const first = item.name.charAt(0).toUpperCase();
+    const group = /[A-Z]/.test(first) ? first : '#';
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(item);
+    return acc;
+  }, {} as Record<string, typeof items>);
+
+  const sortedGroups = Object.keys(grouped).sort((a, b) => {
+    if (a === '#') return -1;
+    if (b === '#') return 1;
+    return a.localeCompare(b);
+  });
+
+  return (
+    <div className="em-modal-overlay" onClick={onClose}>
+      <div className="em-modal-card" onClick={e => e.stopPropagation()}>
+        <div className="em-modal-header">
+          <div className="em-modal-search-wrap">
+            <input
+              className="em-modal-search"
+              placeholder={`Search ${title}`}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              autoFocus
+            />
+            <div className="em-alpha-index">
+              {alphabet.map(l => (
+                <button
+                  key={l}
+                  className={`em-alpha-btn ${activeLetter === (l === 'All' ? '' : l) ? 'active' : ''}`}
+                  onClick={() => setActiveLetter(prev => prev === (l === 'All' ? '' : l) ? '' : (l === 'All' ? '' : l))}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button className="em-modal-close" onClick={onClose}>&times;</button>
+        </div>
+        <div className="em-modal-body">
+          {sortedGroups.map(group => (
+            <div key={group} style={{ display: 'contents' }}>
+              <div className="em-group-title">{group}</div>
+              {grouped[group].map(item => (
+                <div
+                  key={item.id}
+                  className="em-checkbox-item"
+                  onClick={() => onSelect(String(item.id))}
+                  style={{ margin: 0 }}
+                >
+                  <div className={`em-checkbox ${selectedIds.includes(String(item.id)) ? 'active' : ''}`}>
+                    {selectedIds.includes(String(item.id)) && <div className="em-checkbox-inner" />}
+                  </div>
+                  <span className={`em-label-text ${selectedIds.includes(String(item.id)) ? 'active' : ''}`}>
+                    {item.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: '#acadad' }}>
+              No results found
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ── ProductCard ────────────────────────────────────────────────────────────────
 function resolveImg(img: string): string {
@@ -1064,54 +1122,59 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
   const sellingPrice = Number(p.selling_price || p.price || p.original_price || 0);
   const rentalPrice = Number(p.rental_cost || p.price || 0);
   const hasDiscount = !isRent && sellingPrice < originalPrice && originalPrice > 0;
-  const discountPct = hasDiscount ? Math.round((1 - sellingPrice / originalPrice) * 100) : 0;
-  const brand = p.brand_name || p.brand;
   const slug = `${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${p.id}`;
   const tooltipText = isRent ? 'This item is available for Rent' : 'This item is available for Sale';
 
   return (
-    <div className="em-card" style={{ display: 'flex', flexDirection: 'column' }} onMouseEnter={startScroll} onMouseLeave={stopScroll}>
+    <div className="product-card  rounded-2xl flex flex-col cursor-pointer" onMouseEnter={startScroll} onMouseLeave={stopScroll}>
       <Link href={`/buyer/product/${slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}>
 
-        {/* ── Image carousel ── */}
-        <div className="em-card-img-wrap">
+        {/* ── Image wrapper ── */}
+        <div className="relative w-full overflow-hidden rounded-2xl mb-3">
           {images.length > 0 ? images.map((img, i) => (
             <img
               key={i}
-              className="em-card-img"
               src={resolveImg(img)}
               alt={p.title}
-              style={{ opacity: i === imgIdx ? 1 : 0 }}
+              className="card-img w-full aspect-[4/5] object-cover rounded-2xl transition-[opacity,transform] duration-700"
+              style={{ opacity: i === imgIdx ? 1 : 0, position: i === 0 ? 'relative' : 'absolute', top: 0, left: 0 }}
             />
           )) : (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="bi bi-image" style={{ fontSize: '3rem', color: '#acadad' }}></i>
+            <div className="w-full aspect-[4/5] rounded-2xl bg-[#f0f1f1] flex items-center justify-center">
+              <i className="bi bi-image text-5xl text-[#acadad]"></i>
             </div>
           )}
 
-          <div className="em-card-overlay" />
-
-          {/* Listing type badge with tooltip */}
-          <div className="em-type-badge" title={tooltipText}>
+          {/* Listing type badge */}
+          <div
+            className="absolute top-3 left-3 z-[4] flex items-center gap-1 px-[10px] py-1 rounded-full bg-white/80 text-[#0c0f0f] backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.12)] cursor-help select-none"
+            style={{ fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}
+            title={tooltipText}
+          >
             <span className="material-symbols-outlined" style={{ fontSize: 11, fontVariationSettings: "'FILL' 1, 'wght' 500" }}>
               {isRent ? 'schedule' : 'sell'}
             </span>
             {isRent ? 'Rent' : 'Buy'}
           </div>
 
-
-
-          {/* Dot indicators */}
+          {/* Image dots */}
           {images.length > 1 && (
-            <div className="em-img-dots">
+            <div className="absolute bottom-[10px] left-1/2 -translate-x-1/2 z-[4] flex gap-[5px]">
               {images.map((_, i) => (
-                <div key={i} className={`em-img-dot ${i === imgIdx ? 'active' : ''}`} style={{ width: i === imgIdx ? 14 : 5 }} />
+                <div
+                  key={i}
+                  className="h-[5px] rounded-full transition-all duration-300"
+                  style={{ width: i === imgIdx ? 14 : 5, background: i === imgIdx ? '#FFC107' : 'rgba(255,255,255,0.6)' }}
+                />
               ))}
             </div>
           )}
 
           {/* Wishlist button */}
-          <button className={`em-wish-btn ${wishlisted ? 'wishlisted' : ''}`} onClick={(e) => onWishlist(p, e)}>
+          <button
+            className={`wish-btn absolute bottom-4 left-1/2 z-[3] flex items-center gap-[7px] px-5 py-[9px] rounded-full! text-[0.82rem] font-bold border-none cursor-pointer whitespace-nowrap backdrop-blur-sm shadow-xl ${wishlisted ? 'bg-[#FFC107] text-[#3d2b00]' : 'bg-[rgba(12,15,15,0.88)] text-white'}`}
+            onClick={(e) => onWishlist(p, e)}
+          >
             <span
               className="material-symbols-outlined"
               style={{ fontSize: 16, fontVariationSettings: wishlisted ? "'FILL' 1, 'wght' 600" : "'FILL' 0, 'wght' 400" }}
@@ -1123,36 +1186,28 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
         </div>
 
         {/* ── Product info ── */}
-        <div style={{ padding: '0 2px' }}>
-
-          {/* Brand */}
-          {brand && <p className="em-prod-brand">{brand}</p>}
-
-          {/* Title + Price on one line */}
-          <div className="em-title-price-row">
-            <h3 className="em-prod-title">{p.title}</h3>
-            <div className="em-prod-price-block">
-              {isRent ? (
-                <>
-                  <span className="em-prod-price">₹{rentalPrice.toLocaleString('en-IN')}</span>
-                  <span className="em-prod-per">/day</span>
-                </>
-              ) : (
-                <>
-                  <span className="em-prod-price">₹{sellingPrice.toLocaleString('en-IN')}</span>
-                  {hasDiscount && (
-                    <span className="em-prod-orig">₹{originalPrice.toLocaleString('en-IN')}</span>
-                  )}
-                </>
-              )}
-            </div>
+        <div className="flex justify-between items-start px-2  ">
+          <div className="flex-1 min-w-0 pr-3">
+            <h3 className="text-lg font-bold! text-[#0c0f0f] text-[1.125rem]! mb-1 truncate" style={{ fontFamily: 'Manrope, sans-serif', letterSpacing: '-0.02em' }}>
+              {p.title}
+            </h3>
+            <p className="text-sm text-[#5a5c5c]">
+              {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : '\u00A0'}
+            </p>
           </div>
-
-          {/* Tags: category · gender · brand */}
-          <div className="em-prod-tags">
-            {p.category_name && <span className="em-prod-tag">{p.category_name}</span>}
-            {p.gender && <span className="em-prod-tag">{p.gender}</span>}
-            {brand && <span className="em-prod-tag brand">{brand}</span>}
+          <div className="flex-shrink-0 flex flex-col  items-end">
+            {isRent ? (
+              <span className="font-bold text-[#FFC107]">
+                ₹{rentalPrice.toLocaleString('en-IN')}<span className="text-xs ml-2 text-[#5a5c5c] font-medium">/day</span>
+              </span>
+            ) : (
+              <>
+                <span className="font-bold text-[#FFC107]">₹{sellingPrice.toLocaleString('en-IN')}</span>
+                {hasDiscount && (
+                  <span className="text-xs text-[#acadad] line-through">₹{originalPrice.toLocaleString('en-IN')}</span>
+                )}
+              </>
+            )}
           </div>
         </div>
       </Link>
@@ -1173,233 +1228,359 @@ interface EliteSidebarProps {
   applyPriceFilter: () => void;
   clearAllFilters: () => void;
   activeChips: { label: string; key: string }[];
+  onShowMore: (config: { type: 'brand' | 'color' | 'spec' | 'category' | 'size' | 'gender'; title: string; items: any[]; selectedIds: string[]; specKey?: string }) => void;
+  listingTypes: ListingType[];
+  activeType: string;
+  onTypeChange: (type: string) => void;
 }
 
 function EliteSidebar({
   filters, priceInput, setPriceInput, filterOptions, dynamicAttrs,
   subCatsForCategory, setFilter, setSpecFilter, applyPriceFilter,
-  clearAllFilters, activeChips,
+  clearAllFilters, activeChips, onShowMore, listingTypes = [], activeType, onTypeChange,
 }: EliteSidebarProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({
-    price: true, category: true, brand: false, color: false, size: false, gender: false,
+    productType: true, price: true, category: true, subCategory: true,
+    gender: true, color: true, brand: true, originalBrand: true, size: false,
   });
+  const [focusedField, setFocusedField] = useState<'min' | 'max'>('max');
   const toggle = (k: string) => setOpen(p => ({ ...p, [k]: !p[k] }));
 
-  const SectionTitle = ({ id, label }: { id: string; label: string }) => (
+  // Per-section inline search state
+  const [sectionSearch, setSectionSearch] = useState<Record<string, string>>({});
+  const setSSearch = (section: string, val: string) =>
+    setSectionSearch(p => ({ ...p, [section]: val }));
+  const getSSearch = (section: string) => sectionSearch[section] || '';
+
+  const SectionTitle = ({ id, label, count }: { id: string; label: string; count?: number }) => (
     <div
       className="em-filter-title"
       onClick={() => toggle(id)}
-      style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: open[id] ? 10 : 0 }}
     >
-      <span>{label}</span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {label}
+        {count !== undefined && count > 0 && (
+          <span style={{ background: '#FFC107', color: '#3d2b00', borderRadius: 9999, padding: '1px 7px', fontSize: '0.65rem', fontWeight: 800 }}>{count}</span>
+        )}
+      </span>
       <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#5a5c5c', fontVariationSettings: "'FILL' 0, 'wght' 400" }}>
         {open[id] ? 'expand_less' : 'expand_more'}
       </span>
     </div>
   );
 
-  /* Radio pills — dropdown if > 5 options */
-  const RadioPills = ({
-    items, activeVal, onSelect, placeholder = 'All',
+  const InlineSearch = ({ section, placeholder }: { section: string; placeholder: string }) => (
+    <div style={{ position: 'relative', marginBottom: 10 }}>
+      <span className="material-symbols-outlined" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#acadad', pointerEvents: 'none' }}>search</span>
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={getSSearch(section)}
+        onChange={e => setSSearch(section, e.target.value)}
+        onClick={e => e.stopPropagation()}
+        style={{ width: '100%', border: '1px solid #e7e8e8', borderRadius: 8, padding: '6px 10px 6px 28px', fontSize: '0.8rem', outline: 'none', fontFamily: 'Inter, sans-serif', color: '#2d2f2f', background: '#fafafa' }}
+        onFocus={e => { e.currentTarget.style.borderColor = '#FFC107'; }}
+        onBlur={e => { e.currentTarget.style.borderColor = '#e7e8e8'; }}
+      />
+      {getSSearch(section) && (
+        <button onClick={() => setSSearch(section, '')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#acadad', fontSize: 14, padding: 0, lineHeight: 1 }}>×</button>
+      )}
+    </div>
+  );
+
+  const CheckboxGroup = ({
+    items, activeVals, onSelect, onShowMore: onMore,
   }: {
     items: Array<{ value: string; label: string }>;
-    activeVal: string;
+    activeVals: string[];
     onSelect: (v: string) => void;
-    placeholder?: string;
+    onShowMore?: () => void;
   }) => {
-    if (items.length > 5) {
-      return (
-        <select className="em-select" value={activeVal} onChange={e => onSelect(e.target.value)}>
-          <option value="">{placeholder}</option>
-          {items.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-        </select>
-      );
-    }
+    const displayItems = items.slice(0, 8);
+    const remaining = items.length - 8;
     return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {items.map(item => (
-          <button
-            key={item.value}
-            className={`em-filter-pill ${activeVal === item.value ? 'active' : ''}`}
-            onClick={() => onSelect(activeVal === item.value ? '' : item.value)}
-          >
-            {item.label}
-          </button>
+      <div>
+        {displayItems.map(item => (
+          <div key={item.value} className="em-checkbox-item" onClick={() => onSelect(item.value)}>
+            <div className={`em-checkbox ${activeVals.includes(item.value) ? 'active' : ''}`}>
+              {activeVals.includes(item.value) && <div className="em-checkbox-inner" />}
+            </div>
+            <span className={`em-label-text ${activeVals.includes(item.value) ? 'active' : ''}`}>{item.label}</span>
+          </div>
         ))}
+        {onMore && remaining > 0 && (
+          <button className="em-more-link" onClick={(e) => { e.stopPropagation(); onMore(); }}>
+            + {remaining} more
+          </button>
+        )}
       </div>
     );
+  };
+
+  // Filtered items helper
+  const filterBySearch = (items: Array<{ value: string; label: string }>, section: string) => {
+    const q = getSSearch(section).toLowerCase();
+    return q ? items.filter(i => i.label.toLowerCase().includes(q)) : items;
   };
 
   return (
     <div>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #acadad', paddingBottom: 16, marginBottom: 8 }}>
-        <strong className="em-heading" style={{ fontSize: '0.875rem', fontWeight: 800, letterSpacing: '0.1em', color: '#0c0f0f', textTransform: 'uppercase' }}>
+        <strong className="em-heading" style={{ fontFamily: "'Maven Pro', sans-serif", fontSize: '16px', fontWeight: 800, letterSpacing: '0.1em', color: '#0c0f0f', textTransform: 'uppercase' }}>
           FILTERS
         </strong>
-        {activeChips.length > 0 && (
-          <button
-            onClick={clearAllFilters}
-            style={{ background: 'none', border: 'none', color: '#b02500', fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer' }}
-          >
-            CLEAR ALL
-          </button>
-        )}
+        <button 
+          onClick={clearAllFilters}
+          className='font-bold!'
+          style={{ fontFamily: "'Maven Pro', sans-serif", background: 'none', border: 'none', color: '#ef4444', fontSize: '13px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer' }}
+        >
+          CLEAR ALL
+        </button>
       </div>
 
-      {/* Price Range */}
+      {/* ── 1. Product Type ── */}
+      {listingTypes.length > 0 && (
+        <div className="em-sidebar-section">
+          <SectionTitle id="productType" label="Product Type" />
+          {open.productType && (
+            <>
+              <InlineSearch section="productType" placeholder="Search type…" />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {filterBySearch(
+                  listingTypes.map(t => ({ value: t.type_name, label: t.type_name.charAt(0).toUpperCase() + t.type_name.slice(1) })),
+                  'productType'
+                ).map(item => (
+                  <button
+                    key={item.value}
+                    className={`em-filter-pill ${activeType === item.value ? 'active' : ''}`}
+                    onClick={() => onTypeChange(activeType === item.value ? '' : item.value)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── 2. Category ── */}
+      {filterOptions && filterOptions.categories.length > 0 && (
+        <div className="em-sidebar-section">
+          <SectionTitle id="category" label="Category" count={filters.categoryIds.length} />
+          {open.category && (
+            <CheckboxGroup
+              items={filterOptions.categories.map(c => ({ value: String(c.id), label: c.name }))}
+              activeVals={filters.categoryIds}
+              onSelect={(v) => setFilter('categoryIds', v)}
+              onShowMore={() => onShowMore({
+                type: 'category', title: 'CATEGORIES',
+                items: filterOptions.categories.map(c => ({ id: c.id, name: c.name })),
+                selectedIds: filters.categoryIds,
+              })}
+            />
+          )}
+        </div>
+      )}
+
+      {/* ── 3. Sub-Category ── */}
+      {filterOptions && filterOptions.sub_categories.length > 0 && (
+        <div className="em-sidebar-section">
+          <SectionTitle id="subCategory" label="Sub-Category" count={filters.subCategoryIds.length} />
+          {open.subCategory && (
+            <>
+              <InlineSearch section="subCategory" placeholder="Search sub-category…" />
+              {(() => {
+                const pool = filters.categoryIds.length > 0 ? subCatsForCategory : filterOptions.sub_categories;
+                const items = filterBySearch(pool.map(s => ({ value: String(s.id), label: s.name })), 'subCategory');
+                return (
+                  <CheckboxGroup
+                    items={items}
+                    activeVals={filters.subCategoryIds}
+                    onSelect={(v) => setFilter('subCategoryIds', v)}
+                    onShowMore={() => onShowMore({
+                      type: 'category', title: 'SUB-CATEGORIES',
+                      items: pool.map(s => ({ id: s.id, name: s.name })),
+                      selectedIds: filters.subCategoryIds,
+                    })}
+                  />
+                );
+              })()}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── 4. Gender ── */}
+      {filterOptions && filterOptions.genders.length > 0 && (
+        <div className="em-sidebar-section">
+          <SectionTitle id="gender" label="Gender" count={filters.genders.length} />
+          {open.gender && (
+            <CheckboxGroup
+              items={filterOptions.genders.map(g => ({ value: g.name, label: g.name }))}
+              activeVals={filters.genders}
+              onSelect={(v) => setFilter('genders', v)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* ── 5. Color ── */}
+      {filterOptions && filterOptions.colors.length > 0 && (
+        <div className="em-sidebar-section">
+          <SectionTitle id="color" label="Color" count={filters.colors.length} />
+          {open.color && (
+            <CheckboxGroup
+              items={filterOptions.colors.map(c => ({ value: c.name, label: c.name }))}
+              activeVals={filters.colors}
+              onSelect={(v) => setFilter('colors', v)}
+              onShowMore={() => onShowMore({
+                type: 'color', title: 'COLOR',
+                items: filterOptions.colors.map(c => ({ id: c.name, name: c.name })),
+                selectedIds: filters.colors,
+              })}
+            />
+          )}
+        </div>
+      )}
+
       <div className="em-sidebar-section">
-        <SectionTitle id="price" label="Price Range" />
+        <SectionTitle id="price" label="Price" />
         {open.price && (
           <div>
+            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#ef4444', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Adjusting {focusedField === 'min' ? 'Minimum' : 'Maximum'} Price
+            </div>
             <input
-              type="range"
-              className="em-range"
+              type="range" className="em-range"
               min={filterOptions?.price_range?.min_price || 0}
               max={filterOptions?.price_range?.max_price || 100000}
               step={100}
-              value={priceInput.max || filterOptions?.price_range?.max_price || 100000}
-              onChange={(e) => setPriceInput({ ...priceInput, max: e.target.value })}
-              style={{ marginBottom: 16 }}
+              value={focusedField === 'min' 
+                ? (priceInput.min || filterOptions?.price_range?.min_price || 0)
+                : (priceInput.max || filterOptions?.price_range?.max_price || 100000)
+              }
+              onChange={(e) => {
+                if (focusedField === 'min') {
+                  const val = Math.min(Number(e.target.value), Number(priceInput.max || filterOptions?.price_range?.max_price || 100000));
+                  setPriceInput({ ...priceInput, min: String(val) });
+                } else {
+                  const val = Math.max(Number(e.target.value), Number(priceInput.min || filterOptions?.price_range?.min_price || 0));
+                  setPriceInput({ ...priceInput, max: String(val) });
+                }
+              }}
+              onMouseUp={applyPriceFilter} onTouchEnd={applyPriceFilter}
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#5a5c5c', fontSize: '0.75rem' }}>₹</span>
-                <input
-                  type="number" className="em-price-inp" placeholder="Min"
-                  value={priceInput.min} onChange={(e) => setPriceInput({ ...priceInput, min: e.target.value })}
-                  onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={0}
+                <input type="number" className="em-price-inp" placeholder="Min" value={priceInput.min}
+                  onFocus={() => setFocusedField('min')}
+                  onChange={(e) => setPriceInput({ ...priceInput, min: e.target.value })}
+                  onBlur={applyPriceFilter} onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={0}
+                  style={{ border: focusedField === 'min' ? '1px solid #FFC107' : 'none' }}
                 />
               </div>
               <span style={{ color: '#5a5c5c' }}>to</span>
               <div style={{ position: 'relative', flex: 1 }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#5a5c5c', fontSize: '0.75rem' }}>₹</span>
-                <input
-                  type="number" className="em-price-inp" placeholder="Max"
-                  value={priceInput.max} onChange={(e) => setPriceInput({ ...priceInput, max: e.target.value })}
-                  onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={0}
+                <input type="number" className="em-price-inp" placeholder="Max" value={priceInput.max}
+                  onFocus={() => setFocusedField('max')}
+                  onChange={(e) => setPriceInput({ ...priceInput, max: e.target.value })}
+                  onBlur={applyPriceFilter} onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={0}
+                  style={{ border: focusedField === 'max' ? '1px solid #FFC107' : 'none' }}
                 />
               </div>
             </div>
-            <button
-              onClick={applyPriceFilter}
-              style={{ marginTop: 12, width: '100%', background: '#0c0f0f', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 0', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-            >
-              Apply Price
-            </button>
           </div>
         )}
       </div>
 
-      {/* Categories */}
-      {filterOptions && filterOptions.categories.length > 0 && (
-        <div className="em-sidebar-section">
-          <SectionTitle id="category" label="Categories" />
-          {open.category && (
-            <div>
-              <RadioPills
-                items={filterOptions.categories.map(c => ({ value: String(c.id), label: c.name }))}
-                activeVal={filters.categoryId}
-                onSelect={(v) => setFilter('categoryId', v)}
-                placeholder="All Categories"
-              />
-              {filters.categoryId && subCatsForCategory.length > 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <RadioPills
-                    items={subCatsForCategory.map(s => ({ value: String(s.id), label: s.name }))}
-                    activeVal={filters.subCategoryId}
-                    onSelect={(v) => setFilter('subCategoryId', v)}
-                    placeholder="All Sub-categories"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Dynamic Attributes */}
-      {dynamicAttrs.map((attr) => (
-        <div key={attr.name} className="em-sidebar-section">
-          <div className="em-filter-title" style={{ cursor: 'default' }}>{attr.name}</div>
-          {attr.options && attr.options.length > 0 ? (
-            <RadioPills
-              items={attr.options.map(o => ({ value: o, label: o }))}
-              activeVal={filters.specs[attr.name] || ''}
-              onSelect={(v) => setSpecFilter(attr.name, filters.specs[attr.name] === v ? '' : v)}
-              placeholder={`Any ${attr.name}`}
-            />
-          ) : (
-            <input
-              type="text" className="em-price-inp"
-              style={{ border: '1px solid #acadad', borderRadius: 10, paddingLeft: 12 }}
-              placeholder={`Enter ${attr.name}`}
-              value={filters.specs[attr.name] || ''}
-              onChange={(e) => setSpecFilter(attr.name, e.target.value)}
-            />
-          )}
-        </div>
-      ))}
-
-      {/* Brand */}
+      {/* ── 7. Brand ── */}
       {filterOptions && filterOptions.brands.length > 0 && (
         <div className="em-sidebar-section">
-          <SectionTitle id="brand" label="Brand" />
+          <SectionTitle id="brand" label="Brand" count={filters.brandIds.length} />
           {open.brand && (
-            <RadioPills
-              items={filterOptions.brands.map(b => ({ value: String(b.id), label: b.brand_name }))}
-              activeVal={filters.brandId}
-              onSelect={(v) => setFilter('brandId', v)}
-              placeholder="All Brands"
-            />
+            <>
+              <InlineSearch section="brand" placeholder="Search brand…" />
+              <CheckboxGroup
+                items={filterBySearch(filterOptions.brands.map(b => ({ value: String(b.id), label: b.brand_name })), 'brand')}
+                activeVals={filters.brandIds}
+                onSelect={(v) => setFilter('brandIds', v)}
+                onShowMore={() => onShowMore({
+                  type: 'brand', title: 'BRAND',
+                  items: filterOptions.brands.map(b => ({ id: b.id, name: b.brand_name })),
+                  selectedIds: filters.brandIds,
+                })}
+              />
+            </>
           )}
         </div>
       )}
 
-      {/* Color */}
-      {filterOptions && filterOptions.colors.length > 0 && (
+      {/* ── 8. Original Brand ── */}
+      {filterOptions && filterOptions.original_brands?.length > 0 && (
         <div className="em-sidebar-section">
-          <SectionTitle id="color" label="Color" />
-          {open.color && (
-            <RadioPills
-              items={filterOptions.colors.map(c => ({ value: c.name, label: c.name }))}
-              activeVal={filters.color}
-              onSelect={(v) => setFilter('color', v)}
-              placeholder="All Colors"
-            />
+          <SectionTitle id="originalBrand" label="Original Brand" count={filters.originalBrandIds.length} />
+          {open.originalBrand && (
+            <>
+              <InlineSearch section="originalBrand" placeholder="Search original brand…" />
+              <CheckboxGroup
+                items={filterBySearch(filterOptions.original_brands.map(b => ({ value: String(b.id), label: b.brand_name })), 'originalBrand')}
+                activeVals={filters.originalBrandIds}
+                onSelect={(v) => setFilter('originalBrandIds', v)}
+                onShowMore={() => onShowMore({
+                  type: 'brand', title: 'ORIGINAL BRAND',
+                  items: filterOptions.original_brands.map(b => ({ id: b.id, name: b.brand_name })),
+                  selectedIds: filters.originalBrandIds,
+                })}
+              />
+            </>
           )}
         </div>
       )}
 
-      {/* Size */}
-      {filterOptions && filterOptions.sizes.length > 0 && (
-        <div className="em-sidebar-section">
-          <SectionTitle id="size" label="Size" />
-          {open.size && (
-            <RadioPills
-              items={filterOptions.sizes.map(s => ({ value: s, label: s }))}
-              activeVal={filters.size}
-              onSelect={(v) => setFilter('size', v)}
-              placeholder="Any Size"
-            />
-          )}
-        </div>
-      )}
-
-      {/* Gender */}
-      {filterOptions && filterOptions.genders.length > 0 && (
-        <div className="em-sidebar-section">
-          <SectionTitle id="gender" label="Gender" />
-          {open.gender && (
-            <RadioPills
-              items={filterOptions.genders.map(g => ({ value: g.name, label: g.name }))}
-              activeVal={filters.gender}
-              onSelect={(v) => setFilter('gender', v)}
-              placeholder="All Genders"
-            />
-          )}
-        </div>
-      )}
+      {/* ── 9. Dynamic Attributes ── */}
+      {dynamicAttrs.map((attr) => {
+        const opts = Array.isArray(attr.options)
+          ? attr.options
+          : (typeof attr.options === 'string' ? attr.options.split(',').map(s => s.trim()).filter(Boolean) : []);
+        const section = `dyn_${attr.name}`;
+        const allItems = opts.map((o: string) => ({ value: o, label: o }));
+        const filtered = filterBySearch(allItems, section);
+        return (
+          <div key={attr.name} className="em-sidebar-section">
+            <SectionTitle id={section} label={attr.name} count={(filters.specs[attr.name] || []).length} />
+            {open[section] !== false && (
+              opts.length > 0 ? (
+                <>
+                  <InlineSearch section={section} placeholder={`Search ${attr.name}…`} />
+                  <CheckboxGroup
+                    items={filtered}
+                    activeVals={filters.specs[attr.name] || []}
+                    onSelect={(v) => setSpecFilter(attr.name, v)}
+                    onShowMore={() => onShowMore({
+                      type: 'spec', title: attr.name, specKey: attr.name,
+                      items: opts.map(o => ({ id: o, name: o })),
+                      selectedIds: filters.specs[attr.name] || [],
+                    })}
+                  />
+                </>
+              ) : (
+                <input
+                  type="text" className="em-price-inp"
+                  style={{ border: '1px solid #acadad', borderRadius: 10, paddingLeft: 12 }}
+                  placeholder={`Enter ${attr.name}`}
+                  value={filters.specs[attr.name]?.[0] || ''}
+                  onChange={(e) => setSpecFilter(attr.name, e.target.value)}
+                />
+              )
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

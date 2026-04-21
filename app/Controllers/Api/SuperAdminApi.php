@@ -800,17 +800,75 @@ class SuperAdminApi extends ResourceController
         return $this->respond(['success' => true, 'message' => 'Item deleted.']);
     }
 
-    // ── Brands ──────────────────────────────────
-    public function brands()
+    // ── Original Brands (Industry Giants) ─────────────────────────
+    public function originalBrandsList()
     {
         $db = \Config\Database::connect();
-        $brands = $db->table('orignal_brands b')
+        $brands = $db->table('orignal_brands ob')
+            ->select('ob.*, lt.type_name as listing_type_name')
+            ->join('listing_types lt', 'lt.id = ob.listing_type_id', 'left')
+            ->orderBy('ob.created_at', 'DESC')
+            ->get()->getResultArray();
+        return $this->respond(['success' => true, 'data' => $brands]);
+    }
+
+    // ── Seller Brands (Individual Shops) ──────────────────────────
+    public function sellerBrands()
+    {
+        $db = \Config\Database::connect();
+        $brands = $db->table('brands b')
             ->select('b.*, u.name as seller_name, u.mobile as seller_mobile, lt.type_name as listing_type_name')
             ->join('users u', 'u.id = b.seller_id', 'left')
             ->join('listing_types lt', 'lt.id = b.listing_type_id', 'left')
             ->orderBy('b.created_at', 'DESC')
             ->get()->getResultArray();
         return $this->respond(['success' => true, 'data' => $brands]);
+    }
+
+    public function createSellerBrand()
+    {
+        $db = \Config\Database::connect();
+        $data = [
+            'brand_name' => $this->request->getPost('brand_name'),
+            'seller_id' => $this->request->getPost('seller_id'),
+            'listing_type_id' => $this->request->getPost('listing_type_id'),
+            'description' => $this->request->getPost('description') ?? '',
+            'created_by_admin' => 1,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
+        if (!$data['brand_name'] || !$data['seller_id']) {
+            return $this->respond(['success' => false, 'message' => 'Brand name and Seller are required.'], 400);
+        }
+        $db->table('brands')->insert($data);
+        return $this->respond(['success' => true, 'message' => 'Seller brand created and assigned.']);
+    }
+
+    public function updateSellerBrand($id)
+    {
+        $db = \Config\Database::connect();
+        $data = [];
+        $name = $this->request->getPost('brand_name');
+        if ($name) $data['brand_name'] = $name;
+        $sellerId = $this->request->getPost('seller_id');
+        if ($sellerId !== null) $data['seller_id'] = $sellerId ?: null;
+        $ltId = $this->request->getPost('listing_type_id');
+        if ($ltId !== null) $data['listing_type_id'] = $ltId ?: null;
+        $desc = $this->request->getPost('description');
+        if ($desc !== null) $data['description'] = $desc;
+        $isBlocked = $this->request->getPost('is_blocked');
+        if ($isBlocked !== null) $data['is_blocked'] = $isBlocked;
+
+        if (empty($data)) return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
+        $db->table('brands')->where('id', $id)->update($data);
+        return $this->respond(['success' => true, 'message' => 'Seller brand updated.']);
+    }
+
+    public function deleteSellerBrand($id)
+    {
+        $db = \Config\Database::connect();
+        $db->table('products')->where('brand_id', $id)->update(['brand_id' => null]);
+        $db->table('brands')->where('id', $id)->delete();
+        return $this->respond(['success' => true, 'message' => 'Seller brand deleted.']);
     }
 
     public function createBrand()
@@ -845,29 +903,29 @@ class SuperAdminApi extends ResourceController
         return $this->respond(['success' => true, 'message' => 'Brand updated.']);
     }
 
-    public function deleteBrand($id)
+    public function deleteOriginalBrandLegacy($id)
     {
         $db = \Config\Database::connect();
-        $db->table('products')->where('brand_id', $id)->update(['brand_id' => null]);
+        $db->table('products')->where('orignal_brand_id', $id)->update(['orignal_brand_id' => null]);
         $db->table('orignal_brands')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Brand deleted.']);
+        return $this->respond(['success' => true, 'message' => 'Original brand deleted.']);
     }
 
-    public function deactivateBrand($id)
+    public function deactivateOriginalBrand($id)
     {
         $db = \Config\Database::connect();
         $db->table('orignal_brands')->where('id', $id)->update(['is_active' => 0]);
-        return $this->respond(['success' => true, 'message' => 'Brand deactivated. Products remain visible without brand name.']);
+        return $this->respond(['success' => true, 'message' => 'Original brand deactivated.']);
     }
 
-    public function activateBrand($id)
+    public function activateOriginalBrand($id)
     {
         $db = \Config\Database::connect();
         $db->table('orignal_brands')->where('id', $id)->update(['is_active' => 1]);
-        return $this->respond(['success' => true, 'message' => 'Brand activated.']);
+        return $this->respond(['success' => true, 'message' => 'Original brand activated.']);
     }
 
-    public function blockBrand($id)
+    public function blockOriginalBrand($id)
     {
         $db = \Config\Database::connect();
         $reason = trim($this->request->getPost('reason') ?? '');
@@ -878,22 +936,67 @@ class SuperAdminApi extends ResourceController
             'rejection_reason' => $reason
         ]);
         
-        // Reject all products of that brand
+        // Reject all products of that original brand
+        $db->table('products')
+            ->where('orignal_brand_id', $id)
+            ->update([
+                'status' => 'rejected', 
+                'admin_remarks' => 'Original Brand Blocked: ' . $reason
+            ]);
+            
+        return $this->respond(['success' => true, 'message' => 'Original brand blocked.']);
+    }
+
+    public function unblockOriginalBrand($id)
+    {
+        $db = \Config\Database::connect();
+        $db->table('orignal_brands')->where('id', $id)->update(['is_blocked' => 0, 'rejection_reason' => null]);
+        return $this->respond(['success' => true, 'message' => 'Original brand unblocked.']);
+    }
+
+    // ── Seller Brand Actions ─────────────────────────────
+
+    public function deactivateSellerBrand($id)
+    {
+        $db = \Config\Database::connect();
+        $db->table('brands')->where('id', $id)->update(['is_active' => 0]);
+        return $this->respond(['success' => true, 'message' => 'Seller brand deactivated.']);
+    }
+
+    public function activateSellerBrand($id)
+    {
+        $db = \Config\Database::connect();
+        $db->table('brands')->where('id', $id)->update(['is_active' => 1]);
+        return $this->respond(['success' => true, 'message' => 'Seller brand activated.']);
+    }
+
+    public function blockSellerBrand($id)
+    {
+        $db = \Config\Database::connect();
+        $reason = trim($this->request->getPost('reason') ?? '');
+        if (!$reason) $reason = 'Brand Blocked';
+        
+        $db->table('brands')->where('id', $id)->update([
+            'is_blocked' => 1,
+            'rejection_reason' => $reason
+        ]);
+        
+        // Reject all products of that seller brand
         $db->table('products')
             ->where('brand_id', $id)
             ->update([
                 'status' => 'rejected', 
-                'admin_remarks' => 'Brand Blocked: ' . $reason
+                'admin_remarks' => 'Seller Brand Blocked: ' . $reason
             ]);
             
-        return $this->respond(['success' => true, 'message' => 'Brand blocked. All products updated to rejected status.']);
+        return $this->respond(['success' => true, 'message' => 'Seller brand blocked and products rejected.']);
     }
 
-    public function unblockBrand($id)
+    public function unblockSellerBrand($id)
     {
         $db = \Config\Database::connect();
-        $db->table('orignal_brands')->where('id', $id)->update(['is_blocked' => 0, 'rejection_reason' => null]);
-        return $this->respond(['success' => true, 'message' => 'Brand unblocked.']);
+        $db->table('brands')->where('id', $id)->update(['is_blocked' => 0, 'rejection_reason' => null]);
+        return $this->respond(['success' => true, 'message' => 'Seller brand unblocked.']);
     }
 
     public function sellersList()
@@ -901,8 +1004,11 @@ class SuperAdminApi extends ResourceController
         $db = \Config\Database::connect();
         $sellers = $db->table('users')
             ->select('id, name, email, user_type')
-            ->whereIn('user_type', ['seller', 'both'])
-            ->whereNotIn('role', ['admin', 'super_admin'])
+            // Include sellers, hybrid users, and all admin/super_admin roles
+            ->groupStart()
+                ->whereIn('user_type', ['seller', 'both'])
+                ->orWhereIn('role', ['admin', 'super_admin'])
+            ->groupEnd()
             ->where('is_blocked', 0)
             ->orderBy('name', 'ASC')
             ->get()->getResultArray();
@@ -928,17 +1034,21 @@ class SuperAdminApi extends ResourceController
         $productIds = $this->request->getPost('product_ids') ?? [];
         $untagIds   = $this->request->getPost('untag_ids') ?? [];
         $brandId    = $this->request->getPost('brand_id');
+        $isOriginal = $this->request->getPost('is_original') ?? 0;
+        
+        $column = $isOriginal ? 'orignal_brand_id' : 'brand_id';
+        
         if (!$brandId) return $this->respond(['success' => false, 'message' => 'No brand selected.'], 400);
         // Tag selected products
         foreach ($productIds as $pid) {
-            $db->table('products')->where('id', (int)$pid)->update(['brand_id' => $brandId]);
+            $db->table('products')->where('id', (int)$pid)->update([$column => $brandId]);
         }
         // Untag deselected products that belonged to this brand
         if (!empty($untagIds)) {
             $db->table('products')
-               ->where('brand_id', $brandId)
+               ->where($column, $brandId)
                ->whereIn('id', array_map('intval', $untagIds))
-               ->update(['brand_id' => null]);
+               ->update([$column => null]);
         }
         return $this->respond(['success' => true, 'message' => count($productIds) . ' tagged, ' . count($untagIds) . ' untagged.']);
     }
@@ -1728,7 +1838,7 @@ class SuperAdminApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
-        $allowedKeys = ['hero_slides', 'display_categories', 'cta_title', 'cta_subtitle', 'footer_description', 'section_title_categories', 'section_title_products', 'footer_quick_links', 'footer_policy_links', 'footer_social_links', 'how_it_works_steps', 'stats_banner', 'trust_features', 'testimonials'];
+        $allowedKeys = ['hero_slides', 'display_categories', 'cta_title', 'cta_subtitle', 'footer_description', 'section_title_categories', 'section_title_products', 'footer_quick_links', 'footer_policy_links', 'footer_social_links', 'how_it_works_steps', 'stats_banner', 'trust_features', 'testimonials', 'aot_sections'];
         foreach ($data as $key => $value) {
             if (!in_array($key, $allowedKeys)) continue;
             $exists = $db->table('system_settings')->where('setting_key', $key)->countAllResults();

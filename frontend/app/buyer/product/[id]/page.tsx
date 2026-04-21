@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ProductDetailClient from './ProductDetailClient';
 
-// --- ISR: Revalidate every 60 seconds ---
-export const revalidate = 60;
+// --- ISR: Revalidate every 0 seconds (Disable cache for testing) ---
+export const revalidate = 0;
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
 
@@ -40,6 +40,8 @@ interface ProductData {
     seller_rating_count: string;
     status: string;
     seller_id?: number;
+    orignal_brand?: string;
+    seller_brand?: string;
   };
   images: { id: number; image_path: string }[];
   min_rental_days?: number;
@@ -65,13 +67,15 @@ interface SimilarProduct {
   seller_rating_avg: string;
   image?: string;
   category?: string;
+  orignal_brand?: string;
+  seller_brand?: string;
 }
 
 async function getProduct(slug: string): Promise<ProductData | null> {
   try {
     const id = extractId(slug);
     const res = await fetch(`${API_BASE}/product/${id}`, {
-      next: { revalidate: 60 },
+      cache: 'no-store'
     });
     if (!res.ok) return null;
     const json = await res.json();
@@ -86,7 +90,7 @@ async function getSimilarProducts(slug: string): Promise<SimilarProduct[]> {
   try {
     const id = extractId(slug);
     const res = await fetch(`${API_BASE}/product/${id}/similar`, {
-      next: { revalidate: 60 },
+      cache: 'no-store'
     });
     if (!res.ok) return [];
     const json = await res.json();
