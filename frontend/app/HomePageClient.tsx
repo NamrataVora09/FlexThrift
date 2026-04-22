@@ -166,8 +166,28 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
   const [editModal, setEditModal] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editTemp, setEditTemp] = useState<any>(null);
+  const [imgUploading, setImgUploading] = useState<Record<number, boolean>>({});
 
   const isSuperAdmin = user?.role === 'super_admin';
+
+  // Upload a card image file to the server, return the public URL
+  const uploadCardImage = async (file: File, idx: number): Promise<string | null> => {
+    setImgUploading(prev => ({ ...prev, [idx]: true }));
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('flex_token') : null;
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(`${API_BASE}/superadmin/upload-landing-card-image`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const json = await res.json();
+      if (json.success) return json.url || `http://localhost:8080/${json.path}`;
+      return null;
+    } catch { return null; }
+    finally { setImgUploading(prev => ({ ...prev, [idx]: false })); }
+  };
 
   // Load landing content — use ISR pre-fetched data if available, otherwise client-fetch
   useEffect(() => {
@@ -950,51 +970,144 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
 
         </div>
 
-        {/* ===== BROWSE BY LISTING TYPES ===== */}
-        <section style={{ padding: '80px 0', background: '#fff' }}>
-          <div className="container">
+        {/* ===== BROWSE BY ESSENCE (Dynamic Category Cards) ===== */}
+        <section style={{ padding: '80px 0', background: '#fff', position: 'relative' }}>
+
+          {/* ── Superadmin Toolbar (full-width, always visible) ── */}
+          {isSuperAdmin && (
+            <div style={{
+              background: 'linear-gradient(135deg, #000 0%, #1a1a1a 100%)',
+              padding: '14px 0',
+              marginBottom: 0,
+              borderBottom: '3px solid #ffc63a',
+            }}>
+              <div className="container">
+                <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <div style={{
+                      background: '#ffc63a', color: '#000', borderRadius: 6,
+                      padding: '3px 10px', fontSize: '0.7rem', fontWeight: 800, letterSpacing: 1,
+                    }}>
+                      SUPERADMIN
+                    </div>
+                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', fontFamily: "'Inter', sans-serif" }}>
+                      <i className="bi bi-grid-3x3-gap me-1" style={{ color: '#ffc63a' }}></i>
+                      Category Cards — loaded from database
+                    </span>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditTemp(JSON.parse(JSON.stringify(displayCategories)));
+                        setEditModal('displayCategories');
+                      }}
+                      style={{
+                        background: '#ffc63a', color: '#000', border: 'none',
+                        borderRadius: 8, padding: '8px 18px', fontSize: '0.85rem',
+                        fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      <i className="bi bi-pencil-square"></i> Edit Cards
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newCard = { name: 'New Category', img: '' };
+                        const updated = [...displayCategories, newCard];
+                        setDisplayCategories(updated);
+                        setEditTemp(JSON.parse(JSON.stringify(updated)));
+                        setEditModal('displayCategories');
+                      }}
+                      style={{
+                        background: 'transparent', color: '#ffc63a', border: '2px solid #ffc63a',
+                        borderRadius: 8, padding: '8px 18px', fontSize: '0.85rem',
+                        fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      <i className="bi bi-plus-circle"></i> Add New Card
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="container" style={{ paddingTop: 40 }}>
             <div className="row g-4">
               <div className="col-lg-12" style={{ position: 'relative' }}>
                 <h2 className="premium-title fw-900">{sectionTitleCategories}</h2>
                 <EditBtnInline label="Edit Title" onClick={() => { setEditTemp(sectionTitleCategories); setEditModal('sectionTitleCategories'); }} />
               </div>
-            {listingTypes.length > 0 ? listingTypes.map((lt) => (
-              <div key={lt.id} className="col-6 col-lg-3">
-                <Link href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`} style={{ textDecoration: 'none' }}>
-                  <div className="cat-card" style={{ position: 'relative' }}>
-                    {lt.image ? (
-                      <img src={lt.image.startsWith('http') ? lt.image : lt.image.startsWith('uploads/') ? `http://localhost:8080/${lt.image}` : `http://localhost:8080/uploads/products/${lt.image}`} alt={lt.type_name} />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #1a1a1a, #333)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <i className="bi bi-tags" style={{ fontSize: '4rem', color: 'rgba(255,198,58,0.3)' }}></i>
+
+              {/* Category Cards */}
+              {displayCategories.map((cat, i) => (
+                <div key={i} className="col-6 col-lg-3">
+                  <div style={{ position: 'relative' }}>
+                    <Link href={`/buyer/browse?search=${encodeURIComponent(cat.name.toLowerCase())}`} style={{ textDecoration: 'none' }}>
+                      <div className="cat-card">
+                        {cat.img ? (
+                          <img
+                            src={cat.img.startsWith('http') ? cat.img : `http://localhost:8080/${cat.img}`}
+                            alt={cat.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #1a1a1a, #333)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10 }}>
+                            <i className="bi bi-image" style={{ fontSize: '3rem', color: 'rgba(255,198,58,0.4)' }}></i>
+                            <span style={{ color: 'rgba(255,198,58,0.5)', fontSize: '0.75rem', fontWeight: 600 }}>No image set</span>
+                          </div>
+                        )}
+                        <div className="cat-info">
+                          <h4 className="fw-800 mb-0">{cat.name}</h4>
+                          <small className="opacity-75">View Collections <i className="bi bi-arrow-right"></i></small>
+                        </div>
                       </div>
+                    </Link>
+
+                    {/* Per-card edit button for superadmin */}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditTemp(JSON.parse(JSON.stringify(displayCategories)));
+                          setEditModal('displayCategories');
+                        }}
+                        title={`Edit "${cat.name}" card`}
+                        style={{
+                          position: 'absolute', top: 10, right: 10, zIndex: 20,
+                          background: 'rgba(255,198,58,0.95)', color: '#000', border: 'none',
+                          borderRadius: 8, padding: '5px 10px', fontSize: '0.72rem',
+                          fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                          boxShadow: '0 3px 10px rgba(0,0,0,0.3)',
+                        }}
+                      >
+                        <i className="bi bi-pencil-fill"></i> Edit
+                      </button>
                     )}
-                    <div className="cat-info">
-                      <h4 className="fw-800 mb-0">{lt.type_name}</h4>
-                      <small className="opacity-75">View Collections <i className="bi bi-arrow-right"></i></small>
-                    </div>
                   </div>
-                </Link>
-              </div>
-            )) : displayCategories.map((cat, i) => (
-              <div key={i} className="col-6 col-lg-3">
-                <Link href={`/buyer/browse?search=${cat.name.toLowerCase()}`} style={{ textDecoration: 'none' }}>
-                  <div className="cat-card">
-                    <img src={cat.img} alt={cat.name} />
-                    <div className="cat-info">
-                      <h4 className="fw-800 mb-0">{cat.name}</h4>
-                      <small className="opacity-75">View Collections <i className="bi bi-arrow-right"></i></small>
-                    </div>
+                </div>
+              ))}
+
+              {/* Empty state for superadmin */}
+              {displayCategories.length === 0 && isSuperAdmin && (
+                <div className="col-12">
+                  <div style={{
+                    border: '2px dashed #ffc63a', borderRadius: 20, padding: '60px 30px',
+                    textAlign: 'center', background: '#fffef5',
+                  }}>
+                    <i className="bi bi-grid-3x3-gap" style={{ fontSize: '3rem', color: '#ffc63a' }}></i>
+                    <p className="fw-bold mt-3 mb-2">No category cards yet</p>
+                    <p className="text-muted small mb-4">Click "Add New Card" above to create your first landing page category card.</p>
+                    <button
+                      onClick={() => { setEditTemp([{ name: 'New Category', img: '' }]); setEditModal('displayCategories'); }}
+                      style={{ background: '#ffc63a', color: '#000', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      <i className="bi bi-plus-circle me-2"></i> Add First Card
+                    </button>
                   </div>
-                </Link>
-              </div>
-            ))}
-            {isSuperAdmin && (
-              <div className="col-12">
-                <p className="text-muted small mb-0"><i className="bi bi-info-circle me-1"></i> Listing types and images are managed from <Link href="/superadmin/taxonomy" style={{ color: '#ffc63a', fontWeight: 600 }}>Catalogue Management</Link></p>
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -1282,35 +1395,111 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
         </div>
       </Modal>
 
-      {/* Display Categories Editor */}
+      {/* Display Categories Editor — with image upload */}
       <Modal title="Edit Category Cards" open={editModal === 'displayCategories'} onClose={() => setEditModal(null)}>
-        <div className="modal-body p-4" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+        <div className="modal-body p-4" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
           {Array.isArray(editTemp) && editTemp.map((cat: DisplayCategory, i: number) => (
-            <div key={i} className="card mb-3 border" style={{ borderRadius: 12 }}>
+            <div key={i} className="card mb-3 border" style={{ borderRadius: 14, overflow: 'hidden' }}>
+              {/* Image preview strip */}
+              {cat.img && (
+                <div style={{ height: 120, background: '#111', overflow: 'hidden', position: 'relative' }}>
+                  <img
+                    src={cat.img.startsWith('http') ? cat.img : `http://localhost:8080/${cat.img}`}
+                    alt={cat.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+                  />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(0deg, rgba(0,0,0,0.5) 0%, transparent 60%)' }} />
+                  <span style={{ position: 'absolute', bottom: 10, left: 14, color: '#fff', fontWeight: 700, fontSize: '1rem', fontFamily: "'Outfit', sans-serif" }}>{cat.name || 'Card ' + (i + 1)}</span>
+                </div>
+              )}
               <div className="card-body">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <h6 className="fw-bold mb-0">Card {i + 1}</h6>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h6 className="fw-bold mb-0" style={{ fontFamily: "'Outfit', sans-serif" }}>Card {i + 1}</h6>
                   {editTemp.length > 1 && (
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => setEditTemp((prev: DisplayCategory[]) => prev.filter((_: any, idx: number) => idx !== i))}>
-                      <i className="bi bi-trash"></i>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => setEditTemp((prev: DisplayCategory[]) => prev.filter((_: any, idx: number) => idx !== i))}
+                    >
+                      <i className="bi bi-trash"></i> Remove
                     </button>
                   )}
                 </div>
-                <div className="row g-2">
-                  <div className="col-6"><label className="form-label small fw-bold">Name</label><input className="form-control" style={inputStyle} value={cat.name} onChange={(e) => { const n = [...editTemp]; n[i] = { ...n[i], name: e.target.value }; setEditTemp(n); }} /></div>
-                  <div className="col-6"><label className="form-label small fw-bold">Image URL</label><input className="form-control" style={inputStyle} value={cat.img} onChange={(e) => { const n = [...editTemp]; n[i] = { ...n[i], img: e.target.value }; setEditTemp(n); }} /></div>
+
+                {/* Name field */}
+                <div className="mb-3">
+                  <label className="form-label small fw-bold">Card Name</label>
+                  <input
+                    className="form-control"
+                    style={inputStyle}
+                    placeholder="e.g. Clothing, Electronics…"
+                    value={cat.name}
+                    onChange={(e) => { const n = [...editTemp]; n[i] = { ...n[i], name: e.target.value }; setEditTemp(n); }}
+                  />
+                </div>
+
+                {/* Image upload */}
+                <div className="mb-2">
+                  <label className="form-label small fw-bold">Card Image</label>
+                  <div className="d-flex gap-2 align-items-center flex-wrap">
+                    {/* File upload button */}
+                    <label
+                      htmlFor={`card-img-upload-${i}`}
+                      style={{
+                        background: imgUploading[i] ? '#aaa' : '#000', color: '#ffc63a',
+                        border: 'none', borderRadius: 8, padding: '7px 16px',
+                        fontSize: '0.8rem', fontWeight: 700, cursor: imgUploading[i] ? 'wait' : 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {imgUploading[i] ? <><i className="bi bi-hourglass-split"></i> Uploading…</> : <><i className="bi bi-cloud-upload"></i> Upload Image</>}
+                    </label>
+                    <input
+                      id={`card-img-upload-${i}`}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const url = await uploadCardImage(file, i);
+                        if (url) { const n = [...editTemp]; n[i] = { ...n[i], img: url }; setEditTemp(n); }
+                        else alert('Image upload failed. Please try again.');
+                        e.target.value = '';
+                      }}
+                    />
+                    <span style={{ color: '#999', fontSize: '0.75rem' }}>or paste URL:</span>
+                  </div>
+                  <input
+                    className="form-control mt-2"
+                    style={{ ...inputStyle, fontSize: '0.8rem' }}
+                    placeholder="https://… or leave blank after uploading"
+                    value={cat.img}
+                    onChange={(e) => { const n = [...editTemp]; n[i] = { ...n[i], img: e.target.value }; setEditTemp(n); }}
+                  />
                 </div>
               </div>
             </div>
           ))}
-          <button className="btn btn-outline-secondary btn-sm" onClick={() => setEditTemp((prev: DisplayCategory[]) => [...prev, { name: 'New Category', img: '' }])}>
+
+          <button
+            className="btn btn-outline-secondary btn-sm"
+            onClick={() => setEditTemp((prev: DisplayCategory[]) => [...prev, { name: 'New Category', img: '' }])}
+          >
             <i className="bi bi-plus-circle me-1"></i> Add Card
           </button>
         </div>
         <div className="modal-footer border-0 p-4 pt-0">
           <button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button>
-          <button className="btn" style={btnGold} disabled={saving} onClick={() => { setDisplayCategories(editTemp); saveContent({ display_categories: JSON.stringify(editTemp) }); }}>
-            {saving ? 'Saving...' : 'Save Changes'}
+          <button
+            className="btn"
+            style={btnGold}
+            disabled={saving || Object.values(imgUploading).some(Boolean)}
+            onClick={() => {
+              setDisplayCategories(editTemp);
+              saveContent({ display_categories: JSON.stringify(editTemp) });
+            }}
+          >
+            {saving ? 'Saving…' : 'Save Cards'}
           </button>
         </div>
       </Modal>

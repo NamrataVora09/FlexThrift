@@ -24,7 +24,8 @@ $routes->group('api', ['filter' => 'api_cors'], function ($routes) {
 /**
  * Helper to register all API routes in both groups
  */
-function register_api_routes($routes) {
+function register_api_routes($routes)
+{
 
     // Auth (public)
     $routes->post('auth/login', 'Api\AuthApi::login');
@@ -323,6 +324,7 @@ function register_api_routes($routes) {
         $routes->get('error-messages/category/(:any)', 'Api\SuperAdminApi::getErrorMessagesByCategory/$1');
         // Payment Gateway
         $routes->post('test-phonepe', 'Api\SuperAdminApi::testPhonePeConnection');
+        $routes->post('upload-landing-card-image', 'Api\SuperAdminApi::uploadLandingCardImage');
     });
 
     // Delivery API (protected)

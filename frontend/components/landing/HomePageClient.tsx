@@ -8,12 +8,20 @@ import { api } from '@/lib/api';
 import LandingNavbar from '../layout/LandingNavbar';
 import Footer from '../layout/Footer';
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api/v1').replace(/\/$/, '');
 const STORAGE_KEY = 'flex_hp_v3';
 
 interface AotStep { icon: string; title: string; desc: string; }
 interface AotGuide { id: string; label: string; videoUrl: string; steps: AotStep[]; }
 interface AotSection { id: string; headline: string; subtitle: string; guides: AotGuide[]; reversed?: boolean; }
+interface CategoryCard {
+  name: string;
+  slug: string;
+  label: string;
+  desc: string;
+  reverse: boolean;
+  imgs: string[];
+}
 
 const DEFAULT_AOT: AotSection[] = [
   {
@@ -349,6 +357,9 @@ export default function HomePageClient() {
   const [sidebarName, setSidebarName] = useState('');
   const [sidebarEmail, setSidebarEmail] = useState('');
   const [catImgIdx, setCatImgIdx] = useState<number[]>(CATEGORY_CARDS.map(() => 0));
+  const [categoryCards, setCategoryCards] = useState<CategoryCard[]>(CATEGORY_CARDS);
+  const [editingCards, setEditingCards] = useState(false);
+  const [cardUploadLoading, setCardUploadLoading] = useState<Record<string, boolean>>({});
 
   const [aotSections, setAotSections] = useState<AotSection[]>(DEFAULT_AOT);
   const [editingSection, setEditingSection] = useState<AotSection | null>(null);
@@ -360,6 +371,13 @@ export default function HomePageClient() {
       .then(res => {
         if (res.success && res.data?.aot_sections) {
           try { setAotSections(JSON.parse(res.data.aot_sections)); } catch { }
+        }
+        if (res.success && res.data?.category_cards) {
+          try {
+            const cards = JSON.parse(res.data.category_cards);
+            setCategoryCards(cards);
+            setCatImgIdx(cards.map(() => 0));
+          } catch { }
         }
       })
       .catch(() => { });
@@ -401,12 +419,95 @@ export default function HomePageClient() {
     setEditingSection(fresh);
   };
 
+  const persistCards = async (next: CategoryCard[]) => {
+    setCategoryCards(next);
+    try {
+      await api.post('/superadmin/update-landing-content', { category_cards: JSON.stringify(next) });
+    } catch (err) {
+      console.error('Save error:', err);
+    }
+  };
+
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const uploadCardImg = async (cardIdx: number, file: File, existingImgIdx?: number) => {
+    setUploadError(null);
+    const localUrl = URL.createObjectURL(file);
+
+    // Show preview immediately
+    setCategoryCards(prev => {
+      const next = [...prev];
+      const card = { ...next[cardIdx] };
+      const nextImgs = [...card.imgs];
+      if (existingImgIdx !== undefined) {
+        nextImgs[existingImgIdx] = localUrl;
+      } else {
+        nextImgs.push(localUrl);
+      }
+      card.imgs = nextImgs;
+      next[cardIdx] = card;
+      return next;
+    });
+
+    const loadingKey = `${cardIdx}-${existingImgIdx !== undefined ? existingImgIdx : categoryCards[cardIdx].imgs.length}`;
+    setCardUploadLoading(prev => ({ ...prev, [loadingKey]: true }));
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await api.upload<{ path: string; url: string }>('/superadmin/upload-landing-card-image', formData);
+
+      if (res.success && res.data) {
+        const serverUrl = res.data.url || `${API_BASE.replace('/api/v1', '')}/${res.data.path}`;
+
+        // Replace localUrl with serverUrl
+        setCategoryCards(prev => {
+          const next = prev.map((c, i) => {
+            if (i !== cardIdx) return c;
+            const updatedImgs = c.imgs.map(img => img === localUrl ? serverUrl : img);
+            const updatedCard = { ...c, imgs: updatedImgs };
+            
+            // Trigger persistence with the fresh 'next' array
+            // We do it here to ensure we have the absolute latest state
+            const fullNext = prev.map((pC, pI) => pI === i ? updatedCard : pC);
+            persistCards(fullNext);
+            
+            return updatedCard;
+          });
+          return next;
+        });
+      } else {
+        setUploadError(res.message || 'Upload failed');
+        // Keep the local preview but show error? 
+        // Actually, better to remove if it failed to save, but let's keep it for a moment so they see the error
+        setTimeout(() => {
+          setCategoryCards(prev => prev.map((c, i) => i === cardIdx ? { ...c, imgs: c.imgs.filter(img => img !== localUrl) } : c));
+        }, 3000);
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      setUploadError('Network error during upload');
+      setTimeout(() => {
+        setCategoryCards(prev => prev.map((c, i) => i === cardIdx ? { ...c, imgs: c.imgs.filter(img => img !== localUrl) } : c));
+      }, 3000);
+    } finally {
+      setCardUploadLoading(prev => ({ ...prev, [loadingKey]: false }));
+      // Revoke after a delay to ensure it's replaced
+      setTimeout(() => URL.revokeObjectURL(localUrl), 5000);
+    }
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
-      setCatImgIdx(prev => prev.map((idx, i) => (idx + 1) % CATEGORY_CARDS[i].imgs.length));
+      setCatImgIdx(prev => prev.map((idx, i) => {
+        const card = categoryCards[i];
+        if (!card || !card.imgs || card.imgs.length === 0) return 0;
+        return (idx + 1) % card.imgs.length;
+      }));
     }, 3500);
     return () => clearInterval(interval);
-  }, []);
+  }, [categoryCards]); // Depend on categoryCards to stay in sync
 
   if (isLoading) {
     return <div><span>Loading…</span></div>;
@@ -422,8 +523,16 @@ export default function HomePageClient() {
 
           {/* Left: Category Cards */}
 
-          <div className="w-2/3   flex flex-col gap-16">
-            {CATEGORY_CARDS.map((cat, i) => (
+          <div className="w-2/3   flex flex-col gap-16 relative">
+            {isSuperAdmin && (
+              <button
+                onClick={() => setEditingCards(true)}
+                className="absolute -top-12 left-0 bg-black text-[#ffc63a] px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-gray-900 transition-all z-20"
+              >
+                <i className="bi bi-pencil-square"></i> Edit Category Cards
+              </button>
+            )}
+            {categoryCards.map((cat, i) => (
               <Link
                 key={cat.name}
                 href={`/buyer/browse?listing_type=${cat.slug}`}
@@ -552,6 +661,147 @@ export default function HomePageClient() {
       </main>
       <Footer />
 
+      {editingCards && (
+        <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h5 className="font-bold text-lg text-black">Edit Category Cards</h5>
+              <button onClick={() => setEditingCards(false)} className="text-gray-400 hover:text-black text-2xl">&times;</button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-6 space-y-8">
+              {uploadError && (
+                <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl flex items-center gap-3">
+                  <i className="bi bi-exclamation-triangle-fill"></i>
+                  <p className="text-sm font-medium">{uploadError}</p>
+                  <button onClick={() => setUploadError(null)} className="ml-auto text-red-400 hover:text-red-600">
+                    <i className="bi bi-x-lg"></i>
+                  </button>
+                </div>
+              )}
+              {categoryCards.map((card, ci) => (
+                <div key={ci} className="border border-gray-200 rounded-2xl p-6 bg-gray-50/50">
+                  <div className="flex justify-between items-center mb-4">
+                    <h6 className="font-bold text-gray-900">Card {ci + 1}: {card.name}</h6>
+                    <button
+                      onClick={() => persistCards(categoryCards.filter((_, i) => i !== ci))}
+                      className="text-red-500 text-sm font-semibold hover:text-red-700"
+                    >
+                      Delete Card
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Name</label>
+                      <input
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#ffc63a]"
+                        value={card.name}
+                        onChange={e => {
+                          setCategoryCards(prev => prev.map((c, i) => i === ci ? { ...c, name: e.target.value } : c));
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Slug</label>
+                      <input
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#ffc63a]"
+                        value={card.slug}
+                        onChange={e => {
+                          setCategoryCards(prev => prev.map((c, i) => i === ci ? { ...c, slug: e.target.value } : c));
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="block text-xs font-bold text-gray-500 uppercase">Images (Slideshow)</label>
+                    <div className="grid grid-cols-3 gap-4">
+                      {card.imgs.map((img, ii) => (
+                        <div key={ii} className="relative group aspect-[4/3] rounded-xl overflow-hidden border-2 border-gray-200 bg-white shadow-sm hover:border-[#ffc63a] transition-all">
+                          {img ? (
+                            <img src={img} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                              <i className="bi bi-image text-2xl"></i>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <label className="cursor-pointer bg-white text-black p-2 rounded-full hover:bg-[#ffc63a] transition-colors shadow-lg">
+                              <i className={`bi ${cardUploadLoading[`${ci}-${ii}`] ? 'animate-spin bi-arrow-repeat' : 'bi-camera'}`}></i>
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={e => e.target.files?.[0] && uploadCardImg(ci, e.target.files[0], ii)}
+                                disabled={cardUploadLoading[`${ci}-${ii}`]}
+                              />
+                            </label>
+                            <button
+                              onClick={() => {
+                                setCategoryCards(prev => prev.map((c, i) => i === ci ? { ...c, imgs: c.imgs.filter((_, j) => j !== ii) } : c));
+                              }}
+                              className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                            >
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          </div>
+                          {cardUploadLoading[`${ci}-${ii}`] && (
+                            <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                              <div className="w-6 h-6 border-2 border-[#ffc63a] border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      
+                      {/* Direct Upload "Add Image" button */}
+                      <label className="aspect-[4/3] border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-[#ffc63a] hover:text-[#ffc63a] hover:bg-[#ffc63a]/5 transition-all cursor-pointer group relative">
+                        {cardUploadLoading[`${ci}-${card.imgs.length}`] ? (
+                          <div className="flex flex-col items-center">
+                             <div className="w-8 h-8 border-3 border-[#ffc63a] border-t-transparent rounded-full animate-spin mb-2"></div>
+                             <span className="text-[10px] font-bold uppercase">Uploading...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <i className="bi bi-plus-lg text-2xl mb-1 group-hover:scale-110 transition-transform"></i>
+                            <span className="text-xs font-bold uppercase tracking-wider">Add Image</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={e => e.target.files?.[0] && uploadCardImg(ci, e.target.files[0])}
+                          disabled={cardUploadLoading[`${ci}-${card.imgs.length}`]}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      onClick={() => persistCards(categoryCards)}
+                      className="bg-black text-[#ffc63a] text-xs font-bold px-4 py-2 rounded-lg"
+                    >
+                      Save this card
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  const next: CategoryCard = { name: 'New Cat', slug: 'new', label: '', desc: '', reverse: false, imgs: [] };
+                  setCategoryCards([...categoryCards, next]);
+                }}
+                className="w-full border-2 border-dashed border-gray-300 rounded-2xl py-8 text-gray-400 hover:border-[#ffc63a] hover:text-[#ffc63a] transition-all flex flex-col items-center"
+              >
+                <i className="bi bi-plus-circle text-2xl mb-2"></i>
+                <span className="font-bold uppercase tracking-wider">Add New Category Card</span>
+              </button>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+              <button onClick={() => setEditingCards(false)} className="px-6 py-2 rounded-xl bg-gray-100 font-bold text-gray-600 hover:bg-gray-200 transition-all">Close</button>
+              <button onClick={() => { persistCards(categoryCards); setEditingCards(false); }} className="px-8 py-2 rounded-xl bg-[#ffc63a] font-bold text-black hover:bg-[#e6b035] transition-all shadow-lg shadow-[#ffc63a]/20">Save All Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

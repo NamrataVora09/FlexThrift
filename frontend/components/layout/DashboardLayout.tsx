@@ -13,21 +13,39 @@ interface Props {
   viewAs?: string;
 }
 
+// Module-level persistence to avoid flicker during remounts
+let globalSidebarOpen: boolean | null = null;
+
 export default function DashboardLayout({ children, requiredRoles, viewAs }: Props) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  
+  // Initialize from global variable if it exists, otherwise default to true
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (globalSidebarOpen !== null) return globalSidebarOpen;
+      const saved = localStorage.getItem('sidebarOpen');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+  
   const [isMobile, setIsMobile] = useState(false);
 
-  // Responsive sidebar logic
+  // Consolidated initialization and resize logic
   const handleResize = useCallback(() => {
     const mobile = window.innerWidth <= 991;
     setIsMobile(mobile);
+    
     if (mobile) {
       setSidebarOpen(false);
+      globalSidebarOpen = false;
     } else {
-      setSidebarOpen(true);
+      const savedState = localStorage.getItem('sidebarOpen');
+      const shouldBeOpen = savedState !== null ? savedState === 'true' : true;
+      setSidebarOpen(shouldBeOpen);
+      globalSidebarOpen = shouldBeOpen;
     }
   }, []);
 
@@ -37,13 +55,21 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
     return () => window.removeEventListener('resize', handleResize);
   }, [handleResize]);
 
-  // Close sidebar on route change (mobile)
+  // Close sidebar on route change (mobile only)
   useEffect(() => {
-    if (isMobile) setSidebarOpen(false);
+    if (isMobile) {
+      setSidebarOpen(false);
+      globalSidebarOpen = false;
+    }
   }, [pathname, isMobile]);
 
   const toggleSidebar = useCallback(() => {
-    setSidebarOpen(prev => !prev);
+    setSidebarOpen(prev => {
+      const newState = !prev;
+      localStorage.setItem('sidebarOpen', String(newState));
+      globalSidebarOpen = newState;
+      return newState;
+    });
   }, []);
 
   // Close sidebar when clicking overlay (mobile)

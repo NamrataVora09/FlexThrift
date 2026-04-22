@@ -1834,19 +1834,6 @@ class SuperAdminApi extends ResourceController
         return $this->respond(['success' => true, 'message' => 'Product deleted.']);
     }
 
-    public function updateLandingContent()
-    {
-        $db = \Config\Database::connect();
-        $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
-        $allowedKeys = ['hero_slides', 'display_categories', 'cta_title', 'cta_subtitle', 'footer_description', 'section_title_categories', 'section_title_products', 'footer_quick_links', 'footer_policy_links', 'footer_social_links', 'how_it_works_steps', 'stats_banner', 'trust_features', 'testimonials', 'aot_sections'];
-        foreach ($data as $key => $value) {
-            if (!in_array($key, $allowedKeys)) continue;
-            $exists = $db->table('system_settings')->where('setting_key', $key)->countAllResults();
-            if ($exists) $db->table('system_settings')->where('setting_key', $key)->update(['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
-            else $db->table('system_settings')->insert(['setting_key' => $key, 'setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
-        }
-        return $this->respond(['success' => true, 'message' => 'Landing page content updated.']);
-    }
 
     public function bulkUploadCatalogue()
     {
@@ -2426,6 +2413,104 @@ class SuperAdminApi extends ResourceController
             'success' => false,
             'message' => 'Failed to connect to PhonePe. Check your credentials.',
             'debug'   => $tokenData,
+        ]);
+    }
+
+    // ── Landing Content Management ─────────────────────
+
+    /**
+     * POST /api/v1/superadmin/update-landing-content
+     * Accepts JSON body: { key: value, ... }
+     * Saves each pair to system_settings (upsert).
+     */
+    public function updateLandingContent()
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $db   = \Config\Database::connect();
+        $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
+
+        $allowed = [
+            'hero_slides', 'display_categories', 'cta_title', 'cta_subtitle',
+            'footer_description', 'section_title_categories', 'section_title_products',
+            'footer_quick_links', 'footer_policy_links', 'footer_social_links',
+            'how_it_works_steps', 'stats_banner', 'trust_features', 'testimonials',
+            'aot_sections', 'category_cards',
+        ];
+
+        $saved = 0;
+        foreach ($data as $key => $value) {
+            if (!in_array($key, $allowed)) continue;
+            $strValue = is_array($value) ? json_encode($value) : (string) $value;
+            $existing = $db->table('system_settings')->where('setting_key', $key)->get()->getRowArray();
+            if ($existing) {
+                $db->table('system_settings')->where('setting_key', $key)->update([
+                    'setting_value' => $strValue,
+                    'updated_at'    => date('Y-m-d H:i:s'),
+                ]);
+            } else {
+                $db->table('system_settings')->insert([
+                    'setting_key'   => $key,
+                    'setting_value' => $strValue,
+                    'updated_at'    => date('Y-m-d H:i:s'),
+                ]);
+            }
+            $saved++;
+        }
+
+        return $this->respond(['success' => true, 'message' => "Landing content updated ({$saved} keys saved)."]);
+    }
+
+    /**
+     * POST /api/v1/superadmin/upload-landing-card-image
+     * Accepts multipart form: image file + optional index
+     * Returns the public path to the uploaded image.
+     */
+    public function uploadLandingCardImage()
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            log_message('error', 'Unauthorized upload attempt by user: ' . ($jwtUser['email'] ?? 'unknown'));
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $file = $this->request->getFile('image');
+        if (!$file || !$file->isValid()) {
+            $err = $file ? $file->getErrorString() : 'No file provided';
+            log_message('error', 'Invalid image upload: ' . $err);
+            return $this->respond(['success' => false, 'message' => 'Invalid image: ' . $err], 400);
+        }
+
+        if ($file->hasMoved()) {
+            log_message('error', 'File already moved');
+            return $this->respond(['success' => false, 'message' => 'File already processed.'], 400);
+        }
+
+        $uploadPath = FCPATH . 'uploads/landing-cards/';
+        if (!is_dir($uploadPath)) {
+            if (!mkdir($uploadPath, 0777, true)) {
+                log_message('error', 'Failed to create upload directory: ' . $uploadPath);
+                return $this->respond(['success' => false, 'message' => 'Failed to create upload directory on server.'], 500);
+            }
+        }
+
+        $newName = $file->getRandomName();
+        if (!$file->move($uploadPath, $newName)) {
+            log_message('error', 'Failed to move file to: ' . $uploadPath);
+            return $this->respond(['success' => false, 'message' => 'Failed to save file on server.'], 500);
+        }
+
+        $publicPath = 'uploads/landing-cards/' . $newName;
+        log_message('info', 'Image uploaded successfully: ' . $publicPath);
+
+        return $this->respond([
+            'success' => true,
+            'message' => 'Image uploaded.',
+            'path'    => $publicPath,
+            'url'     => base_url($publicPath),
         ]);
     }
 }

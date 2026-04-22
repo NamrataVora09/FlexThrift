@@ -811,7 +811,8 @@ class SharedApi extends ResourceController
                 'trust_features',
                 'testimonials',
                 'enable_zone_restriction',
-                'aot_sections'
+                'aot_sections',
+                'category_cards'
             ])
             ->get()->getResultArray();
         $content = [];

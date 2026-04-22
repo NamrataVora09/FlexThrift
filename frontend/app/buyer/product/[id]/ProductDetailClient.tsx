@@ -408,10 +408,16 @@ export default function ProductDetailClient({ product, images, similarProducts =
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 1rem 3rem' }}>
 
         {/* Product layout — 2 columns */}
-        <div style={{ display: 'grid', gridTemplateColumns: '50% 40%', gap: '3rem', marginBottom: '4rem' }}>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-10 mb-16'>
 
           {/* LEFT: Image gallery */}
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <div style={{
+            display: 'flex',
+            gap: '3rem', // No gap if only 1 image
+            width: "fit-content",
+            margin: images.length > 1 ? "" : "0 auto",
+            paddingLeft: images.length > 1 ? "" : "5rem"
+          }}>
             {/* Vertical thumbnail list */}
             {images.length > 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flexShrink: 0 }}>
@@ -432,42 +438,29 @@ export default function ProductDetailClient({ product, images, similarProducts =
                 ))}
               </div>
             )}
-
-            {/* Main image */}
             <div
-              style={{ flex: 1, width: '100%', maxWidth: '580px', borderRadius: 12, overflow: 'hidden', background: '#f9fafb', position: 'relative', cursor: isHovering ? 'crosshair' : 'default' }}
+              style={{
+                width: 'fit-content',
+                height: 'fit-content',
+                borderRadius: 12,
+                overflow: 'hidden',
+                position: 'relative',
+                cursor: isHovering ? 'crosshair' : 'default'
+              }}
               onMouseEnter={() => { setIsHovering(true); setAutoPlay(false); }}
               onMouseLeave={() => { setIsHovering(false); setAutoPlay(true); }}
               onMouseMove={handleMouseMove}
             >
-
-
-
-
-
-              {images.length > 0 ? (
-                <img
-                  src={getImageUrl(images[imgIdx]?.image_path)}
-                  alt={product.title}
-                  style={{
-                    width: '100%', height: 600, objectFit: 'cover',
-                    transform: isHovering ? 'scale(1.05)' : 'scale(1)',
-                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-                    transition: isHovering ? 'transform-origin 0.1s ease' : 'transform 0.4s ease',
-                  }}
-                />
-              ) : (
-                <div style={{ width: '100%', height: 600, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f0f1f1', gap: 12 }}>
-                  <i className="bi bi-image" style={{ fontSize: 64, color: '#ccc' }}></i>
-                  <span style={{ color: '#9ca3af' }}>No images available</span>
-                </div>
-              )}
-
-              {images.length > 1 && (
-                <div style={{ position: 'absolute', bottom: 12, right: 12, background: 'rgba(0,0,0,0.55)', color: '#fff', padding: '4px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}>
-                  {imgIdx + 1} / {images.length}
-                </div>
-              )}
+              <img
+                src={getImageUrl(images[imgIdx]?.image_path)}
+                alt={product.title}
+                className='w-full md:w-[530px] max-h-[600px] aspect-[4/5] object-cover rounded-xl'
+                style={{
+                  transform: isHovering ? 'scale(1.05)' : 'scale(1)',
+                  transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                  transition: isHovering ? 'transform-origin 0.1s ease' : 'transform 0.4s ease',
+                }}
+              />
             </div>
           </div>
 
@@ -534,72 +527,48 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
 
 
-            {/* Quick spec pills */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 28 }}>
-
-              {product.color && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0' }}>
-                  <i className="bi bi-palette" style={{ fontSize: '1.2rem', color: '#FFC63A' }}></i>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>Color</div>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111827' }}>{product.color}</div>
-                  </div>
-                </div>
-              )}
-
-              {Number(product.has_bill) === 1 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0' }}>
-                  <i className="bi bi-receipt" style={{ fontSize: '1.2rem', color: '#22c55e' }}></i>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>Bill</div>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#22c55e' }}>Included</div>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', alignItems: 'start', gap: 12, padding: '12px 0' }}>
-                <i className="bi bi-lightning-charge" style={{ fontSize: '1.2rem', color: '#FFC63A' }}></i>
-                <div>
-                  <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>Condition</div>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111827' }}>
-                    {usedTimes === '0' || usedTimes === '' ? 'Brand New' : (product.usage_label ? `${usedTimes} ${product.usage_label}` : `Used ${usedTimes}×`)}
-                  </div>
-                </div>
-              </div>
-              {product.listing_type === 'rent' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderRadius: 10, border: '1px solid #e5e7eb', background: '#f9fafb' }}>
-                  <i className={`bi ${Number(product.allow_alter_fitting) === 1 ? 'bi-scissors' : 'bi-slash-circle'}`} style={{ fontSize: '1.2rem', color: Number(product.allow_alter_fitting) === 1 ? '#22c55e' : '#ef4444' }}></i>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>Alteration</div>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111827' }}>{Number(product.allow_alter_fitting) === 1 ? 'Allowed' : 'Not Allowed'}</div>
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* CTA block */}
-            <div style={{ marginBottom: 32 }}>
+            <div style={{ marginBottom: 0 }}>
               {offerSuccess ? (
                 <div>
-                  <div style={{ background: '#f0fff4', border: '1.5px solid #86efac', borderRadius: 12, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-                    <i className="bi bi-check-circle-fill" style={{ fontSize: '1.8rem', color: '#22c55e', flexShrink: 0 }}></i>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: 4 }}>Offer Submitted!</div>
-                      <div style={{ color: '#6b7280', fontSize: '0.88rem', marginBottom: 8 }}>The seller will review your offer and get back to you shortly.</div>
-                      <a href="/buyer/my-offers" style={{ display: 'inline-block', padding: '6px 16px', borderRadius: 8, border: '1.5px solid #22c55e', color: '#22c55e', fontWeight: 600, fontSize: '0.82rem', textDecoration: 'none' }}>View My Offers</a>
+                  <div style={{ borderRadius: 32, padding: '2rem', marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#FFC63A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className="bi bi-check-lg" style={{ color: '#000', fontSize: '1.4rem' }}></i>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '1.4rem', color: '#111827', fontFamily: "'Maven Pro', sans-serif" }}>Offer Submitted!</div>
+                        <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>The seller will review your offer shortly.</div>
+                      </div>
+                    </div>
+
+                    <hr style={{ border: 'none', borderTop: '1px solid #E5E7EB', margin: '0 -2rem 1.5rem', opacity: 0.4 }} />
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <button
+                        onClick={() => setShowContactModal(true)}
+                        style={{ width: '100%', padding: '1rem', borderRadius: 100, background: '#0D0D0D', color: '#fff', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                      >
+                        View Seller Contact
+                      </button>
+                      <button
+                        onClick={() => router.push('/buyer/my-offers')}
+                        style={{ width: '100%', padding: '1rem', borderRadius: 100, border: '2px solid #E5E7EB', background: 'transparent', color: '#111827', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', cursor: 'pointer' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
+                      >
+                        View Offer
+                      </button>
                     </div>
                   </div>
+
                   {contactLoading && (
                     <div style={{ textAlign: 'center', padding: '8px 0', color: '#6b7280', fontSize: '0.85rem' }}>
                       <span className="spinner-border spinner-border-sm me-2"></span>Fetching seller contact…
                     </div>
-                  )}
-                  {contactInfo && (
-                    <button onClick={() => setShowContactModal(true)}
-                      style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1.5px solid #FFC63A', background: '#fffdf0', color: '#111827', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                      <i className="bi bi-person-check-fill" style={{ color: '#FFC63A' }}></i>
-                      View Seller Contact
-                    </button>
                   )}
                   {contactError && (
                     <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 8 }}>
@@ -668,18 +637,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                 </>
               )}
             </div>
-            {/* Seller block */}
-            <div style={{ background: '#f9fafb', borderRadius: 12, padding: '20px 24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #e5e7eb', flexShrink: 0 }}>
-                  <i className="bi bi-patch-check-fill" style={{ fontSize: '1.4rem', color: '#FFC63A' }}></i>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '1rem', fontFamily: "'Maven Pro', sans-serif", marginBottom: 4 }}>Verified Seller</div>
-                  <div style={{ color: '#6b7280', fontSize: '0.9rem', fontWeight: 500 }}>{product.seller_name}</div>
-                </div>
-              </div>
-            </div>
+
 
           </div>
         </div>
@@ -842,8 +800,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
                   </div>
                 ))}
                 {Number(product.has_bill) === 1 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', padding: '24px 0', borderBottom: '1px solid #e5e7eb' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
                       <span style={{ fontWeight: 600, color: '#111827', width: 200, flexShrink: 0 }}>Original Bill</span>
                       <div style={{ padding: '6px 14px', background: '#ecfdf5', color: '#059669', borderRadius: 50, fontSize: '0.85rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #d1fae5' }}>
                         <i className="bi bi-patch-check-fill"></i> Verified Bill Included
@@ -959,69 +917,96 @@ export default function ProductDetailClient({ product, images, similarProducts =
       {/* Seller Contact Modal */}
       {showContactModal && contactInfo && (
         <div
-          className="modal d-block"
-          tabIndex={-1}
-          style={{ background: 'rgba(0,0,0,0.5)', zIndex: 10000 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', }}
           onClick={() => setShowContactModal(false)}
         >
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1.25rem' }}>
-              <div className="modal-header border-0 px-4 pt-4 pb-2">
+          <div
+            style={{ background: '#fff', borderRadius: 10, width: '100%', maxWidth: 500, boxShadow: '0 25px 60px rgba(0,0,0,0.18)', overflow: 'hidden', fontFamily: "'Maven Pro', sans-serif" }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header section (White background) */}
+            <div style={{ background: '#fff', padding: '32px 28px 20px', position: 'relative', borderBottom: '1px solid #f3f4f6' }}>
+              <button
+                onClick={() => setShowContactModal(false)}
+                style={{ position: 'absolute', top: 16, right: 16, background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#111827', fontSize: 18, transition: 'background 0.2s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#e5e7eb')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#f3f4f6')}
+              >
+                &times;
+              </button>
+              {/* Avatar + name */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ width: 56, height: 56, borderRadius: 4, background: '#FFC63A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 22, fontWeight: 800, color: '#111827' }}>
+                  {contactInfo.seller_name?.charAt(0)?.toUpperCase() || 'S'}
+                </div>
                 <div>
-                  <h5 className="modal-title fw-bold mb-0" style={{ fontSize: '1.1rem' }}>
-                    <i className="bi bi-person-check-fill me-2" style={{ color: '#ffc63a' }}></i>
-                    Seller Contact
-                  </h5>
+                  <div style={{ fontSize: '0.68rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>Verified Seller</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111827' }}>{contactInfo.seller_name}</div>
                   {contactInfo.already_viewed && (
-                    <span className="badge bg-light text-muted border" style={{ fontSize: '0.65rem' }}>Already viewed</span>
-                  )}
-                </div>
-                <button type="button" className="btn-close" onClick={() => setShowContactModal(false)}></button>
-              </div>
-              <div className="modal-body px-4 pb-4 pt-2">
-                <div className="d-flex flex-column gap-3 mt-2">
-                  <div className="d-flex align-items-center gap-3 p-3 rounded-3" style={{ background: '#f8f9fa' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ffc63a22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <i className="bi bi-person-fill" style={{ color: '#ffc63a', fontSize: '1.2rem' }}></i>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Name</div>
-                      <div className="fw-bold">{contactInfo.seller_name}</div>
-                    </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-3 p-3 rounded-3" style={{ background: '#f8f9fa' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ffc63a22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <i className="bi bi-envelope-fill" style={{ color: '#ffc63a', fontSize: '1.1rem' }}></i>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</div>
-                      <a href={`mailto:${contactInfo.seller_email}`} className="fw-bold text-dark text-decoration-none">{contactInfo.seller_email}</a>
-                    </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-3 p-3 rounded-3" style={{ background: '#f8f9fa' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ffc63a22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <i className="bi bi-telephone-fill" style={{ color: '#ffc63a', fontSize: '1.1rem' }}></i>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone</div>
-                      <a href={`tel:${contactInfo.seller_mobile}`} className="fw-bold text-dark text-decoration-none">{contactInfo.seller_mobile}</a>
-                    </div>
-                  </div>
-                  {(contactInfo.seller_city || contactInfo.seller_state || contactInfo.seller_pincode) && (
-                    <div className="d-flex align-items-start gap-3 p-3 rounded-3" style={{ background: '#f8f9fa' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ffc63a22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <i className="bi bi-geo-alt-fill" style={{ color: '#ffc63a', fontSize: '1.1rem' }}></i>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Location</div>
-                        {contactInfo.seller_city && <div className="fw-bold">{contactInfo.seller_city}</div>}
-                        {contactInfo.seller_state && <div className="fw-semibold text-muted">{contactInfo.seller_state}</div>}
-                        {contactInfo.seller_pincode && <div className="text-muted" style={{ fontSize: '0.85rem' }}>PIN: {contactInfo.seller_pincode}</div>}
-                      </div>
+                    <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '2px 10px' }}>
+                      <i className="bi bi-check-circle-fill" style={{ color: '#FFC63A', fontSize: '0.65rem' }}></i>
+                      <span style={{ fontSize: '0.65rem', color: '#FFC63A', fontWeight: 600 }}>Previously contacted</span>
                     </div>
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Contact rows */}
+            <div style={{ padding: '24px 28px' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>Contact Details</div>
+
+              {/* Email */}
+              <a
+                href={`mailto:${contactInfo.seller_email}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 4, background: '#f9fafb', marginBottom: 12, textDecoration: 'none', border: '1px solid #f3f4f6', transition: 'all 0.2s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#fffbeb'; (e.currentTarget as HTMLAnchorElement).style.borderColor = '#fde68a'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#f9fafb'; (e.currentTarget as HTMLAnchorElement).style.borderColor = '#f3f4f6'; }}
+              >
+                <div style={{ width: 40, height: 40, borderRadius: 4, background: '#FFC63A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className="bi bi-envelope-fill" style={{ color: '#111827', fontSize: '1rem' }}></i>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.68rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Email</div>
+                  <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contactInfo.seller_email}</div>
+                </div>
+                <i className="bi bi-arrow-up-right" style={{ color: '#9ca3af', fontSize: '0.8rem', marginLeft: 'auto', flexShrink: 0 }}></i>
+              </a>
+
+              {/* Phone */}
+              <a
+                href={`tel:${contactInfo.seller_mobile}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 4, background: '#f9fafb', marginBottom: 12, textDecoration: 'none', border: '1px solid #f3f4f6', transition: 'all 0.2s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#fffbeb'; (e.currentTarget as HTMLAnchorElement).style.borderColor = '#fde68a'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#f9fafb'; (e.currentTarget as HTMLAnchorElement).style.borderColor = '#f3f4f6'; }}
+              >
+                <div style={{ width: 40, height: 40, borderRadius: 4, background: '#FFC63A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className="bi bi-telephone-fill" style={{ color: '#111827', fontSize: '1rem' }}></i>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Phone</div>
+                  <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}>{contactInfo.seller_mobile}</div>
+                </div>
+                <i className="bi bi-arrow-up-right" style={{ color: '#9ca3af', fontSize: '0.8rem', marginLeft: 'auto', flexShrink: 0 }}></i>
+              </a>
+
+              {/* Location */}
+              {(contactInfo.seller_city || contactInfo.seller_state || contactInfo.seller_pincode) && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px', borderRadius: 4, background: '#f9fafb', border: '1px solid #f3f4f6' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 4, background: '#FFC63A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <i className="bi bi-geo-alt-fill" style={{ color: '#111827', fontSize: '1rem' }}></i>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.68rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Location</div>
+                    <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}>
+                      {[contactInfo.seller_city, contactInfo.seller_state].filter(Boolean).join(', ')}
+                    </div>
+                    {contactInfo.seller_pincode && (
+                      <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: 2 }}>PIN: {contactInfo.seller_pincode}</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
