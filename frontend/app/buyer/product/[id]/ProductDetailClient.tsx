@@ -408,7 +408,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 1rem 3rem' }}>
 
         {/* Product layout — 2 columns */}
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-10 mb-16'>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-10 mb-10'>
 
           {/* LEFT: Image gallery */}
           <div style={{
