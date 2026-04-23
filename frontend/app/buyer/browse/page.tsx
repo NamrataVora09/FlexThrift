@@ -691,7 +691,7 @@ export default function BrowsePage() {
 
       <div className="" >
 
-        <LandingNavbar />
+        <LandingNavbar showAuth />
 
         {/* ===== MAIN CONTENT ===== */}
         <main className=' pt-37.5 px-28'>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, createElement } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -9,7 +9,6 @@ import LandingNavbar from '../layout/LandingNavbar';
 import Footer from '../layout/Footer';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api/v1').replace(/\/$/, '');
-const STORAGE_KEY = 'flex_hp_v3';
 
 interface AotStep { icon: string; title: string; desc: string; }
 interface AotGuide { id: string; label: string; videoUrl: string; steps: AotStep[]; }
@@ -118,15 +117,21 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
                     <div className="min-w-0">{videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}</div>
 
                     {/* Steps — 50% */}
-                    <div className="flex flex-col gap-3 w-full min-w-0" >
+                    <div className="flex flex-col w-full min-w-0">
                       {guide.steps.map((s, idx) => (
-                        <div key={idx} className="flex gap-4 justify-start items-start text-left w-full min-w-0">
-                          <h4 className="font-bold text-[18px]! text-black shrink-0 pt-1.5">
-                            {idx + 1})
-                          </h4>
-                          <p className="text-[16px]! text-gray-500 leading-relaxed flex-1 break-words">
+                        <div key={idx} className="flex gap-4 mb-2 justify-start items-start text-left w-full min-w-0">
+                          {/* Circle + connector line */}
+                          <div className="flex flex-col items-center shrink-0">
+                            <p className="bg-[#d6b06b] text-[18px]! text-white rounded-full py-2.5 px-3 leading-none m-0!">
+                              {idx + 1}
+                            </p>
+                            {idx < guide.steps.length - 1 && (
+                              <div className="w-[2px] flex-1 min-h-[32px] bg-black opacity-40 my-1 " />
+                            )}
+                          </div>
+                          <h4 className="text-[16px]! text-gray-500 leading-relaxed flex-1 break-words  pb-3">
                             {s.desc}
-                          </p>
+                          </h4>
                         </div>
                       ))}
                     </div>
@@ -340,7 +345,7 @@ const CATEGORY_CARDS = [
 
 
 export default function HomePageClient() {
-  const { user, token, isLoading, isAuthenticated } = useAuth();
+  const { user, token, isLoading, isAuthenticated, login, register, verifyOtp } = useAuth();
   const router = useRouter();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -353,9 +358,53 @@ export default function HomePageClient() {
     }
   }, [isLoading, isAuthenticated, user]);
 
-  const [sidebarMode, setSidebarMode] = useState<'sell' | 'rent'>('sell');
+  const [sidebarMode, setSidebarMode] = useState<'sell' | 'rent' | 'both'>('sell');
+  const [sidebarView, setSidebarView] = useState<'listing' | 'login' | 'otp'>('listing');
   const [sidebarName, setSidebarName] = useState('');
   const [sidebarEmail, setSidebarEmail] = useState('');
+  const [sidebarMobile, setSidebarMobile] = useState('');
+  const [sidebarPassword, setSidebarPassword] = useState('');
+  const [sidebarAddress, setSidebarAddress] = useState('');
+  const [sidebarPinCode, setSidebarPinCode] = useState('');
+  const [sidebarOtp, setSidebarOtp] = useState('');
+  const [sidebarLoading, setSidebarLoading] = useState(false);
+  const [sidebarError, setSidebarError] = useState('');
+
+  const handleRegister = async () => {
+    setSidebarError('');
+    setSidebarLoading(true);
+    const res = await register({
+      name: sidebarName,
+      email: sidebarEmail,
+      mobile: sidebarMobile,
+      password: sidebarPassword,
+      address: sidebarAddress,
+      pin_code: sidebarPinCode,
+      user_type: sidebarMode === 'sell' ? 'seller' : sidebarMode === 'rent' ? 'buyer' : 'both',
+    });
+    setSidebarLoading(false);
+    if (res.success) {
+      setSidebarView('otp');
+    } else {
+      setSidebarError(res.message || 'Registration failed');
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setSidebarError('');
+    setSidebarLoading(true);
+    const res = await verifyOtp(sidebarEmail, sidebarOtp);
+    setSidebarLoading(false);
+    if (!res.success) setSidebarError(res.message || 'Invalid OTP');
+  };
+
+  const handleLogin = async () => {
+    setSidebarError('');
+    setSidebarLoading(true);
+    const res = await login(sidebarEmail, sidebarPassword);
+    setSidebarLoading(false);
+    if (!res.success) setSidebarError(res.message || 'Login failed');
+  };
   const [catImgIdx, setCatImgIdx] = useState<number[]>(CATEGORY_CARDS.map(() => 0));
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>(CATEGORY_CARDS);
   const [editingCards, setEditingCards] = useState(false);
@@ -582,37 +631,124 @@ export default function HomePageClient() {
 
 
           <div className='w-[33%] h-fit sticky top-37.5 shadow bg-white flex flex-col px-6 py-10 rounded-[15px] justify-start'>
-            <h5 className=' font-semibold' style={{ fontSize: 18, fontFamily: 'Segoe UI' }} >Start listing your product, it&apos;s free</h5>
-            <p style={{ fontSize: 14, fontFamily: 'Segoe UI' }} className=' font-semibold  '>You&apos;re looking to ...</p>
-            <div className=' flex gap-4 pb-2 mb-3'>
-              <button className='  rounded-[20px]! hover:text-white!  text-[14px]!  border text-black! px-2.5 py-2  hover:bg-black' onClick={() => setSidebarMode('sell')}>Sell</button>
-              <button className=' rounded-[20px]! hover:text-white!  text-[14px]!  border text-black! px-2.5  py-2  hover:bg-black' onClick={() => setSidebarMode('rent')}>Rent</button>
-            </div>
-            <div className=' flex-col flex  justify-start'>
-              <label className=' font-semibold mb-2' style={{ fontFamily: 'Segoe UI' }}>Your contact details</label>
-              <div className=' flex  flex-col gap-2.5 '>
-                <input
-                  type="text"
-                  placeholder="Your Name"
-                  value={sidebarName}
-                  className='border rounded-md!  px-2 py-1 mb-2 placeholder:text-[14px]    placeholder:font-[Segoe UI]'
-                  onChange={e => setSidebarName(e.target.value)}
-                />
-                <input
-                  type="email"
-                  placeholder="Enter Your Email"
-                  className='border rounded-md!  px-2 py-1 mb-4 placeholder:text-[14px]    placeholder:font-[Segoe UI]'
 
-                  value={sidebarEmail}
-                  onChange={e => setSidebarEmail(e.target.value)}
-                />
-              </div>
-              <button className='bg-[#ffc63a] rounded-lg! text-white px-4 py-2.5 font-[Segoe UI] text-[14px]!  hover:bg-black mb-4 ' onClick={() => router.push('/register')}>Start now</button>
-            </div>
-            <p className=' text-center'>
-              Are you a registered user?{' '}
-              <Link className=' font-bold text-[18px] ' href="/login">Login</Link>
-            </p>
+            {/* ── Register form ── */}
+            {sidebarView === 'listing' && (
+              <>
+                <h5 className='font-semibold mb-1' style={{ fontSize: 18, fontFamily: 'Segoe UI' }}>Start listing your product, it&apos;s free</h5>
+                <p style={{ fontSize: 14, fontFamily: 'Segoe UI' }} className='font-semibold mb-3'>You&apos;re looking to ...</p>
+                <div className='flex gap-3 mb-4'>
+                  <button
+                    className={`rounded-[20px]! text-[14px]! border px-3 py-1.5 transition-colors ${sidebarMode === 'sell' ? 'bg-gold text-white!' : 'text-black! hover:text-white! hover:bg-black'}`}
+                    onClick={() => setSidebarMode('sell')}
+                  >Sell</button>
+                  <button
+                    className={`rounded-[20px]! text-[14px]! border px-3 py-1.5 transition-colors ${sidebarMode === 'rent' ? 'bg-gold text-white!' : 'text-black! hover:text-white! hover:bg-black'}`}
+                    onClick={() => setSidebarMode('rent')}
+                  >Rent</button>
+                  <button
+                    className={`rounded-[20px]! text-[14px]! border px-3 py-1.5 transition-colors ${sidebarMode === 'both' ? 'bg-gold text-white!' : 'text-black! hover:text-white! hover:bg-black'}`}
+                    onClick={() => setSidebarMode('both')}
+                  >Both</button>
+                </div>
+
+                <label className='font-semibold mb-2 text-sm' style={{ fontFamily: 'Segoe UI' }}>Your contact details</label>
+                <div className='flex flex-col gap-2'>
+                  <input type="text" placeholder="Full Name *" value={sidebarName}
+                    className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px]'
+                    onChange={e => setSidebarName(e.target.value)} />
+                  <input type="email" placeholder="Email Address *" value={sidebarEmail}
+                    className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px]'
+                    onChange={e => setSidebarEmail(e.target.value)} />
+                  <input type="tel" placeholder="Mobile Number *" value={sidebarMobile}
+                    className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px]'
+                    onChange={e => setSidebarMobile(e.target.value)} />
+                  <input type="password" placeholder="Password * (min 6 chars)" value={sidebarPassword}
+                    className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px]'
+                    onChange={e => setSidebarPassword(e.target.value)} />
+                  <input type="text" placeholder="Address *" value={sidebarAddress}
+                    className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px]'
+                    onChange={e => setSidebarAddress(e.target.value)} />
+                  <input type="text" placeholder="Pin Code *" value={sidebarPinCode}
+                    className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px]'
+                    onChange={e => setSidebarPinCode(e.target.value)} />
+                </div>
+
+                {sidebarError && <p className='text-red-500 text-xs mt-2'>{sidebarError}</p>}
+
+                <button
+                  className='bg-[#ffc63a] rounded-lg! text-white px-4 py-2.5 text-[14px]! hover:bg-black mt-4 mb-3 disabled:opacity-60'
+                  onClick={handleRegister}
+                  disabled={sidebarLoading}
+                >
+                  {sidebarLoading ? 'Submitting…' : 'Start now'}
+                </button>
+
+                <p className='text-center text-sm'>
+                  Already registered?{' '}
+                  <button className='font-bold bg-transparent border-none cursor-pointer underline text-sm'
+                    onClick={() => { setSidebarError(''); setSidebarView('login'); }}>Login</button>
+                </p>
+              </>
+            )}
+
+            {/* ── OTP verification ── */}
+            {sidebarView === 'otp' && (
+              <>
+                <h5 className='font-semibold mb-1' style={{ fontSize: 18, fontFamily: 'Segoe UI' }}>Verify your email</h5>
+                <p className='text-sm text-gray-500 mb-4'>An OTP has been sent to <strong>{sidebarEmail}</strong>. Enter it below to activate your account.</p>
+                <input type="text" placeholder="Enter OTP *" value={sidebarOtp}
+                  className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px] mb-2'
+                  maxLength={6}
+                  onChange={e => setSidebarOtp(e.target.value)} />
+
+                {sidebarError && <p className='text-red-500 text-xs mb-2'>{sidebarError}</p>}
+
+                <button
+                  className='bg-[#ffc63a] rounded-lg! text-white px-4 py-2.5 text-[14px]! hover:bg-black mb-3 disabled:opacity-60'
+                  onClick={handleVerifyOtp}
+                  disabled={sidebarLoading}
+                >
+                  {sidebarLoading ? 'Verifying…' : 'Verify OTP'}
+                </button>
+                <p className='text-center text-sm'>
+                  <button className='bg-transparent border-none cursor-pointer underline text-sm text-gray-500'
+                    onClick={() => { setSidebarError(''); setSidebarView('listing'); }}>← Back</button>
+                </p>
+              </>
+            )}
+
+            {/* ── Login form ── */}
+            {sidebarView === 'login' && (
+              <>
+                <h5 className='font-semibold mb-1' style={{ fontSize: 18, fontFamily: 'Segoe UI' }}>Welcome back</h5>
+                <p style={{ fontSize: 14, fontFamily: 'Segoe UI' }} className='font-semibold mb-4'>Login to your account</p>
+                <div className='flex flex-col gap-2'>
+                  <input type="email" placeholder="Email Address *" value={sidebarEmail}
+                    className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px]'
+                    onChange={e => setSidebarEmail(e.target.value)} />
+                  <input type="password" placeholder="Password *" value={sidebarPassword}
+                    className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px]'
+                    onChange={e => setSidebarPassword(e.target.value)} />
+                </div>
+
+                {sidebarError && <p className='text-red-500 text-xs mt-2'>{sidebarError}</p>}
+
+                <button
+                  className='bg-[#ffc63a] rounded-lg! text-white px-4 py-2.5 text-[14px]! hover:bg-black mt-4 mb-3 disabled:opacity-60'
+                  onClick={handleLogin}
+                  disabled={sidebarLoading}
+                >
+                  {sidebarLoading ? 'Logging in…' : 'Login'}
+                </button>
+                <p className='text-center text-sm'>
+                  New here?{' '}
+                  <button className='font-bold bg-transparent border-none cursor-pointer underline text-sm'
+                    onClick={() => { setSidebarError(''); setSidebarView('listing'); }}>Register</button>
+                </p>
+              </>
+            )}
+
           </div>
         </div>
 

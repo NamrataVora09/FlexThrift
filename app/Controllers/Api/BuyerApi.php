@@ -582,13 +582,23 @@ class BuyerApi extends ResourceController
             ->where('product_id', $productId)
             ->where('buyer_id', $jwtUser['user_id'])
             ->whereIn('status', ['pending', 'accepted', 'rejected'])
+            ->orderBy('created_at', 'DESC')
+            ->limit(1)
             ->get()->getRowArray();
+
+        $rentalPeriodEnded = false;
+        if ($offer && $offer['status'] === 'accepted' && ($offer['offer_type'] ?? '') === 'rent') {
+            if (!empty($offer['rental_end_date']) && $offer['rental_end_date'] < date('Y-m-d')) {
+                $rentalPeriodEnded = true;
+            }
+        }
 
         return $this->respond([
             'success' => true,
             'data' => [
                 'has_offer' => !empty($offer),
                 'offer' => $offer ?: null,
+                'rental_period_ended' => $rentalPeriodEnded,
             ],
         ]);
     }
@@ -620,9 +630,19 @@ class BuyerApi extends ResourceController
             ->where('product_id', $data['product_id'])
             ->where('buyer_id', $jwtUser['user_id'])
             ->whereIn('status', ['pending', 'accepted'])
+            ->orderBy('created_at', 'DESC')
+            ->limit(1)
             ->get()->getRowArray();
         if ($existingOffer) {
-            return $this->respond(['success' => false, 'message' => 'You already have an active offer on this product.'], 409);
+            // Allow a new offer if the accepted rent offer's rental period has ended
+            $isExpiredRental = $existingOffer['status'] === 'accepted'
+                && ($existingOffer['offer_type'] ?? '') === 'rent'
+                && !empty($existingOffer['rental_end_date'])
+                && $existingOffer['rental_end_date'] < date('Y-m-d');
+
+            if (!$isExpiredRental) {
+                return $this->respond(['success' => false, 'message' => 'You already have an active offer on this product.'], 409);
+            }
         }
 
         // SuperAdmin bypasses subscription check

@@ -14,15 +14,16 @@ interface SocialLink { icon: string; href: string; }
 const DEFAULT_DESC = 'Premium curated marketplace for the elite. Discover high-end fashion, electronics, and lifestyle essentials reserved for those who value quality.';
 const DEFAULT_QUICK: QuickLink[] = [
   { label: 'Home', href: '/' },
-  { label: 'About', href: '/' },
-  { label: 'Sell', href: '/seller/upload-product' },
-  { label: 'Rent', href: '/buyer/browse?listing_type=rent' },
-  { label: 'Explore', href: '/buyer/browse' },
+  { label: 'About Us', href: '/about' },
+  { label: 'Contact Us', href: '/contact' },
+  { label: 'Website Process', href: '/process' },
 ];
 const DEFAULT_POLICY: QuickLink[] = [
-  { label: 'Return policies', href: '#' },
-  { label: 'Cancellation policies', href: '#' },
-  { label: 'Terms of use', href: '#' },
+  { label: 'Cancellation', href: '#' },
+  { label: 'Privacy Policy', href: '#' },
+  { label: 'Terms Of Use', href: '#' },
+  { label: 'FAQ', href: '#' },
+  { label: 'T&C', href: '#' },
 ];
 const DEFAULT_SOCIAL: SocialLink[] = [
   { icon: 'bi-facebook', href: '#' },
@@ -156,10 +157,10 @@ export default function Footer() {
               </ul>
             </div>
 
-            {/* Social & Policy */}
+            {/* Policies */}
             <div>
-              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-5">Connect</h5>
-              <ul className="space-y-2 mb-6 flex flex-col items-start">
+              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-5">Policies</h5>
+              <ul className="space-y-2 p-0!">
                 {policyLinks.map((l, i) => (
                   <li key={i}>
                     <a href={l.href} className="text-gray-400 text-sm hover:text-gold transition-colors duration-200">
@@ -168,7 +169,12 @@ export default function Footer() {
                   </li>
                 ))}
               </ul>
-              <div className="flex  flex-col gap-4">
+            </div>
+
+            {/* Keep In Touch */}
+            <div>
+              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-5">Keep In Touch</h5>
+              <div className="flex flex-col flex-wrap gap-3">
                 {socialLinks.map((s, i) => (
                   <a
                     key={i}
@@ -223,7 +229,7 @@ export default function Footer() {
                 <label className="block text-sm font-bold text-gray-700 mb-2">Quick Links</label>
                 <div className="space-y-2">
                   {draft.quickLinks.map((l, i) => (
-                    <div key={i} className="flex gap-2">
+                    <div key={i} className="flex  gap-2">
                       <input
                         className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
                         placeholder="Label"
@@ -284,7 +290,7 @@ export default function Footer() {
                 <p className="text-xs text-gray-400 mb-2">Use Bootstrap icon class names, e.g. <code className="bg-gray-100 px-1 rounded">bi-facebook</code></p>
                 <div className="space-y-2">
                   {draft.socialLinks.map((s, i) => (
-                    <div key={i} className="flex gap-2">
+                    <div key={i} className="flex  gap-2">
                       <input
                         className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
                         placeholder="Icon (bi-facebook)"

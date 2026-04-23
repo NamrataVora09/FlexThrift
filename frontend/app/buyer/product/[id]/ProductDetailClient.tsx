@@ -117,6 +117,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const [contactError, setContactError] = useState<string | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
   const [previousOffer, setPreviousOffer] = useState<any | null>(null);
+  const [rentalExpired, setRentalExpired] = useState(false);
 
   const datesSelected = product.listing_type !== 'rent' || (!!offerForm.rental_start_date && !!offerForm.rental_end_date);
 
@@ -149,17 +150,27 @@ export default function ProductDetailClient({ product, images, similarProducts =
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('flex_token') : null;
     if (!token) return;
-    api.get<{ has_offer: boolean, offer: any }>(`/buyer/offer-status/${product.id}`)
+    api.get<{ has_offer: boolean, offer: any, rental_period_ended: boolean }>(`/buyer/offer-status/${product.id}`)
       .then(res => {
         if (res.success && res.data?.has_offer) {
           const off = res.data.offer;
           setPreviousOffer(off);
 
           if (off.status === 'rejected') {
-            // Pre-fill form with rejected offer values but don't set offerSuccess=true
+            // Offer was rejected — pre-fill delivery info so buyer can re-submit easily
             setOfferForm(f => ({
               ...f,
               offer_price: off.offer_price,
+              delivery_state: off.delivery_state || '',
+              delivery_city: off.delivery_city || '',
+              delivery_pin_code: off.delivery_pin_code || '',
+              delivery_address: off.delivery_address || '',
+            }));
+          } else if (res.data.rental_period_ended) {
+            // Accepted rental offer whose period has ended — allow a fresh offer
+            setRentalExpired(true);
+            setOfferForm(f => ({
+              ...f,
               delivery_state: off.delivery_state || '',
               delivery_city: off.delivery_city || '',
               delivery_pin_code: off.delivery_pin_code || '',
@@ -384,7 +395,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
     <div style={{ fontFamily: "'Maven Pro', sans-serif", backgroundColor: '#fff', color: '#111827', minHeight: '100vh' }}>
       <link href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       {/* Landing Navbar */}
-      <LandingNavbar />
+      <LandingNavbar showAuth />
       <div style={{ height: 70 }} />
 
       {/* Breadcrumb */}
@@ -579,6 +590,23 @@ export default function ProductDetailClient({ product, images, similarProducts =
                 </div>
               ) : (
                 <>
+                  {/* Re-offer notice banners */}
+                  {previousOffer?.status === 'rejected' && (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <i className="bi bi-x-circle-fill" style={{ color: '#ef4444', fontSize: '1rem', flexShrink: 0 }}></i>
+                      <span style={{ color: '#991b1b', fontSize: '0.82rem', fontWeight: 500 }}>
+                        Your previous offer was rejected. You can submit a new offer below.
+                      </span>
+                    </div>
+                  )}
+                  {rentalExpired && (
+                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <i className="bi bi-calendar-x-fill" style={{ color: '#3b82f6', fontSize: '1rem', flexShrink: 0 }}></i>
+                      <span style={{ color: '#1e40af', fontSize: '0.82rem', fontWeight: 500 }}>
+                        Your previous rental period has ended. You can make a new offer for new dates.
+                      </span>
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
                     <button

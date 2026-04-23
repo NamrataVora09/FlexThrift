@@ -13,9 +13,9 @@ interface SearchResult { id: number; title: string; listing_type: string; sellin
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 
-export default function LandingNavbar() {
-  const { user, isAuthenticated, logout } = useAuth();
+export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean }) {
   const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
   const [showMegaMenu, setShowMegaMenu] = useState(false);
@@ -114,8 +114,8 @@ export default function LandingNavbar() {
       </button>
 
       {/* Desktop nav */}
-      <div className=' flex w-full items-center grow justify-between'>
-        <ul className=' flex items-center grow pt-4  justify-start gap-6 ml-10'>
+      <div className={` flex w-full items-center grow ${showAuth ? 'justify-between' : 'justify-center'}`}>
+        <ul className={`flex items-center grow pt-4 ${showAuth ? 'justify-start' : 'justify-center'} gap-6 ml-10`}>
           {/* Mega menu trigger */}
           <li ref={megaRef}>
             <a
@@ -136,7 +136,7 @@ export default function LandingNavbar() {
                 <div className="grid grid-cols-3 gap-10">
                   {listingTypes.slice(0, 3).map(lt => (
                     <div key={lt.id}>
-                      <span className="font-bold text-base text-black border-b-2 border-gold pb-2 mb-4 inline-block">
+                      <span className="font-bold text-base text-gold  pb-2 mb-2 inline-block">
                         {lt.type_name}
                       </span>
                       <ul className="list-none p-0 space-y-3">
@@ -144,24 +144,12 @@ export default function LandingNavbar() {
                           <li key={pt.id}>
                             <Link
                               href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
-                              className="font-bold text-[0.95rem] text-black hover:text-gold transition-colors duration-200 block mb-1"
+                              className="font-light text-[0.95rem] text-black hover:text-gold transition-colors duration-200 block "
                               onClick={() => setShowMegaMenu(false)}
                             >
                               {pt.name}
                             </Link>
-                            <ul className="list-none pl-2 mt-1 space-y-1">
-                              {pt.categories?.slice(0, 4).map(cat => (
-                                <li key={cat.id}>
-                                  <Link
-                                    href={`/buyer/browse?category=${cat.id}`}
-                                    className="text-[0.88rem] text-gray-500 hover:text-gold transition-colors duration-200 block py-0.5"
-                                    onClick={() => setShowMegaMenu(false)}
-                                  >
-                                    {cat.category_name}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
+                            
                           </li>
                         ))}
                       </ul>
@@ -182,12 +170,9 @@ export default function LandingNavbar() {
           ))}
 
         </ul>
-        {/* Right: search + login */}
-        <div>
 
-
-          {/* Login / Portal */}
-          {/* User Auth Dropdown */}
+        {/* Auth dropdown — only on non-landing pages */}
+        {showAuth && (
           <div className="relative" ref={authRef}>
             {isAuthenticated && user ? (
               <>
@@ -198,39 +183,30 @@ export default function LandingNavbar() {
                   <div className='w-9 h-9 flex items-center justify-center bg-[#008080] text-white rounded-full font-bold text-xs'>
                     {user.name ? user.name.substring(0, 2).toUpperCase() : 'ME'}
                   </div>
-                  <span className="text-sm font-bold text-gray-800 hidden md:block">
-                    {user.name}
-                  </span>
+                  <span className="text-sm font-bold text-gray-800 hidden md:block">{user.name}</span>
                   <i className={`bi bi-chevron-down text-[0.7rem] text-gray-400 transition-transform duration-300 ${showAuthDropdown ? 'rotate-180' : ''}`}></i>
                 </button>
 
                 {showAuthDropdown && (
-                  <div className="absolute right-0 top-8 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="absolute right-0 top-8 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
                     <Link
                       href={user.role === 'super_admin' ? '/admin/profile' : user.role === 'admin' ? '/admin/profile' : user.role === 'seller' ? '/seller/profile' : user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile'}
                       className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
                       onClick={() => setShowAuthDropdown(false)}
                     >
                       <i className="bi bi-person-fill"></i>
-                      <span className="text-xs text-nowrap font-semibold text-gray-800 hidden md:block">
-                        {user.name}
-                      </span>
+                      <span className="text-xs text-nowrap font-semibold text-gray-800">{user.name}</span>
                     </Link>
-
                     <Link
                       href="/wishlist"
-                      className="flex   items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                      className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
                       onClick={() => setShowAuthDropdown(false)}
                     >
                       <i className="bi bi-heart-fill"></i>
                       <span className="text-xs text-nowrap font-semibold">Wishlist</span>
                     </Link>
                     <button
-                      onClick={() => {
-                        logout();
-                        setShowAuthDropdown(false);
-                        router.push('/');
-                      }}
+                      onClick={() => { logout(); setShowAuthDropdown(false); router.push('/'); }}
                       className="w-full flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
                     >
                       <i className="bi bi-box-arrow-right"></i>
@@ -243,15 +219,17 @@ export default function LandingNavbar() {
               <div>
                 <button
                   onClick={() => setShowAuthDropdown(!showAuthDropdown)}
-                  className='text-[#008080] border-2 flex items-center gap-2 border-[#008080] rounded-full! px-4 py-2 hover:bg-[#008080] hover:text-white transition-all duration-300'
+                  className='flex items-center gap-3 border border-[#008080] rounded-full! px-2 py-1.5 pr-4 hover:border-[#008080] transition-all duration-300 bg-white shadow-sm'
                 >
-                  <i className="bi bi-person-fill"></i>
+                  <div className='w-9 h-9 flex items-center justify-center bg-[#008080] text-white rounded-full font-bold text-xs'>
+                    <i className="bi bi-person-fill"></i>
+                  </div>
                   <span>Login / Register</span>
                   <i className={`bi bi-chevron-down text-[0.7rem] transition-transform duration-300 ${showAuthDropdown ? 'rotate-180' : ''}`}></i>
                 </button>
 
                 {showAuthDropdown && (
-                  <div className="absolute right-0 top-8 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="absolute right-0 top-8 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
                     <Link
                       href="/login"
                       className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
@@ -274,8 +252,7 @@ export default function LandingNavbar() {
               </div>
             )}
           </div>
-        </div>
-
+        )}
       </div>
 
 
