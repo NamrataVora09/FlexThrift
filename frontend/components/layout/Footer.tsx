@@ -116,15 +116,15 @@ export default function Footer() {
         <div className=" px-28 py-5 grid grid-cols-1 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
-            <h2 className="text-3xl font-bold text-white mb-4">Flex Market</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">{desc}</p>
+            <h2 className="text-3xl font-bold text-white mb-2.5">Flex Market</h2>
+            <p className="text-white text-sm leading-relaxed">{desc}</p>
           </div>
 
           {/* Quick Links */}
           <div className=' w-full flex md:col-span-3 gap-10 md:gap-20 lg:gap-32 justify-start md:justify-evenly flex-wrap'>
             <div >
-              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-5">Quick Links</h5>
-              <ul className="space-y-2 p-0!">
+              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-4">Quick Links</h5>
+              <ul className=" p-0!">
                 {quickLinks.map((l, i) => (
                   <li key={i}>
                     <Link href={l.href} className="text-gray-400 text-sm hover:text-gold transition-colors duration-200">
@@ -137,7 +137,7 @@ export default function Footer() {
 
             {/* Categories */}
             <div >
-              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-5">Categories</h5>
+              <h5 className="text-gold font-bold uppercase tracking-widest text-xs  mb-4 ">Categories</h5>
               <ul className="space-y-2 p-0!">
                 <li>
                   <Link href="/buyer/browse" className="text-gray-400 text-sm hover:text-gold transition-colors duration-200">
@@ -159,7 +159,7 @@ export default function Footer() {
 
             {/* Policies */}
             <div>
-              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-5">Policies</h5>
+              <h5 className="text-gold font-bold uppercase tracking-widest text-xs  mb-4 ">Policies</h5>
               <ul className="space-y-2 p-0!">
                 {policyLinks.map((l, i) => (
                   <li key={i}>
@@ -173,15 +173,15 @@ export default function Footer() {
 
             {/* Keep In Touch */}
             <div>
-              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-5">Keep In Touch</h5>
-              <div className="flex flex-col flex-wrap gap-3">
+              <h5 className="text-gold font-bold uppercase tracking-widest text-xs  mb-4 ">Keep In Touch</h5>
+              <div className="flex  flex-wrap gap-3">
                 {socialLinks.map((s, i) => (
                   <a
                     key={i}
                     href={s.href}
-                    className="w-9 h-9 rounded-full border border-gray-600 flex items-center justify-center text-gray-400 hover:border-gold hover:text-gold transition-colors duration-200"
+                    className="w-10 h-10 flex items-start justify-start text-gray-400 hover:border-gold hover:text-gold transition-colors duration-200"
                   >
-                    <i className={`bi ${s.icon} text-base`}></i>
+                    <i className={`bi ${s.icon} text-[17.6px]`}></i>
                   </a>
                 ))}
               </div>

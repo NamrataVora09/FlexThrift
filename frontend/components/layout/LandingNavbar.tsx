@@ -115,7 +115,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
 
       {/* Desktop nav */}
       <div className={` flex w-full items-center grow ${showAuth ? 'justify-between' : 'justify-center'}`}>
-        <ul className={`flex items-center grow pt-4 ${showAuth ? 'justify-start' : 'justify-center'} gap-6 ml-10`}>
+        <ul className={`flex items-center grow pt-4 ${showAuth ? 'justify-start gap-6' : 'justify-center gap-14'}  ml-10`}>
           {/* Mega menu trigger */}
           <li ref={megaRef}>
             <a
@@ -133,10 +133,10 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                 className="fixed left-0 right-0 top-[90px] w-screen bg-white shadow-[0_10px_30px_rgba(0,0,0,0.1)] rounded-b-2xl px-28 py-10 z-[1060]"
                 onMouseLeave={() => setShowMegaMenu(false)}
               >
-                <div className="grid grid-cols-3 gap-10">
+                <div className="flex  flex-wrap ">
                   {listingTypes.slice(0, 3).map(lt => (
-                    <div key={lt.id}>
-                      <span className="font-bold text-base text-gold  pb-2 mb-2 inline-block">
+                    <div key={lt.id} className='w-1/4'>
+                      <span className="font-bold text-[20px] text-base text-[#ef4444]  pb-2  inline-block">
                         {lt.type_name}
                       </span>
                       <ul className="list-none p-0 space-y-3">
@@ -155,6 +155,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                       </ul>
                     </div>
                   ))}
+                 
                 </div>
               </div>
             )}
@@ -172,7 +173,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
         </ul>
 
         {/* Auth dropdown — only on non-landing pages */}
-        {showAuth && (
+        { (
           <div className="relative" ref={authRef}>
             {isAuthenticated && user ? (
               <>
@@ -188,10 +189,10 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                 </button>
 
                 {showAuthDropdown && (
-                  <div className="absolute right-0 top-8 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
+                  <div className="absolute right-0 top-8 mt-3 w-44 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
                     <Link
-                      href={user.role === 'super_admin' ? '/admin/profile' : user.role === 'admin' ? '/admin/profile' : user.role === 'seller' ? '/seller/profile' : user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile'}
-                      className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                      href={user.role === 'super_admin' ? '/superadmin' : user.role === 'admin' ? '/admin/profile' : user.role === 'seller' ? '/seller/profile' : user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile'}
+                      className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
                       onClick={() => setShowAuthDropdown(false)}
                     >
                       <i className="bi bi-person-fill"></i>
@@ -199,7 +200,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                     </Link>
                     <Link
                       href="/wishlist"
-                      className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                      className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
                       onClick={() => setShowAuthDropdown(false)}
                     >
                       <i className="bi bi-heart-fill"></i>
@@ -207,7 +208,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                     </Link>
                     <button
                       onClick={() => { logout(); setShowAuthDropdown(false); router.push('/'); }}
-                      className="w-full flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
                     >
                       <i className="bi bi-box-arrow-right"></i>
                       <span className="text-xs text-nowrap font-semibold">Logout</span>
@@ -224,13 +225,18 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                   <div className='w-9 h-9 flex items-center justify-center bg-[#008080] text-white rounded-full font-bold text-xs'>
                     <i className="bi bi-person-fill"></i>
                   </div>
-                  <span>Login / Register</span>
+                 {
+                  showAuth ?  <span>Login / Register</span>: <span>Register</span>
+                 }
                   <i className={`bi bi-chevron-down text-[0.7rem] transition-transform duration-300 ${showAuthDropdown ? 'rotate-180' : ''}`}></i>
                 </button>
 
                 {showAuthDropdown && (
-                  <div className="absolute right-0 top-8 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
-                    <Link
+                  <div className="absolute right-0 top-10 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
+                    {
+                      showAuth && (
+                        <>
+                            <Link
                       href="/login"
                       className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
                       onClick={() => setShowAuthDropdown(false)}
@@ -239,6 +245,8 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                       <span className="font-medium">Login</span>
                     </Link>
                     <div className="h-[1px] bg-gray-100 mx-4 my-1"></div>
+                      </>)
+                    }
                     <Link
                       href="/register"
                       className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"

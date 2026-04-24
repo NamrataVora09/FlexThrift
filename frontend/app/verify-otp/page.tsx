@@ -1,24 +1,57 @@
 'use client';
 
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 
 export default function VerifyOtpPage() {
   const router = useRouter();
-  const { verifyOtp } = useAuth();
+  const { verifyOtp, sendOtp } = useAuth();
 
   const [otp, setOtp] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const cooldownRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const savedEmail = sessionStorage.getItem('otp_email');
     if (!savedEmail) { router.push('/login'); return; }
     setEmail(savedEmail);
   }, [router]);
+
+  useEffect(() => {
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+  }, []);
+
+  const startCooldown = () => {
+    setResendCooldown(60);
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) { clearInterval(cooldownRef.current!); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleResend = async () => {
+    if (resendCooldown > 0 || resendLoading) return;
+    setResendLoading(true);
+    setResendMessage('');
+    setError('');
+    const result = await sendOtp(email);
+    setResendLoading(false);
+    if (result.success) {
+      setResendMessage('OTP resent successfully!');
+      startCooldown();
+    } else {
+      setError(result.message || 'Failed to resend OTP. Please try again.');
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault(); setError(''); setLoading(true);
@@ -65,6 +98,11 @@ export default function VerifyOtpPage() {
         .auth-footer-text { text-align: center; margin-top: 24px; font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #888; }
         .otp-timer { text-align: center; margin-top: 16px; font-family: 'Inter', sans-serif; font-size: 0.8rem; color: #999; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .otp-timer i { color: #ffc63a; }
+        .resend-row { text-align: center; margin-top: 16px; font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #888; }
+        .resend-btn { background: none; border: none; padding: 0; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 600; color: #ffc63a; cursor: pointer; text-decoration: underline; transition: color 0.2s; }
+        .resend-btn:hover:not(:disabled) { color: #000; }
+        .resend-btn:disabled { color: #bbb; cursor: not-allowed; text-decoration: none; }
+        .resend-success { color: #2e7d32; font-size: 0.82rem; font-family: 'Inter', sans-serif; text-align: center; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
         @media (max-width: 480px) { .auth-card { padding: 32px 24px; } .otp-input { font-size: 1.5rem; letter-spacing: 8px; } }
       `}</style>
 
@@ -98,6 +136,27 @@ export default function VerifyOtpPage() {
           <div className="otp-timer">
             <i className="bi bi-clock"></i> OTP expires in <strong>10 minutes</strong>
           </div>
+
+          <div className="resend-row">
+            Didn&apos;t receive it?{' '}
+            <button
+              className="resend-btn"
+              onClick={handleResend}
+              disabled={resendCooldown > 0 || resendLoading}
+            >
+              {resendLoading
+                ? 'Sending...'
+                : resendCooldown > 0
+                ? `Resend in ${resendCooldown}s`
+                : 'Resend OTP'}
+            </button>
+          </div>
+
+          {resendMessage && (
+            <div className="resend-success">
+              <i className="bi bi-check-circle-fill"></i> {resendMessage}
+            </div>
+          )}
         </div>
       </div>
     </>

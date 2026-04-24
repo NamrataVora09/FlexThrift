@@ -489,9 +489,9 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ display: 'flex', gap: 3, color: '#FFC63A', fontSize: '0.9rem' }}>
+              {/* <div style={{ display: 'flex', gap: 3, color: '#FFC63A', fontSize: '0.9rem' }}>
                 {[1, 2, 3, 4, 5].map(i => <span key={i} style={{ opacity: i <= Math.min(ratingCount, 5) ? 1 : 0.25 }}>★</span>)}
-              </div>
+              </div> */}
               <span style={{ color: '#6b7280', fontSize: '0.82rem' }}>{ratingCount} seller points</span>
             </div>
 
@@ -518,21 +518,14 @@ export default function ProductDetailClient({ product, images, similarProducts =
             </div>
 
             {/* Brand info after price */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 28 }}>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <i className="bi bi-award" style={{ fontSize: '1.4rem', color: '#FFC63A' }}></i>
-                <div>
-                  <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Original Brand</div>
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827' }}>{product.orignal_brand || 'Premium Listing'}</div>
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
+              <div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Original Brand</div>
+                <div style={{ fontWeight: 400, fontSize: '0.95rem', color: '#9ca3af' }}>{product.orignal_brand || 'Premium Listing'}</div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <i className="bi bi-tag" style={{ fontSize: '1.4rem', color: '#FFC63A' }}></i>
-                <div>
-                  <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Brand</div>
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827' }}>{product.seller_brand || '—'}</div>
-                </div>
+              <div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Brand</div>
+                <div style={{ fontWeight: 400, fontSize: '0.95rem', color: '#9ca3af' }}>{product.seller_brand || '—'}</div>
               </div>
             </div>
 
@@ -649,11 +642,11 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     </button>
                     <button
                       onClick={() => { setShowOffer(true); setOfferError(null); }}
-                      style={{ flex: 1, padding: '16px 24px', borderRadius: 8, fontSize: 17, fontWeight: 600, fontFamily: "'Maven Pro', sans-serif", cursor: 'pointer', transition: 'all 0.3s', border: 'none', background: '#FFC63A', color: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                      style={{ flex: 1, padding: '16px 24px', borderRadius: 8, fontSize: 17, fontWeight: 600, fontFamily: "'Maven Pro', sans-serif", cursor: 'pointer', transition: 'all 0.3s', border: 'none', background: '#FFC63A', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
                     >
-                      <i className={`bi ${product.listing_type === 'rent' ? 'bi-calendar-check-fill' : 'bi-tags-fill'}`}></i>
+                      <i className={`bi ${product.listing_type === 'rent' ? 'bi-calendar-check-fill' : 'bi-tags-fill'}`} style={{ color: '#fff' }}></i>
                       Make an Offer
                     </button>
 

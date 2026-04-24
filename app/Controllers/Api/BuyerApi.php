@@ -85,8 +85,9 @@ class BuyerApi extends ResourceController
         $color      = $this->request->getGet('color');
         $size       = $this->request->getGet('size');
         $gender     = $this->request->getGet('gender');
-        $condition  = $this->request->getGet('condition'); // 'new' | 'used'
-        $specs      = $this->request->getGet('specs');     // JSON string
+        $condition   = $this->request->getGet('condition'); // 'new' | 'used'
+        $specs       = $this->request->getGet('specs');     // JSON string
+        $productType = $this->request->getGet('product_type'); // e.g. 'Phone,Laptop'
         // ─────────────────────────────────────────────────────────────────────
 
         $builder = $db->table('products p')
@@ -227,6 +228,21 @@ class BuyerApi extends ResourceController
                 ->groupEnd();
         } elseif ($condition === 'used') {
             $builder->where('p.used_times >', 0);
+        }
+
+        // Product type — multi-value OR  (matches p.product_type varchar column)
+        if ($productType) {
+            $ptNames = array_values(array_filter(array_map('trim', explode(',', $productType))));
+            if (!empty($ptNames)) {
+                $builder->groupStart();
+                foreach ($ptNames as $idx => $pt) {
+                    $escapedPt = $db->escape(strtolower($pt));
+                    $expr = "LOWER(p.product_type) = $escapedPt";
+                    if ($idx === 0) $builder->where($expr, null, false);
+                    else            $builder->orWhere($expr, null, false);
+                }
+                $builder->groupEnd();
+            }
         }
 
         // Dynamic specs: AND between keys, OR within each key's values array

@@ -33,6 +33,39 @@ interface Product {
 interface ListingType {
   id: number;
   type_name: string;
+  field_config?: string | null;
+}
+
+// ── Taxonomy interfaces (from /api/v1/taxonomy) ──────────────────────────────
+interface TaxonomyProductType {
+  id: number;
+  listing_type_id: number;
+  name: string;
+}
+
+interface TaxonomyCategory {
+  id: number;
+  product_type_id: number | null;
+  product_type_ids: string | null;   // JSON array string e.g. '["8","9"]'
+  category_name: string;
+  field_config?: string | null;
+  applies_to?: string | null;
+}
+
+interface TaxonomySubCategory {
+  id: number;
+  category_id: number | null;
+  category_ids: string | null;       // JSON array string e.g. '["7"]'
+  name: string;
+  field_config?: string | null;
+  applies_to?: string | null;
+}
+
+interface TaxonomyData {
+  listing_types: ListingType[];
+  product_types: TaxonomyProductType[];
+  categories: TaxonomyCategory[];
+  sub_categories: TaxonomySubCategory[];
 }
 
 interface FilterOptions {
@@ -63,6 +96,7 @@ interface BrowseData {
 interface ActiveFilters {
   minPrice: string;
   maxPrice: string;
+  productTypeIds: string[];   // product_types.id values (e.g. Shirt, Jeans)
   categoryIds: string[];
   subCategoryIds: string[];
   brandIds: string[];
@@ -78,9 +112,15 @@ const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:80
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || `${BACKEND_URL}/api/v1`).replace(/\/$/, '');
 
 const emptyFilters: ActiveFilters = {
-  minPrice: '', maxPrice: '', categoryIds: [], subCategoryIds: [],
+  minPrice: '', maxPrice: '', productTypeIds: [], categoryIds: [], subCategoryIds: [],
   brandIds: [], originalBrandIds: [], colors: [], sizes: [], genders: [], condition: '', specs: {},
 };
+
+// Parse a JSON-array string stored in DB (e.g. '["8","9"]') → string[]
+function parseTaxIds(val: string | null | undefined): string[] {
+  if (!val) return [];
+  try { const p = JSON.parse(val); return Array.isArray(p) ? p.map(String) : []; } catch { return []; }
+}
 
 function filtersFromParams(sp: URLSearchParams): ActiveFilters {
   const getArr = (key: string) => {
@@ -90,6 +130,7 @@ function filtersFromParams(sp: URLSearchParams): ActiveFilters {
   return {
     minPrice: sp.get('min_price') || '',
     maxPrice: sp.get('max_price') || '',
+    productTypeIds: (sp.get('product_type_id') || '').split(',').filter(Boolean),
     categoryIds: getArr('category'),
     subCategoryIds: getArr('sub_category'),
     brandIds: getArr('brand'),
@@ -108,8 +149,6 @@ function getProductPrice(p: Product): number {
     : (p.rental_cost || p.price || 0));
 }
 
-
-
 export default function BrowsePage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -117,6 +156,9 @@ export default function BrowsePage() {
 
   const [data, setData] = useState<BrowseData | null>(null);
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
+  const [taxonomy, setTaxonomy] = useState<TaxonomyData | null>(null);
+  const taxonomyRef = useRef<TaxonomyData | null>(null);
+
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [activeType, setActiveType] = useState(searchParams.get('listing_type') || '');
   const [page, setPage] = useState(1);
@@ -144,6 +186,9 @@ export default function BrowsePage() {
     selectedIds: string[];
     specKey?: string;
   } | null>(null);
+
+  // Keep taxonomy ref in sync for use inside load()
+  useEffect(() => { taxonomyRef.current = taxonomy; }, [taxonomy]);
 
   const fuzzyMatch = (text: string, query: string): number => {
     const t = text.toLowerCase();
@@ -187,12 +232,19 @@ export default function BrowsePage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-
-
+  // Fetch listing types
   useEffect(() => {
     fetch(`${API_BASE}/listing-types`)
       .then(r => r.json())
       .then(res => { if (res.success && res.data) setListingTypes(res.data); })
+      .catch(() => { });
+  }, []);
+
+  // Fetch full taxonomy (listing_types, product_types, categories, sub_categories)
+  useEffect(() => {
+    fetch(`${API_BASE}/taxonomy`)
+      .then(r => r.json())
+      .then(res => { if (res.success && res.data) setTaxonomy(res.data); })
       .catch(() => { });
   }, []);
 
@@ -209,58 +261,176 @@ export default function BrowsePage() {
     }
   }, [isAuthenticated, user, router]);
 
+  // ── Cascade: derive visible options from taxonomy ─────────────────────────
+
+  // The listing type object matching the current URL active type
+  const selectedListingType = useMemo(
+    () => listingTypes.find(lt => lt.type_name.toLowerCase() === activeType.toLowerCase()) ?? null,
+    [listingTypes, activeType]
+  );
+
+  // Product types filtered by selected listing type (only shown after listing type is chosen)
+  const visibleProductTypes = useMemo(() => {
+    if (!taxonomy?.product_types?.length) return [];
+    // Only show product types when a listing type is actively selected
+    if (!selectedListingType) return taxonomy.product_types;
+    return taxonomy.product_types.filter(pt => pt.listing_type_id === selectedListingType.id);
+  }, [taxonomy, selectedListingType]);
+
+  // Categories from taxonomy, filtered by selected product type IDs.
+  // Returns [] when taxonomy not loaded — sidebarCategories falls back to filterOptions.
+  const visibleCategories = useMemo(() => {
+    if (!taxonomy?.categories?.length) return [];
+
+    // Product type(s) selected → show only matching categories
+    if (filters.productTypeIds.length > 0) {
+      const ptIdSet = new Set(filters.productTypeIds);
+      return taxonomy.categories.filter(cat => {
+        const ids = [
+          cat.product_type_id != null ? String(cat.product_type_id) : null,
+          ...parseTaxIds(cat.product_type_ids),
+        ].filter(Boolean) as string[];
+        // If category has no product_type link, show it regardless
+        return ids.length === 0 || ids.some(id => ptIdSet.has(id));
+      });
+    }
+
+    // Listing type selected but no product type yet → scope by listing type's product types
+    if (selectedListingType && visibleProductTypes.length > 0) {
+      const ptIdSet = new Set(visibleProductTypes.map(pt => String(pt.id)));
+      return taxonomy.categories.filter(cat => {
+        const ids = [
+          cat.product_type_id != null ? String(cat.product_type_id) : null,
+          ...parseTaxIds(cat.product_type_ids),
+        ].filter(Boolean) as string[];
+        return ids.length === 0 || ids.some(id => ptIdSet.has(id));
+      });
+    }
+
+    // Nothing selected → return all taxonomy categories
+    return taxonomy.categories;
+  }, [taxonomy, filters.productTypeIds, selectedListingType, visibleProductTypes]);
+
+  // Sub-categories filtered by selected category IDs
+  const visibleSubCategories = useMemo(() => {
+    if (!taxonomy?.sub_categories?.length) return [];
+    if (filters.categoryIds.length === 0) return [];
+    const catIdSet = new Set(filters.categoryIds);
+    return taxonomy.sub_categories.filter(sub => {
+      const ids = [
+        sub.category_id != null ? String(sub.category_id) : null,
+        ...parseTaxIds(sub.category_ids),
+      ].filter(Boolean) as string[];
+      return ids.some(id => catIdSet.has(id));
+    });
+  }, [taxonomy, filters.categoryIds]);
+
+  // Sidebar categories:
+  // - Product type selected + taxonomy loaded  → strict taxonomy cascade (Phone = empty if not linked)
+  // - All other cases                          → filterOptions.categories (from browse API, always present)
+  //   scoped by taxonomy when possible so listing-type context is respected
+  const sidebarCategories = useMemo(() => {
+    // Case 1: product type selected + taxonomy ready → use only taxonomy-mapped categories
+    if (filters.productTypeIds.length > 0 && taxonomy?.categories?.length) {
+      return visibleCategories
+        .map(c => ({ id: c.id, name: (c as any).name || c.category_name || '', field_config: c.field_config ?? undefined }))
+        .filter(c => c.name);
+    }
+
+    // Case 2: filterOptions available (from browse API) — primary reliable source
+    if (filterOptions?.categories?.length) {
+      // If taxonomy is also loaded and has scoped categories, intersect for relevance
+      if (taxonomy?.categories?.length && visibleCategories.length > 0) {
+        const visibleIds = new Set(visibleCategories.map(c => c.id));
+        const scoped = filterOptions.categories.filter(c => visibleIds.has(c.id));
+        if (scoped.length > 0) return scoped.map(c => ({ id: c.id, name: c.name, field_config: c.field_config }));
+      }
+      return filterOptions.categories.map(c => ({ id: c.id, name: c.name, field_config: c.field_config }));
+    }
+
+    // Case 3: Only taxonomy available (filterOptions still loading)
+    return visibleCategories
+      .map(c => ({ id: c.id, name: (c as any).name || c.category_name || '', field_config: c.field_config ?? undefined }))
+      .filter(c => c.name);
+  }, [visibleCategories, taxonomy, filterOptions, filters.productTypeIds]);
+
+  const sidebarSubCategories = useMemo(() => {
+    if (visibleSubCategories.length > 0) {
+      return visibleSubCategories.map(s => ({
+        id: s.id,
+        name: (s as any).name || '',
+        field_config: s.field_config ?? undefined,
+      })).filter(s => s.name);
+    }
+    // Fallback: sub_categories from browse API filtered by selected categories
+    if (filters.categoryIds.length > 0 && filterOptions?.sub_categories?.length) {
+      return filterOptions.sub_categories
+        .filter(s => filters.categoryIds.includes(String(s.category_id)))
+        .map(s => ({ id: s.id, name: s.name, field_config: s.field_config }));
+    }
+    return [];
+  }, [visibleSubCategories, filterOptions, filters.categoryIds]);
+
+  // ── Dynamic attributes from field_config (deepest selected level wins) ────
   useEffect(() => {
-    if (!filterOptions) { setDynamicAttrs([]); return; }
-
-    const catId = filters.categoryIds[filters.categoryIds.length - 1];
-    const subId = filters.subCategoryIds[filters.subCategoryIds.length - 1];
-
-    // Selected sub-category → use its attrs only
-    if (subId) {
-      const sub = filterOptions.sub_categories.find(s => String(s.id) === subId);
-      if (sub?.field_config) {
-        try { const cfg = JSON.parse(sub.field_config); if (cfg.attributes?.length) { setDynamicAttrs(cfg.attributes); return; } } catch { }
-      }
-    }
-    // Selected category → use its attrs only
-    if (catId) {
-      const cat = filterOptions.categories.find(c => String(c.id) === catId);
-      if (cat?.field_config) {
-        try { const cfg = JSON.parse(cat.field_config); if (cfg.attributes?.length) { setDynamicAttrs(cfg.attributes); return; } } catch { }
-      }
-    }
-
-    // Nothing selected → aggregate all unique attrs from every category & sub-category
-    const merged: Record<string, DynamicAttribute> = {};
+    const parseAttrs = (fc: string | null | undefined): DynamicAttribute[] => {
+      if (!fc) return [];
+      try { const cfg = JSON.parse(fc); return Array.isArray(cfg.attributes) && cfg.attributes.length ? cfg.attributes : []; } catch { return []; }
+    };
     const parseOpts = (o: string[] | string | undefined): string[] => {
       if (!o) return [];
       if (Array.isArray(o)) return o;
       return o.split(',').map(s => s.trim()).filter(Boolean);
     };
-    [...filterOptions.categories, ...filterOptions.sub_categories].forEach(item => {
-      if (!item.field_config) return;
-      try {
-        const cfg = JSON.parse(item.field_config);
-        (cfg.attributes || []).forEach((attr: DynamicAttribute) => {
-          if (!merged[attr.name]) {
-            merged[attr.name] = { ...attr };
-          } else {
-            const existOpts = parseOpts(merged[attr.name].options);
-            const newOpts = parseOpts(attr.options);
-            merged[attr.name] = { ...merged[attr.name], options: Array.from(new Set([...existOpts, ...newOpts])) };
-          }
-        });
-      } catch { }
+
+    if (!taxonomy) { setDynamicAttrs([]); return; }
+
+    // Sub-category level
+    if (filters.subCategoryIds.length > 0) {
+      for (const id of filters.subCategoryIds) {
+        const sub = taxonomy.sub_categories.find(s => String(s.id) === id);
+        const attrs = parseAttrs(sub?.field_config);
+        if (attrs.length) { setDynamicAttrs(attrs); return; }
+      }
+    }
+    // Category level
+    if (filters.categoryIds.length > 0) {
+      for (const id of filters.categoryIds) {
+        const cat = taxonomy.categories.find(c => String(c.id) === id);
+        const attrs = parseAttrs(cat?.field_config);
+        if (attrs.length) { setDynamicAttrs(attrs); return; }
+      }
+    }
+    // Listing type level
+    if (selectedListingType) {
+      const attrs = parseAttrs(selectedListingType.field_config);
+      if (attrs.length) { setDynamicAttrs(attrs); return; }
+    }
+
+    // Nothing granular selected — merge all visible categories + sub_categories
+    const merged: Record<string, DynamicAttribute> = {};
+    [...visibleCategories, ...visibleSubCategories].forEach(item => {
+      parseAttrs((item as any).field_config ?? null).forEach((attr: DynamicAttribute) => {
+        if (!merged[attr.name]) {
+          merged[attr.name] = { ...attr };
+        } else {
+          const existOpts = parseOpts(merged[attr.name].options);
+          const newOpts = parseOpts(attr.options);
+          merged[attr.name] = { ...merged[attr.name], options: Array.from(new Set([...existOpts, ...newOpts])) };
+        }
+      });
     });
     setDynamicAttrs(Object.values(merged));
-  }, [filters.categoryIds, filters.subCategoryIds, filterOptions]);
+  }, [filters.subCategoryIds, filters.categoryIds, selectedListingType, taxonomy, visibleCategories, visibleSubCategories]);
 
+  // ── URL building ──────────────────────────────────────────────────────────
   const buildUrl = (type: string, s: string, f: ActiveFilters): string => {
     const p = new URLSearchParams();
     if (type) p.set('listing_type', type);
     if (s) p.set('search', s);
     if (f.minPrice) p.set('min_price', f.minPrice);
     if (f.maxPrice) p.set('max_price', f.maxPrice);
+    if (f.productTypeIds.length) p.set('product_type_id', f.productTypeIds.join(','));
     if (f.categoryIds.length) p.set('category_id', f.categoryIds.join(','));
     if (f.subCategoryIds.length) p.set('sub_category_id', f.subCategoryIds.join(','));
     if (f.brandIds.length) p.set('brand_id', f.brandIds.join(','));
@@ -275,18 +445,52 @@ export default function BrowsePage() {
     return `/buyer/browse${qs ? `?${qs}` : ''}`;
   };
 
+  // ── API load: translate product_type_id → category_id for browse API ──────
   const load = (p: number, sp: URLSearchParams) => {
     setLoading(true);
     const apiParams = new URLSearchParams(sp.toString());
     apiParams.set('page', String(p));
+
+    // product_type_id is a UI concept; translate it for the browse API
+    const ptIds = (sp.get('product_type_id') || '').split(',').filter(Boolean);
+    if (ptIds.length > 0 && taxonomyRef.current) {
+      const ptIdSet = new Set(ptIds);
+
+      if (!sp.get('category_id')) {
+        // Try to derive category_ids from the taxonomy relationship
+        const derivedCatIds = taxonomyRef.current.categories
+          .filter(cat => {
+            const ids = [
+              cat.product_type_id != null ? String(cat.product_type_id) : null,
+              ...parseTaxIds(cat.product_type_ids),
+            ].filter(Boolean) as string[];
+            return ids.some(id => ptIdSet.has(id));
+          })
+          .map(c => String(c.id));
+
+        if (derivedCatIds.length > 0) {
+          // Category links exist → filter by derived category_ids
+          apiParams.set('category_id', derivedCatIds.join(','));
+        } else {
+          // No categories linked to this product type in taxonomy
+          // Fall back to filtering by product_type name directly (backend now supports this)
+          const ptNames = taxonomyRef.current.product_types
+            .filter(pt => ptIdSet.has(String(pt.id)))
+            .map(pt => pt.name);
+          if (ptNames.length > 0) {
+            apiParams.set('product_type', ptNames.join(','));
+          }
+        }
+      }
+    }
+    apiParams.delete('product_type_id'); // not a native browse API param
+
     fetch(`${API_BASE}/browse?${apiParams}`)
       .then(r => r.json())
       .then(res => {
         if (res.success && res.data) {
           setData(res.data);
-          if (res.data.filter_options) {
-            setFilterOptions(prev => prev ?? res.data.filter_options);
-          }
+          if (res.data.filter_options) setFilterOptions(res.data.filter_options);
         }
         setLoading(false);
       })
@@ -309,7 +513,15 @@ export default function BrowsePage() {
   };
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setPage(1); navigate(activeType, search, filters); };
-  const handleTypeClick = (type: string) => { setActiveType(type); setPage(1); navigate(type, search, filters); };
+
+  // Selecting a Listing Type resets the whole cascade below it
+  const handleTypeClick = (type: string) => {
+    setActiveType(type);
+    setPage(1);
+    const newFilters = { ...filters, productTypeIds: [], categoryIds: [], subCategoryIds: [], specs: {} };
+    setFilters(newFilters);
+    navigate(type, search, newFilters);
+  };
 
   const setFilter = (key: keyof Omit<ActiveFilters, 'specs'>, val: string) => {
     setFilters(prev => {
@@ -321,7 +533,9 @@ export default function BrowsePage() {
         updated = val;
       }
       const next = { ...prev, [key]: updated };
-      if (key === 'categoryIds') { next.subCategoryIds = []; next.specs = {}; }
+      // Cascade: selecting a parent level clears children
+      if (key === 'productTypeIds') { next.categoryIds = []; next.subCategoryIds = []; next.specs = {}; }
+      if (key === 'categoryIds')    { next.subCategoryIds = []; next.specs = {}; }
       if (key === 'subCategoryIds') { next.specs = {}; }
       setPage(1);
       navigate(activeType, search, next);
@@ -351,8 +565,9 @@ export default function BrowsePage() {
   const clearAllFilters = () => {
     setFilters(emptyFilters);
     setPriceInput({ min: '', max: '' });
+    setActiveType('');
     setPage(1);
-    navigate(activeType, search, emptyFilters);
+    navigate('', search, emptyFilters);
   };
 
   const removeFilter = (key: string, val?: string) => {
@@ -382,19 +597,27 @@ export default function BrowsePage() {
     });
   };
 
+  // ── Active filter chips ───────────────────────────────────────────────────
   const activeChips: { label: string; key: string; val?: string }[] = [];
   if (filters.minPrice || filters.maxPrice) {
     activeChips.push({ label: `₹${filters.minPrice || '0'} – ₹${filters.maxPrice || '∞'}`, key: 'price' });
   }
+  // Product type chips (from taxonomy)
+  filters.productTypeIds.forEach(id => {
+    const pt = taxonomy?.product_types.find(p => String(p.id) === id);
+    if (pt) activeChips.push({ label: pt.name, key: 'productTypeIds', val: id });
+  });
+  // Category chips (from taxonomy)
+  filters.categoryIds.forEach(id => {
+    const cat = taxonomy?.categories.find(c => String(c.id) === id);
+    if (cat) activeChips.push({ label: cat.category_name, key: 'categoryIds', val: id });
+  });
+  // Sub-category chips (from taxonomy)
+  filters.subCategoryIds.forEach(id => {
+    const sub = taxonomy?.sub_categories.find(s => String(s.id) === id);
+    if (sub) activeChips.push({ label: sub.name, key: 'subCategoryIds', val: id });
+  });
   if (filterOptions) {
-    filters.categoryIds.forEach(id => {
-      const cat = filterOptions.categories.find(c => String(c.id) === id);
-      if (cat) activeChips.push({ label: cat.name, key: 'categoryIds', val: id });
-    });
-    filters.subCategoryIds.forEach(id => {
-      const sub = filterOptions.sub_categories.find(s => String(s.id) === id);
-      if (sub) activeChips.push({ label: sub.name, key: 'subCategoryIds', val: id });
-    });
     filters.brandIds.forEach(id => {
       const brand = filterOptions.brands.find(b => String(b.id) === id);
       if (brand) activeChips.push({ label: brand.brand_name, key: 'brandIds', val: id });
@@ -408,7 +631,6 @@ export default function BrowsePage() {
   filters.sizes.forEach(s => activeChips.push({ label: `Size: ${s}`, key: 'sizes', val: s }));
   filters.genders.forEach(g => activeChips.push({ label: g, key: 'genders', val: g }));
   if (filters.condition) activeChips.push({ label: filters.condition === 'new' ? 'Brand New' : 'Pre-owned', key: 'condition' });
-
   Object.entries(filters.specs).forEach(([k, vals]) => {
     vals.forEach(v => activeChips.push({ label: `${k}: ${v}`, key: `spec:${k}`, val: v }));
   });
@@ -427,8 +649,6 @@ export default function BrowsePage() {
     if (user.role === 'admin' && Number(user.blocked_buyer) === 1) return null;
     if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) return null;
   }
-
-  const subCatsForCategory = filterOptions?.sub_categories.filter(s => filters.categoryIds.includes(String(s.category_id))) || [];
 
   const sortedProducts = useMemo(() => {
     if (!data?.products) return [];
@@ -504,11 +724,11 @@ export default function BrowsePage() {
         .em-modal-body::-webkit-scrollbar { width: 6px; }
         .em-modal-body::-webkit-scrollbar-track { background: #f9f9f9; }
         .em-modal-body::-webkit-scrollbar-thumb { background: #ef4444; border-radius: 9999px; }
-        .em-modal-body { 
-          flex: 1; overflow-y: auto; padding: 30px; display: grid; 
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
-          gap: 15px; align-content: start; 
-          scrollbar-width: thin; scrollbar-color: #ef4444 #f9f9f9; 
+        .em-modal-body {
+          flex: 1; overflow-y: auto; padding: 30px; display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 15px; align-content: start;
+          scrollbar-width: thin; scrollbar-color: #ef4444 #f9f9f9;
         }
         .em-modal-close { background: none; border: none; cursor: pointer; color: #5a5c5c; font-size: 24px; }
         .em-group-title { grid-column: 1 / -1; font-size: 0.875rem; font-weight: 800; color: #0c0f0f; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; margin-top: 15px; }
@@ -710,7 +930,9 @@ export default function BrowsePage() {
                   setPriceInput={setPriceInput}
                   filterOptions={filterOptions}
                   dynamicAttrs={dynamicAttrs}
-                  subCatsForCategory={subCatsForCategory}
+                  visibleProductTypes={visibleProductTypes}
+                  sidebarCategories={sidebarCategories}
+                  sidebarSubCategories={sidebarSubCategories}
                   setFilter={setFilter}
                   setSpecFilter={setSpecFilter}
                   applyPriceFilter={applyPriceFilter}
@@ -747,42 +969,55 @@ export default function BrowsePage() {
                       )}
                     </button>
 
-                    {/* Breadcrumbs — single line, no wrap */}
+                    {/* Breadcrumbs */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', flexWrap: 'nowrap' }}>
                       <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none' }}>Home</Link>
 
                       {activeType && (
                         <>
                           <span style={{ color: '#acadad' }}>/</span>
-                          <span
-                            style={{ color: filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
-                            onClick={() => setFilter('categoryIds', '')}
-                          >
+                          <span style={{ color: filters.productTypeIds.length === 0 && filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
+                            onClick={() => { const nf = { ...filters, productTypeIds: [], categoryIds: [], subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
                             {activeType}
                           </span>
                         </>
                       )}
 
-                      {filters.categoryIds.length > 0 && filterOptions?.categories.find(c => String(c.id) === filters.categoryIds[0]) && (
-                        <>
-                          <span style={{ color: '#acadad' }}>/</span>
-                          <span
-                            style={{ color: filters.subCategoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' }}
-                            onClick={() => setFilter('subCategoryIds', '')}
-                          >
-                            {filterOptions.categories.find(c => String(c.id) === filters.categoryIds[0])?.name}
-                          </span>
-                        </>
-                      )}
+                      {filters.productTypeIds.length > 0 && (() => {
+                        const pt = taxonomy?.product_types.find(p => String(p.id) === filters.productTypeIds[0]);
+                        return pt ? (
+                          <>
+                            <span style={{ color: '#acadad' }}>/</span>
+                            <span style={{ color: filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' }}
+                              onClick={() => { const nf = { ...filters, categoryIds: [], subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
+                              {pt.name}
+                            </span>
+                          </>
+                        ) : null;
+                      })()}
 
-                      {filters.subCategoryIds.length > 0 && filterOptions?.sub_categories.find(c => String(c.id) === filters.subCategoryIds[0]) && (
-                        <>
-                          <span style={{ color: '#acadad' }}>/</span>
-                          <span style={{ color: '#0c0f0f' }}>
-                            {filterOptions.sub_categories.find(c => String(c.id) === filters.subCategoryIds[0])?.name}
-                          </span>
-                        </>
-                      )}
+                      {filters.categoryIds.length > 0 && (() => {
+                        const cat = taxonomy?.categories.find(c => String(c.id) === filters.categoryIds[0]);
+                        return cat ? (
+                          <>
+                            <span style={{ color: '#acadad' }}>/</span>
+                            <span style={{ color: filters.subCategoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' }}
+                              onClick={() => { const nf = { ...filters, subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
+                              {cat.category_name}
+                            </span>
+                          </>
+                        ) : null;
+                      })()}
+
+                      {filters.subCategoryIds.length > 0 && (() => {
+                        const sub = taxonomy?.sub_categories.find(s => String(s.id) === filters.subCategoryIds[0]);
+                        return sub ? (
+                          <>
+                            <span style={{ color: '#acadad' }}>/</span>
+                            <span style={{ color: '#0c0f0f' }}>{sub.name}</span>
+                          </>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
 
@@ -808,7 +1043,7 @@ export default function BrowsePage() {
                   </div>
                 </div>
 
-                {/* Row 2: result count — centered */}
+                {/* Row 2: result count */}
                 {!loading && data && (
                   <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#5a5c5c', margin: 0, fontWeight: 500 }}>
                     {data.pagination.total > 0
@@ -945,7 +1180,9 @@ export default function BrowsePage() {
             setPriceInput={setPriceInput}
             filterOptions={filterOptions}
             dynamicAttrs={dynamicAttrs}
-            subCatsForCategory={subCatsForCategory}
+            visibleProductTypes={visibleProductTypes}
+            sidebarCategories={sidebarCategories}
+            sidebarSubCategories={sidebarSubCategories}
             setFilter={setFilter}
             setSpecFilter={setSpecFilter}
             applyPriceFilter={applyPriceFilter}
@@ -972,6 +1209,16 @@ export default function BrowsePage() {
             else if (modalConfig.type === 'category') setFilter('categoryIds', id);
             else if (modalConfig.type === 'size') setFilter('sizes', id);
             else if (modalConfig.type === 'gender') setFilter('genders', id);
+            setModalConfig(prev => {
+              if (!prev) return null;
+              const isSelected = prev.selectedIds.includes(id);
+              return {
+                ...prev,
+                selectedIds: isSelected
+                  ? prev.selectedIds.filter(s => s !== id)
+                  : [...prev.selectedIds, id],
+              };
+            });
           }}
           onClose={() => setModalConfig(null)}
         />
@@ -1196,7 +1443,7 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
               {p.title}
             </h3>
             <p className="text-sm text-[#5a5c5c]">
-              {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : '\u00A0'}
+              {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : ' '}
             </p>
           </div>
           <div className="flex-shrink-0 flex flex-col  items-end">
@@ -1226,7 +1473,9 @@ interface EliteSidebarProps {
   setPriceInput: (v: { min: string; max: string }) => void;
   filterOptions: FilterOptions | null;
   dynamicAttrs: DynamicAttribute[];
-  subCatsForCategory: Array<{ id: number; name: string; category_id: number; field_config?: string }>;
+  visibleProductTypes: Array<{ id: number; name: string }>;
+  sidebarCategories: Array<{ id: number; name: string; field_config?: string }>;
+  sidebarSubCategories: Array<{ id: number; name: string; field_config?: string }>;
   setFilter: (key: keyof Omit<ActiveFilters, 'specs'>, val: string) => void;
   setSpecFilter: (attrName: string, val: string) => void;
   applyPriceFilter: () => void;
@@ -1240,20 +1489,19 @@ interface EliteSidebarProps {
 
 function EliteSidebar({
   filters, priceInput, setPriceInput, filterOptions, dynamicAttrs,
-  subCatsForCategory, setFilter, setSpecFilter, applyPriceFilter,
+  visibleProductTypes, sidebarCategories, sidebarSubCategories,
+  setFilter, setSpecFilter, applyPriceFilter,
   clearAllFilters, activeChips, onShowMore, listingTypes = [], activeType, onTypeChange,
 }: EliteSidebarProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({
-    productType: true, price: true, category: true, subCategory: true,
-    gender: true, color: true, brand: true, originalBrand: true, size: false,
+    listingType: true, productType: true, category: true, subCategory: true,
+    gender: true, color: true, brand: true, originalBrand: true, price: true, size: false,
   });
   const [focusedField, setFocusedField] = useState<'min' | 'max'>('max');
   const toggle = (k: string) => setOpen(p => ({ ...p, [k]: !p[k] }));
 
-  // Per-section inline search state
   const [sectionSearch, setSectionSearch] = useState<Record<string, string>>({});
-  const setSSearch = (section: string, val: string) =>
-    setSectionSearch(p => ({ ...p, [section]: val }));
+  const setSSearch = (section: string, val: string) => setSectionSearch(p => ({ ...p, [section]: val }));
   const getSSearch = (section: string) => sectionSearch[section] || '';
 
   const SectionTitle = ({ id, label, count }: { id: string; label: string; count?: number }) => (
@@ -1322,7 +1570,6 @@ function EliteSidebar({
     );
   };
 
-  // Filtered items helper
   const filterBySearch = (items: Array<{ value: string; label: string }>, section: string) => {
     const q = getSSearch(section).toLowerCase();
     return q ? items.filter(i => i.label.toLowerCase().includes(q)) : items;
@@ -1335,7 +1582,7 @@ function EliteSidebar({
         <strong className="em-heading" style={{ fontFamily: "'Maven Pro', sans-serif", fontSize: '16px', fontWeight: 800, letterSpacing: '0.1em', color: '#0c0f0f', textTransform: 'uppercase' }}>
           FILTERS
         </strong>
-        <button 
+        <button
           onClick={clearAllFilters}
           className='font-bold!'
           style={{ fontFamily: "'Maven Pro', sans-serif", background: 'none', border: 'none', color: '#ef4444', fontSize: '13px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer' }}
@@ -1344,22 +1591,22 @@ function EliteSidebar({
         </button>
       </div>
 
-      {/* ── 1. Product Type ── */}
+      {/* ── 1. Listing Type (listing_types table) ── */}
       {listingTypes.length > 0 && (
         <div className="em-sidebar-section">
-          <SectionTitle id="productType" label="Product Type" />
-          {open.productType && (
+          <SectionTitle id="listingType" label="Listing Type" />
+          {open.listingType && (
             <>
-              <InlineSearch section="productType" placeholder="Search type…" />
+              <InlineSearch section="listingType" placeholder="Search listing type…" />
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {filterBySearch(
                   listingTypes.map(t => ({ value: t.type_name, label: t.type_name.charAt(0).toUpperCase() + t.type_name.slice(1) })),
-                  'productType'
+                  'listingType'
                 ).map(item => (
                   <button
                     key={item.value}
-                    className={`em-filter-pill ${activeType === item.value ? 'active' : ''}`}
-                    onClick={() => onTypeChange(activeType === item.value ? '' : item.value)}
+                    className={`em-filter-pill ${activeType.toLowerCase() === item.value.toLowerCase() ? 'active' : ''}`}
+                    onClick={() => onTypeChange(activeType.toLowerCase() === item.value.toLowerCase() ? '' : item.value)}
                   >
                     {item.label}
                   </button>
@@ -1370,54 +1617,73 @@ function EliteSidebar({
         </div>
       )}
 
-      {/* ── 2. Category ── */}
-      {filterOptions && filterOptions.categories.length > 0 && (
+      {/* ── 2. Product Type (product_types table, filtered by listing type) ── */}
+      {visibleProductTypes.length > 0 && (
         <div className="em-sidebar-section">
-          <SectionTitle id="category" label="Category" count={filters.categoryIds.length} />
-          {open.category && (
-            <CheckboxGroup
-              items={filterOptions.categories.map(c => ({ value: String(c.id), label: c.name }))}
-              activeVals={filters.categoryIds}
-              onSelect={(v) => setFilter('categoryIds', v)}
-              onShowMore={() => onShowMore({
-                type: 'category', title: 'CATEGORIES',
-                items: filterOptions.categories.map(c => ({ id: c.id, name: c.name })),
-                selectedIds: filters.categoryIds,
-              })}
-            />
-          )}
-        </div>
-      )}
-
-      {/* ── 3. Sub-Category ── */}
-      {filterOptions && filterOptions.sub_categories.length > 0 && (
-        <div className="em-sidebar-section">
-          <SectionTitle id="subCategory" label="Sub-Category" count={filters.subCategoryIds.length} />
-          {open.subCategory && (
+          <SectionTitle id="productType" label="Product Type" count={filters.productTypeIds.length} />
+          {open.productType && (
             <>
-              <InlineSearch section="subCategory" placeholder="Search sub-category…" />
-              {(() => {
-                const pool = filters.categoryIds.length > 0 ? subCatsForCategory : filterOptions.sub_categories;
-                const items = filterBySearch(pool.map(s => ({ value: String(s.id), label: s.name })), 'subCategory');
-                return (
-                  <CheckboxGroup
-                    items={items}
-                    activeVals={filters.subCategoryIds}
-                    onSelect={(v) => setFilter('subCategoryIds', v)}
-                    onShowMore={() => onShowMore({
-                      type: 'category', title: 'SUB-CATEGORIES',
-                      items: pool.map(s => ({ id: s.id, name: s.name })),
-                      selectedIds: filters.subCategoryIds,
-                    })}
-                  />
-                );
-              })()}
+              <InlineSearch section="productType" placeholder="Search product type…" />
+              <CheckboxGroup
+                items={filterBySearch(visibleProductTypes.map(pt => ({ value: String(pt.id), label: pt.name })), 'productType')}
+                activeVals={filters.productTypeIds}
+                onSelect={(v) => setFilter('productTypeIds', v)}
+                onShowMore={visibleProductTypes.length > 8 ? () => onShowMore({
+                  type: 'category', title: 'PRODUCT TYPES',
+                  items: visibleProductTypes.map(pt => ({ id: pt.id, name: pt.name })),
+                  selectedIds: filters.productTypeIds,
+                }) : undefined}
+              />
             </>
           )}
         </div>
       )}
 
-      {/* ── 4. Gender ── */}
+      {/* ── 3. Category (categories table, filtered by product type) ── */}
+      {sidebarCategories.length > 0 && (
+        <div className="em-sidebar-section">
+          <SectionTitle id="category" label="Category" count={filters.categoryIds.length} />
+          {open.category && (
+            <>
+              <InlineSearch section="category" placeholder="Search category…" />
+              <CheckboxGroup
+                items={filterBySearch(sidebarCategories.map(c => ({ value: String(c.id), label: c.name })), 'category')}
+                activeVals={filters.categoryIds}
+                onSelect={(v) => setFilter('categoryIds', v)}
+                onShowMore={sidebarCategories.length > 8 ? () => onShowMore({
+                  type: 'category', title: 'CATEGORIES',
+                  items: sidebarCategories.map(c => ({ id: c.id, name: c.name })),
+                  selectedIds: filters.categoryIds,
+                }) : undefined}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── 4. Sub-Category (sub_categories table, filtered by category) ── */}
+      {sidebarSubCategories.length > 0 && (
+        <div className="em-sidebar-section">
+          <SectionTitle id="subCategory" label="Sub-Category" count={filters.subCategoryIds.length} />
+          {open.subCategory && (
+            <>
+              <InlineSearch section="subCategory" placeholder="Search sub-category…" />
+              <CheckboxGroup
+                items={filterBySearch(sidebarSubCategories.map(s => ({ value: String(s.id), label: s.name })), 'subCategory')}
+                activeVals={filters.subCategoryIds}
+                onSelect={(v) => setFilter('subCategoryIds', v)}
+                onShowMore={sidebarSubCategories.length > 8 ? () => onShowMore({
+                  type: 'category', title: 'SUB-CATEGORIES',
+                  items: sidebarSubCategories.map(s => ({ id: s.id, name: s.name })),
+                  selectedIds: filters.subCategoryIds,
+                }) : undefined}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── 5. Gender ── */}
       {filterOptions && filterOptions.genders.length > 0 && (
         <div className="em-sidebar-section">
           <SectionTitle id="gender" label="Gender" count={filters.genders.length} />
@@ -1431,7 +1697,7 @@ function EliteSidebar({
         </div>
       )}
 
-      {/* ── 5. Color ── */}
+      {/* ── 6. Color ── */}
       {filterOptions && filterOptions.colors.length > 0 && (
         <div className="em-sidebar-section">
           <SectionTitle id="color" label="Color" count={filters.colors.length} />
@@ -1450,6 +1716,7 @@ function EliteSidebar({
         </div>
       )}
 
+      {/* ── 7. Price ── */}
       <div className="em-sidebar-section">
         <SectionTitle id="price" label="Price" />
         {open.price && (
@@ -1462,7 +1729,7 @@ function EliteSidebar({
               min={filterOptions?.price_range?.min_price || 0}
               max={filterOptions?.price_range?.max_price || 100000}
               step={100}
-              value={focusedField === 'min' 
+              value={focusedField === 'min'
                 ? (priceInput.min || filterOptions?.price_range?.min_price || 0)
                 : (priceInput.max || filterOptions?.price_range?.max_price || 100000)
               }
@@ -1502,7 +1769,7 @@ function EliteSidebar({
         )}
       </div>
 
-      {/* ── 7. Brand ── */}
+      {/* ── 8. Brand ── */}
       {filterOptions && filterOptions.brands.length > 0 && (
         <div className="em-sidebar-section">
           <SectionTitle id="brand" label="Brand" count={filters.brandIds.length} />
@@ -1524,7 +1791,7 @@ function EliteSidebar({
         </div>
       )}
 
-      {/* ── 8. Original Brand ── */}
+      {/* ── 9. Original Brand ── */}
       {filterOptions && filterOptions.original_brands?.length > 0 && (
         <div className="em-sidebar-section">
           <SectionTitle id="originalBrand" label="Original Brand" count={filters.originalBrandIds.length} />
@@ -1546,7 +1813,7 @@ function EliteSidebar({
         </div>
       )}
 
-      {/* ── 9. Dynamic Attributes ── */}
+      {/* ── 10. Dynamic Attributes (from field_config of selected level) ── */}
       {dynamicAttrs.map((attr) => {
         const opts = Array.isArray(attr.options)
           ? attr.options
