@@ -11,8 +11,8 @@ import Footer from '../layout/Footer';
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api/v1').replace(/\/$/, '');
 
 interface AotStep { icon: string; title: string; desc: string; }
-interface AotGuide { id: string; label: string; videoUrl: string; steps: AotStep[]; }
-interface AotSection { id: string; headline: string; subtitle: string; guides: AotGuide[]; reversed?: boolean; }
+interface AotGuide { id: string; label: string; videoUrl: string; steps: AotStep[]; reversed?: boolean; }
+interface AotSection { id: string; headline: string; subtitle: string; guides: AotGuide[]; }
 interface CategoryCard {
   name: string;
   slug: string;
@@ -112,12 +112,12 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
                 )}
 
                 {guide.steps.length > 0 ? (
-                  <div className={`grid grid-cols-1 lg:grid-cols-[4fr_5fr] gap-12 w-full items-center ${section.reversed ? 'lg:direction-rtl' : ''}`}>
-                    {/* Video — 40% */}
-                    <div className="min-w-0">{videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}</div>
+                  <div className="grid grid-cols-1 lg:grid-cols-[4fr_5fr] gap-12 w-full items-center">
+                    {/* Video — swaps to right when this guide is reversed */}
+                    <div className={`min-w-0 ${guide.reversed ? 'lg:order-2' : 'lg:order-1'}`}>{videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}</div>
 
-                    {/* Steps — 50% */}
-                    <div className="flex flex-col w-full ">
+                    {/* Steps — swaps to left when this guide is reversed */}
+                    <div className={`flex flex-col w-full ${guide.reversed ? 'lg:order-1' : 'lg:order-2'}`}>
                       {guide.steps.map((s, idx) => (
                         <div key={idx} className="flex gap-4  justify-start items-start text-left w-full min-w-0">
                           {/* Circle + connector line */}
@@ -202,16 +202,6 @@ function AotEditModal({ section, onClose, onSave }: {
             <label className={labelCls}>Subtitle</label>
             <textarea className={inputCls} rows={2} value={draft.subtitle} onChange={e => setField('subtitle', e.target.value)} />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              id="reversedToggle"
-              checked={!!draft.reversed}
-              onChange={e => setDraft(d => ({ ...d, reversed: e.target.checked }))}
-              className="accent-[#ffc63a]"
-            />
-            Reverse layout (steps left, video right)
-          </label>
 
           {/* Guide tabs */}
           <div className="flex flex-wrap gap-2">
@@ -248,6 +238,18 @@ function AotEditModal({ section, onClose, onSave }: {
                 <label className={labelCls}>Video Embed URL</label>
                 <input className={inputCls} placeholder="https://www.youtube.com/embed/VIDEO_ID" value={draft.guides[activeGuide].videoUrl} onChange={e => setGuideField(activeGuide, 'videoUrl', e.target.value)} />
               </div>
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!draft.guides[activeGuide].reversed}
+                  onChange={e => setDraft(d => ({
+                    ...d,
+                    guides: d.guides.map((g, i) => i === activeGuide ? { ...g, reversed: e.target.checked } : g),
+                  }))}
+                  className="accent-[#ffc63a]"
+                />
+                Reverse layout (steps left, video right)
+              </label>
 
               <label className={labelCls + " mt-1"}>Steps</label>
               {draft.guides[activeGuide].steps.map((s, si) => (
