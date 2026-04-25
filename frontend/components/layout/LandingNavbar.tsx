@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
-interface Category { id: number; category_name: string; product_type_id: number; }
+interface Category { id: number; category_name?: string; name?: string; product_type_id: number; }
 interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
 interface ListingType { id: number; type_name: string; product_types?: ProductType[]; }
 interface SearchResult { id: number; title: string; listing_type: string; selling_price?: string; rental_cost?: string; original_price?: string; primary_image?: string; image?: string; brand_name?: string; }

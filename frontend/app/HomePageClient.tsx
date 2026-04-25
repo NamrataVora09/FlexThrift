@@ -39,7 +39,8 @@ interface ProductType {
 
 interface Category {
   id: number;
-  category_name: string;
+  category_name?: string;
+  name?: string;
   product_type_id: number;
 }
 
@@ -671,7 +672,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                             <div key={pt.id} className="mb-3">
                               <Link href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`} className="mega-pt-label">{pt.name}</Link>
                               {pt.categories?.map((cat) => (
-                                <Link key={cat.id} href={`/buyer/browse?category=${cat.id}`} className="mega-link">{cat.category_name}</Link>
+                                <Link key={cat.id} href={`/buyer/browse?category=${cat.id}`} className="mega-link">{cat.name || cat.category_name}</Link>
                               ))}
                             </div>
                           ))}

@@ -9,7 +9,7 @@ const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:80
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
 
 /* ─── Types ───────────────────────────────────────────────────────────── */
-interface Category    { id: number; category_name: string; product_type_id: number; }
+interface Category    { id: number; category_name?: string; name?: string; product_type_id: number; }
 interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
 interface ListingType { id: number; type_name: string; image?: string; product_types?: ProductType[]; }
 interface Product     {
@@ -539,7 +539,7 @@ export default function LandingPageClient() {
                                 >{pt.name}</Link>
                                 {pt.categories?.map(cat => (
                                   <Link key={cat.id} href={`/buyer/browse?category=${cat.id}`} className="lp-mega-link" onClick={() => setShowMegaMenu(false)}>
-                                    {cat.category_name}
+                                    {cat.name || cat.category_name}
                                   </Link>
                                 ))}
                               </div>
@@ -738,7 +738,7 @@ export default function LandingPageClient() {
                     <i className="bi bi-grid-fill" style={{ fontSize: '4rem', color: 'rgba(255,198,58,0.3)' }}></i>
                   </div>
                   <div className="cat-info">
-                    <h4 className="fw-800 mb-0">{cat.category_name}</h4>
+                    <h4 className="fw-800 mb-0">{cat.name || cat.category_name}</h4>
                     <small className="opacity-75">View Collections <i className="bi bi-arrow-right"></i></small>
                   </div>
                 </Link>

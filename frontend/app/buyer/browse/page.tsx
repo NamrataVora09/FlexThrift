@@ -47,7 +47,8 @@ interface TaxonomyCategory {
   id: number;
   product_type_id: number | null;
   product_type_ids: string | null;   // JSON array string e.g. '["8","9"]'
-  category_name: string;
+  category_name?: string;
+  name?: string;
   field_config?: string | null;
   applies_to?: string | null;
 }
@@ -333,7 +334,7 @@ export default function BrowsePage() {
     // Case 1: product type selected + taxonomy ready → use only taxonomy-mapped categories
     if (filters.productTypeIds.length > 0 && taxonomy?.categories?.length) {
       return visibleCategories
-        .map(c => ({ id: c.id, name: (c as any).name || c.category_name || '', field_config: c.field_config ?? undefined }))
+        .map(c => ({ id: c.id, name: c.name || c.category_name || '', field_config: c.field_config ?? undefined }))
         .filter(c => c.name);
     }
 
@@ -371,7 +372,7 @@ export default function BrowsePage() {
     return [];
   }, [visibleSubCategories, filterOptions, filters.categoryIds]);
 
-  // ── Dynamic attributes from field_config (deepest selected level wins) ────
+  // ── Dynamic attributes from field_config (merged from all selected levels) ──
   useEffect(() => {
     const parseAttrs = (fc: string | null | undefined): DynamicAttribute[] => {
       if (!fc) return [];
@@ -385,41 +386,50 @@ export default function BrowsePage() {
 
     if (!taxonomy) { setDynamicAttrs([]); return; }
 
-    // Sub-category level
-    if (filters.subCategoryIds.length > 0) {
-      for (const id of filters.subCategoryIds) {
-        const sub = taxonomy.sub_categories.find(s => String(s.id) === id);
-        const attrs = parseAttrs(sub?.field_config);
-        if (attrs.length) { setDynamicAttrs(attrs); return; }
-      }
-    }
-    // Category level
-    if (filters.categoryIds.length > 0) {
-      for (const id of filters.categoryIds) {
-        const cat = taxonomy.categories.find(c => String(c.id) === id);
-        const attrs = parseAttrs(cat?.field_config);
-        if (attrs.length) { setDynamicAttrs(attrs); return; }
-      }
-    }
-    // Listing type level
-    if (selectedListingType) {
-      const attrs = parseAttrs(selectedListingType.field_config);
-      if (attrs.length) { setDynamicAttrs(attrs); return; }
-    }
-
-    // Nothing granular selected — merge all visible categories + sub_categories
     const merged: Record<string, DynamicAttribute> = {};
-    [...visibleCategories, ...visibleSubCategories].forEach(item => {
-      parseAttrs((item as any).field_config ?? null).forEach((attr: DynamicAttribute) => {
+    const merge = (attrs: DynamicAttribute[]) => {
+      attrs.forEach(attr => {
         if (!merged[attr.name]) {
           merged[attr.name] = { ...attr };
         } else {
           const existOpts = parseOpts(merged[attr.name].options);
           const newOpts = parseOpts(attr.options);
-          merged[attr.name] = { ...merged[attr.name], options: Array.from(new Set([...existOpts, ...newOpts])) };
+          merged[attr.name] = { 
+            ...merged[attr.name], 
+            options: Array.from(new Set([...existOpts, ...newOpts])) 
+          };
         }
       });
-    });
+    };
+
+    // 1. Merge from selected sub-categories
+    if (filters.subCategoryIds.length > 0) {
+      filters.subCategoryIds.forEach(id => {
+        const sub = taxonomy.sub_categories.find(s => String(s.id) === id);
+        if (sub) merge(parseAttrs(sub.field_config));
+      });
+    }
+
+    // 2. Merge from selected categories
+    if (filters.categoryIds.length > 0) {
+      filters.categoryIds.forEach(id => {
+        const cat = taxonomy.categories.find(c => String(c.id) === id);
+        if (cat) merge(parseAttrs(cat.field_config));
+      });
+    }
+
+    // 3. Merge from selected listing type
+    if (selectedListingType) {
+      merge(parseAttrs(selectedListingType.field_config));
+    }
+
+    // 4. Fallback: if no specific filters or they have no attributes, merge from all visible items
+    if (Object.keys(merged).length === 0) {
+      [...visibleCategories, ...visibleSubCategories].forEach(item => {
+        merge(parseAttrs((item as any).field_config ?? null));
+      });
+    }
+
     setDynamicAttrs(Object.values(merged));
   }, [filters.subCategoryIds, filters.categoryIds, selectedListingType, taxonomy, visibleCategories, visibleSubCategories]);
 
@@ -610,7 +620,7 @@ export default function BrowsePage() {
   // Category chips (from taxonomy)
   filters.categoryIds.forEach(id => {
     const cat = taxonomy?.categories.find(c => String(c.id) === id);
-    if (cat) activeChips.push({ label: cat.category_name, key: 'categoryIds', val: id });
+    if (cat) activeChips.push({ label: cat.name || cat.category_name || '', key: 'categoryIds', val: id });
   });
   // Sub-category chips (from taxonomy)
   filters.subCategoryIds.forEach(id => {
@@ -1003,7 +1013,7 @@ export default function BrowsePage() {
                             <span style={{ color: '#acadad' }}>/</span>
                             <span style={{ color: filters.subCategoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' }}
                               onClick={() => { const nf = { ...filters, subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
-                              {cat.category_name}
+                              {cat.name || cat.category_name}
                             </span>
                           </>
                         ) : null;

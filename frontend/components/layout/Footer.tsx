@@ -117,17 +117,17 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <h2 className="text-3xl font-bold text-white mb-2.5">Flex Market</h2>
-            <p className="text-white text-sm leading-relaxed">{desc}</p>
+            <p className="text-white m-0! text-sm leading-relaxed">{desc}</p>
           </div>
 
           {/* Quick Links */}
           <div className=' w-full flex md:col-span-3 gap-10 md:gap-20 lg:gap-32 justify-start md:justify-evenly flex-wrap'>
             <div >
-              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-4">Quick Links</h5>
+              <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-[18px]!">Quick Links</h5>
               <ul className=" p-0!">
                 {quickLinks.map((l, i) => (
                   <li key={i}>
-                    <Link href={l.href} className="text-gray-400 text-sm hover:text-gold transition-colors duration-200">
+                    <Link href={l.href} className="text-gray-400 text-sm leading-relaxed hover:text-gold transition-colors duration-200">
                       {l.label}
                     </Link>
                   </li>
@@ -137,8 +137,8 @@ export default function Footer() {
 
             {/* Categories */}
             <div >
-              <h5 className="text-gold font-bold uppercase tracking-widest text-xs  mb-4 ">Categories</h5>
-              <ul className="space-y-2 p-0!">
+              <h5 className="text-gold font-bold uppercase tracking-widest text-xs  mb-[18px]!">Categories</h5>
+              <ul className=" p-0!">
                 <li>
                   <Link href="/buyer/browse" className="text-gray-400 text-sm hover:text-gold transition-colors duration-200">
                     All Products
@@ -148,7 +148,7 @@ export default function Footer() {
                   <li key={lt.id}>
                     <Link
                       href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
-                      className="text-gray-400 text-sm hover:text-gold transition-colors duration-200"
+                      className="text-gray-400 text-sm hover:text-gold leading-relaxed transition-colors duration-200"
                     >
                       {lt.type_name}
                     </Link>
@@ -159,11 +159,11 @@ export default function Footer() {
 
             {/* Policies */}
             <div>
-              <h5 className="text-gold font-bold uppercase tracking-widest text-xs  mb-4 ">Policies</h5>
-              <ul className="space-y-2 p-0!">
+              <h5 className="text-gold font-bold uppercase tracking-widest text-xs  mb-[18px]!">Policies</h5>
+              <ul className=" p-0!">
                 {policyLinks.map((l, i) => (
                   <li key={i}>
-                    <a href={l.href} className="text-gray-400 text-sm hover:text-gold transition-colors duration-200">
+                    <a href={l.href} className="text-gray-400  text-sm hover:text-gold transition-colors duration-200">
                       {l.label}
                     </a>
                   </li>
