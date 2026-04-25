@@ -164,17 +164,23 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                     const q = megaSearch.trim().toLowerCase();
 
                     // Build filtered groups per listing type
-                    const groups = listingTypes.map(lt => ({
-                      lt,
-                      items: (lt.product_types || []).flatMap(pt => {
-                        const ptMatch = !q || pt.name.toLowerCase().includes(q);
-                        const matchedCats = (pt.categories || []).filter(
-                          cat => !q || (cat.category_name || cat.name || '').toLowerCase().includes(q)
-                        );
-                        if (!ptMatch && matchedCats.length === 0) return [];
-                        return [{ pt, cats: ptMatch ? (pt.categories || []) : matchedCats }];
-                      }),
-                    })).filter(g => g.items.length > 0);
+                    // Listing type name match → show ALL its product types + categories
+                    // Otherwise filter by product type name and category names
+                    const groups = listingTypes.map(lt => {
+                      const ltMatch = !q || lt.type_name.toLowerCase().includes(q);
+                      return {
+                        lt,
+                        items: (lt.product_types || []).flatMap(pt => {
+                          if (ltMatch) return [{ pt, cats: pt.categories || [] }];
+                          const ptMatch = pt.name.toLowerCase().includes(q);
+                          const matchedCats = (pt.categories || []).filter(
+                            cat => (cat.category_name || cat.name || '').toLowerCase().includes(q)
+                          );
+                          if (!ptMatch && matchedCats.length === 0) return [];
+                          return [{ pt, cats: ptMatch ? (pt.categories || []) : matchedCats }];
+                        }),
+                      };
+                    }).filter(g => g.items.length > 0);
 
                     if (groups.length === 0) {
                       return (
@@ -229,6 +235,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                             </div>
                           </div>
                         ))}
+
                       </div>
                     );
                   })()}

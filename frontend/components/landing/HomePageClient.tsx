@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -101,7 +101,7 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
           </div>
         ) : (
           <div className="flex flex-col w-full">
-            {section.guides.map((guide, gi) => (
+            {section.guides.map((guide) => (
               <div key={guide.id} className=' mb-10'>
                 {guide.label && (
                   <div className="flex items-center justify-center gap-4 mb-8">
@@ -345,7 +345,7 @@ const CATEGORY_CARDS = [
 
 
 export default function HomePageClient() {
-  const { user, token, isLoading, isAuthenticated, login, register, verifyOtp, sendOtp } = useAuth();
+  const { user, isLoading, isAuthenticated, login, register, verifyOtp, sendOtp } = useAuth();
   const router = useRouter();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -411,7 +411,7 @@ export default function HomePageClient() {
       password: sidebarPassword,
       address: sidebarAddress,
       pin_code: sidebarPinCode,
-      user_type: sidebarMode === 'sell' ? 'seller' : sidebarMode === 'rent' ? 'buyer' : 'both',
+      user_type: sidebarMode === 'sell' ? 'seller' : 'buyer',
     });
     setSidebarLoading(false);
     if (res.success) {
@@ -557,12 +557,12 @@ export default function HomePageClient() {
             if (i !== cardIdx) return c;
             const updatedImgs = c.imgs.map(img => img === localUrl ? serverUrl : img);
             const updatedCard = { ...c, imgs: updatedImgs };
-            
+
             // Trigger persistence with the fresh 'next' array
             // We do it here to ensure we have the absolute latest state
             const fullNext = prev.map((pC, pI) => pI === i ? updatedCard : pC);
             persistCards(fullNext);
-            
+
             return updatedCard;
           });
           return next;
@@ -671,12 +671,12 @@ export default function HomePageClient() {
           </div>
 
 
-          <div className='w-[419px] h-[469px] sticky top-37.5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-white flex flex-col px-6 py-10 rounded-[15px] justify-start'>
+          <div className='w-[419px] h-[469px] max-w-[419px] max-h-[469px] min-w-[419px] min-h-[469px] sticky top-37.5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-white flex flex-col p-[30px] rounded-[15px] justify-start'>
 
             {/* ── Login form ── */}
             {sidebarView === 'listing' && (
               <>
-                <h5 style={{ fontWeight: 500, fontSize: 18, fontFamily: 'Maven Pro, sans-serif', marginBottom: 8}}>
+                <h5 style={{ fontWeight: 500, fontSize: 18, fontFamily: 'Maven Pro, sans-serif', marginBottom: 8 }}>
                   Start listing your product, it&apos;s free
                 </h5>
                 <p style={{ fontSize: 14, fontWeight: 500, color: '#000', marginBottom: 16 }}>
@@ -728,9 +728,9 @@ export default function HomePageClient() {
                   placeholder="Your username"
                   value={sidebarEmail}
                   onChange={e => setSidebarEmail(e.target.value)}
-                  style={{ width: '100%', borderRadius: 8, padding: '10px 12px', border: '1px solid #ddd', fontSize: 13, height: 40, marginBottom: 18, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  style={{ width: '100%', borderRadius: 8, padding: '0 12px', border: '1px solid #ddd', fontSize: 13, height: 40, marginBottom: 18, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
                 />
-                <div style={{ position: 'relative', marginBottom: 16 }}>
+                <div style={{ position: 'relative', marginBottom: 24 }}>
                   <input
                     type={showRegisterPassword ? 'text' : 'password'}
                     placeholder="Password"
@@ -746,13 +746,13 @@ export default function HomePageClient() {
                     style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 10, display: 'flex', alignItems: 'center' }}
                   >
                     {showRegisterPassword
-                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                     }
                   </button>
                 </div>
 
-                {sidebarError && <p style={{ color: '#ef4444', fontSize: 12, marginBottom: 10}}>{sidebarError}</p>}
+                {sidebarError && <p style={{ color: '#ef4444', fontSize: 12, marginBottom: 10 }}>{sidebarError}</p>}
 
                 <button
                   onClick={handleSidebarLogin}
@@ -800,9 +800,9 @@ export default function HomePageClient() {
                     <button type='button' tabIndex={-1} onClick={() => setShowLoginPassword(v => !v)}
                       style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#666', display: 'flex', alignItems: 'center' }}>
                       {showLoginPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
                       ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                       )}
                     </button>
                   </div>
@@ -962,13 +962,13 @@ export default function HomePageClient() {
                           )}
                         </div>
                       ))}
-                      
+
                       {/* Direct Upload "Add Image" button */}
                       <label className="aspect-[4/3] border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-[#ffc63a] hover:text-[#ffc63a] hover:bg-[#ffc63a]/5 transition-all cursor-pointer group relative">
                         {cardUploadLoading[`${ci}-${card.imgs.length}`] ? (
                           <div className="flex flex-col items-center">
-                             <div className="w-8 h-8 border-3 border-[#ffc63a] border-t-transparent rounded-full animate-spin mb-2"></div>
-                             <span className="text-[10px] font-bold uppercase">Uploading...</span>
+                            <div className="w-8 h-8 border-3 border-[#ffc63a] border-t-transparent rounded-full animate-spin mb-2"></div>
+                            <span className="text-[10px] font-bold uppercase">Uploading...</span>
                           </div>
                         ) : (
                           <>
