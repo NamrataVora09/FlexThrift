@@ -520,12 +520,12 @@ export default function ProductDetailClient({ product, images, similarProducts =
             {/* Brand info after price */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
               <div>
-                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Original Brand</div>
-                <div style={{ fontWeight: 400, fontSize: '0.95rem', color: '#9ca3af' }}>{product.orignal_brand || 'Premium Listing'}</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Original Brand</div>
+                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#9ca3af' }}>{product.orignal_brand || 'Premium Listing'}</div>
               </div>
               <div>
-                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Brand</div>
-                <div style={{ fontWeight: 400, fontSize: '0.95rem', color: '#9ca3af' }}>{product.seller_brand || '—'}</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Brand</div>
+                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#9ca3af' }}>{product.seller_brand || '—'}</div>
               </div>
             </div>
 
