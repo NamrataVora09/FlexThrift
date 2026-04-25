@@ -181,7 +181,7 @@ export default function BrowsePage() {
   const [priceInput, setPriceInput] = useState({ min: filters.minPrice, max: filters.maxPrice });
   const [dynamicAttrs, setDynamicAttrs] = useState<DynamicAttribute[]>([]);
   const [modalConfig, setModalConfig] = useState<{
-    type: 'brand' | 'color' | 'spec' | 'category' | 'size' | 'gender';
+    type: 'brand' | 'color' | 'spec' | 'category' | 'productType' | 'subCategory' | 'size' | 'gender';
     title: string;
     items: Array<{ id: string | number; name: string }>;
     selectedIds: string[];
@@ -461,12 +461,12 @@ export default function BrowsePage() {
     const apiParams = new URLSearchParams(sp.toString());
     apiParams.set('page', String(p));
 
-    // product_type_id is a UI concept; translate it for the browse API
+    // Translate product_type_id for the browse API
     const ptIds = (sp.get('product_type_id') || '').split(',').filter(Boolean);
-    if (ptIds.length > 0 && taxonomyRef.current) {
+    if (ptIds.length > 0) {
       const ptIdSet = new Set(ptIds);
 
-      if (!sp.get('category_id')) {
+      if (!sp.get('category_id') && taxonomyRef.current) {
         // Try to derive category_ids from the taxonomy relationship
         const derivedCatIds = taxonomyRef.current.categories
           .filter(cat => {
@@ -479,21 +479,23 @@ export default function BrowsePage() {
           .map(c => String(c.id));
 
         if (derivedCatIds.length > 0) {
-          // Category links exist → filter by derived category_ids
+          // Translation succeeded — use category_id, drop the product_type_id
           apiParams.set('category_id', derivedCatIds.join(','));
+          apiParams.delete('product_type_id');
         } else {
-          // No categories linked to this product type in taxonomy
-          // Fall back to filtering by product_type name directly (backend now supports this)
+          // No category link found — send product_type name AND keep product_type_id
+          // so the backend can use whichever it supports
           const ptNames = taxonomyRef.current.product_types
             .filter(pt => ptIdSet.has(String(pt.id)))
             .map(pt => pt.name);
           if (ptNames.length > 0) {
             apiParams.set('product_type', ptNames.join(','));
           }
+          // product_type_id stays in apiParams for direct backend filtering
         }
       }
+      // If taxonomy not loaded yet, product_type_id stays in params as-is
     }
-    apiParams.delete('product_type_id'); // not a native browse API param
 
     fetch(`${API_BASE}/browse?${apiParams}`)
       .then(r => r.json())
@@ -517,6 +519,16 @@ export default function BrowsePage() {
     setPriceInput({ min: f.minPrice, max: f.maxPrice });
     load(page, new URLSearchParams(searchParams.toString()));
   }, [searchParams, page]);
+
+  // When taxonomy loads after initial render and product_type_id is in the URL,
+  // re-run load so the translation to category_id can succeed.
+  useEffect(() => {
+    if (!taxonomy) return;
+    const ptIds = (searchParams.get('product_type_id') || '').split(',').filter(Boolean);
+    if (ptIds.length > 0) {
+      load(page, new URLSearchParams(searchParams.toString()));
+    }
+  }, [taxonomy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const navigate = (type: string, s: string, f: ActiveFilters) => {
     router.push(buildUrl(type, s, f), { scroll: false });
@@ -1216,7 +1228,9 @@ export default function BrowsePage() {
             if (modalConfig.type === 'brand') setFilter('brandIds', id);
             else if (modalConfig.type === 'color') setFilter('colors', id);
             else if (modalConfig.type === 'spec' && modalConfig.specKey) setSpecFilter(modalConfig.specKey, id);
+            else if (modalConfig.type === 'productType') setFilter('productTypeIds', id);
             else if (modalConfig.type === 'category') setFilter('categoryIds', id);
+            else if (modalConfig.type === 'subCategory') setFilter('subCategoryIds', id);
             else if (modalConfig.type === 'size') setFilter('sizes', id);
             else if (modalConfig.type === 'gender') setFilter('genders', id);
             setModalConfig(prev => {
@@ -1491,7 +1505,7 @@ interface EliteSidebarProps {
   applyPriceFilter: () => void;
   clearAllFilters: () => void;
   activeChips: { label: string; key: string }[];
-  onShowMore: (config: { type: 'brand' | 'color' | 'spec' | 'category' | 'size' | 'gender'; title: string; items: any[]; selectedIds: string[]; specKey?: string }) => void;
+  onShowMore: (config: { type: 'brand' | 'color' | 'spec' | 'category' | 'productType' | 'subCategory' | 'size' | 'gender'; title: string; items: any[]; selectedIds: string[]; specKey?: string }) => void;
   listingTypes: ListingType[];
   activeType: string;
   onTypeChange: (type: string) => void;
@@ -1639,7 +1653,7 @@ function EliteSidebar({
                 activeVals={filters.productTypeIds}
                 onSelect={(v) => setFilter('productTypeIds', v)}
                 onShowMore={visibleProductTypes.length > 8 ? () => onShowMore({
-                  type: 'category', title: 'PRODUCT TYPES',
+                  type: 'productType', title: 'PRODUCT TYPES',
                   items: visibleProductTypes.map(pt => ({ id: pt.id, name: pt.name })),
                   selectedIds: filters.productTypeIds,
                 }) : undefined}
@@ -1683,7 +1697,7 @@ function EliteSidebar({
                 activeVals={filters.subCategoryIds}
                 onSelect={(v) => setFilter('subCategoryIds', v)}
                 onShowMore={sidebarSubCategories.length > 8 ? () => onShowMore({
-                  type: 'category', title: 'SUB-CATEGORIES',
+                  type: 'subCategory', title: 'SUB-CATEGORIES',
                   items: sidebarSubCategories.map(s => ({ id: s.id, name: s.name })),
                   selectedIds: filters.subCategoryIds,
                 }) : undefined}

@@ -552,7 +552,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <button
                         onClick={() => setShowContactModal(true)}
-                        style={{ width: '100%', padding: '1rem', borderRadius: 100, background: '#0D0D0D', color: '#fff', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                        style={{ width: '100%', padding: '1rem', borderRadius: 10, background: '#ffc63a', color: '#fff', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
                         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
                         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                       >
@@ -560,7 +560,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       </button>
                       <button
                         onClick={() => router.push('/buyer/my-offers')}
-                        style={{ width: '100%', padding: '1rem', borderRadius: 100, border: '2px solid #E5E7EB', background: 'transparent', color: '#111827', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', cursor: 'pointer' }}
+                        style={{ width: '100%', padding: '1rem', borderRadius: 10, border: '2px solid #E5E7EB', background: 'transparent', color: '#111827', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', cursor: 'pointer' }}
                         onMouseEnter={e => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.transform = 'scale(1.02)'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
                       >

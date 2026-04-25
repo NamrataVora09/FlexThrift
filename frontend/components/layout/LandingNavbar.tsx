@@ -19,6 +19,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
 
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
   const [showMegaMenu, setShowMegaMenu] = useState(false);
+  const [megaSearch, setMegaSearch] = useState('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showAuthDropdown, setShowAuthDropdown] = useState(false);
 
@@ -114,10 +115,10 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
       </button>
 
       {/* Desktop nav */}
-      <div className={` flex w-full items-center grow ${showAuth ? 'justify-between' : 'justify-center'}`}>
-        <ul className={`flex items-center grow pt-4 ${showAuth ? 'justify-start gap-6' : 'justify-center gap-14'}  ml-10`}>
+      <div className={` flex w-full items-center grow ${showAuth ? 'justify-between' : 'justify-between'}`}>
+        <ul className={`flex items-center grow pt-4 ${showAuth ? 'justify-start gap-6' : 'justify-start gap-6'}  ml-10`}>
           {/* Mega menu trigger */}
-          <li ref={megaRef}>
+          <li ref={megaRef} className="relative">
             <a
               href="#"
               onClick={e => { e.preventDefault(); setShowMegaMenu(v => !v); }}
@@ -130,32 +131,107 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
 
             {showMegaMenu && (
               <div
-                className="fixed left-0 right-0 top-[90px] w-screen bg-white shadow-[0_10px_30px_rgba(0,0,0,0.1)] rounded-b-2xl px-28 py-10 z-[1060]"
-                onMouseLeave={() => setShowMegaMenu(false)}
+                className="absolute left-0 top-[58px] border w-[1200px] max-h-[560px] flex flex-col bg-white z-[1060] border-t border-gray-100 shadow-[0_25px_60px_rgba(0,0,0,0.1)]"
+                onMouseEnter={() => setShowMegaMenu(true)}
+                onMouseLeave={() => { setShowMegaMenu(false); setMegaSearch(''); }}
               >
-                <div className="flex  flex-wrap ">
-                  {listingTypes.slice(0, 3).map(lt => (
-                    <div key={lt.id} className='w-1/4'>
-                      <span className="font-bold text-[20px] text-base text-[#ef4444]  pb-2  inline-block">
-                        {lt.type_name}
-                      </span>
-                      <ul className="list-none p-0 space-y-3">
-                        {lt.product_types?.map(pt => (
-                          <li key={pt.id}>
-                            <Link
-                              href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
-                              className="font-light text-[0.95rem] text-black hover:text-gold transition-colors duration-200 block "
-                              onClick={() => setShowMegaMenu(false)}
-                            >
-                              {pt.name}
-                            </Link>
-                            
-                          </li>
+                {/* Search bar — small, top-right corner */}
+                <div className="flex-shrink-0 px-10 pt-3 pb-2 flex justify-end">
+                  <div className="relative w-52">
+                    <i className="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Search…"
+                      value={megaSearch}
+                      onChange={e => setMegaSearch(e.target.value)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-full pl-8 pr-7 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#ff3f6c] focus:ring-1 focus:ring-[#ff3f6c] transition-colors bg-gray-50"
+                    />
+                    {megaSearch && (
+                      <button
+                        onClick={() => setMegaSearch('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Scrollable content grouped by listing type */}
+                <div className="flex-1 overflow-y-auto px-10 pb-6">
+                  {(() => {
+                    const q = megaSearch.trim().toLowerCase();
+
+                    // Build filtered groups per listing type
+                    const groups = listingTypes.map(lt => ({
+                      lt,
+                      items: (lt.product_types || []).flatMap(pt => {
+                        const ptMatch = !q || pt.name.toLowerCase().includes(q);
+                        const matchedCats = (pt.categories || []).filter(
+                          cat => !q || (cat.category_name || cat.name || '').toLowerCase().includes(q)
+                        );
+                        if (!ptMatch && matchedCats.length === 0) return [];
+                        return [{ pt, cats: ptMatch ? (pt.categories || []) : matchedCats }];
+                      }),
+                    })).filter(g => g.items.length > 0);
+
+                    if (groups.length === 0) {
+                      return (
+                        <div className="text-center py-10 text-gray-400 text-sm">
+                          No results for &ldquo;{megaSearch}&rdquo;
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-6">
+                        {groups.map(({ lt, items }) => (
+                          <div key={lt.id}>
+                            {/* Listing type header */}
+                            <div className="flex items-center gap-3 mb-3">
+                              <Link
+                                href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
+                                className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 hover:text-gray-800 transition-colors"
+                                onClick={() => { setShowMegaMenu(false); setMegaSearch(''); }}
+                              >
+                                {lt.type_name}
+                              </Link>
+                              <div className="flex-1 h-px bg-gray-100" />
+                            </div>
+
+                            {/* Product types + categories in columns */}
+                            <div style={{ columns: '5 160px', gap: '2rem' }}>
+                              {items.map(({ pt, cats }) => (
+                                <div key={pt.id} style={{ breakInside: 'avoid', marginBottom: '1.25rem' }}>
+                                  <Link
+                                    href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}&product_type_id=${pt.id}`}
+                                    className="font-bold text-[12px] uppercase tracking-widest text-[#ff3f6c]! mb-1.5 inline-block hover:text-[#d4355a]! transition-colors"
+                                    onClick={() => { setShowMegaMenu(false); setMegaSearch(''); }}
+                                  >
+                                    {pt.name}
+                                  </Link>
+                                  <ul className="list-none p-0 space-y-[7px]">
+                                    {cats.map(cat => (
+                                      <li key={cat.id}>
+                                        <Link
+                                          href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}&product_type_id=${pt.id}&category_id=${cat.id}`}
+                                          className="font-normal text-[13px] text-gray-600 hover:text-black hover:font-semibold transition-all duration-200 block"
+                                          onClick={() => { setShowMegaMenu(false); setMegaSearch(''); }}
+                                        >
+                                          {cat.category_name || cat.name}
+                                        </Link>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         ))}
-                      </ul>
-                    </div>
-                  ))}
-                 
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -172,8 +248,8 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
 
         </ul>
 
-        {/* Auth dropdown — only on non-landing pages */}
-        { (
+        {/* Auth dropdown */}
+        {(
           <div className="relative" ref={authRef}>
             {isAuthenticated && user ? (
               <>
@@ -225,28 +301,25 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                   <div className='w-9 h-9 flex items-center justify-center bg-[#008080] text-white rounded-full font-bold text-xs'>
                     <i className="bi bi-person-fill"></i>
                   </div>
-                 {
-                  showAuth ?  <span>Login / Register</span>: <span>Register</span>
-                 }
+                  {showAuth ? <span>Login / Register</span> : <span>Register</span>}
                   <i className={`bi bi-chevron-down text-[0.7rem] transition-transform duration-300 ${showAuthDropdown ? 'rotate-180' : ''}`}></i>
                 </button>
 
                 {showAuthDropdown && (
                   <div className="absolute right-0 top-10 mt-3 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
-                    {
-                      showAuth && (
-                        <>
-                            <Link
-                      href="/login"
-                      className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
-                      onClick={() => setShowAuthDropdown(false)}
-                    >
-                      <i className="bi bi-box-arrow-in-right"></i>
-                      <span className="font-medium">Login</span>
-                    </Link>
-                    <div className="h-[1px] bg-gray-100 mx-4 my-1"></div>
-                      </>)
-                    }
+                    {showAuth && (
+                      <>
+                        <Link
+                          href="/login"
+                          className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                          onClick={() => setShowAuthDropdown(false)}
+                        >
+                          <i className="bi bi-box-arrow-in-right"></i>
+                          <span className="font-medium">Login</span>
+                        </Link>
+                        <div className="h-[1px] bg-gray-100 mx-4 my-1"></div>
+                      </>
+                    )}
                     <Link
                       href="/register"
                       className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
@@ -262,43 +335,6 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
           </div>
         )}
       </div>
-
-
-      {/* Mobile drawer
-      {mobileNavOpen && (
-        <div>
-          <form onSubmit={handleSearchSubmit}>
-            <i className="bi bi-search"></i>
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </form>
-          <Link href="/buyer/browse" onClick={() => setMobileNavOpen(false)}>All Products</Link>
-          {listingTypes.slice(0, 6).map(lt => (
-            <Link
-              key={lt.id}
-              href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
-              onClick={() => setMobileNavOpen(false)}
-            >
-              {lt.type_name}
-            </Link>
-          ))}
-          <hr />
-          {isAuthenticated && user ? (
-            <Link
-              href={user.role === 'super_admin' ? '/superadmin' : user.role === 'admin' ? '/admin' : '/buyer/dashboard'}
-              onClick={() => setMobileNavOpen(false)}
-            >
-              My Portal
-            </Link>
-          ) : (
-            <Link href="/login" onClick={() => setMobileNavOpen(false)}>Login / Register</Link>
-          )}
-        </div>
-      )} */}
     </nav>
   );
 }
