@@ -651,10 +651,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     </button>
 
                   </div>
-                  <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: '0.78rem', margin: 0 }}>
+                  {/* <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: '0.78rem', margin: 0 }}>
                     <i className="bi bi-shield-check me-1" style={{ color: '#22c55e' }}></i>
                     Active subscription required · Secure platform offer
-                  </p>
+                  </p> */}
                 </>
               )}
             </div>
