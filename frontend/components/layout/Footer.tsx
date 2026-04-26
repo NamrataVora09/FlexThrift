@@ -107,7 +107,7 @@ export default function Footer() {
         {isSuperAdmin && (
           <button
             onClick={openEditor}
-            className="absolute top-4 right-4 bg-gold text-black font-bold text-xs px-4 py-1.5 rounded-lg cursor-pointer z-10 hover:bg-gold-dark transition-colors"
+            className="absolute top-4 right-4 bg-gold text-white font-bold text-xs px-4 py-1.5 rounded-lg cursor-pointer z-10 hover:bg-gold-dark transition-colors"
           >
             ✏️ Edit Footer
           </button>

@@ -69,7 +69,7 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
       {/* Superadmin controls */}
       {isSuperAdmin && (
         <div className="absolute top-4 right-6 flex gap-2">
-          <button onClick={onEdit} className="bg-[#ffc63a] text-black text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-[#e6b035] transition-colors">
+          <button onClick={onEdit} className="bg-[#ffc63a] text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-[#e6b035] transition-colors">
             ✏️ Edit Section
           </button>
           <button onClick={onDelete} className="bg-red-500 text-white text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-red-600 transition-colors">
@@ -91,7 +91,7 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
                 {guide.label && (
                   <div className="flex items-center justify-center gap-3 mb-3">
                     <div className="w-[50px] h-[1.5px] bg-[#D7B467]"></div>
-                    <p className="text-center pt-2 text-sm font-semibold text-[#D7B467] uppercase tracking-widest"> {guide.label}</p>
+                    <p className="text-center  font-semibold text-[30px] text-[#D7B467] uppercase tracking-widest"> {guide.label}</p>
                     <div className="w-[50px] h-[1.5px] bg-[#D7B467]"></div>
                   </div>
                 )}
@@ -106,7 +106,7 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
                 {guide.label && (
                   <div className="flex items-center justify-center gap-4 mb-8">
                     <div className="w-[50px] h-[2px] bg-[#D7B467]"></div>
-                    <p className="text-center text-sm font-semibold text-[30px] text-[#D7B467] uppercase tracking-widest">{guide.label}</p>
+                    <p className="text-center  font-semibold text-[30px] text-[#D7B467] uppercase tracking-widest">{guide.label}</p>
                     <div className="w-[50px] h-[2px] bg-[#D7B467]"></div>
                   </div>
                 )}
@@ -187,7 +187,7 @@ function AotEditModal({ section, onClose, onSave }: {
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h5 className="font-bold text-base text-black">Edit Section</h5>
+          <h5 className="font-bold text-base text-white">Edit Section</h5>
           <button onClick={onClose} className="text-gray-400 hover:text-black text-2xl leading-none">&times;</button>
         </div>
 
@@ -847,7 +847,7 @@ export default function HomePageClient() {
             <button
               onClick={handleAddSection}
               disabled={savingAot}
-              className="flex items-center gap-2 bg-[#ffc63a] hover:bg-[#e6b035] disabled:opacity-50 text-black font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-sm"
+              className="flex items-center gap-2 bg-[#ffc63a] hover:bg-[#e6b035] disabled:opacity-50 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-sm"
             >
               {savingAot ? (
                 <>
