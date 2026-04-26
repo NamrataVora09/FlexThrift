@@ -791,14 +791,10 @@ export default function BrowsePage() {
           -webkit-appearance: none; appearance: none;
           width: 18px; height: 18px; border-radius: 50%;
           background: #ef4444; cursor: pointer;
-          transition: background 0.2s ease, transform 0.15s ease;
           box-shadow: 0 1px 4px rgba(239,68,68,0.35);
           border: 2px solid #fff;
         }
-        input[type="range"].em-range:hover::-webkit-slider-thumb {
-          background: #b91c1c;
-          transform: scale(1.15);
-        }
+
         input[type="range"].em-range::-moz-range-thumb {
           width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff;
           background: #ef4444; cursor: pointer;

@@ -1176,7 +1176,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
               <div className="modal-footer border-0 p-4 pt-3">
                 <button className="btn btn-light rounded-3" onClick={() => { setShowOffer(false); setOfferError(null); }}>Cancel</button>
                 <button
-                  style={{ background: '#FFC63A', color: '#111827', border: 'none', padding: '12px 30px', borderRadius: 10, fontWeight: 700, fontSize: '0.95rem', fontFamily: "'Maven Pro', sans-serif", cursor: 'pointer', transition: '0.3s' }}
+                  style={{ background: '#FFC63A', color: '#ffff', border: 'none', padding: '12px 30px', borderRadius: 10, fontWeight: 700, fontSize: '0.95rem', fontFamily: "'Maven Pro', sans-serif", cursor: 'pointer', transition: '0.3s' }}
                   onClick={handleOffer}
                   disabled={offerLoading || !offerForm.offer_price}
                 >
