@@ -400,18 +400,24 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
       {/* Breadcrumb */}
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 1.2rem', paddingTop: '3.5rem', paddingBottom: '2rem' }}>
-        <nav style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: 14, color: '#6b7280', flexWrap: 'wrap' }}>
-          <Link href="/" style={{ color: '#6b7280', textDecoration: 'none', transition: 'color 0.2s' }}>Home</Link>
-          <span style={{ color: '#6b7280' }}>/</span>
-          <Link href="/buyer/browse" style={{ color: '#6b7280', textDecoration: 'none' }}>Browse</Link>
-          {product.category && (
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', flexWrap: 'wrap' }}>
+          <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none', textTransform: 'capitalize' }}>Home</Link>
+          {product.listing_type && (
             <>
-              <span style={{ color: '#6b7280' }}>/</span>
-              <span style={{ color: '#6b7280' }}>{product.category}</span>
+              <span style={{ color: '#acadad' }}>/</span>
+              <Link href={`/buyer/browse?listing_type=${product.listing_type.toLowerCase()}`} style={{ color: '#5a5c5c', textDecoration: 'none', textTransform: 'capitalize' }}>
+                {product.listing_type_name || product.listing_type}
+              </Link>
             </>
           )}
-          <span style={{ color: '#6b7280' }}>/</span>
-          <span style={{ color: '#111827' }}>{product.title}</span>
+          {product.category && (
+            <>
+              <span style={{ color: '#acadad' }}>/</span>
+              <span style={{ color: '#5a5c5c', textTransform: 'capitalize' }}>{product.category}</span>
+            </>
+          )}
+          <span style={{ color: '#acadad' }}>/</span>
+          <span style={{ color: '#0c0f0f', textTransform: 'capitalize' }}>{product.title}</span>
         </nav>
       </div>
 
@@ -419,7 +425,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 1rem 3rem' }}>
 
         {/* Product layout — 2 columns */}
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-10 mb-10'>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-18 mb-10'>
 
           {/* LEFT: Image gallery */}
           <div style={{
@@ -483,16 +489,16 @@ export default function ProductDetailClient({ product, images, similarProducts =
             </div>
 
             {/* Title */}
-            <h1 style={{ fontSize: 32, fontWeight: 700, color: '#111827', marginBottom: 16, lineHeight: 1.3, fontFamily: "'Maven Pro', sans-serif" }}>
+            <h1 style={{ fontSize: 32, fontWeight: 700, color: '#111827' , marginBottom:0, lineHeight: 1.3, fontFamily: "'Maven Pro', sans-serif" }}>
               {product.title}
             </h1>
 
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom:10 }}>
               {/* <div style={{ display: 'flex', gap: 3, color: '#FFC63A', fontSize: '0.9rem' }}>
                 {[1, 2, 3, 4, 5].map(i => <span key={i} style={{ opacity: i <= Math.min(ratingCount, 5) ? 1 : 0.25 }}>★</span>)}
               </div> */}
-              <span style={{ color: '#6b7280', fontSize: '0.82rem' }}>{ratingCount} seller points</span>
+              <span style={{ color: '#3b404a', fontSize: '14px' }}>{ratingCount} seller points</span>
             </div>
 
 
@@ -521,11 +527,11 @@ export default function ProductDetailClient({ product, images, similarProducts =
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
               <div>
                 <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Original Brand</div>
-                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#9ca3af' }}>{product.orignal_brand || 'Premium Listing'}</div>
+                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#3b404a' }}>{product.orignal_brand || 'Premium Listing'}</div>
               </div>
               <div>
                 <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Brand</div>
-                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#9ca3af' }}>{product.seller_brand || '—'}</div>
+                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#3b404a' }}>{product.seller_brand || '—'}</div>
               </div>
             </div>
 
@@ -536,20 +542,12 @@ export default function ProductDetailClient({ product, images, similarProducts =
             <div style={{ marginBottom: 0 }}>
               {offerSuccess ? (
                 <div>
-                  <div style={{ borderRadius: 32, padding: '2rem', marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#FFC63A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <i className="bi bi-check-lg" style={{ color: '#000', fontSize: '1.4rem' }}></i>
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: '1.4rem', color: '#111827', fontFamily: "'Maven Pro', sans-serif" }}>Offer Submitted!</div>
-                        <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>The seller will review your offer shortly.</div>
-                      </div>
-                    </div>
+                  <div style={{ borderRadius: 32, marginBottom: '2rem' }}>
+                
 
                     <hr style={{ border: 'none', borderTop: '1px solid #E5E7EB', margin: '0 -2rem 1.5rem', opacity: 0.4 }} />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem',  marginBottom:24}}>
                       <button
                         onClick={() => setShowContactModal(true)}
                         style={{ width: '100%', padding: '1rem', borderRadius: 10, background: '#ffc63a', color: '#fff', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
@@ -566,6 +564,15 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       >
                         View Offer
                       </button>
+                    </div>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#d6b06b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className="bi bi-check-lg" style={{ color: '#ffff', fontSize: '1.4rem' }}></i>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '1.4rem', color: '#111827', fontFamily: "'Maven Pro', sans-serif" }}>Offer Submitted!</div>
+                        <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>The seller will review your offer shortly.</div>
+                      </div>
                     </div>
                   </div>
 

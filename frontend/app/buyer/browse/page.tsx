@@ -394,9 +394,9 @@ export default function BrowsePage() {
         } else {
           const existOpts = parseOpts(merged[attr.name].options);
           const newOpts = parseOpts(attr.options);
-          merged[attr.name] = { 
-            ...merged[attr.name], 
-            options: Array.from(new Set([...existOpts, ...newOpts])) 
+          merged[attr.name] = {
+            ...merged[attr.name],
+            options: Array.from(new Set([...existOpts, ...newOpts]))
           };
         }
       });
@@ -557,7 +557,7 @@ export default function BrowsePage() {
       const next = { ...prev, [key]: updated };
       // Cascade: selecting a parent level clears children
       if (key === 'productTypeIds') { next.categoryIds = []; next.subCategoryIds = []; next.specs = {}; }
-      if (key === 'categoryIds')    { next.subCategoryIds = []; next.specs = {}; }
+      if (key === 'categoryIds') { next.subCategoryIds = []; next.specs = {}; }
       if (key === 'subCategoryIds') { next.specs = {}; }
       setPage(1);
       navigate(activeType, search, next);
@@ -675,6 +675,7 @@ export default function BrowsePage() {
   const sortedProducts = useMemo(() => {
     if (!data?.products) return [];
     const prods = [...data.products];
+    console.log(prods);
     if (sortBy === 'price_asc') return prods.sort((a, b) => getProductPrice(a) - getProductPrice(b));
     if (sortBy === 'price_desc') return prods.sort((a, b) => getProductPrice(b) - getProductPrice(a));
     if (sortBy === 'newest') return prods.sort((a, b) => b.id - a.id);
@@ -800,6 +801,32 @@ export default function BrowsePage() {
           background: #ef4444; cursor: pointer;
           transition: background 0.2s ease;
           box-shadow: 0 1px 4px rgba(239,68,68,0.35);
+        }
+
+        /* Dual-thumb range slider */
+        .dual-range-thumb {
+          position: absolute; width: 100%; height: 4px;
+          top: 50%; transform: translateY(-50%);
+          pointer-events: none; background: transparent; outline: none;
+          -webkit-appearance: none; appearance: none;
+        }
+        .dual-range-thumb::-webkit-slider-runnable-track {
+          background: transparent; height: 4px;
+        }
+        .dual-range-thumb::-webkit-slider-thumb {
+          pointer-events: all; width: 18px; height: 18px;
+          border-radius: 50%; background: #ef4444; border: 2px solid #fff;
+          cursor: grab; -webkit-appearance: none;
+          box-shadow: 0 1px 4px rgba(239,68,68,0.35);
+          margin-top: -7px;
+        }
+        .dual-range-thumb::-moz-range-track {
+          background: transparent; height: 4px;
+        }
+        .dual-range-thumb::-moz-range-thumb {
+          pointer-events: all; width: 18px; height: 18px;
+          border-radius: 50%; background: #ef4444; border: 2px solid #fff;
+          cursor: grab; box-shadow: 0 1px 4px rgba(239,68,68,0.35);
         }
 
         /* Price inputs */
@@ -989,7 +1016,7 @@ export default function BrowsePage() {
 
                     {/* Breadcrumbs */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', flexWrap: 'nowrap' }}>
-                      <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none' }}>Home</Link>
+                      <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none' ,textTransform: 'capitalize'}}>Home</Link>
 
                       {activeType && (
                         <>
@@ -1006,7 +1033,7 @@ export default function BrowsePage() {
                         return pt ? (
                           <>
                             <span style={{ color: '#acadad' }}>/</span>
-                            <span style={{ color: filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' }}
+                            <span  style={{ color: filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' ,textTransform: 'capitalize' }}
                               onClick={() => { const nf = { ...filters, categoryIds: [], subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
                               {pt.name}
                             </span>
@@ -1019,7 +1046,7 @@ export default function BrowsePage() {
                         return cat ? (
                           <>
                             <span style={{ color: '#acadad' }}>/</span>
-                            <span style={{ color: filters.subCategoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' }}
+                            <span style={{ color: filters.subCategoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' ,textTransform: 'capitalize'}}
                               onClick={() => { const nf = { ...filters, subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
                               {cat.name || cat.category_name}
                             </span>
@@ -1032,7 +1059,7 @@ export default function BrowsePage() {
                         return sub ? (
                           <>
                             <span style={{ color: '#acadad' }}>/</span>
-                            <span style={{ color: '#0c0f0f' }}>{sub.name}</span>
+                            <span style={{ color: '#0c0f0f' ,textTransform: 'capitalize'}} >{sub.name}</span>
                           </>
                         ) : null;
                       })()}
@@ -1427,6 +1454,42 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
             </span>
             {isRent ? 'Rent' : 'Buy'}
           </div>
+          <div
+            className="absolute top-3 right-3 z-[4] bg-black  w-8 h-8 pt-1.5 flex items-center justify-center    rounded-full  text-[#0c0f0f]  select-none"
+
+            title={tooltipText}
+          >
+            <button
+              className={``}
+              onClick={(e) => onWishlist(p, e)}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 20, color: '#ef4444', fontVariationSettings: wishlisted ? "'FILL' 1, 'wght' 600" : "'FILL' 0, 'wght' 400" }}
+              >
+                favorite
+              </span>
+            </button>
+
+          </div>
+          {
+            (p.seller_brand || p.brand_name || p.brand) &&
+            (
+              <div
+                className="absolute bottom-0  left-0 z-[4]  bg-black/50  w-full h-8 pt-1 flex items-center justify-center    rounded-b-2xl  text-[#0c0f0f]  select-none"
+
+                title={tooltipText}
+              >
+                {(
+                  <p className=" font-semibold text-white truncate m-0! ">
+                    {p.seller_brand || p.brand_name || p.brand}
+                  </p>
+                )}
+              </div>
+            )
+          }
+
+
 
           {/* Image dots */}
           {images.length > 1 && (
@@ -1441,7 +1504,7 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
             </div>
           )}
 
-          {/* Wishlist button */}
+          {/* Wishlist button
           <button
             className={`wish-btn absolute bottom-4 left-1/2 z-[3] flex items-center gap-[7px] px-5 py-[9px] rounded-full! text-[0.82rem] font-bold border-none cursor-pointer whitespace-nowrap backdrop-blur-sm shadow-xl ${wishlisted ? 'bg-[#FFC107] text-[#3d2b00]' : 'bg-[rgba(12,15,15,0.88)] text-white'}`}
             onClick={(e) => onWishlist(p, e)}
@@ -1453,7 +1516,7 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
               favorite
             </span>
             {wishlisted ? 'Wishlisted' : 'Wishlist'}
-          </button>
+          </button> */}
         </div>
 
         {/* ── Product info ── */}
@@ -1462,9 +1525,13 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
             <h3 className="text-lg font-bold! text-[#0c0f0f] text-[1.125rem]! mb-1 truncate" style={{ fontFamily: 'Manrope, sans-serif', letterSpacing: '-0.02em' }}>
               {p.title}
             </h3>
-            <p className="text-sm text-[#5a5c5c]">
-              {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : ' '}
-            </p>
+
+            <div className='flex  justify-between'>
+              <p className="text-sm text-[#5a5c5c] m-0! mb-10">
+                {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : ' '}
+              </p>
+
+            </div>
           </div>
           <div className="flex-shrink-0 flex flex-col  items-end">
             {isRent ? (
@@ -1474,9 +1541,11 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
             ) : (
               <>
                 <span className="font-bold text-[#FFC107]">₹{sellingPrice.toLocaleString('en-IN')}</span>
-                {hasDiscount && (
-                  <span className="text-xs text-[#acadad] line-through">₹{originalPrice.toLocaleString('en-IN')}</span>
-                )}
+                <p className="text-xs font-semibold text-white px-2  py-1 rounded-2xl bg-[#d6b06b] truncate">
+                  {p.orignal_brand
+                    ? p.orignal_brand.charAt(0).toUpperCase() + p.orignal_brand.slice(1)
+                    : 'Premium Listings'}
+                </p>
               </>
             )}
           </div>
@@ -1487,6 +1556,19 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
 }
 
 // ── Elite Sidebar Component ────────────────────────────────────────────────────
+// ── Attribute filter render config ───────────────────────────────────────────
+// Maps field_config attribute types → how they render in the sidebar.
+// To enable a type: uncomment its entry — no rendering code changes needed.
+// Supported render strategies:
+//   'picklist' → checkbox list of discrete options
+//   'text'     → free-text search input
+//   'numeric'  → single range slider
+const SIDEBAR_ATTR_CONFIG: Record<string, 'picklist' | 'text' | 'numeric'> = {
+  picklist: 'picklist',   // ✓ active: shown as checkbox list
+  // text:    'text',     // ○ disabled: shown as text input     (uncomment to enable)
+  // numeric: 'numeric',  // ○ disabled: shown as range slider   (uncomment to enable)
+};
+
 interface EliteSidebarProps {
   filters: ActiveFilters;
   priceInput: { min: string; max: string };
@@ -1517,7 +1599,6 @@ function EliteSidebar({
     listingType: true, productType: true, category: true, subCategory: true,
     gender: true, color: true, brand: true, originalBrand: true, price: true, size: false,
   });
-  const [focusedField, setFocusedField] = useState<'min' | 'max'>('max');
   const toggle = (k: string) => setOpen(p => ({ ...p, [k]: !p[k] }));
 
   const [sectionSearch, setSectionSearch] = useState<Record<string, string>>({});
@@ -1739,54 +1820,84 @@ function EliteSidebar({
       {/* ── 7. Price ── */}
       <div className="em-sidebar-section">
         <SectionTitle id="price" label="Price" />
-        {open.price && (
-          <div>
-            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#ef4444', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Adjusting {focusedField === 'min' ? 'Minimum' : 'Maximum'} Price
-            </div>
-            <input
-              type="range" className="em-range"
-              min={filterOptions?.price_range?.min_price || 0}
-              max={filterOptions?.price_range?.max_price || 100000}
-              step={100}
-              value={focusedField === 'min'
-                ? (priceInput.min || filterOptions?.price_range?.min_price || 0)
-                : (priceInput.max || filterOptions?.price_range?.max_price || 100000)
-              }
-              onChange={(e) => {
-                if (focusedField === 'min') {
-                  const val = Math.min(Number(e.target.value), Number(priceInput.max || filterOptions?.price_range?.max_price || 100000));
-                  setPriceInput({ ...priceInput, min: String(val) });
-                } else {
-                  const val = Math.max(Number(e.target.value), Number(priceInput.min || filterOptions?.price_range?.min_price || 0));
-                  setPriceInput({ ...priceInput, max: String(val) });
-                }
-              }}
-              onMouseUp={applyPriceFilter} onTouchEnd={applyPriceFilter}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#5a5c5c', fontSize: '0.75rem' }}>₹</span>
-                <input type="number" className="em-price-inp" placeholder="Min" value={priceInput.min}
-                  onFocus={() => setFocusedField('min')}
-                  onChange={(e) => setPriceInput({ ...priceInput, min: e.target.value })}
-                  onBlur={applyPriceFilter} onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={0}
-                  style={{ border: focusedField === 'min' ? '1px solid #FFC107' : 'none' }}
+        {open.price && (() => {
+          const rangeMin = filterOptions?.price_range?.min_price ?? 0;
+          const rangeMax = filterOptions?.price_range?.max_price ?? 100000;
+          const step = 100;
+          const curMin = Number(priceInput.min) || rangeMin;
+          const curMax = Number(priceInput.max) || rangeMax;
+          const range = rangeMax - rangeMin || 1;
+          const leftPct = ((curMin - rangeMin) / range) * 100;
+          const rightPct = ((curMax - rangeMin) / range) * 100;
+          return (
+            <div>
+              {/* Dual-thumb track */}
+              <div style={{ position: 'relative', height: 28, marginBottom: 14 }}>
+                {/* Grey track */}
+                <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', height: 4, width: '100%', borderRadius: 9999, background: '#e7e8e8' }} />
+                {/* Red fill between thumbs */}
+                <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', height: 4, borderRadius: 9999, background: '#ef4444', left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
+                {/* Min thumb */}
+                <input
+                  type="range"
+                  className="dual-range-thumb"
+                  style={{ zIndex: curMin >= curMax - step ? 5 : 3 }}
+                  min={rangeMin} max={rangeMax} step={step}
+                  value={curMin}
+                  onChange={(e) => {
+                    const val = Math.min(Number(e.target.value), curMax - step);
+                    setPriceInput({ ...priceInput, min: String(val) });
+                  }}
+                  onMouseUp={applyPriceFilter}
+                  onTouchEnd={applyPriceFilter}
+                />
+                {/* Max thumb */}
+                <input
+                  type="range"
+                  className="dual-range-thumb"
+                  style={{ zIndex: 4 }}
+                  min={rangeMin} max={rangeMax} step={step}
+                  value={curMax}
+                  onChange={(e) => {
+                    const val = Math.max(Number(e.target.value), curMin + step);
+                    setPriceInput({ ...priceInput, max: String(val) });
+                  }}
+                  onMouseUp={applyPriceFilter}
+                  onTouchEnd={applyPriceFilter}
                 />
               </div>
-              <span style={{ color: '#5a5c5c' }}>to</span>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#5a5c5c', fontSize: '0.75rem' }}>₹</span>
-                <input type="number" className="em-price-inp" placeholder="Max" value={priceInput.max}
-                  onFocus={() => setFocusedField('max')}
-                  onChange={(e) => setPriceInput({ ...priceInput, max: e.target.value })}
-                  onBlur={applyPriceFilter} onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={0}
-                  style={{ border: focusedField === 'max' ? '1px solid #FFC107' : 'none' }}
-                />
+              {/* Price labels above inputs */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#5a5c5c', marginBottom: 8, fontWeight: 600 }}>
+                <span>₹{curMin.toLocaleString('en-IN')}</span>
+                <span>₹{curMax.toLocaleString('en-IN')}</span>
+              </div>
+              {/* Min / Max number inputs */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#5a5c5c', fontSize: '0.75rem' }}>₹</span>
+                  <input type="number" className="em-price-inp" placeholder="Min" value={priceInput.min}
+                    onChange={(e) => setPriceInput({ ...priceInput, min: e.target.value })}
+                    onBlur={applyPriceFilter} onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={rangeMin}
+                    style={{ border: '1px solid #e7e8e8' }}
+                    onFocus={(e) => { e.currentTarget.style.border = '1px solid #FFC107'; }}
+                    onBlurCapture={(e) => { e.currentTarget.style.border = '1px solid #e7e8e8'; }}
+                  />
+                </div>
+                <span style={{ color: '#acadad', fontSize: '0.75rem', fontWeight: 700 }}>—</span>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#5a5c5c', fontSize: '0.75rem' }}>₹</span>
+                  <input type="number" className="em-price-inp" placeholder="Max" value={priceInput.max}
+                    onChange={(e) => setPriceInput({ ...priceInput, max: e.target.value })}
+                    onBlur={applyPriceFilter} onKeyDown={(e) => e.key === 'Enter' && applyPriceFilter()} min={rangeMin}
+                    style={{ border: '1px solid #e7e8e8' }}
+                    onFocus={(e) => { e.currentTarget.style.border = '1px solid #FFC107'; }}
+                    onBlurCapture={(e) => { e.currentTarget.style.border = '1px solid #e7e8e8'; }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* ── 8. Brand ── */}
@@ -1834,44 +1945,95 @@ function EliteSidebar({
       )}
 
       {/* ── 10. Dynamic Attributes (from field_config of selected level) ── */}
-      {dynamicAttrs.map((attr) => {
-        const opts = Array.isArray(attr.options)
-          ? attr.options
-          : (typeof attr.options === 'string' ? attr.options.split(',').map(s => s.trim()).filter(Boolean) : []);
-        const section = `dyn_${attr.name}`;
-        const allItems = opts.map((o: string) => ({ value: o, label: o }));
-        const filtered = filterBySearch(allItems, section);
-        return (
-          <div key={attr.name} className="em-sidebar-section">
-            <SectionTitle id={section} label={attr.name} count={(filters.specs[attr.name] || []).length} />
-            {open[section] !== false && (
-              opts.length > 0 ? (
-                <>
-                  <InlineSearch section={section} placeholder={`Search ${attr.name}…`} />
-                  <CheckboxGroup
-                    items={filtered}
-                    activeVals={filters.specs[attr.name] || []}
-                    onSelect={(v) => setSpecFilter(attr.name, v)}
-                    onShowMore={() => onShowMore({
-                      type: 'spec', title: attr.name, specKey: attr.name,
-                      items: opts.map(o => ({ id: o, name: o })),
-                      selectedIds: filters.specs[attr.name] || [],
-                    })}
+      {/* Only types listed in SIDEBAR_ATTR_CONFIG are rendered.            */}
+      {/* Extend SIDEBAR_ATTR_CONFIG to enable text / numeric without       */}
+      {/* changing any rendering logic below.                               */}
+      {dynamicAttrs
+        .filter(attr => attr.type in SIDEBAR_ATTR_CONFIG)
+        .map((attr) => {
+          const renderAs = SIDEBAR_ATTR_CONFIG[attr.type];
+          const opts = Array.isArray(attr.options)
+            ? attr.options
+            : (typeof attr.options === 'string' ? attr.options.split(',').map(s => s.trim()).filter(Boolean) : []);
+          const section = `dyn_${attr.name}`;
+
+          /* ── picklist: checkbox list ── */
+          if (renderAs === 'picklist') {
+            const allItems = opts.map((o: string) => ({ value: o, label: o }));
+            const filtered = filterBySearch(allItems, section);
+            return (
+              <div key={attr.name} className="em-sidebar-section">
+                <SectionTitle id={section} label={attr.name} count={(filters.specs[attr.name] || []).length} />
+                {open[section] !== false && opts.length > 0 && (
+                  <>
+                    <InlineSearch section={section} placeholder={`Search ${attr.name}…`} />
+                    <CheckboxGroup
+                      items={filtered}
+                      activeVals={filters.specs[attr.name] || []}
+                      onSelect={(v) => setSpecFilter(attr.name, v)}
+                      onShowMore={() => onShowMore({
+                        type: 'spec', title: attr.name, specKey: attr.name,
+                        items: opts.map(o => ({ id: o, name: o })),
+                        selectedIds: filters.specs[attr.name] || [],
+                      })}
+                    />
+                  </>
+                )}
+              </div>
+            );
+          }
+
+          /* ── text: free-text input ── */
+          if (renderAs === 'text') {
+            return (
+              <div key={attr.name} className="em-sidebar-section">
+                <SectionTitle id={section} label={attr.name} count={(filters.specs[attr.name] || []).length} />
+                {open[section] !== false && (
+                  <input
+                    type="text"
+                    className="em-price-inp"
+                    style={{ border: '1px solid #acadad', borderRadius: 10, paddingLeft: 12 }}
+                    placeholder={`Search ${attr.name}…`}
+                    value={filters.specs[attr.name]?.[0] || ''}
+                    onChange={(e) => setSpecFilter(attr.name, e.target.value)}
                   />
-                </>
-              ) : (
-                <input
-                  type="text" className="em-price-inp"
-                  style={{ border: '1px solid #acadad', borderRadius: 10, paddingLeft: 12 }}
-                  placeholder={`Enter ${attr.name}`}
-                  value={filters.specs[attr.name]?.[0] || ''}
-                  onChange={(e) => setSpecFilter(attr.name, e.target.value)}
-                />
-              )
-            )}
-          </div>
-        );
-      })}
+                )}
+              </div>
+            );
+          }
+
+          /* ── numeric: range slider ── */
+          if (renderAs === 'numeric') {
+            const numMin = 0;
+            const numMax = 100000;
+            const step = 1;
+            const curVal = Number(filters.specs[attr.name]?.[0]) || numMin;
+            return (
+              <div key={attr.name} className="em-sidebar-section">
+                <SectionTitle id={section} label={attr.name} count={(filters.specs[attr.name] || []).length} />
+                {open[section] !== false && (
+                  <div>
+                    <input
+                      type="range"
+                      className="em-range"
+                      min={numMin} max={numMax} step={step}
+                      value={curVal}
+                      onChange={(e) => setSpecFilter(attr.name, e.target.value)}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#5a5c5c', fontWeight: 600 }}>
+                      <span>{numMin}</span>
+                      <span style={{ fontWeight: 800, color: '#0c0f0f' }}>{curVal}</span>
+                      <span>{numMax}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return null;
+        })}
+
     </div>
   );
 }

@@ -105,36 +105,45 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
               <div key={guide.id} className=' mb-10'>
                 {guide.label && (
                   <div className="flex items-center justify-center gap-4 mb-8">
-                    <div className="w-[50px] h-[2px] bg-[#D7B467]"></div>
-                    <p className="text-center  font-semibold text-[30px] text-[#D7B467] uppercase tracking-widest">{guide.label}</p>
-                    <div className="w-[50px] h-[2px] bg-[#D7B467]"></div>
+                    <div className="w-[50px] h-[2px] bg-[#d6b06b]"></div>
+                    <p className="text-center  font-semibold text-[30px] text-[#d6b06b] uppercase tracking-widest">{guide.label}</p>
+                    <div className="w-[50px] h-[2px] bg-[#d6b06b]"></div>
                   </div>
                 )}
 
                 {guide.steps.length > 0 ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-[4fr_5fr] gap-12 w-full items-center">
-                    {/* Video — swaps to right when this guide is reversed */}
-                    <div className={`min-w-0 ${guide.reversed ? 'lg:order-2' : 'lg:order-1'}`}>{videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}</div>
-
-                    {/* Steps — swaps to left when this guide is reversed */}
-                    <div className={`flex flex-col w-full ${guide.reversed ? 'lg:order-1' : 'lg:order-2'}`}>
-                      {guide.steps.map((s, idx) => (
-                        <div key={idx} className="flex gap-4  justify-start items-start text-left w-full min-w-0">
-                          {/* Circle + connector line */}
-                          <div className="flex flex-col items-center shrink-0">
-                            <p className="bg-[#d6b06b] text-[18px]! text-white rounded-full py-2.5 px-3 leading-none m-0!">
-                              {idx + 1}
-                            </p>
-                            {idx < guide.steps.length - 1 && (
-                              <div className="w-[2px] flex-1 min-h-[48px] bg-black opacity-40 my-1 " />
-                            )}
-                          </div>
-                          <h4 className="text-[16px]! text-gray-500 leading-relaxed flex-1 break-words ">
-                            {s.desc}
-                          </h4>
+                  <div className={`grid grid-cols-1 gap-12 w-full items-center ${guide.reversed ? 'lg:grid-cols-[5fr_4fr]' : 'lg:grid-cols-[4fr_5fr]'}`}>
+                    {guide.reversed ? (
+                      <>
+                        <div className="flex flex-col w-full">
+                          {guide.steps.map((s, idx) => (
+                            <div key={idx} className="flex gap-4 justify-start items-start text-left w-full min-w-0">
+                              <div className="flex flex-col items-center shrink-0">
+                                <p className="bg-[#d6b06b] text-[18px]! text-white rounded-full py-2.5 px-3 leading-none m-0!">{idx + 1}</p>
+                                {idx < guide.steps.length - 1 && <div className="w-[2px] flex-1 min-h-[48px] bg-black opacity-40 my-1" />}
+                              </div>
+                              <h4 className="text-[16px]! text-black! font-[poppins]! font-light! leading-[1.7] flex-1 break-words" dangerouslySetInnerHTML={{ __html: s.desc }}></h4>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                        <div className="min-w-0">{videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="min-w-0">{videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}</div>
+                        <div className="flex flex-col w-full">
+                          {guide.steps.map((s, idx) => (
+                            <div key={idx} className="flex gap-4 justify-start items-start text-left w-full min-w-0">
+                              <div className="flex flex-col items-center shrink-0">
+                                <p className="bg-[#d6b06b] text-[18px]! text-white rounded-full py-2.5 px-3 leading-none m-0!">{idx + 1}</p>
+                                {idx < guide.steps.length - 1 && <div className="w-[2px] flex-1 min-h-[48px] bg-black opacity-40 my-1" />}
+                              </div>
+                              <h4 className="text-[16px]! font-[poppins]!  text-black! font-light! leading-[1.7] flex-1 break-words" dangerouslySetInnerHTML={{ __html: s.desc }}></h4>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="max-w-2xl mx-auto min-w-0">{videoBlock(guide.videoUrl, guide.label, isSuperAdmin)}</div>
@@ -356,7 +365,7 @@ export default function HomePageClient() {
       if (user.role === 'admin') router.replace('/admin');
       else if (user.role === 'delivery') router.replace('/delivery');
       else if (user.user_type === 'seller') router.replace('/seller');
-      else if (user.user_type === 'buyer' || user.role === 'both') router.replace('/buyer/dashboard');
+      else if (user.user_type === 'buyer' || user.role === 'both') router.replace('/buyer/browse');
     }
   }, [isLoading, isAuthenticated, user]);
 
@@ -436,7 +445,17 @@ export default function HomePageClient() {
     setSidebarLoading(true);
     const res = await login(sidebarEmail, sidebarPassword);
     setSidebarLoading(false);
-    if (!res.success) setSidebarError(res.message || 'Login failed');
+    if (!res.success) { setSidebarError(res.message || 'Login failed'); return; }
+    try {
+      const u = JSON.parse(localStorage.getItem('flex_user') || '{}');
+      const role = u.role || u.user_type || '';
+      if (role === 'seller') router.push('/seller');
+      else if (role === 'admin') router.push('/admin');
+      else if (role === 'superadmin') router.push('/superadmin');
+      else router.push('/buyer/browse');
+    } catch {
+      router.push('/buyer/browse');
+    }
   };
 
   // Sidebar login: redirects based on Buy / Sell selection
@@ -628,7 +647,7 @@ export default function HomePageClient() {
               <Link
                 key={cat.name}
                 href={`/buyer/browse?listing_type=${cat.slug}`}
-                className={`flex ${i % 2 == 1 ? 'flex-row-reverse' : ''} h-[380px] rounded-lg overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] group relative`}
+                className={`flex ${i % 2 == 1 ? 'flex-row-reverse' : ''} h-[390px] rounded-lg overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] group relative`}
               >
                 {/* Left: category name — centered vertically & horizontally */}
                 <div className="w-[30%] shrink-0 flex items-center justify-center bg-[#e7efe5] z-10 px-4">
@@ -636,11 +655,11 @@ export default function HomePageClient() {
                 </div>
 
                 {/* Right: single auto-scrolling image */}
-                <div className="relative flex-1 overflow-hidden">
+                <div className="relative w-full h-full flex-1 overflow-hidden">
                   <img
                     src={cat.imgs[catImgIdx[i]]}
                     alt={cat.name}
-                    className="w-full h-full object-cover transition-opacity duration-500"
+                    className="w-full h-full min-h-[400px] object-cover transition-opacity duration-500"
                   />
 
                   {/* Dot indicators */}
@@ -673,20 +692,20 @@ export default function HomePageClient() {
           </div>
 
 
-          <div className='w-[419px] h-[469px] max-w-[419px] max-h-[469px] min-w-[419px] min-h-[469px] sticky top-37.5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-white flex flex-col p-[30px] rounded-[15px] justify-start'>
+          <div className='w-[419px] h-[4px56] max-w-[419px] max-h-[456px] min-w-[419px] min-h-[456px] sticky top-37.5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-white flex flex-col p-[30px] rounded-[15px] justify-start'>
 
             {/* ── Login form ── */}
             {sidebarView === 'listing' && (
               <>
-                <h5 style={{ fontWeight: 500, fontSize: 18, fontFamily: 'Maven Pro, sans-serif', marginBottom: 8 }}>
+                <h5 style={{ fontWeight: 500, fontSize: 18, fontFamily: 'Segoe UI, sans-serif', marginBottom: 8 }}>
                   Start listing your product, it&apos;s free
                 </h5>
-                <p style={{ fontSize: 14, fontWeight: 500, color: '#000', marginBottom: 16 }}>
+                <p style={{ fontSize: 14, fontWeight: 500, color: '#000', marginBottom: 16, fontFamily: "Segoe UI, sans-serif" }}>
                   You&apos;re looking to ...
                 </p>
 
                 {/* Buy / Sell toggle — Buy is default & first */}
-                <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+                <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
                   <button
                     onClick={() => setSidebarMode('buy')}
                     style={{
@@ -698,7 +717,7 @@ export default function HomePageClient() {
                       fontSize: 14,
                       cursor: 'pointer',
                       transition: 'all 0.3s ease',
-                      fontFamily: 'Maven Pro, sans-serif',
+                      fontFamily: 'Segoe UI, sans-serif',
                     }}
                     onMouseEnter={e => { if (sidebarMode !== 'buy') { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; } }}
                     onMouseLeave={e => { if (sidebarMode !== 'buy') { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; } }}
@@ -714,7 +733,7 @@ export default function HomePageClient() {
                       fontSize: 13,
                       cursor: 'pointer',
                       transition: 'all 0.3s ease',
-                      fontFamily: 'Maven Pro, sans-serif',
+                      fontFamily: 'Segoe UI, sans-serif',
                     }}
                     onMouseEnter={e => { if (sidebarMode !== 'sell') { e.currentTarget.style.background = '#000'; e.currentTarget.style.color = '#fff'; } }}
                     onMouseLeave={e => { if (sidebarMode !== 'sell') { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#000'; } }}
@@ -722,7 +741,7 @@ export default function HomePageClient() {
                 </div>
 
                 {/* Login details */}
-                <h6 style={{ fontWeight: 500, marginBottom: 10, color: '#000', fontSize: 15, fontFamily: 'Maven Pro, sans-serif' }}>
+                <h6 style={{ fontWeight: 500, marginBottom: 10, color: '#000', fontSize: 15, fontFamily: 'Segoe UI, sans-serif' }}>
                   Your login details
                 </h6>
                 <input
@@ -730,7 +749,7 @@ export default function HomePageClient() {
                   placeholder="Your username"
                   value={sidebarEmail}
                   onChange={e => setSidebarEmail(e.target.value)}
-                  style={{ width: '100%', borderRadius: 8, padding: '0 12px', border: '1px solid #ddd', fontSize: 13, height: 40, marginBottom: 18, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  style={{ width: '100%', borderRadius: 8, padding: '0 12px', border: '1px solid #ddd', fontSize: 13, height: 40, marginBottom: 18, outline: 'none', fontFamily: 'Segoe UI, sans-serif', boxSizing: 'border-box' }}
                 />
                 <div style={{ position: 'relative', marginBottom: 24 }}>
                   <input
@@ -739,7 +758,7 @@ export default function HomePageClient() {
                     value={sidebarPassword}
                     onChange={e => setSidebarPassword(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSidebarLogin()}
-                    style={{ width: '100%', borderRadius: 8, padding: '15px 12px', paddingRight: 40, border: '1px solid #ddd', fontSize: 13, height: 40, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    style={{ width: '100%', borderRadius: 8, padding: '15px 12px', paddingRight: 40, border: '1px solid #ddd', fontSize: 13, height: 40, outline: 'none', fontFamily: 'Segoe UI, sans-serif', boxSizing: 'border-box' }}
                   />
                   <button
                     type="button"
@@ -773,7 +792,7 @@ export default function HomePageClient() {
                     cursor: sidebarLoading ? 'not-allowed' : 'pointer',
                     opacity: sidebarLoading ? 0.6 : 1,
                     transition: 'all 0.3s ease',
-                    fontFamily: 'Maven Pro, sans-serif',
+                    fontFamily: 'Segoe UI, sans-serif',
                   }}
                   onMouseEnter={e => { if (!sidebarLoading) { e.currentTarget.style.background = '#000'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(247,199,199,0.4)'; } }}
                   onMouseLeave={e => { e.currentTarget.style.background = '#ffc63a'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}

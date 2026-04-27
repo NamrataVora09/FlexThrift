@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import React from 'react';
 
 interface Category { id: number; category_name?: string; name?: string; product_type_id: number; }
 interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
@@ -131,13 +132,13 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
 
             {showMegaMenu && (
               <div
-                className="absolute left-0 top-[58px] border w-[1200px] max-h-[560px] flex flex-col bg-white z-[1060] border-t border-gray-100 shadow-[0_25px_60px_rgba(0,0,0,0.1)]"
+                className="absolute -left-10 top-[58px] border w-[1200px] h-[560px] flex flex-col bg-white z-[1060] border-t border-gray-100 shadow-[0_25px_60px_rgba(0,0,0,0.1)]"
                 onMouseEnter={() => setShowMegaMenu(true)}
                 onMouseLeave={() => { setShowMegaMenu(false); setMegaSearch(''); }}
               >
                 {/* Search bar — small, top-right corner */}
-                <div className="flex-shrink-0 px-10 pt-3 pb-2 flex justify-end">
-                  <div className="relative w-52">
+                <div className="w-full  px-10 pt-3 pb-2 mb-3 flex ">
+                  <div className="relative w-full">
                     <i className="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
                     <input
                       type="text"
@@ -145,7 +146,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                       value={megaSearch}
                       onChange={e => setMegaSearch(e.target.value)}
                       onClick={e => e.stopPropagation()}
-                      className="w-full pl-8 pr-7 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#ff3f6c] focus:ring-1 focus:ring-[#ff3f6c] transition-colors bg-gray-50"
+                      className="w-full pl-8 pr-7 py-1.5 text-sm border border-gray-200 rounded-lg outline-none  transition-colors bg-gray-50"
                     />
                     {megaSearch && (
                       <button
@@ -159,28 +160,17 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                 </div>
 
                 {/* Scrollable content grouped by listing type */}
-                <div className="flex-1 overflow-y-auto px-10 pb-6">
+                <div className="flex-1 overflow-x-auto overflow-y-auto px-10 pb-6">
                   {(() => {
                     const q = megaSearch.trim().toLowerCase();
 
-                    // Build filtered groups per listing type
-                    // Listing type name match → show ALL its product types + categories
-                    // Otherwise filter by product type name and category names
                     const groups = listingTypes.map(lt => {
                       const ltMatch = !q || lt.type_name.toLowerCase().includes(q);
-                      return {
-                        lt,
-                        items: (lt.product_types || []).flatMap(pt => {
-                          if (ltMatch) return [{ pt, cats: pt.categories || [] }];
-                          const ptMatch = pt.name.toLowerCase().includes(q);
-                          const matchedCats = (pt.categories || []).filter(
-                            cat => (cat.category_name || cat.name || '').toLowerCase().includes(q)
-                          );
-                          if (!ptMatch && matchedCats.length === 0) return [];
-                          return [{ pt, cats: ptMatch ? (pt.categories || []) : matchedCats }];
-                        }),
-                      };
-                    }).filter(g => g.items.length > 0);
+                      const pts = (lt.product_types || []).filter(pt =>
+                        ltMatch || pt.name.toLowerCase().includes(q)
+                      );
+                      return { lt, pts };
+                    }).filter(g => g.pts.length > 0);
 
                     if (groups.length === 0) {
                       return (
@@ -191,46 +181,33 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                     }
 
                     return (
-                      <div className="space-y-6">
-                        {groups.map(({ lt, items }) => (
-                          <div key={lt.id}>
+                      <div className=" grid grid-cols-6 gap-4" style={{ gridTemplateColumns: "repeat(6,minmax(100px))" }}>
+                        {groups.map(({ lt, pts }, index) => (
+                          <div key={lt.id} style={{ width: 160, minWidth: 160, maxWidth: 160, flexShrink: 0, flexGrow: 0 }}>
                             {/* Listing type header */}
                             <div className="flex items-center gap-3 mb-3">
                               <Link
                                 href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
-                                className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500 hover:text-gray-800 transition-colors"
+                                className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#ef4444]! transition-colors"
                                 onClick={() => { setShowMegaMenu(false); setMegaSearch(''); }}
                               >
                                 {lt.type_name}
                               </Link>
-                              <div className="flex-1 h-px bg-gray-100" />
                             </div>
 
-                            {/* Product types + categories in columns */}
-                            <div style={{ columns: '5 160px', gap: '2rem' }}>
-                              {items.map(({ pt, cats }) => (
-                                <div key={pt.id} style={{ breakInside: 'avoid', marginBottom: '1.25rem' }}>
+
+                            <div className="flex flex-col gap-0.5">
+                              {pts.map((pt, index) => (
+                                <React.Fragment key={pt.id}>
                                   <Link
                                     href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}&product_type_id=${pt.id}`}
-                                    className="font-bold text-[12px] uppercase tracking-widest text-[#ff3f6c]! mb-1.5 inline-block hover:text-[#d4355a]! transition-colors"
+                                    className="text-[13px] text-gray-700 hover:text-black py-0.5 transition-all duration-200"
                                     onClick={() => { setShowMegaMenu(false); setMegaSearch(''); }}
                                   >
                                     {pt.name}
                                   </Link>
-                                  <ul className="list-none p-0 space-y-[7px]">
-                                    {cats.map(cat => (
-                                      <li key={cat.id}>
-                                        <Link
-                                          href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}&product_type_id=${pt.id}&category_id=${cat.id}`}
-                                          className="font-normal text-[13px] text-gray-600 hover:text-black hover:font-semibold transition-all duration-200 block"
-                                          onClick={() => { setShowMegaMenu(false); setMegaSearch(''); }}
-                                        >
-                                          {cat.category_name || cat.name}
-                                        </Link>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
+
+                                </React.Fragment>
                               ))}
                             </div>
                           </div>
