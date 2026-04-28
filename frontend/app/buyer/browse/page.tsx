@@ -1556,22 +1556,49 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
 }
 
 // ── Elite Sidebar Component ────────────────────────────────────────────────────
-// ── Attribute filter type allowlist ──────────────────────────────────────────
-// Source: NEXT_PUBLIC_SIDEBAR_ATTR_TYPES in .env.local / Vercel dashboard.
-// Value : comma-separated attribute types to show in the sidebar filter.
-// Example (current): NEXT_PUBLIC_SIDEBAR_ATTR_TYPES=picklist
-// Example (all on) : NEXT_PUBLIC_SIDEBAR_ATTR_TYPES=picklist,text,numeric
+
+// ── Attribute filter config ───────────────────────────────────────────────────
+// NEXT_PUBLIC_SIDEBAR_ATTR_TYPES (in .env.local / Vercel) controls which
+// attribute types from field_config are shown in the sidebar filter.
+// Value: comma-separated list of type names to SHOW.
 //
-// Supported types and their sidebar render:
-//   picklist → checkbox list of discrete options
-//   text     → free-text search input
-//   numeric  → range slider
+// Examples:
+//   NEXT_PUBLIC_SIDEBAR_ATTR_TYPES=picklist
+//   NEXT_PUBLIC_SIDEBAR_ATTR_TYPES=picklist,dropdown,text,numeric
+//
+// RENDER_STRATEGY maps every recognised type name → one of the three render
+// modes (picklist | text | numeric).  This handles API aliases so the env var
+// works regardless of whether the backend stores the type as "picklist",
+// "dropdown", "select", etc.  Add new aliases here without touching any other
+// code.
+const RENDER_STRATEGY: Readonly<Record<string, 'picklist' | 'text' | 'numeric'>> = {
+  picklist:    'picklist',
+  dropdown:    'picklist',   // common alias for picklist
+  select:      'picklist',
+  multiselect: 'picklist',
+  text:        'text',
+  string:      'text',
+  textarea:    'text',
+  numeric:     'numeric',
+  number:      'numeric',
+  integer:     'numeric',
+  range:       'numeric',
+};
+
+// Allowlist: only types in this set are shown in the sidebar.
 const SIDEBAR_ATTR_TYPES: ReadonlySet<string> = new Set(
   (process.env.NEXT_PUBLIC_SIDEBAR_ATTR_TYPES || 'picklist')
     .split(',')
     .map(s => s.trim().toLowerCase())
     .filter(Boolean)
 );
+
+// Resolve the normalised type for an attribute.
+// Falls back to 'picklist' so attributes without a type field always render.
+function resolveAttrType(raw: string | undefined): 'picklist' | 'text' | 'numeric' {
+  const key = (raw || '').toLowerCase();
+  return RENDER_STRATEGY[key] ?? 'picklist';
+}
 
 interface EliteSidebarProps {
   filters: ActiveFilters;
@@ -1949,19 +1976,29 @@ function EliteSidebar({
       )}
 
       {/* ── 10. Dynamic Attributes (from field_config of selected level) ── */}
-      {/* Visible types are driven by NEXT_PUBLIC_SIDEBAR_ATTR_TYPES env var. */}
-      {/* To add/remove types: update the env var — no code changes needed.   */}
+      {/* Controlled by NEXT_PUBLIC_SIDEBAR_ATTR_TYPES env var.             */}
+      {/* RENDER_STRATEGY handles type aliases (dropdown → picklist, etc.)  */}
       {dynamicAttrs
-        .filter(attr => SIDEBAR_ATTR_TYPES.has(attr.type.toLowerCase()))
+        .filter(attr => {
+          // Normalise: missing type defaults to 'picklist'
+          const normalised = resolveAttrType(attr.type);
+          // The env allowlist is checked against the RAW type string too,
+          // so both "picklist" and its aliases (dropdown, select…) are
+          // accepted when the env var lists any of them.
+          const rawKey = (attr.type || 'picklist').toLowerCase();
+          return SIDEBAR_ATTR_TYPES.has(rawKey) || SIDEBAR_ATTR_TYPES.has(normalised);
+        })
         .map((attr) => {
+          const renderAs = resolveAttrType(attr.type);
           const opts = Array.isArray(attr.options)
             ? attr.options
-            : (typeof attr.options === 'string' ? attr.options.split(',').map(s => s.trim()).filter(Boolean) : []);
+            : (typeof attr.options === 'string'
+                ? attr.options.split(',').map(s => s.trim()).filter(Boolean)
+                : []);
           const section = `dyn_${attr.name}`;
-          const type = attr.type.toLowerCase();
 
-          /* ── picklist: checkbox list ── */
-          if (type === 'picklist') {
+          /* ── picklist / dropdown / select: checkbox list ── */
+          if (renderAs === 'picklist') {
             const allItems = opts.map((o: string) => ({ value: o, label: o }));
             const filtered = filterBySearch(allItems, section);
             return (
@@ -1986,8 +2023,8 @@ function EliteSidebar({
             );
           }
 
-          /* ── text: free-text input ── */
-          if (type === 'text') {
+          /* ── text / string: free-text input ── */
+          if (renderAs === 'text') {
             return (
               <div key={attr.name} className="em-sidebar-section">
                 <SectionTitle id={section} label={attr.name} count={(filters.specs[attr.name] || []).length} />
@@ -2005,8 +2042,8 @@ function EliteSidebar({
             );
           }
 
-          /* ── numeric: range slider ── */
-          if (type === 'numeric') {
+          /* ── numeric / number / range: range slider ── */
+          if (renderAs === 'numeric') {
             const numMin = 0;
             const numMax = 100000;
             const step = 1;

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import React from 'react';
+import ProfileDropdown from '@/components/shared/ProfileDropdown';
 
 interface Category { id: number; category_name?: string; name?: string; product_type_id: number; }
 interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
@@ -22,7 +23,6 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
   const [showMegaMenu, setShowMegaMenu] = useState(false);
   const [megaSearch, setMegaSearch] = useState('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [showAuthDropdown, setShowAuthDropdown] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -30,7 +30,6 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
   const [searchLoading, setSearchLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const megaRef = useRef<HTMLLIElement>(null);
-  const authRef = useRef<HTMLDivElement>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -60,7 +59,6 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
-      if (authRef.current && !authRef.current.contains(e.target as Node)) setShowAuthDropdown(false);
     };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
@@ -234,49 +232,28 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
 
         {/* Auth dropdown */}
         {(
-          <div className="relative" ref={authRef}>
+          <div className="relative">
             {isAuthenticated && user ? (
-              <>
-                <button
-                  onClick={() => setShowAuthDropdown(!showAuthDropdown)}
-                  className="flex items-center gap-3 border border-[#008080] rounded-full! px-2 py-1 pr-4 hover:border-[#008080] transition-all duration-300 bg-white shadow-sm"
-                >
-                  <div className='w-9 h-9 flex items-center justify-center bg-[#008080] text-white rounded-full font-bold text-xs'>
-                    {user.name ? user.name.substring(0, 2).toUpperCase() : 'ME'}
-                  </div>
-                  <span className="text-sm font-bold text-gray-800 hidden md:block">{user.name}</span>
-                  <i className={`bi bi-chevron-down text-[0.7rem] text-gray-400 transition-transform duration-300 ${showAuthDropdown ? 'rotate-180' : ''}`}></i>
-                </button>
-
-                {showAuthDropdown && (
-                  <div className="absolute right-0 top-8 mt-3 w-44 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
-                    <Link
-                      href={user.role === 'super_admin' ? '/superadmin' : user.role === 'admin' ? '/admin/profile' : user.role === 'seller' ? '/seller/profile' : user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile'}
-                      className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
-                      onClick={() => setShowAuthDropdown(false)}
-                    >
-                      <i className="bi bi-person-fill"></i>
-                      <span className="text-xs text-nowrap font-semibold text-gray-800">{user.name}</span>
-                    </Link>
-                    <Link
-                      href="/wishlist"
-                      className="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
-                      onClick={() => setShowAuthDropdown(false)}
-                    >
-                      <i className="bi bi-heart-fill"></i>
-                      <span className="text-xs text-nowrap font-semibold">Wishlist</span>
-                    </Link>
-                    <button
-                      onClick={() => { logout(); setShowAuthDropdown(false); router.push('/'); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-red-50 transition-colors"
-                      style={{ color: '#ef4444' }}
-                    >
-                      <i className="bi bi-box-arrow-right"></i>
-                      <span className="text-xs text-nowrap font-semibold">Logout</span>
-                    </button>
-                  </div>
-                )}
-              </>
+              <ProfileDropdown
+                user={user}
+                profileHref={
+                  user.role === 'super_admin' ? '/superadmin'       :
+                  user.role === 'admin'       ? '/admin/profile'    :
+                  user.role === 'seller'      ? '/seller/profile'   :
+                  user.role === 'delivery'    ? '/delivery/profile' : '/buyer/profile'
+                }
+                profileLabel={user.name}
+                extraItems={
+                  <Link
+                    href="/wishlist"
+                    className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                  >
+                    <i className="bi bi-heart-fill text-sm" />
+                    <span className="text-xs font-semibold whitespace-nowrap">Wishlist</span>
+                  </Link>
+                }
+                onLogout={() => { logout(); router.push('/'); }}
+              />
             ) : (
               <div>
                 <button
