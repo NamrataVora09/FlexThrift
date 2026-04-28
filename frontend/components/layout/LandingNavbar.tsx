@@ -268,7 +268,8 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                     </Link>
                     <button
                       onClick={() => { logout(); setShowAuthDropdown(false); router.push('/'); }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-red-50 transition-colors"
+                      style={{ color: '#ef4444' }}
                     >
                       <i className="bi bi-box-arrow-right"></i>
                       <span className="text-xs text-nowrap font-semibold">Logout</span>

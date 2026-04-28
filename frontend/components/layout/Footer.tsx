@@ -210,7 +210,7 @@ export default function Footer() {
           </div>
 
           {/* Dynamic sections */}
-          <div className="w-full flex md:col-span-3 gap-10 md:gap-20 lg:gap-32 justify-start md:justify-evenly flex-wrap">
+          <div className="w-full flex md:col-span-3 gap-10 md:gap-20 lg:gap-32 justify-start  flex-wrap">
             {sections.map(section => (
               <div key={section.id}>
                 <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-[18px]!">{section.title}</h5>
@@ -440,7 +440,7 @@ export default function Footer() {
               <button
                 onClick={save}
                 disabled={saving}
-                className="px-5 py-2 rounded-lg bg-gold font-bold text-sm text-black hover:bg-gold-dark transition-colors cursor-pointer disabled:opacity-60"
+                className="px-5 py-2 rounded-lg bg-gold font-bold text-sm text-white hover:bg-gold-dark transition-colors cursor-pointer disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save Footer'}
               </button>

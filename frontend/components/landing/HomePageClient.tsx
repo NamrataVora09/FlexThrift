@@ -218,7 +218,7 @@ function AotEditModal({ section, onClose, onSave }: {
               <button
                 key={g.id}
                 onClick={() => setActiveGuide(gi)}
-                className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${activeGuide === gi ? 'bg-[#ffc63a] border-[#ffc63a] font-bold' : 'bg-white border-gray-200 text-gray-500 hover:border-[#ffc63a]'}`}
+                className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${activeGuide === gi ? 'bg-[#ffc63a] border-[#ffc63a] font-bold text-white' : 'bg-white border-gray-200 text-gray-500 hover:border-[#ffc63a]'}`}
               >
                 {g.label || `Guide ${gi + 1}`}
               </button>
@@ -295,7 +295,7 @@ function AotEditModal({ section, onClose, onSave }: {
         {/* Footer */}
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="px-5 py-2 rounded-lg border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors">Cancel</button>
-          <button onClick={() => onSave(draft)} className="px-5 py-2 rounded-lg bg-[#ffc63a] hover:bg-[#e6b035] text-black font-bold text-sm transition-colors">Save Section</button>
+          <button onClick={() => onSave(draft)} className="px-5 py-2 rounded-lg bg-[#ffc63a] hover:bg-[#e6b035] text-white font-bold text-sm transition-colors">Save Section</button>
         </div>
       </div>
     </div>

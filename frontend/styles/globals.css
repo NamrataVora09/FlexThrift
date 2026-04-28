@@ -199,7 +199,7 @@ img {
 /* ===== Buttons ===== */
 .yellow_button {
   background: #ffc63a;
-  color: #000;
+  color: #fff;
   font-weight: 700;
   border: none;
   transition: all 0.2s;
@@ -207,7 +207,7 @@ img {
 
 .yellow_button:hover {
   background: #e6b035 !important;
-  color: #000;
+  color: #fff;
   transform: translateY(-1px);
 }
 
@@ -516,7 +516,7 @@ img {
 
 .tab-btn.active {
   background: #ffc63a;
-  color: #000;
+  color: #fff;
   box-shadow: 0 2px 8px rgba(255, 198, 58, 0.3);
 }
 
@@ -545,7 +545,7 @@ img {
 
 .btn-submit {
   background-color: #ffc63a;
-  color: #000;
+  color: #fff;
   border: none;
   border-radius: 10px;
   padding: 13px;
@@ -622,7 +622,7 @@ img {
 .role-option input:checked+.role-label {
   border-color: #ffc63a;
   background: #ffc63a;
-  color: #000;
+  color: #fff;
   box-shadow: 0 4px 15px rgba(255, 198, 58, 0.3);
 }
 
@@ -753,7 +753,7 @@ img {
 .sidebar .nav-link:hover,
 .sidebar .nav-link.active {
   background: #ffc63a;
-  color: #000;
+  color: #fff;
   font-weight: 600;
 }
 
@@ -778,12 +778,13 @@ img {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 0;
-  flex: 1;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .topbar-toggle {
-  display: flex;
+  display: none; /* hidden on desktop — sidebar always open */
   align-items: center;
   justify-content: center;
   width: 38px;
@@ -799,7 +800,7 @@ img {
 
 .topbar-toggle:hover {
   background: #ffc63a;
-  color: #000;
+  color: #fff;
 }
 
 .topbar-toggle:active {
@@ -809,30 +810,14 @@ img {
 .topbar-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
   text-decoration: none !important;
-  flex-shrink: 0;
-}
-
-.topbar-brand-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: #ffc63a;
-  color: #000;
-  font-weight: 900;
-  font-size: 16px;
-  font-family: 'Maven Pro', sans-serif;
   flex-shrink: 0;
 }
 
 .topbar-brand-text {
   font-weight: 700;
-  font-size: 1.05rem;
-  color: #111;
+  font-size: 1.4rem;
+  color: #1F2937;
   font-family: 'Maven Pro', sans-serif;
   white-space: nowrap;
 }
@@ -840,14 +825,16 @@ img {
 .topbar-role-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  border-radius: 20px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #1F2937;
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 600;
   color: #fff;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
   white-space: nowrap;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .topbar-right {
@@ -1150,13 +1137,13 @@ img {
 .page-link:hover {
   background: #ffc63a;
   border-color: #ffc63a;
-  color: #000;
+  color: #fff;
 }
 
 .page-item.active .page-link {
   background: #ffc63a;
   border-color: #ffc63a;
-  color: #000;
+  color: #fff;
   font-weight: 700;
 }
 
@@ -1266,6 +1253,11 @@ img {
     height: 60px;
   }
 
+  /* Show toggle button on tablet/mobile */
+  .topbar-toggle {
+    display: flex;
+  }
+
   .topbar-role-badge {
     padding: 3px 10px;
     font-size: 0.62rem;
@@ -1322,22 +1314,12 @@ img {
   }
 
   .topbar-brand-text {
-    display: none;
-  }
-
-  .topbar-brand-icon {
-    width: 30px;
-    height: 30px;
-    font-size: 14px;
-    border-radius: 8px;
+    font-size: 1.1rem;
   }
 
   .topbar-role-badge {
     padding: 3px 8px;
     font-size: 0.58rem;
-    max-width: 90px;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .topbar-user-name {

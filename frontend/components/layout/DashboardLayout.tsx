@@ -33,19 +33,19 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
   
   const [isMobile, setIsMobile] = useState(false);
 
-  // Consolidated initialization and resize logic
+  // Desktop (≥992px): sidebar always open, no toggle.
+  // Mobile/tablet (<992px): sidebar closed by default, toggle button shows.
   const handleResize = useCallback(() => {
-    const mobile = window.innerWidth <= 991;
+    const mobile = window.innerWidth < 992;
     setIsMobile(mobile);
-    
+
     if (mobile) {
       setSidebarOpen(false);
       globalSidebarOpen = false;
     } else {
-      const savedState = localStorage.getItem('sidebarOpen');
-      const shouldBeOpen = savedState !== null ? savedState === 'true' : true;
-      setSidebarOpen(shouldBeOpen);
-      globalSidebarOpen = shouldBeOpen;
+      // Always open on desktop — ignore any saved state
+      setSidebarOpen(true);
+      globalSidebarOpen = true;
     }
   }, []);
 
@@ -64,13 +64,14 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
   }, [pathname, isMobile]);
 
   const toggleSidebar = useCallback(() => {
+    // Toggle is only effective on mobile/tablet
+    if (!isMobile) return;
     setSidebarOpen(prev => {
       const newState = !prev;
-      localStorage.setItem('sidebarOpen', String(newState));
       globalSidebarOpen = newState;
       return newState;
     });
-  }, []);
+  }, [isMobile]);
 
   // Close sidebar when clicking overlay (mobile)
   const closeSidebar = useCallback(() => {

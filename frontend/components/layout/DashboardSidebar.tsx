@@ -23,9 +23,8 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
 
   const sidebarBg = '#fff';
   const linkColor = '#333';
-  const linkHover = '#ffc63a';
   const activeColor = '#ffc63a';
-  const activeText = '#000';
+  const activeText = '#fff';
   const sectionColor = '#6c757d';
 
   return (

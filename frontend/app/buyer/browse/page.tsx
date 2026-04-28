@@ -860,7 +860,7 @@ export default function BrowsePage() {
         }
         .em-type-pill:hover { background: #d2d5d5; }
         .em-type-pill.active {
-          background: #FFC107; color: #3d2b00; font-weight: 700;
+          background: #ffc63a; color: #fff; font-weight: 700;
         }
 
         /* Sort select */
@@ -1556,18 +1556,22 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
 }
 
 // ── Elite Sidebar Component ────────────────────────────────────────────────────
-// ── Attribute filter render config ───────────────────────────────────────────
-// Maps field_config attribute types → how they render in the sidebar.
-// To enable a type: uncomment its entry — no rendering code changes needed.
-// Supported render strategies:
-//   'picklist' → checkbox list of discrete options
-//   'text'     → free-text search input
-//   'numeric'  → single range slider
-const SIDEBAR_ATTR_CONFIG: Record<string, 'picklist' | 'text' | 'numeric'> = {
-  picklist: 'picklist',   // ✓ active: shown as checkbox list
-  // text:    'text',     // ○ disabled: shown as text input     (uncomment to enable)
-  // numeric: 'numeric',  // ○ disabled: shown as range slider   (uncomment to enable)
-};
+// ── Attribute filter type allowlist ──────────────────────────────────────────
+// Source: NEXT_PUBLIC_SIDEBAR_ATTR_TYPES in .env.local / Vercel dashboard.
+// Value : comma-separated attribute types to show in the sidebar filter.
+// Example (current): NEXT_PUBLIC_SIDEBAR_ATTR_TYPES=picklist
+// Example (all on) : NEXT_PUBLIC_SIDEBAR_ATTR_TYPES=picklist,text,numeric
+//
+// Supported types and their sidebar render:
+//   picklist → checkbox list of discrete options
+//   text     → free-text search input
+//   numeric  → range slider
+const SIDEBAR_ATTR_TYPES: ReadonlySet<string> = new Set(
+  (process.env.NEXT_PUBLIC_SIDEBAR_ATTR_TYPES || 'picklist')
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean)
+);
 
 interface EliteSidebarProps {
   filters: ActiveFilters;
@@ -1945,20 +1949,19 @@ function EliteSidebar({
       )}
 
       {/* ── 10. Dynamic Attributes (from field_config of selected level) ── */}
-      {/* Only types listed in SIDEBAR_ATTR_CONFIG are rendered.            */}
-      {/* Extend SIDEBAR_ATTR_CONFIG to enable text / numeric without       */}
-      {/* changing any rendering logic below.                               */}
+      {/* Visible types are driven by NEXT_PUBLIC_SIDEBAR_ATTR_TYPES env var. */}
+      {/* To add/remove types: update the env var — no code changes needed.   */}
       {dynamicAttrs
-        .filter(attr => attr.type in SIDEBAR_ATTR_CONFIG)
+        .filter(attr => SIDEBAR_ATTR_TYPES.has(attr.type.toLowerCase()))
         .map((attr) => {
-          const renderAs = SIDEBAR_ATTR_CONFIG[attr.type];
           const opts = Array.isArray(attr.options)
             ? attr.options
             : (typeof attr.options === 'string' ? attr.options.split(',').map(s => s.trim()).filter(Boolean) : []);
           const section = `dyn_${attr.name}`;
+          const type = attr.type.toLowerCase();
 
           /* ── picklist: checkbox list ── */
-          if (renderAs === 'picklist') {
+          if (type === 'picklist') {
             const allItems = opts.map((o: string) => ({ value: o, label: o }));
             const filtered = filterBySearch(allItems, section);
             return (
@@ -1984,7 +1987,7 @@ function EliteSidebar({
           }
 
           /* ── text: free-text input ── */
-          if (renderAs === 'text') {
+          if (type === 'text') {
             return (
               <div key={attr.name} className="em-sidebar-section">
                 <SectionTitle id={section} label={attr.name} count={(filters.specs[attr.name] || []).length} />
@@ -2003,7 +2006,7 @@ function EliteSidebar({
           }
 
           /* ── numeric: range slider ── */
-          if (renderAs === 'numeric') {
+          if (type === 'numeric') {
             const numMin = 0;
             const numMax = 100000;
             const step = 1;

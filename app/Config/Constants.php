@@ -87,3 +87,7 @@ defined('OFFER_ACCEPTED')    || define('OFFER_ACCEPTED', 'Accepted');
 defined('OFFER_REJECTED')    || define('OFFER_REJECTED', 'Rejected');
 defined('OFFER_PENDING')    || define('OFFER_PENDING', 'Pending');
 defined('PROFILE_BEFORE_LOGIN')    || define('PROFILE_BEFORE_LOGIN', 'Login/Register');
+
+// datatypes
+
+defined('DATATYPE_PICKLIST') || define('DATATYPE_PICKLIST', 'picklist , text, numeric');
