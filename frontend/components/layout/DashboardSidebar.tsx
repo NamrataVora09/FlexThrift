@@ -27,6 +27,15 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
   const activeText = '#fff';
   const sectionColor = '#6c757d';
 
+  const roleMeta: Record<string, { label: string; icon: string; bg: string; color: string }> = {
+    buyer: { label: 'Buyer', icon: 'fa-solid fa-bag-shopping', bg: '#e8f4fd', color: '#1a73e8' },
+    seller: { label: 'Seller', icon: 'fa-solid fa-store', bg: '#fff3e0', color: '#e65100' },
+    delivery: { label: 'Delivery', icon: 'fa-solid fa-truck', bg: '#e8f5e9', color: '#2e7d32' },
+    admin: { label: 'Admin', icon: 'fa-solid fa-shield-halved', bg: '#fce4ec', color: '#c62828' },
+    super_admin: { label: 'Super Admin', icon: 'fa-solid fa-crown', bg: '#fdf3e3', color: '#b8860b' },
+  };
+  const currentRoleMeta = roleMeta[effectiveRole];
+
   return (
     <div
       className={`sidebar ${!isOpen ? 'collapsed' : 'show'}`}
@@ -34,6 +43,24 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
         background: sidebarBg,
       }}
     >
+      {/* Role indicator — only visible on small screens (≤991px) where sidebar is a drawer */}
+      {currentRoleMeta && (
+        <div className="d-block d-lg-none px-3 mb-3">
+          <div
+            className="d-flex align-items-center gap-2 px-3 py-2 rounded-3"
+            style={{ background: currentRoleMeta.bg }}
+          >
+            <i
+              className={currentRoleMeta.icon}
+              style={{ color: currentRoleMeta.color, fontSize: '0.95rem' }}
+            />
+            <span style={{ color: currentRoleMeta.color, fontWeight: 700, fontSize: '0.85rem', letterSpacing: 0.3 }}>
+              {currentRoleMeta.label}
+            </span>
+          </div>
+        </div>
+      )}
+
       {isAdminStyle && (
         <div className="px-3 mb-3">
           <div className="d-flex align-items-center mb-3 px-2">
@@ -115,7 +142,7 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
           className="nav-link d-flex align-items-center gap-2 w-100 border-0"
           onClick={() => { logout(); window.location.href = '/login'; }}
           style={{
-            color: '#dc3545',
+            color: '#ef4444',
             background: 'transparent',
             padding: '10px 15px',
             borderRadius: 8,

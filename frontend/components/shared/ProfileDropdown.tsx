@@ -71,10 +71,10 @@ export default function ProfileDropdown({
 
       {/* ── Dropdown panel ── */}
       {open && (
-        <div className="absolute right-0 top-[calc(100%+10px)] w-52 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
+        <div className="absolute right-0 top-[calc(100%+10px)]  w-fit px-10 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-gray-100 py-3 z-[1070] overflow-hidden">
 
           {/* Optional user info header */}
-          {showHeader && (
+          {/* {showHeader && (
             <div className="flex items-center gap-3 px-4 pb-3 border-b border-gray-100 mb-1">
               <div className="w-9 h-9 flex items-center justify-center bg-[#008080] text-white rounded-full font-bold text-xs flex-shrink-0">
                 {initials}
@@ -84,13 +84,13 @@ export default function ProfileDropdown({
                 <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Profile link */}
           <Link
             href={profileHref}
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+            className="flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
           >
             <i className="bi bi-person-fill text-sm" />
             <span className="text-xs font-semibold whitespace-nowrap">{profileLabel}</span>
@@ -104,7 +104,7 @@ export default function ProfileDropdown({
           {/* Logout */}
           <button
             onClick={() => { setOpen(false); onLogout(); }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition-colors"
+            className="w-full flex items-center gap-3  py-2.5 hover:bg-red-50 transition-colors"
             style={{ color: '#ef4444' }}
           >
             <i className="bi bi-box-arrow-right text-sm" />

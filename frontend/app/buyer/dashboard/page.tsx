@@ -51,75 +51,157 @@ export default function BuyerDashboardPage() {
     return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  const statCards = [
+    { icon: 'fa-solid fa-layer-group', label: 'Total Products', value: String(data?.stats.ttl_products ?? 0) },
+    { icon: 'fa-solid fa-clock', label: 'Pending Offers', value: String(data?.stats.pending ?? 0) },
+    { icon: 'fa-solid fa-tags', label: 'Contacts Left', value: String(data?.stats.accepted ?? 0) },
+    { icon: 'fa-solid fa-hourglass-half', label: 'Subscription Hrs Left', value: String(data?.stats.total_orders ?? 0) },
+  ];
+
   return (
     <DashboardLayout requiredRoles={['buyer', 'super_admin']}>
       <style jsx>{`
-        .stat-card {
+        /* ── Analytics Cards ── */
+        .metric-card {
           background: #fff;
-          border-radius: 12px;
-          padding: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          position: relative;
-          overflow: hidden;
-        }
-        .stat-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 4px;
+          border-radius: 16px;
+          padding: 2rem;
+          box-shadow: 0 20px 40px -15px rgba(0,0,0,0.06);
+          border: 1px solid #f0f0f0;
+          transition: background 0.28s ease;
+          cursor: default;
           height: 100%;
-          background: #D7B467;
         }
-        .stat-card h4 {
-          font-size: 2.5rem;
+        .metric-card:hover { background: #1a1a1a; }
+        .metric-card:hover .metric-label { color: #6b7280; }
+        .metric-card:hover .metric-value { color: #fff; }
+
+        .metric-icon {
+          color: #ffc63a;
+          font-size: 1.5rem;
+          margin-bottom: 1.5rem;
+          display: block;
+        }
+        .metric-label {
+          font-size: 0.62rem;
           font-weight: 700;
-          margin-bottom: 0.5rem;
+          text-transform: uppercase;
+          letter-spacing: 0.13em;
+          color: #9ca3af;
+          margin-bottom: 6px;
+          transition: color 0.28s ease;
         }
-        .stat-card span {
-          font-size: 0.9rem;
-          color: #6f6f6f;
+        .metric-value {
+          font-size: 2.4rem;
+          font-weight: 800;
+          color: #1a1a1a;
+          line-height: 1;
+          transition: color 0.28s ease;
         }
-        .stat-card i {
-          position: absolute;
-          top: 1rem;
-          right: 1rem;
-          font-size: 1.2rem;
-          color: #D7B467;
-        }
+
+        /* ── Plan bar ── */
         .plan-bar {
           background: #fff;
-          border-radius: 12px;
-          padding: 1.25rem 1.5rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+          border-radius: 16px;
+          padding: 1.25rem 1.75rem;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.05);
           display: flex;
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
           gap: 1rem;
         }
-        .plan-bar .manage-btn {
-          background: #c7a15a;
-          color: #fff;
+        .manage-btn {
+          background: #D7B467 !important;
+          color: #fff !important;
           border: none;
           padding: 10px 24px;
           border-radius: 8px;
           font-weight: 600;
+          font-size: 0.9rem;
           cursor: pointer;
+          text-decoration: none !important;
+          transition: transform 0.2s, box-shadow 0.2s;
+          white-space: nowrap;
+        }
+        .manage-btn:hover {
+          transform: scale(1.04);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+          color: #fff !important;
+        }
+
+        /* ── Table ── */
+        .offers-wrap {
+          background: #fff;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.05);
+        }
+        .offers-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem 2rem 0.75rem;
+        }
+        .offers-title {
+          font-size: 1.25rem;
+          font-weight: 800;
+          color: #1a1a1a;
+        }
+        .view-all {
+          font-size: 0.62rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+          color: #9ca3af;
           text-decoration: none;
+          transition: color 0.15s;
         }
-        .plan-bar .manage-btn:hover {
-          background: #b08e45;
-          color: #fff;
+        .view-all:hover { color: #1a1a1a; }
+
+        .offers-table { width: 100%; border-collapse: collapse; }
+        .offers-table thead tr { border-bottom: 1px solid #f3f4f6; }
+        .offers-table thead th {
+          padding: 0.9rem 1.5rem;
+          font-size: 0.6rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.14em;
+          color: #9ca3af;
+          white-space: nowrap;
         }
-        .type-badge-sell { background: #008080; color: #fff; }
-        .type-badge-rent { background: #cf0048; color: #fff; }
-        .status-badge-accepted { background: #005f44; color: #fff; }
-        .status-badge-rejected { background: #981515; color: #fff; }
-        .status-badge-pending { background: #6c757d; color: #fff; }
+        .offers-table thead th.tr { text-align: right; }
+
+        .offers-table tbody tr { border-bottom: 1px solid #f9fafb; transition: background 0.12s; }
+        .offers-table tbody tr:last-child { border-bottom: none; }
+        .offers-table tbody tr:hover { background: #fafafa; }
+        .offers-table tbody td { padding: 1.1rem 1.5rem; vertical-align: middle; }
+        .offers-table tbody td.tr { text-align: right; }
+
+        .product-thumb {
+          width: 42px; height: 42px;
+          border-radius: 8px;
+          background: #f6f6f6;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .product-name { font-weight: 700; font-size: 0.82rem; color: #1a1a1a; }
+        .product-id   { font-size: 0.6rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
+
+        .pill {
+          display: inline-block;
+          padding: 3px 11px;
+          border-radius: 9999px;
+          font-size: 0.6rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .price-val { font-weight: 800; font-size: 0.88rem; color: #ffc63a; }
+        .date-val  { font-size: 0.72rem; color: #9ca3af; }
       `}</style>
 
-      <div className="container" style={{ marginTop: '3%' }}>
+      <div>
         {loading ? (
           <div className="text-center py-5">
             <div className="spinner-border" style={{ color: '#ffc63a' }}></div>
@@ -127,141 +209,161 @@ export default function BuyerDashboardPage() {
         ) : (
           <>
             {/* Welcome */}
-            <div className="row mb-4">
-              <div className="col-md-9">
-                <h1 style={{ fontWeight: 700 }}>Hello, {data?.user.name || '...'}!</h1>
-                <p style={{ color: '#6f6f6f' }}>Browse millions of unique fashion gems and track your rental orders.</p>
-              </div>
-              <div className="col-md-3 mt-3">
-                <Link href="/buyer" className="btn" style={{ background: '#ffc63a', color: '#000', fontWeight: 700, padding: '10px 24px', borderRadius: '8px' }}>
-                  <span>Explore Marketplace</span> <span>→</span>
-                </Link>
-              </div>
+            <div className="mb-4">
+              <h1 style={{ fontWeight: 800, fontSize: 26, color: '#1a1a1a', marginBottom: 4 }}>
+                Hello, {data?.user.name || '...'}!
+              </h1>
+              <p style={{ color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>
+                Browse millions of unique fashion gems and track your rental orders.
+              </p>
             </div>
 
-            {/* Stats */}
+            {/* Analytics Cards */}
             <div className="row g-3 mb-4">
-              <div className="col-md-3">
-                <div className="stat-card">
-                  <h4>{data?.stats.ttl_products ?? 0}</h4>
-                  <i className="fa-solid fa-layer-group"></i>
-                  <span>Total Products</span>
+              {statCards.map((card, i) => (
+                <div key={i} className="col-6 col-md-3">
+                  <div className="metric-card">
+                    <i className={`${card.icon} metric-icon`} />
+                    <p className="metric-label mb-1">{card.label}</p>
+                    <div className="metric-value">{card.value}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="col-md-3">
-                <div className="stat-card">
-                  <h4>{data?.stats.pending ?? 0}</h4>
-                  <i className="fa-solid fa-clock"></i>
-                  <span>Pending Products</span>
-                </div>
-              </div>
-              <div className="col-md-3">
-                <div className="stat-card">
-                  <h4>{data?.stats.accepted ?? 0}</h4>
-                  <i className="fa-solid fa-tags"></i>
-                  <span>Contacts Left</span>
-                </div>
-              </div>
-              <div className="col-md-3">
-                <div className="stat-card">
-                  <h4>{data?.stats.total_orders ?? 0} <span style={{ fontSize: '1rem' }}>Hrs.</span></h4>
-                  <i className="fa-solid fa-cart-shopping"></i>
-                  <span>Subscription Time Left</span>
-                </div>
-              </div>
+              ))}
             </div>
 
             {/* Subscription Bar */}
             <div className="mb-4">
-              {activeSub ? (
-                <div className="plan-bar">
-                  <div className="d-flex align-items-start gap-3">
-                    <i className="fa-solid fa-circle-check fs-3 text-success mt-1"></i>
-                    <div>
-                      <h6 className="fw-bold mb-1">Active Plan: {activeSub.plan_name}</h6>
-                      <p className="text-muted mb-0 small">
-                        Limit: {Number(activeSub.limit_value) === 0 ? 'Unlimited' : activeSub.limit_value}
-                      </p>
+              <div className="plan-bar">
+                {activeSub ? (
+                  <>
+                    <div className="d-flex align-items-center gap-3">
+                      <i className="fa-solid fa-layer-group fs-4" style={{ color: '#D7B467' }} />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
+                          Active Plan: {activeSub.plan_name}
+                        </div>
+                        <div style={{ fontSize: '0.88rem', color: '#374151' }}>
+                          {Number(activeSub.limit_value) === 0
+                            ? 'Unlimited contacts'
+                            : `${activeSub.usage_count ?? 0} used out of ${activeSub.limit_value} Contacts`}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-3 border rounded px-3 py-2" style={{ background: '#f8f9fa' }}>
-                    <i className="fa-solid fa-calendar-check text-warning fs-3"></i>
-                    <div>
-                      <small className="text-uppercase text-muted" style={{ fontSize: '0.7rem' }}>Membership Expires</small>
-                      <div className="fw-bold" style={{ fontSize: '1.25rem' }}>{formatDate(activeSub.expires_at)}</div>
+                    <Link href="/buyer/subscriptions" className="manage-btn" style={{ color: '#fff', background: '#D7B467', padding: '0.8rem 1.8rem', borderRadius: '10px', fontWeight: 700 }} >Manage Plan</Link>
+                  </>
+                ) : (
+                  <>
+                    <div className="d-flex align-items-center gap-3">
+                      <i className="fa-solid fa-ban fs-4" style={{ color: '#ef4444' }} />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
+                          No Active Plan
+                        </div>
+                        <div style={{ fontSize: '0.88rem', color: '#374151' }}>
+                          You need an active subscription to reach buyers.
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <Link href="/buyer/subscriptions" className="manage-btn">Manage Plan</Link>
-                </div>
-              ) : (
-                <div className="plan-bar">
-                  <div className="d-flex align-items-start gap-3">
-                    <i className="fa-solid fa-ban fs-3 text-danger mt-1"></i>
-                    <div>
-                      <h6 className="fw-bold mb-1">No Active Plan</h6>
-                      <p className="text-muted mb-0 small">You need an active subscription to upload products and reach buyers.</p>
-                    </div>
-                  </div>
-                  <Link href="/buyer/subscriptions" className="manage-btn">Manage Plan</Link>
-                </div>
-              )}
+                    <Link href="/buyer/subscriptions" className="manage-btn">Get a Plan</Link>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Recent Purchases Table */}
-            <div className="card shadow-sm border-0" style={{ borderRadius: '16px' }}>
-              <div className="card-header bg-white d-flex align-items-center gap-2 fw-semibold" style={{ borderRadius: '16px 16px 0 0' }}>
-                <i className="fa-solid fa-layer-group"></i>
-                Recent Purchases
+            <div className="offers-wrap">
+              <div className="offers-head">
+                <span className="offers-title">Recent Purchases</span>
+                <Link href="/buyer/offers" className="view-all">View All Orders</Link>
               </div>
-              <div className="table-responsive p-3">
-                <table className="table align-middle mb-0">
-                  <thead className="text-muted small text-uppercase border-bottom">
+
+              <div className="table-responsive">
+                <table className="offers-table">
+                  <thead>
                     <tr>
                       <th>Product</th>
                       <th>Type</th>
-                      <th>Price</th>
-                      <th>Offer Status</th>
+                      <th>Status</th>
                       <th>Seller</th>
-                      <th>Date</th>
+                      <th className="tr">Price</th>
+                      <th className="tr">Date</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data?.recent_offers && data.recent_offers.length > 0 ? (
                       data.recent_offers.map((o, i) => (
                         <tr key={i}>
+                          {/* Product */}
                           <td>
-                            <div className="fw-semibold">{o.product_title || '—'}</div>
-                            <small className="text-muted">{o.product_id}</small>
+                            <div className="d-flex align-items-center gap-3">
+                              <div className="product-thumb">
+                                <i className="fa-regular fa-image" style={{ color: '#9ca3af' }} />
+                              </div>
+                              <div>
+                                <div className="product-name">{o.product_title || '—'}</div>
+                                <div className="product-id">ID: {o.product_id}</div>
+                              </div>
+                            </div>
                           </td>
+
+                          {/* Type */}
                           <td>
                             <span
-                              className="badge rounded-pill px-3 py-2 fw-semibold"
-                              style={{ background: o.listing_type === 'rent' ? '#cf0048' : '#008080' }}
+                              className="pill"
+                              style={
+                                o.listing_type === 'rent'
+                                  ? { background: '#fce7f3', color: '#be185d' }
+                                  : { background: '#d1fae5', color: '#065f46' }
+                              }
                             >
                               {o.listing_type === 'rent' ? 'Rent' : 'Sell'}
                             </span>
                           </td>
-                          <td>&#8377;{Number(o.offer_price || 0).toLocaleString('en-IN')}</td>
+
+                          {/* Status */}
                           <td>
                             <span
-                              className="badge rounded-pill px-3 py-2 fw-semibold"
-                              style={{
-                                background:
-                                  o.status === 'accepted' ? '#005f44'
-                                    : o.status === 'rejected' ? '#981515'
-                                    : '#6c757d',
-                              }}
+                              className="pill"
+                              style={
+                                o.status === 'accepted'
+                                  ? { background: '#dcfce7', color: '#15803d' }
+                                  : o.status === 'rejected'
+                                    ? { background: '#fee2e2', color: '#dc2626' }
+                                    : { background: '#f3f4f6', color: '#6b7280' }
+                              }
                             >
-                              {o.status?.toUpperCase()}
+                              {o.status?.toUpperCase() ?? '—'}
                             </span>
                           </td>
-                          <td>{o.seller_name || '—'}</td>
-                          <td>{o.created_at ? formatDate(o.created_at) : '—'}</td>
+
+                          {/* Seller */}
+                          <td style={{ color: '#374151', fontWeight: 500, fontSize: '0.82rem' }}>
+                            {o.seller_name || '—'}
+                          </td>
+
+                          {/* Price */}
+                          <td className="tr">
+                            <span className="price-val">
+                              &#8377;{Number(o.offer_price || 0).toLocaleString('en-IN')}
+                            </span>
+                          </td>
+
+                          {/* Date */}
+                          <td className="tr">
+                            <span className="date-val">
+                              {o.created_at ? formatDate(o.created_at) : '—'}
+                            </span>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="text-center text-muted py-4">No Data Found.</td>
+                        <td
+                          colSpan={6}
+                          style={{ textAlign: 'center', color: '#9ca3af', padding: '3rem 1.5rem', fontSize: '0.85rem' }}
+                        >
+                          No data found.
+                        </td>
                       </tr>
                     )}
                   </tbody>

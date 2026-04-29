@@ -24,6 +24,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
   const [megaSearch, setMegaSearch] = useState('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  const [showAuthDropdown, setShowAuthDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -246,7 +247,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                 extraItems={
                   <Link
                     href="/wishlist"
-                    className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                    className="flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
                   >
                     <i className="bi bi-heart-fill text-sm" />
                     <span className="text-xs font-semibold whitespace-nowrap">Wishlist</span>

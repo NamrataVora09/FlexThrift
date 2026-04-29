@@ -799,8 +799,8 @@ img {
 }
 
 .topbar-toggle:hover {
-  background: #ffc63a;
-  color: #fff;
+  background: #f0f0f0;
+  color: #374151;
 }
 
 .topbar-toggle:active {

@@ -17,15 +17,15 @@ export default function DashboardTopbar({ onToggleSidebar }: Props) {
 
   const roleLabel =
     user.role === 'super_admin' ? 'Super Admin' :
-    user.role === 'admin'       ? 'Admin'        :
-    user.role === 'delivery'    ? 'Delivery'     :
-    user.role === 'seller'      ? 'Seller'       : 'Buyer';
+      user.role === 'admin' ? 'Admin' :
+        user.role === 'delivery' ? 'Delivery' :
+          user.role === 'seller' ? 'Seller' : 'Buyer';
 
   const profileHref =
-    user.role === 'super_admin' ? '/superadmin'       :
-    user.role === 'admin'       ? '/admin/profile'    :
-    user.role === 'seller'      ? '/seller/profile'   :
-    user.role === 'delivery'    ? '/delivery/profile' : '/buyer/profile';
+    user.role === 'super_admin' ? '/superadmin' :
+      user.role === 'admin' ? '/admin/profile' :
+        user.role === 'seller' ? '/seller/profile' :
+          user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile';
 
   const handleSwitch = async (role: string) => {
     const res = await switchRole(role);
@@ -37,7 +37,7 @@ export default function DashboardTopbar({ onToggleSidebar }: Props) {
       {user.user_type === 'both' && user.role === 'buyer' && (
         <button
           onClick={() => handleSwitch('seller')}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+          className="w-full flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
         >
           <i className="bi bi-arrow-left-right text-sm" />
           <span className="text-xs font-semibold whitespace-nowrap">Switch to Seller</span>
@@ -46,12 +46,19 @@ export default function DashboardTopbar({ onToggleSidebar }: Props) {
       {user.user_type === 'both' && user.role === 'seller' && (
         <button
           onClick={() => handleSwitch('buyer')}
-          className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+          className="w-full flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
         >
           <i className="bi bi-arrow-left-right text-sm" />
           <span className="text-xs font-semibold whitespace-nowrap">Switch to Buyer</span>
         </button>
       )}
+      <Link
+        href="/wishlist"
+        className="w-full flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+      >
+        <i className="bi bi-heart-fill text-sm" />
+        <span className="text-xs font-semibold whitespace-nowrap">Wishlist</span>
+      </Link>
     </>
   );
 
@@ -75,7 +82,9 @@ export default function DashboardTopbar({ onToggleSidebar }: Props) {
           <span className="topbar-brand-text">Flex Market</span>
         </Link>
 
-        <span className="topbar-role-badge">{roleLabel}</span>
+        <span className={`topbar-role-badge ${user.role === 'seller' ? 'bg-[#d96459]!' : 'bg-[#008080]!'}`}>
+          {roleLabel} {process.env.NEXT_PUBLIC_PORTAL_NAME}
+        </span>
       </div>
 
       {/* ── Right: shared profile dropdown ── */}
