@@ -466,7 +466,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                   {isBuyer && (
                     <div className="section-card">
                       <div className="section-title justify-center">
-                        <i className="fa-solid fa-gem" style={{ color: '#FDB814' }} />
+                        <i className="fa-solid fa-star" />
                         Buyer Points
                       </div>
                       <div className="rating-circle">
@@ -483,7 +483,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                   {isSeller && (
                     <div className="section-card">
                       <div className="section-title justify-center">
-                        <i className="fa-solid fa-gem" style={{ color: '#FDB814' }} />
+                        <i className="fa-solid fa-star"  />
                         Seller Points
                       </div>
                       <div className="rating-circle">

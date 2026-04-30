@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 
 interface SellerData {
   user: { name: string; seller_rating_avg: number; seller_rating_count: number };
@@ -37,11 +38,11 @@ function getImageUrl(path?: string) {
 const SELLER_DEFAULT_SUBTITLE = 'Manage your listings, track offers, and grow your business.';
 
 export default function SellerDashboardClient() {
+  const { user: authUser } = useAuth();
   const [data, setData] = useState<SellerData | null>(null);
   const [activeSub, setActiveSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [subtitle, setSubtitle] = useState(SELLER_DEFAULT_SUBTITLE);
-
   const formatDate = (d: string) => {
     if (!d) return '';
     return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -265,8 +266,8 @@ export default function SellerDashboardClient() {
             {/* Welcome */}
             <div className="row mb-4 align-items-center">
               <div className="col-md-8">
-                <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: "poppins" }}>
-                  Hello, {data?.user.name || '...'}!
+                <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: 'Poppins' }}>
+                  Hello, {data?.user.name || authUser?.name || '...'}!
                 </h1>
                 <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{subtitle}</p>
 
@@ -303,7 +304,7 @@ export default function SellerDashboardClient() {
                     <div className="d-flex align-items-center gap-3">
                       <i className="fa-solid fa-gem text-2xl" style={{ color: '#D7B467' }} />
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
+                        <div style={{ fontWeight: 700, fontSize: '17.2px', color: '#1a1a1a', marginBottom: 3 }}>
                           Active Plan: {activeSub.plan_name}
                         </div>
                         <div style={{ fontSize: '0.88rem', color: '#374151' }}>
@@ -320,7 +321,7 @@ export default function SellerDashboardClient() {
                     <div className="d-flex align-items-center gap-3">
                       <i className="fa-solid fa-ban fs-4" style={{ color: '#ef4444' }} />
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
+                        <div style={{ fontWeight: 700, fontSize: '17.2px', color: '#1a1a1a', marginBottom: 3 }}>
                           No Active Plan
                         </div>
                         <div style={{ fontSize: '0.88rem', color: '#374151' }}>
@@ -337,8 +338,8 @@ export default function SellerDashboardClient() {
             {/* Recent Products Table */}
             <div className="offers-wrap">
               <div className="offers-head">
-                <span className="offers-title">
-                  <i className="fa-solid fa-layer-group me-2" style={{ color: '#D7B467', fontSize: '1.1rem' }} />
+                <span className="offers-title" style={{ fontSize: '17.2px' }}>
+                  <i className="fa-solid fa-layer-group me-2" style={{ color: '#D7B467', fontSize: '17.2px' }} />
                   Recent Products
                 </span>
                 <Link href="/seller/my-products" className="view-all">View All</Link>

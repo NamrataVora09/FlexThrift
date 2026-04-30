@@ -71,8 +71,8 @@ export default function BuyerDashboardPage() {
   // Contacts Left: limit_value=0 means unlimited, otherwise limit - used
   const contactsLeft = activeSub
     ? (Number(activeSub.limit_value) === 0
-        ? '∞'
-        : String(Math.max(0, Number(activeSub.limit_value) - Number(activeSub.usage_count))))
+      ? '∞'
+      : String(Math.max(0, Number(activeSub.limit_value) - Number(activeSub.usage_count))))
     : '0';
 
   // Hours remaining = time until expires_at
@@ -82,14 +82,14 @@ export default function BuyerDashboardPage() {
 
   const statCards = [
     {
-      icon: 'fa-solid fa-handshake',
+      icon: 'fa-solid fa-boxes-stacked',
       label: 'Approved / Rejected',
       split: true,
       approved: data?.stats.accepted ?? 0,
       rejected: data?.stats.rejected ?? 0,
     },
-    { icon: 'fa-solid fa-clock',          label: 'Pending Offers',        value: String(data?.stats.pending ?? 0) },
-    { icon: 'fa-solid fa-tags',           label: 'Contacts Left',         value: contactsLeft },
+    { icon: 'fa-solid fa-clock', label: 'Pending Offers', value: String(data?.stats.pending ?? 0) },
+    { icon: 'fa-solid fa-tags', label: 'Contacts Left', value: contactsLeft },
     { icon: 'fa-solid fa-hourglass-half', label: 'Subscription Hrs Left', value: hrsLeft },
   ];
 
@@ -276,10 +276,10 @@ export default function BuyerDashboardPage() {
                     <div className="d-flex align-items-center gap-3">
                       <i className="fa-solid fa-gem " style={{ color: '#D7B467' }} />
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
+                        <div style={{ fontWeight: 700, fontSize: '17.2px', color: '#1a1a1a', marginBottom: 3 }}>
                           Active Plan: {activeSub.plan_name}
                         </div>
-                        <div style={{ fontSize: '0.88rem', color: '#374151' }}>
+                        <div style={{ fontSize: '15px', color: '#374151' }}>
                           {Number(activeSub.limit_value) === 0
                             ? 'Unlimited contacts'
                             : `${activeSub.usage_count ?? 0} used out of ${activeSub.limit_value} Contacts`}
@@ -293,10 +293,10 @@ export default function BuyerDashboardPage() {
                     <div className="d-flex align-items-center gap-3">
                       <i className="fa-solid fa-ban fs-4" style={{ color: '#ef4444' }} />
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
+                        <div style={{ fontWeight: 700, fontSize: '17.2px', color: '#1a1a1a', marginBottom: 3 }}>
                           No Active Plan
                         </div>
-                        <div style={{ fontSize: '0.88rem', color: '#374151' }}>
+                        <div style={{ fontSize: '15px', color: '#374151' }}>
                           You need an active subscription to reach buyers.
                         </div>
                       </div>
@@ -310,7 +310,10 @@ export default function BuyerDashboardPage() {
             {/* Recent Purchases Table */}
             <div className="offers-wrap">
               <div className="offers-head">
-                <span className="offers-title">Recent Purchases</span>
+                <span className="offers-title" style={{ fontSize: '17.2px' }}>
+                  <i className="fa-solid fa-layer-group me-2" style={{ color: '#D7B467', fontSize: '17.2px' }} />
+
+                  Recent Purchases</span>
                 <Link href="/buyer/offers" className="view-all">View All Orders</Link>
               </div>
 
