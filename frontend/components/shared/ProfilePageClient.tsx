@@ -6,10 +6,13 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+
 interface UserProfile {
   id: number;
   name: string;
   email: string;
+  profile_image?: string;
   mobile: string;
   alternate_mobile?: string;
   gender?: string;
@@ -43,6 +46,8 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
   const [error, setError] = useState('');
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalDeals, setTotalDeals] = useState(0);
+  const [activePlanName, setActivePlanName] = useState<string | null>(null);
+  const [imgUploading, setImgUploading] = useState(false);
   const [form, setForm] = useState({
     name: '', mobile: '', alternate_mobile: '', gender: '',
     address: '', pin_code: '', city: '', state: '',
@@ -73,6 +78,17 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
             }
           });
         }
+
+        // Fetch active subscription plan name
+        const subType = (u.user_type === 'seller' || u.role === 'seller') ? 'seller' : 'buyer';
+        api.get<{ active: { plan_name: string; is_active: string; expires_at: string } | null }>(`/shared/subscriptions/${subType}`).then((r) => {
+          if (r.success && r.data?.active) {
+            const a = r.data.active;
+            if (String(a.is_active) === '1' && new Date(a.expires_at) > new Date()) {
+              setActivePlanName(a.plan_name);
+            }
+          }
+        });
       }
       setLoading(false);
     });
@@ -92,6 +108,21 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
       if (refresh.success && refresh.data) setUser(refresh.data);
     } else {
       setError(res?.message || 'Failed to update profile');
+    }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    setImgUploading(true);
+    const fd = new FormData();
+    fd.append('profile_image', file);
+    const res = await api.upload<{ path: string }>('/shared/upload-profile-image', fd);
+    setImgUploading(false);
+    if (res.success && res.data) {
+      setUser(u => u ? { ...u, profile_image: res.data!.path } : u);
+      toast.success('Profile image updated!');
+    } else {
+      toast.error(res.message || 'Image upload failed');
     }
   };
 
@@ -120,6 +151,21 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           flex-wrap: wrap;
           gap: 1.5rem;
         }
+        .prof-avatar-wrap {
+          position: relative;
+          width: 90px; height: 90px;
+          flex-shrink: 0;
+          cursor: pointer;
+        }
+        .prof-avatar-wrap:hover .avatar-overlay { opacity: 1; }
+        .avatar-overlay {
+          position: absolute; inset: 0;
+          border-radius: 50%;
+          background: rgba(0,0,0,0.45);
+          display: flex; align-items: center; justify-content: center;
+          opacity: 0; transition: opacity 0.2s;
+          font-size: 1.1rem; color: #fff;
+        }
         .prof-avatar {
           width: 90px; height: 90px;
           border-radius: 50%;
@@ -127,6 +173,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           border: 4px solid #fef3c7;
           display: flex; align-items: center; justify-content: center;
           font-size: 2.2rem;
+          overflow: hidden;
           color: #FDB814;
           flex-shrink: 0;
         }
@@ -173,6 +220,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
         .section-title {
           font-size: 1rem;
           font-weight: 700;
+          text-align: center;
           color: #1f2937;
           margin-bottom: 1.25rem;
           padding-bottom: 0.75rem;
@@ -325,9 +373,33 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
             {/* ── Profile Header ── */}
             <div className="prof-header">
               <div className="d-flex align-items-center gap-4 flex-wrap">
-                <div className="prof-avatar">
-                  <i className="fa-regular fa-user" />
-                </div>
+                {/* Avatar with upload on click */}
+                <label style={{ cursor: 'pointer', textAlign: 'center' }}>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="d-none"
+                    onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+                    disabled={imgUploading}
+                  />
+                  <div className="prof-avatar-wrap">
+                    <div className="prof-avatar">
+                      {user.profile_image
+                        ? <img src={`${BACKEND_URL}/${user.profile_image}`} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <i className="fa-regular fa-user" />
+                      }
+                    </div>
+                    <div className="avatar-overlay">
+                      {imgUploading
+                        ? <i className="fa-solid fa-spinner fa-spin" />
+                        : <i className="fa-solid fa-camera" />
+                      }
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: 600, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {imgUploading ? 'Uploading…' : 'Change Photo'}
+                  </div>
+                </label>
                 <div>
                   <h4 style={{ fontWeight: 700, fontSize: '1.5rem', color: '#1f2937', marginBottom: 6 }}>
                     {user.name}
@@ -340,7 +412,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                   </div>
                   <span className="plan-badge">
                     <i className="fa-solid fa-gem" />
-                    {user.reliability_score > 0 ? `${user.reliability_score} Points` : 'Free Plan'}
+                    {activePlanName ?? 'No Active Plan'}
                   </span>
                 </div>
               </div>
@@ -350,35 +422,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
               </Link>
             </div>
 
-            {/* ── Seller Stats Row (only for sellers) ── */}
-            {isSeller && (
-              <div className="row g-3 mb-4">
-                {[
-                  { icon: 'fa-solid fa-layer-group', label: 'Products Listed', value: totalProducts },
-                  { icon: 'fa-solid fa-handshake', label: 'Deals Closed', value: totalDeals },
-                  {
-                    icon: 'fa-solid fa-star',
-                    label: 'Seller Rating',
-                    value: (user.seller_rating_count ?? 0) > 0
-                      ? `${Number(user.seller_rating_avg ?? 0).toFixed(1)}★`
-                      : '—',
-                  },
-                  {
-                    icon: 'fa-solid fa-chart-line',
-                    label: 'Reliability Score',
-                    value: user.seller_reliability_score || user.reliability_score || 0,
-                  },
-                ].map((s, i) => (
-                  <div key={i} className="col-6 col-md-3">
-                    <div className="stat-mini">
-                      <i className={`${s.icon} mb-2`} style={{ color: '#ffc63a', fontSize: '1.3rem', display: 'block' }} />
-                      <div className="stat-mini-val">{s.value}</div>
-                      <div className="stat-mini-lbl">{s.label}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+
 
             {/* ── Main Grid ── */}
             <div className="row g-4">
@@ -417,11 +461,11 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
 
               {/* Right — Ratings + Referral */}
               <div className="col-lg-4">
-                <div className="d-flex flex-column gap-3">
+                <div className="d-flex flex-column gap-10!">
                   {/* Buyer Points */}
                   {isBuyer && (
                     <div className="section-card">
-                      <div className="section-title">
+                      <div className="section-title justify-center">
                         <i className="fa-solid fa-gem" style={{ color: '#FDB814' }} />
                         Buyer Points
                       </div>
@@ -438,7 +482,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                   {/* Seller Points */}
                   {isSeller && (
                     <div className="section-card">
-                      <div className="section-title">
+                      <div className="section-title justify-center">
                         <i className="fa-solid fa-gem" style={{ color: '#FDB814' }} />
                         Seller Points
                       </div>
@@ -452,7 +496,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                     </div>
                   )}
 
-                  {/* Referral */}
+                  {/* Referral
                   {user.referral_code && (
                     <div className="section-card">
                       <div className="section-title">
@@ -479,7 +523,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                         </button>
                       </div>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
             </div>

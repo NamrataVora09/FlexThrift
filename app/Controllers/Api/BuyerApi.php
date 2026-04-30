@@ -17,10 +17,11 @@ class BuyerApi extends ResourceController
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
 
         // Product stats
-        $ttlProducts = $db->table('offers')->where('buyer_id', $userId)->countAllResults();
-        $pendingOffers = $db->table('offers')->where('buyer_id', $userId)->where('status', 'pending')->countAllResults();
+        $ttlProducts    = $db->table('offers')->where('buyer_id', $userId)->countAllResults();
+        $pendingOffers  = $db->table('offers')->where('buyer_id', $userId)->where('status', 'pending')->countAllResults();
         $acceptedOffers = $db->table('offers')->where('buyer_id', $userId)->where('status', 'accepted')->countAllResults();
-        $totalOrders = $db->table('orders')->where('buyer_id', $userId)->countAllResults();
+        $rejectedOffers = $db->table('offers')->where('buyer_id', $userId)->whereIn('status', ['rejected', 'cancelled', 'missed'])->countAllResults();
+        $totalOrders    = $db->table('orders')->where('buyer_id', $userId)->countAllResults();
 
         // Recent offers
         $recentOffers = $db->table('offers o')
@@ -57,6 +58,7 @@ class BuyerApi extends ResourceController
                     'ttl_products' => $ttlProducts,
                     'pending' => $pendingOffers,
                     'accepted' => $acceptedOffers,
+                    'rejected' => $rejectedOffers,
                     'total_orders' => $totalOrders,
                 ],
                 'recent_offers' => $recentOffers,

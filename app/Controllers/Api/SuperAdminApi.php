@@ -1287,6 +1287,21 @@ class SuperAdminApi extends ResourceController
         return $this->respond(['success' => true, 'message' => 'Settings saved successfully.']);
     }
 
+    /* Mark all expired-pending offers as 'missed' in the DB */
+    public function markMissedOffers()
+    {
+        $db = \Config\Database::connect();
+        $row = $db->table('system_settings')->where('setting_key', 'offer_acceptance_limit_days')->get()->getRowArray();
+        $limitDays = isset($row['setting_value']) ? (int) $row['setting_value'] : 7;
+        $cutoff = date('Y-m-d H:i:s', strtotime("-{$limitDays} days"));
+        $affected = $db->table('offers')
+            ->where('status', 'pending')
+            ->where('created_at <', $cutoff)
+            ->update(['status' => 'missed', 'updated_at' => date('Y-m-d H:i:s')]);
+        $count = $db->affectedRows();
+        return $this->respond(['success' => true, 'message' => "Marked {$count} expired offers as missed."]);
+    }
+
     public function bulkDeleteRejected()
     {
         $db = \Config\Database::connect();

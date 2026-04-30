@@ -47,6 +47,9 @@ export default function SettingsClient() {
   const [toDate, setToDate] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  // Fix missed offers
+  const [fixingMissed, setFixingMissed] = useState(false);
+
   useEffect(() => {
     api.get<Record<string, string>>('/superadmin/system-settings').then((r) => {
       if (r.success && r.data) setSettings(r.data);
@@ -124,16 +127,6 @@ export default function SettingsClient() {
                   <option value="INR">INR — Indian Rupee (₹)</option>
                   <option value="USD">USD — US Dollar ($)</option>
                 </select>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Buyer Dashboard Subtitle</label>
-                <input className="form-control" style={inputStyle} value={settings.buyer_dashboard_subtitle || ''} onChange={(e) => update('buyer_dashboard_subtitle', e.target.value)} placeholder="Browse millions of unique fashion gems and track your rental orders." />
-                <small className="text-muted">Shown below the greeting on the Buyer dashboard.</small>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Seller Dashboard Subtitle</label>
-                <input className="form-control" style={inputStyle} value={settings.seller_dashboard_subtitle || ''} onChange={(e) => update('seller_dashboard_subtitle', e.target.value)} placeholder="Manage your listings, track offers, and grow your business." />
-                <small className="text-muted">Shown below the greeting on the Seller dashboard.</small>
               </div>
             </div>
           </Section>
@@ -331,7 +324,33 @@ export default function SettingsClient() {
           <div className="card-header bg-white py-3 border-bottom">
             <h5 className="mb-0 fw-bold text-danger"><i className="bi bi-tools me-2"></i>System Maintenance</h5>
           </div>
-          <div className="card-body">
+          <div className="card-body d-flex flex-column gap-3">
+
+            {/* Fix missed offers */}
+            <div className="p-3 rounded-3" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
+              <h6 className="fw-bold mb-1">Fix Missed Offers in Database</h6>
+              <p className="text-muted small mb-3">
+                Marks all <strong>pending offers older than the acceptance limit</strong> as <code>missed</code> in the database.
+                This fixes the Approved/Rejected counts on Buyer &amp; Seller dashboards.
+              </p>
+              <button
+                className="btn btn-warning px-4"
+                disabled={fixingMissed}
+                onClick={async () => {
+                  setFixingMissed(true);
+                  const res = await api.post('/superadmin/mark-missed-offers', {});
+                  setFixingMissed(false);
+                  if (res.success) toast.success((res as any).message || 'Done');
+                  else toast.error((res as any).message || 'Failed');
+                }}
+              >
+                {fixingMissed
+                  ? <><span className="spinner-border spinner-border-sm me-2"></span>Running…</>
+                  : <><i className="bi bi-arrow-repeat me-2"></i>Run Fix Now</>}
+              </button>
+            </div>
+
+            {/* Delete rejected products */}
             <div className="p-3 rounded-3" style={{ background: '#fff5f5', border: '1px solid #ffeaea' }}>
               <h6 className="fw-bold mb-1">Delete Rejected Products</h6>
               <p className="text-muted small mb-3">Permanently remove rejected products and all their images for a selected date range. <strong>This cannot be undone.</strong></p>
@@ -345,6 +364,7 @@ export default function SettingsClient() {
                 </button>
               </div>
             </div>
+
           </div>
         </div>
       </div>

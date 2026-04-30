@@ -29,9 +29,9 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
 
   const roleLabel =
     effectiveRole === 'super_admin' ? 'Super Admin' :
-    effectiveRole === 'admin'       ? 'Admin' :
-    effectiveRole === 'delivery'    ? 'Delivery' :
-    effectiveRole === 'seller'      ? 'Seller' : 'Buyer';
+      effectiveRole === 'admin' ? 'Admin' :
+        effectiveRole === 'delivery' ? 'Delivery' :
+          effectiveRole === 'seller' ? 'Seller' : 'Buyer';
 
   const roleBadgeColor = effectiveRole === 'seller' ? '#d96459' : '#008080';
 
@@ -129,7 +129,7 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
             style={{ color: '#fff', fontSize: '0.85rem' }}
           />
           <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.82rem', letterSpacing: 0.3 }}>
-            {roleLabel}
+            {roleLabel} {process.env.NEXT_PUBLIC_PORTAL_NAME}
           </span>
         </div>
 

@@ -18,22 +18,26 @@ class SellerApi extends ResourceController
 
         $stats = [
             'ttl_products' => $db->table('products')->where('seller_id', $userId)->countAllResults(),
-            'pending' => $db->table('products')->where('seller_id', $userId)->where('status', 'pending')->countAllResults(),
-            'approved' => $db->table('products')->where('seller_id', $userId)->where('status', 'approved')->countAllResults(),
-            'rejected' => $db->table('products')->where('seller_id', $userId)->where('status', 'rejected')->countAllResults(),
+            'pending'      => $db->table('products')->where('seller_id', $userId)->where('status', 'pending')->countAllResults(),
+            'approved'     => $db->table('offers')->where('seller_id', $userId)->where('status', 'accepted')->countAllResults(),
+            'rejected'     => $db->table('offers')->where('seller_id', $userId)->whereIn('status', ['rejected', 'cancelled', 'missed'])->countAllResults(),
         ];
 
-        $pendingOffers = $db->table('offers o')
-            ->select('o.id, o.buyer_id, o.seller_id, o.offer_price, o.counter_price, o.rental_start_date, o.rental_end_date, o.message, o.status, o.offer_type, o.delivery_pin_code, o.delivery_country, o.delivery_state, o.delivery_city, o.deposit_amount, o.accepted_at, o.rejected_at, o.seller_remarks, o.created_at, o.updated_at, p.title as product_title, p.listing_type, u.name as buyer_name')
-            ->join('products p', 'p.id = o.product_id', 'left')
-            ->join('users u', 'u.id = o.buyer_id', 'left')
-            ->where('o.seller_id', $userId)
-            ->where('o.status', 'pending')
-            ->orderBy('o.created_at', 'DESC')
-            ->limit(10)
+        $recentProductsRaw = $db->table('products p')
+            ->select('p.id, p.title, p.listing_type, p.original_price, p.selling_price, p.rental_cost, p.status, p.created_at,
+                (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as product_image,
+                (SELECT COUNT(*) FROM offers o WHERE o.product_id = p.id) as offer_count')
+            ->where('p.seller_id', $userId)
+            ->orderBy('p.created_at', 'DESC')
+            ->limit(5)
             ->get()->getResultArray();
 
         $totalDeals = $db->table('offers')->where('seller_id', $userId)->where('status', 'accepted')->countAllResults();
+
+        $activeOrders = $db->table('orders')
+            ->where('seller_id', $userId)
+            ->whereNotIn('status', ['cancelled', 'returned', 'completed'])
+            ->countAllResults();
 
         $orderRevenue = $db->table('orders')->where('seller_id', $userId)->selectSum('final_price')->get()->getRowArray()['final_price'] ?? 0;
         $offerRevenue = $db->table('offers')->where('seller_id', $userId)->where('status', 'accepted')->selectSum('offer_price')->get()->getRowArray()['offer_price'] ?? 0;
@@ -53,9 +57,10 @@ class SellerApi extends ResourceController
                     'referral_code' => $user['referral_code'] ?? '',
                 ],
                 'stats' => $stats,
-                'pending_offers' => $pendingOffers,
+                'recent_products' => $recentProductsRaw,
                 'total_deals' => $totalDeals,
                 'total_revenue' => (float) $orderRevenue + (float) $offerRevenue,
+                'active_orders' => $activeOrders,
             ],
         ]);
     }

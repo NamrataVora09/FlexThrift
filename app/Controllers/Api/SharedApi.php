@@ -708,11 +708,11 @@ class SharedApi extends ResourceController
     public function updateProfile()
     {
         $jwtUser = $this->request->jwt_user;
-        $data = $this->request->getJSON(true);
+        $data = $this->request->getJSON(true) ?: $this->request->getPost();
         $db = \Config\Database::connect();
 
         $updateData = [];
-        $allowed = ['name', 'mobile', 'address', 'pin_code', 'city', 'state'];
+        $allowed = ['name', 'mobile', 'alternate_mobile', 'gender', 'address', 'pin_code', 'city', 'state'];
         foreach ($allowed as $field) {
             if (isset($data[$field]))
                 $updateData[$field] = $data[$field];
@@ -725,6 +725,50 @@ class SharedApi extends ResourceController
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         return $this->respond(['success' => true, 'message' => 'Profile updated', 'data' => $user]);
+    }
+
+    /**
+     * POST /api/v1/shared/upload-profile-image
+     */
+    public function uploadProfileImage()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+
+        $file = $this->request->getFile('profile_image');
+        if (!$file || !$file->isValid()) {
+            return $this->respond(['success' => false, 'message' => 'No valid image uploaded'], 400);
+        }
+
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!in_array($file->getMimeType(), $allowedTypes)) {
+            return $this->respond(['success' => false, 'message' => 'Only JPG, PNG, WEBP images are allowed'], 400);
+        }
+
+        $uploadPath = FCPATH . 'uploads/profiles/';
+        if (!is_dir($uploadPath)) mkdir($uploadPath, 0777, true);
+
+        // Delete old profile image if exists
+        $existing = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!empty($existing['profile_image'])) {
+            $oldPath = FCPATH . $existing['profile_image'];
+            if (file_exists($oldPath)) @unlink($oldPath);
+        }
+
+        $newName = $file->getRandomName();
+        $file->move($uploadPath, $newName);
+        $imagePath = 'uploads/profiles/' . $newName;
+
+        $db->table('users')->where('id', $jwtUser['user_id'])->update([
+            'profile_image' => $imagePath,
+            'updated_at'    => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond([
+            'success' => true,
+            'message' => 'Profile image updated',
+            'data'    => ['path' => $imagePath],
+        ]);
     }
 
     /**

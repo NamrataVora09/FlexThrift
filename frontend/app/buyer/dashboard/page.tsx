@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 
 interface DashboardData {
   user: { id: number; name: string; email: string; role: string; user_type: string; reliability_score: number; referral_code: string };
-  stats: { ttl_products: number; pending: number; accepted: number; total_orders: number };
+  stats: { ttl_products: number; pending: number; accepted: number; rejected: number; total_orders: number };
   recent_offers: Array<Record<string, string>>;
   notifications: Array<Record<string, string>>;
 }
@@ -68,11 +68,29 @@ export default function BuyerDashboardPage() {
     return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  // Contacts Left: limit_value=0 means unlimited, otherwise limit - used
+  const contactsLeft = activeSub
+    ? (Number(activeSub.limit_value) === 0
+        ? '∞'
+        : String(Math.max(0, Number(activeSub.limit_value) - Number(activeSub.usage_count))))
+    : '0';
+
+  // Hours remaining = time until expires_at
+  const hrsLeft = activeSub
+    ? String(Math.max(0, Math.round((new Date(activeSub.expires_at).getTime() - Date.now()) / 3_600_000)))
+    : '0';
+
   const statCards = [
-    { icon: 'fa-solid fa-layer-group', label: 'Total Products', value: String(data?.stats.ttl_products ?? 0) },
-    { icon: 'fa-solid fa-clock', label: 'Pending Offers', value: String(data?.stats.pending ?? 0) },
-    { icon: 'fa-solid fa-tags', label: 'Contacts Left', value: String(data?.stats.accepted ?? 0) },
-    { icon: 'fa-solid fa-hourglass-half', label: 'Subscription Hrs Left', value: String(data?.stats.total_orders ?? 0) },
+    {
+      icon: 'fa-solid fa-handshake',
+      label: 'Approved / Rejected',
+      split: true,
+      approved: data?.stats.accepted ?? 0,
+      rejected: data?.stats.rejected ?? 0,
+    },
+    { icon: 'fa-solid fa-clock',          label: 'Pending Offers',        value: String(data?.stats.pending ?? 0) },
+    { icon: 'fa-solid fa-tags',           label: 'Contacts Left',         value: contactsLeft },
+    { icon: 'fa-solid fa-hourglass-half', label: 'Subscription Hrs Left', value: hrsLeft },
   ];
 
   return (
@@ -236,7 +254,15 @@ export default function BuyerDashboardPage() {
                   <div className="metric-card">
                     <i className={`${card.icon} metric-icon`} />
                     <p className="metric-label mb-1">{card.label}</p>
-                    <div className="metric-value">{card.value}</div>
+                    {'split' in card ? (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span className="metric-value" style={{ color: '#16a34a' }}>{card.approved}</span>
+                        <span style={{ fontSize: '2rem', fontWeight: 800, color: '#d1d5db', lineHeight: 1 }}>/</span>
+                        <span className="metric-value" style={{ color: '#dc2626' }}>{card.rejected}</span>
+                      </div>
+                    ) : (
+                      <div className="metric-value">{card.value}</div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -248,7 +274,7 @@ export default function BuyerDashboardPage() {
                 {activeSub ? (
                   <>
                     <div className="d-flex align-items-center gap-3">
-                      <i className="fa-solid fa-layer-group fs-4" style={{ color: '#D7B467' }} />
+                      <i className="fa-solid fa-gem " style={{ color: '#D7B467' }} />
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
                           Active Plan: {activeSub.plan_name}

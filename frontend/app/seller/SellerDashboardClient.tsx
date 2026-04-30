@@ -8,9 +8,10 @@ import { api } from '@/lib/api';
 interface SellerData {
   user: { name: string; seller_rating_avg: number; seller_rating_count: number };
   stats: { ttl_products: number; pending: number; approved: number; rejected: number };
-  pending_offers: Array<Record<string, string>>;
+  recent_products: Array<Record<string, string>>;
   total_deals: number;
   total_revenue: number;
+  active_orders: number;
 }
 
 interface Subscription {
@@ -22,6 +23,15 @@ interface Subscription {
   hours_remaining: number;
   usage_count: string;
   is_active: string;
+}
+
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+
+function getImageUrl(path?: string) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('uploads/')) return `${BACKEND_URL}/${path}`;
+  return `${BACKEND_URL}/uploads/products/${path}`;
 }
 
 const SELLER_DEFAULT_SUBTITLE = 'Manage your listings, track offers, and grow your business.';
@@ -59,11 +69,21 @@ export default function SellerDashboardClient() {
     });
   }, []);
 
+  const uploadsLeft = activeSub
+    ? (Number(activeSub.limit_value) === 0 ? '∞' : String(Math.max(0, Number(activeSub.limit_value) - Number(activeSub.usage_count))))
+    : '0';
+
   const statCards = [
-    { icon: 'fa-solid fa-layer-group', label: 'Total Products', value: String(data?.stats.ttl_products ?? 0) },
+    {
+      icon: 'fa-solid fa-boxes-stacked',
+      label: 'Approved / Rejected',
+      split: true,
+      approved: data?.stats.approved ?? 0,
+      rejected: data?.stats.rejected ?? 0,
+    },
     { icon: 'fa-solid fa-clock', label: 'Pending Review', value: String(data?.stats.pending ?? 0) },
-    { icon: 'fa-solid fa-check-circle', label: 'Approved', value: String(data?.stats.approved ?? 0) },
-    { icon: 'fa-solid fa-indian-rupee-sign', label: 'Total Revenue', value: `₹${Number(data?.total_revenue ?? 0).toLocaleString('en-IN')}` },
+    { icon: 'fa-solid fa-tags stat-icon', label: 'Product Upload Left', value: uploadsLeft },
+    { icon: 'fa-solid fa-cart-shopping', label: 'Active Orders', value: String(data?.active_orders ?? 0) },
   ];
 
   return (
@@ -72,8 +92,9 @@ export default function SellerDashboardClient() {
         /* ── Analytics Cards ── */
         .metric-card {
           background: #fff;
-          border-radius: 16px;
+          border-radius: 32px;
           padding: 2rem;
+          
           box-shadow: 0 20px 40px -15px rgba(0,0,0,0.06);
           border: 1px solid #f0f0f0;
           cursor: default;
@@ -197,7 +218,15 @@ export default function SellerDashboardClient() {
         .offers-table tbody td { padding: 1.1rem 1.5rem; vertical-align: middle; }
         .offers-table tbody td.tr { text-align: right; }
 
+        .product-thumb {
+          width: 42px; height: 42px;
+          border-radius: 8px;
+          background: #f6f6f6;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
         .product-name { font-weight: 700; font-size: 0.82rem; color: #1a1a1a; }
+        .product-id   { font-size: 0.6rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
 
         .pill {
           display: inline-block;
@@ -252,7 +281,15 @@ export default function SellerDashboardClient() {
                   <div className="metric-card">
                     <i className={`${card.icon} metric-icon`} />
                     <p className="metric-label mb-1">{card.label}</p>
-                    <div className={`metric-value${card.icon.includes('rupee') ? ' sm' : ''}`}>{card.value}</div>
+                    {'split' in card ? (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span className="metric-value" style={{ color: '#16a34a' }}>{card.approved}</span>
+                        <span style={{ fontSize: '2rem', fontWeight: 800, color: '#d1d5db', lineHeight: 1 }}>/</span>
+                        <span className="metric-value" style={{ color: '#dc2626' }}>{card.rejected}</span>
+                      </div>
+                    ) : (
+                      <div className={`metric-value${card.icon.includes('rupee') ? ' sm' : ''}`}>{card.value}</div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -264,7 +301,7 @@ export default function SellerDashboardClient() {
                 {activeSub ? (
                   <>
                     <div className="d-flex align-items-center gap-3">
-                      <i className="fa-solid fa-layer-group fs-4" style={{ color: '#D7B467' }} />
+                      <i className="fa-solid fa-gem text-2xl" style={{ color: '#D7B467' }} />
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
                           Active Plan: {activeSub.plan_name}
@@ -297,11 +334,14 @@ export default function SellerDashboardClient() {
               </div>
             </div>
 
-            {/* Pending Offers Table */}
+            {/* Recent Products Table */}
             <div className="offers-wrap">
               <div className="offers-head">
-                <span className="offers-title">Pending Offers</span>
-                <Link href="/seller/offers" className="view-all">View All</Link>
+                <span className="offers-title">
+                  <i className="fa-solid fa-layer-group me-2" style={{ color: '#D7B467', fontSize: '1.1rem' }} />
+                  Recent Products
+                </span>
+                <Link href="/seller/my-products" className="view-all">View All</Link>
               </div>
 
               <div className="table-responsive">
@@ -309,53 +349,88 @@ export default function SellerDashboardClient() {
                   <thead>
                     <tr>
                       <th>Product</th>
-                      <th>Buyer</th>
                       <th>Type</th>
-                      <th className="tr">Offer Price</th>
-                      <th className="tr">Date</th>
+                      <th>Price</th>
+                      <th>Status</th>
+                      <th>Offers</th>
+                      <th className="tr">Uploaded</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data?.pending_offers && data.pending_offers.length > 0 ? (
-                      data.pending_offers.map((offer, i) => (
-                        <tr key={i}>
-                          <td>
-                            <span className="product-name">{offer.product_title || '—'}</span>
-                          </td>
-                          <td style={{ color: '#374151', fontWeight: 500, fontSize: '0.82rem' }}>
-                            {offer.buyer_name || '—'}
-                          </td>
-                          <td>
-                            <span
-                              className="pill"
-                              style={
-                                offer.listing_type === 'rent'
+                    {data?.recent_products && data.recent_products.length > 0 ? (
+                      data.recent_products.map((p, i) => {
+                        const price = p.listing_type === 'rent'
+                          ? Number(p.rental_cost || 0)
+                          : Number(p.selling_price || p.original_price || 0);
+                        const statusStyle =
+                          p.status === 'approved'
+                            ? { background: '#dcfce7', color: '#15803d' }
+                            : p.status === 'rejected'
+                              ? { background: '#fee2e2', color: '#dc2626' }
+                              : { background: '#f3f4f6', color: '#6b7280' };
+
+                        return (
+                          <tr key={i}>
+                            {/* Product */}
+                            <td>
+                              <div className="d-flex align-items-center gap-3">
+                                <div className="product-thumb">
+                                  {getImageUrl(p.product_image) ? (
+                                    <img
+                                      src={getImageUrl(p.product_image)}
+                                      alt={p.title}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+                                    />
+                                  ) : (
+                                    <i className="fa-regular fa-image" style={{ color: '#9ca3af' }} />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="product-name">{p.title || '—'}</div>
+                                  <div className="product-id">ID: {p.id}</div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Type */}
+                            <td>
+                              <span className="pill" style={
+                                p.listing_type === 'rent'
                                   ? { background: '#fce7f3', color: '#be185d' }
                                   : { background: '#d1fae5', color: '#065f46' }
-                              }
-                            >
-                              {offer.listing_type === 'rent' ? 'Rent' : 'Sell'}
-                            </span>
-                          </td>
-                          <td className="tr">
-                            <span className="price-val">
-                              &#8377;{Number(offer.offer_price || 0).toLocaleString('en-IN')}
-                            </span>
-                          </td>
-                          <td className="tr">
-                            <span className="date-val">
-                              {offer.created_at ? formatDate(offer.created_at) : '—'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                              }>
+                                {p.listing_type === 'rent' ? 'Rent' : 'Sell'}
+                              </span>
+                            </td>
+
+                            {/* Price */}
+                            <td>
+                              <span className="price-val">&#8377;{price.toLocaleString('en-IN')}</span>
+                            </td>
+
+                            {/* Status */}
+                            <td>
+                              <span className="pill" style={statusStyle}>
+                                {(p.status || 'pending').toUpperCase()}
+                              </span>
+                            </td>
+
+                            {/* Offers */}
+                            <td style={{ color: '#374151', fontWeight: 500, fontSize: '0.82rem' }}>
+                              {Number(p.offer_count) > 0 ? `${p.offer_count} offer${Number(p.offer_count) > 1 ? 's' : ''}` : 'No offers'}
+                            </td>
+
+                            {/* Date */}
+                            <td className="tr">
+                              <span className="date-val">{p.created_at ? formatDate(p.created_at) : '—'}</span>
+                            </td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
-                        <td
-                          colSpan={5}
-                          style={{ textAlign: 'center', color: '#9ca3af', padding: '3rem 1.5rem', fontSize: '0.85rem' }}
-                        >
-                          No pending offers at the moment.
+                        <td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af', padding: '3rem 1.5rem', fontSize: '0.85rem' }}>
+                          No products uploaded yet.
                         </td>
                       </tr>
                     )}

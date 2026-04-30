@@ -169,6 +169,7 @@ function register_api_routes($routes)
         $routes->get('contacted-sellers', 'Api\SharedApi::contactedSellers');
         $routes->post('purchase-subscription', 'Api\SharedApi::purchaseSubscription');
         $routes->post('update-profile', 'Api\SharedApi::updateProfile');
+        $routes->post('upload-profile-image', 'Api\SharedApi::uploadProfileImage');
         $routes->post('upload-kyc', 'Api\SharedApi::uploadKyc');
     });
 
@@ -301,6 +302,7 @@ function register_api_routes($routes)
         // Settings, CMS, Financial
         $routes->get('system-settings', 'Api\SuperAdminApi::systemSettings');
         $routes->post('update-settings', 'Api\SuperAdminApi::updateSettings');
+        $routes->post('mark-missed-offers', 'Api\SuperAdminApi::markMissedOffers');
         $routes->post('update-landing-content', 'Api\SuperAdminApi::updateLandingContent');
         $routes->get('cms-pages', 'Api\SuperAdminApi::cmsPages');
         $routes->get('cms-page/(:any)', 'Api\SuperAdminApi::cmsPage/$1');
