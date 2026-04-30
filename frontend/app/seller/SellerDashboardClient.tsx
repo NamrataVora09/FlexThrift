@@ -76,13 +76,9 @@ export default function SellerDashboardClient() {
           padding: 2rem;
           box-shadow: 0 20px 40px -15px rgba(0,0,0,0.06);
           border: 1px solid #f0f0f0;
-          transition: background 0.28s ease;
           cursor: default;
           height: 100%;
         }
-        .metric-card:hover { background: #1a1a1a; }
-        .metric-card:hover .metric-label { color: #6b7280; }
-        .metric-card:hover .metric-value { color: #fff; }
 
         .metric-icon {
           color: #ffc63a;
