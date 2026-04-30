@@ -1,5 +1,5 @@
-import LandingPageClient from '@/components/landing/LandingPageClient';
+import { redirect } from 'next/navigation';
 
-export default function BuyerLandingPage() {
-  return <LandingPageClient />;
+export default function BuyerRootPage() {
+  redirect('/buyer/dashboard');
 }

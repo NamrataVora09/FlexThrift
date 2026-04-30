@@ -1,0 +1,561 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
+
+interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  mobile: string;
+  alternate_mobile?: string;
+  gender?: string;
+  address: string;
+  pin_code: string;
+  city: string;
+  state: string;
+  user_type: string;
+  role: string;
+  reliability_score: number;
+  buyer_rating_avg?: number;
+  buyer_rating_count?: number;
+  seller_rating_avg?: number;
+  seller_rating_count?: number;
+  seller_reliability_score?: number;
+  referral_code: string;
+  is_verified: number;
+  created_at: string;
+}
+
+interface Props {
+  requiredRoles: string[];
+}
+
+export default function ProfilePageClient({ requiredRoles }: Props) {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalDeals, setTotalDeals] = useState(0);
+  const [form, setForm] = useState({
+    name: '', mobile: '', alternate_mobile: '', gender: '',
+    address: '', pin_code: '', city: '', state: '',
+  });
+
+  useEffect(() => {
+    api.get<UserProfile>('/auth/me').then((res) => {
+      if (res.success && res.data) {
+        const u = res.data;
+        setUser(u);
+        setForm({
+          name: u.name || '',
+          mobile: u.mobile || '',
+          alternate_mobile: u.alternate_mobile || '',
+          gender: u.gender || '',
+          address: u.address || '',
+          pin_code: u.pin_code || '',
+          city: u.city || '',
+          state: u.state || '',
+        });
+
+        // Fetch seller stats if the user has a seller role
+        if (u.user_type === 'seller' || u.user_type === 'both' || u.role === 'seller') {
+          api.get<any>('/seller/dashboard').then((r) => {
+            if (r.success && r.data) {
+              setTotalDeals(r.data.total_deals ?? 0);
+              setTotalProducts(r.data.stats?.ttl_products ?? 0);
+            }
+          });
+        }
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    const res = await api.post('/shared/update-profile', form);
+    setSaving(false);
+    if (res?.success) {
+      toast.success('Profile updated successfully!');
+      setSuccess('Profile updated successfully!');
+      setModalOpen(false);
+      const refresh = await api.get<UserProfile>('/auth/me');
+      if (refresh.success && refresh.data) setUser(refresh.data);
+    } else {
+      setError(res?.message || 'Failed to update profile');
+    }
+  };
+
+  const formatDate = (d: string) => {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
+  };
+
+  const isBuyer = user?.user_type === 'buyer' || user?.user_type === 'both';
+  const isSeller = user?.user_type === 'seller' || user?.user_type === 'both' || user?.role === 'seller';
+  const subsHref = isSeller && user?.role === 'seller' ? '/seller/subscriptions' : '/buyer/subscriptions';
+
+  return (
+    <DashboardLayout requiredRoles={requiredRoles}>
+      <style jsx>{`
+        /* ── Profile Header ── */
+        .prof-header {
+          background: #fff;
+          border-radius: 12px;
+          padding: 2rem;
+          margin-bottom: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 1.5rem;
+        }
+        .prof-avatar {
+          width: 90px; height: 90px;
+          border-radius: 50%;
+          background: #f9fafb;
+          border: 4px solid #fef3c7;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 2.2rem;
+          color: #FDB814;
+          flex-shrink: 0;
+        }
+        .plan-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #D7B467;
+          color: #fff;
+          padding: 5px 14px;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-top: 10px;
+        }
+        .upgrade-btn {
+          background: #008080 !important;
+          color: #fff !important;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 0.9rem;
+          cursor: pointer;
+          text-decoration: none !important;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: opacity 0.2s;
+          white-space: nowrap;
+        }
+        .upgrade-btn:hover { opacity: 0.88; }
+
+        /* ── Section Card ── */
+        .section-card {
+          background: #fff;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          padding: 2rem;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .section-title {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin-bottom: 1.25rem;
+          padding-bottom: 0.75rem;
+          border-bottom: 1px solid #e5e7eb;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        /* ── Info Grid ── */
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.25rem;
+        }
+        @media (max-width: 576px) { .info-grid { grid-template-columns: 1fr; } }
+        .info-item { display: flex; flex-direction: column; gap: 4px; }
+        .info-label {
+          font-size: 0.72rem;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-weight: 600;
+        }
+        .info-value { font-size: 0.95rem; color: #1f2937; font-weight: 600; }
+
+        /* ── Edit button ── */
+        .edit-profile-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #cf0048;
+          color: #fff;
+          border: none;
+          padding: 10px 24px;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 0.9rem;
+          cursor: pointer;
+          margin-top: 1.5rem;
+          transition: opacity 0.2s;
+        }
+        .edit-profile-btn:hover { opacity: 0.88; }
+
+        /* ── Seller stats ── */
+        .stat-mini {
+          background: #fff;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          padding: 1.1rem 1.25rem;
+          text-align: center;
+        }
+        .stat-mini-val { font-size: 1.6rem; font-weight: 800; color: #1f2937; }
+        .stat-mini-lbl { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-top: 2px; }
+
+        /* ── Rating Card ── */
+        .rating-circle {
+          width: 80px; height: 80px;
+          border-radius: 50%;
+          border: 6px solid #D7B467;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1.6rem;
+          font-weight: 700;
+          color: #1f2937;
+          background: #fff;
+          margin: 0 auto 0.75rem;
+        }
+        .rating-title {
+          font-size: 0.75rem; font-weight: 700; color: #1f2937;
+          text-transform: uppercase; letter-spacing: 0.5px;
+          margin-bottom: 4px; text-align: center;
+        }
+        .rating-desc { font-size: 0.72rem; color: #6b7280; line-height: 1.5; text-align: center; }
+
+        /* ── Modal ── */
+        .modal-overlay {
+          position: fixed; inset: 0;
+          background: rgba(0,0,0,0.45);
+          z-index: 2000;
+          display: flex; align-items: center; justify-content: center;
+          padding: 1rem;
+        }
+        .modal-box {
+          background: #fff; border-radius: 12px; padding: 2rem;
+          width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.18);
+        }
+        .modal-close {
+          width: 30px; height: 30px; border-radius: 50%;
+          border: none; background: #f3f4f6; color: #6b7280;
+          font-size: 1rem; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: background 0.15s;
+        }
+        .modal-close:hover { background: #e5e7eb; color: #1f2937; }
+        .modal-field label {
+          display: block; font-size: 0.82rem; font-weight: 700;
+          color: #1f2937; margin-bottom: 6px;
+        }
+        .modal-field input,
+        .modal-field select,
+        .modal-field textarea {
+          width: 100%; padding: 10px 14px;
+          border: 2px solid #e5e7eb; border-radius: 8px;
+          font-size: 0.9rem; transition: border-color 0.2s;
+          font-family: inherit; background: #fff;
+        }
+        .modal-field input:focus,
+        .modal-field select:focus,
+        .modal-field textarea:focus {
+          outline: none; border-color: #FDB814;
+          box-shadow: 0 0 0 3px rgba(253,184,20,0.1);
+        }
+        .btn-save {
+          background: #FDB814; color: #fff; border: none;
+          padding: 10px 28px; border-radius: 8px; font-weight: 700;
+          cursor: pointer; transition: background 0.2s;
+        }
+        .btn-save:hover { background: #D97706; }
+        .btn-cancel {
+          background: #f3f4f6; color: #1f2937; border: none;
+          padding: 10px 28px; border-radius: 8px; font-weight: 600; cursor: pointer;
+        }
+        .btn-cancel:hover { background: #e5e7eb; }
+
+        /* ── Referral ── */
+        .referral-box {
+          background: #f9fafb; border: 1px dashed #d1d5db;
+          border-radius: 10px; padding: 1.25rem; text-align: center; margin-top: 1rem;
+        }
+        .referral-code {
+          font-size: 1.4rem; font-weight: 800; letter-spacing: 4px;
+          color: #1f2937; font-family: monospace;
+        }
+      `}</style>
+
+      <div>
+        {loading ? (
+          <div className="text-center py-5">
+            <div className="spinner-border" style={{ color: '#ffc63a' }} />
+          </div>
+        ) : user ? (
+          <>
+            {success && (
+              <div className="alert alert-success border-0 rounded-3 mb-3 py-2">
+                <i className="fa-solid fa-circle-check me-2" />{success}
+              </div>
+            )}
+
+            {/* ── Profile Header ── */}
+            <div className="prof-header">
+              <div className="d-flex align-items-center gap-4 flex-wrap">
+                <div className="prof-avatar">
+                  <i className="fa-regular fa-user" />
+                </div>
+                <div>
+                  <h4 style={{ fontWeight: 700, fontSize: '1.5rem', color: '#1f2937', marginBottom: 6 }}>
+                    {user.name}
+                  </h4>
+                  <div style={{ fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>
+                    Member Since
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#1f2937', fontWeight: 600 }}>
+                    {formatDate(user.created_at)}
+                  </div>
+                  <span className="plan-badge">
+                    <i className="fa-solid fa-gem" />
+                    {user.reliability_score > 0 ? `${user.reliability_score} Points` : 'Free Plan'}
+                  </span>
+                </div>
+              </div>
+              <Link href={subsHref} className="upgrade-btn" style={{ background: '#008080', color: '#fff ', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'none !important', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'opacity 0.2s', whiteSpace: 'nowrap' }}>
+                <i className="fa-solid fa-arrow-up" />
+                Upgrade My Plan
+              </Link>
+            </div>
+
+            {/* ── Seller Stats Row (only for sellers) ── */}
+            {isSeller && (
+              <div className="row g-3 mb-4">
+                {[
+                  { icon: 'fa-solid fa-layer-group', label: 'Products Listed', value: totalProducts },
+                  { icon: 'fa-solid fa-handshake', label: 'Deals Closed', value: totalDeals },
+                  {
+                    icon: 'fa-solid fa-star',
+                    label: 'Seller Rating',
+                    value: (user.seller_rating_count ?? 0) > 0
+                      ? `${Number(user.seller_rating_avg ?? 0).toFixed(1)}★`
+                      : '—',
+                  },
+                  {
+                    icon: 'fa-solid fa-chart-line',
+                    label: 'Reliability Score',
+                    value: user.seller_reliability_score || user.reliability_score || 0,
+                  },
+                ].map((s, i) => (
+                  <div key={i} className="col-6 col-md-3">
+                    <div className="stat-mini">
+                      <i className={`${s.icon} mb-2`} style={{ color: '#ffc63a', fontSize: '1.3rem', display: 'block' }} />
+                      <div className="stat-mini-val">{s.value}</div>
+                      <div className="stat-mini-lbl">{s.label}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── Main Grid ── */}
+            <div className="row g-4">
+              {/* Left — Profile Details */}
+              <div className="col-lg-8">
+                <div className="section-card">
+                  <div className="section-title">
+                    <i className="fa-regular fa-user" style={{ color: '#FDB814' }} />
+                    Profile Details
+                  </div>
+                  <div className="info-grid">
+                    {[
+                      ['Full Name', user.name || '—'],
+                      ['Gender', user.gender || '—'],
+                      ['Email', user.email || '—'],
+                      ['Mobile Number', user.mobile || '—'],
+                      ['Current Address', user.address || '—'],
+                      ['PIN Code', user.pin_code || '—'],
+                      ['Alternate Mobile', user.alternate_mobile || '—'],
+                      ['Account Type', user.user_type === 'both' ? 'Buyer & Seller' : (user.user_type || user.role)],
+                    ].map(([label, value], i) => (
+                      <div key={i} className="info-item">
+                        <div className="info-label">{label}</div>
+                        <div className="info-value">{value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-center">
+                    <button className="edit-profile-btn" onClick={() => setModalOpen(true)}>
+                      <i className="fa-solid fa-pencil" />
+                      Edit Profile
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right — Ratings + Referral */}
+              <div className="col-lg-4">
+                <div className="d-flex flex-column gap-3">
+                  {/* Buyer Points */}
+                  {isBuyer && (
+                    <div className="section-card">
+                      <div className="section-title">
+                        <i className="fa-solid fa-gem" style={{ color: '#FDB814' }} />
+                        Buyer Points
+                      </div>
+                      <div className="rating-circle">
+                        {user.reliability_score ?? 0}
+                      </div>
+                      <div className="rating-title">Total Points Earned</div>
+                      <div className="rating-desc">
+                        Points are awarded by sellers for successful order completions and professional conduct.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Seller Points */}
+                  {isSeller && (
+                    <div className="section-card">
+                      <div className="section-title">
+                        <i className="fa-solid fa-gem" style={{ color: '#FDB814' }} />
+                        Seller Points
+                      </div>
+                      <div className="rating-circle">
+                        {user.seller_reliability_score ?? 0}
+                      </div>
+                      <div className="rating-title">Total Points Earned</div>
+                      <div className="rating-desc">
+                        Points are awarded by buyers for successful order completions and professional service.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Referral */}
+                  {user.referral_code && (
+                    <div className="section-card">
+                      <div className="section-title">
+                        <i className="fa-solid fa-gift" style={{ color: '#FDB814' }} />
+                        Referral Code
+                      </div>
+                      <div className="referral-box">
+                        <p style={{ color: '#6b7280', fontSize: '0.78rem', marginBottom: 8 }}>
+                          Share your code &amp; earn rewards
+                        </p>
+                        <div className="referral-code">{user.referral_code}</div>
+                        <button
+                          style={{
+                            marginTop: 12, background: '#FDB814', color: '#fff',
+                            border: 'none', borderRadius: 8, padding: '7px 20px',
+                            fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
+                          }}
+                          onClick={() => {
+                            navigator.clipboard.writeText(user.referral_code);
+                            toast.success('Referral code copied!');
+                          }}
+                        >
+                          <i className="fa-regular fa-clipboard me-1" />Copy Code
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Edit Modal ── */}
+            {modalOpen && (
+              <div
+                className="modal-overlay"
+                onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}
+              >
+                <div className="modal-box">
+                  <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h5 style={{ fontWeight: 700, fontSize: '1.25rem', margin: 0 }}>Edit Profile</h5>
+                    <button className="modal-close" onClick={() => setModalOpen(false)}>✕</button>
+                  </div>
+
+                  <div className="row g-3">
+                    <div className="col-md-6 modal-field">
+                      <label>Full Name</label>
+                      <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                    </div>
+                    <div className="col-md-6 modal-field">
+                      <label>Gender</label>
+                      <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="col-md-6 modal-field">
+                      <label>Mobile Number</label>
+                      <input type="tel" value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
+                    </div>
+                    <div className="col-md-6 modal-field">
+                      <label>Alternate Mobile</label>
+                      <input type="tel" value={form.alternate_mobile} onChange={(e) => setForm({ ...form, alternate_mobile: e.target.value })} />
+                    </div>
+                    <div className="col-12 modal-field">
+                      <label>Current Address</label>
+                      <textarea rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+                    </div>
+                    <div className="col-md-4 modal-field">
+                      <label>PIN Code</label>
+                      <input type="text" value={form.pin_code} onChange={(e) => setForm({ ...form, pin_code: e.target.value })} />
+                    </div>
+                    <div className="col-md-4 modal-field">
+                      <label>City</label>
+                      <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                    </div>
+                    <div className="col-md-4 modal-field">
+                      <label>State</label>
+                      <input type="text" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="alert alert-danger border-0 rounded-3 mt-3 py-2 mb-0">{error}</div>
+                  )}
+
+                  <div className="d-flex gap-2 mt-4">
+                    <button className="btn-save" onClick={handleSave} disabled={saving}>
+                      {saving ? 'Saving…' : 'Save Changes'}
+                    </button>
+                    <button className="btn-cancel" onClick={() => setModalOpen(false)}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-5">
+            <p style={{ color: '#6b7280' }}>Could not load profile data.</p>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}

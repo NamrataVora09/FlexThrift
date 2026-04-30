@@ -24,7 +24,8 @@ class BuyerApi extends ResourceController
 
         // Recent offers
         $recentOffers = $db->table('offers o')
-            ->select('o.*, p.title as product_title, p.listing_type, u.name as seller_name')
+            ->select('o.*, p.title as product_title, p.listing_type, u.name as seller_name,
+                (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as product_image')
             ->join('products p', 'p.id = o.product_id', 'left')
             ->join('users u', 'u.id = o.seller_id', 'left')
             ->where('o.buyer_id', $userId)

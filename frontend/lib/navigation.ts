@@ -83,7 +83,7 @@ export function getNavigation(role: string): NavSection[] {
         {
           title: 'Quick Links',
           items: [
-            { label: 'Browse Market', href: '/buyer', icon: 'bi bi-shop-window', target: '_blank' },
+            { label: 'Browse Market', href: '/buyer/browse', icon: 'bi bi-shop-window', target: '_blank' },
           ],
         },
       ];
@@ -144,7 +144,7 @@ export function getNavigation(role: string): NavSection[] {
         {
           title: 'Quick Links',
           items: [
-            { label: 'Browse Market', href: '/buyer', icon: 'bi bi-shop-window', target: '_blank' },
+            { label: 'Browse Market', href: '/buyer/browse', icon: 'bi bi-shop-window', target: '_blank' },
           ],
         },
       ];
@@ -172,6 +172,6 @@ export function getDashboardPath(role: string): string {
     case 'admin': return '/admin';
     case 'delivery': return '/delivery';
     case 'seller': return '/seller';
-    default: return '/buyer';
+    default: return '/buyer/dashboard';
   }
 }

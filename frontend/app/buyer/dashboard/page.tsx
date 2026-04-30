@@ -23,10 +23,22 @@ interface Subscription {
   is_active: string;
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8080');
+
+function getImageUrl(path?: string) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('uploads/')) return `${BACKEND_URL}/${path}`;
+  return `${BACKEND_URL}/uploads/products/${path}`;
+}
+
+const BUYER_DEFAULT_SUBTITLE = 'Browse millions of unique fashion gems and track your rental orders.';
+
 export default function BuyerDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subtitle, setSubtitle] = useState(BUYER_DEFAULT_SUBTITLE);
 
   useEffect(() => {
     api.get<DashboardData>('/buyer/dashboard').then((res) => {
@@ -41,6 +53,11 @@ export default function BuyerDashboardPage() {
         } else {
           setSubs([]);
         }
+      }
+    });
+    api.get<Record<string, string>>('/landing-content').then((res) => {
+      if (res.success && res.data?.buyer_dashboard_subtitle) {
+        setSubtitle(res.data.buyer_dashboard_subtitle);
       }
     });
   }, []);
@@ -210,12 +227,10 @@ export default function BuyerDashboardPage() {
           <>
             {/* Welcome */}
             <div className="mb-4">
-              <h1 style={{ fontWeight: 800, fontSize: 26, color: '#1a1a1a', marginBottom: 4 }}>
+              <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: 'Poppins' }}>
                 Hello, {data?.user.name || '...'}!
               </h1>
-              <p style={{ color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>
-                Browse millions of unique fashion gems and track your rental orders.
-              </p>
+              <p style={{ color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>{subtitle}</p>
             </div>
 
             {/* Analytics Cards */}
@@ -264,7 +279,7 @@ export default function BuyerDashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <Link href="/buyer/subscriptions" className="manage-btn">Get a Plan</Link>
+                    <Link href="/buyer/subscriptions" className="manage-btn" style={{ color: '#fff', background: '#D7B467', padding: '0.8rem 1.8rem', borderRadius: '10px', fontWeight: 700 }} >Get a Plan</Link>
                   </>
                 )}
               </div>
@@ -297,7 +312,15 @@ export default function BuyerDashboardPage() {
                           <td>
                             <div className="d-flex align-items-center gap-3">
                               <div className="product-thumb">
-                                <i className="fa-regular fa-image" style={{ color: '#9ca3af' }} />
+                                {getImageUrl(o.product_image) ? (
+                                  <img
+                                    src={getImageUrl(o.product_image)}
+                                    alt={o.product_title || 'product'}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+                                  />
+                                ) : (
+                                  <i className="fa-regular fa-image" style={{ color: '#9ca3af' }} />
+                                )}
                               </div>
                               <div>
                                 <div className="product-name">{o.product_title || '—'}</div>

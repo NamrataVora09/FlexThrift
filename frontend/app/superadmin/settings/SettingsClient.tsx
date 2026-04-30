@@ -125,6 +125,16 @@ export default function SettingsClient() {
                   <option value="USD">USD — US Dollar ($)</option>
                 </select>
               </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Buyer Dashboard Subtitle</label>
+                <input className="form-control" style={inputStyle} value={settings.buyer_dashboard_subtitle || ''} onChange={(e) => update('buyer_dashboard_subtitle', e.target.value)} placeholder="Browse millions of unique fashion gems and track your rental orders." />
+                <small className="text-muted">Shown below the greeting on the Buyer dashboard.</small>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Seller Dashboard Subtitle</label>
+                <input className="form-control" style={inputStyle} value={settings.seller_dashboard_subtitle || ''} onChange={(e) => update('seller_dashboard_subtitle', e.target.value)} placeholder="Manage your listings, track offers, and grow your business." />
+                <small className="text-muted">Shown below the greeting on the Seller dashboard.</small>
+              </div>
             </div>
           </Section>
 

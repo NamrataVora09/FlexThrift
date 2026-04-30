@@ -24,10 +24,13 @@ interface Subscription {
   is_active: string;
 }
 
+const SELLER_DEFAULT_SUBTITLE = 'Manage your listings, track offers, and grow your business.';
+
 export default function SellerDashboardClient() {
   const [data, setData] = useState<SellerData | null>(null);
   const [activeSub, setActiveSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subtitle, setSubtitle] = useState(SELLER_DEFAULT_SUBTITLE);
 
   const formatDate = (d: string) => {
     if (!d) return '';
@@ -49,85 +52,63 @@ export default function SellerDashboardClient() {
         }
       }
     });
+    api.get<Record<string, string>>('/landing-content').then((res) => {
+      if (res.success && res.data?.seller_dashboard_subtitle) {
+        setSubtitle(res.data.seller_dashboard_subtitle);
+      }
+    });
   }, []);
+
+  const statCards = [
+    { icon: 'fa-solid fa-layer-group', label: 'Total Products', value: String(data?.stats.ttl_products ?? 0) },
+    { icon: 'fa-solid fa-clock', label: 'Pending Review', value: String(data?.stats.pending ?? 0) },
+    { icon: 'fa-solid fa-check-circle', label: 'Approved', value: String(data?.stats.approved ?? 0) },
+    { icon: 'fa-solid fa-indian-rupee-sign', label: 'Total Revenue', value: `₹${Number(data?.total_revenue ?? 0).toLocaleString('en-IN')}` },
+  ];
 
   return (
     <DashboardLayout requiredRoles={['seller', 'super_admin']}>
       <style jsx>{`
-        .stat-card {
+        /* ── Analytics Cards ── */
+        .metric-card {
           background: #fff;
-          border-radius: 12px;
-          padding: 1.5rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-          position: relative;
-          overflow: hidden;
+          border-radius: 16px;
+          padding: 2rem;
+          box-shadow: 0 20px 40px -15px rgba(0,0,0,0.06);
+          border: 1px solid #f0f0f0;
+          transition: background 0.28s ease;
+          cursor: default;
           height: 100%;
         }
-        .stat-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 4px;
-          height: 100%;
-          background: #D7B467;
+        .metric-card:hover { background: #1a1a1a; }
+        .metric-card:hover .metric-label { color: #6b7280; }
+        .metric-card:hover .metric-value { color: #fff; }
+
+        .metric-icon {
+          color: #ffc63a;
+          font-size: 1.5rem;
+          margin-bottom: 1.5rem;
+          display: block;
         }
-        .stat-card h4 {
-          font-size: 2.5rem;
+        .metric-label {
+          font-size: 0.62rem;
           font-weight: 700;
-          margin-bottom: 0.25rem;
+          text-transform: uppercase;
+          letter-spacing: 0.13em;
+          color: #9ca3af;
+          margin-bottom: 6px;
+          transition: color 0.28s ease;
+        }
+        .metric-value {
+          font-size: 2.4rem;
+          font-weight: 800;
           color: #1a1a1a;
+          line-height: 1;
+          transition: color 0.28s ease;
         }
-        .stat-card .card-label {
-          font-size: 0.875rem;
-          color: #6f6f6f;
-        }
-        .stat-card .card-icon {
-          position: absolute;
-          top: 1rem;
-          right: 1rem;
-          font-size: 1.2rem;
-          color: #D7B467;
-        }
-        .plan-bar {
-          background: #fff;
-          border-radius: 12px;
-          padding: 1.25rem 1.5rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-        .manage-btn {
-          background: #c7a15a;
-          color: #fff;
-          border: none;
-          padding: 10px 24px;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          text-decoration: none;
-          display: inline-block;
-        }
-        .manage-btn:hover {
-          background: #b08e45;
-          color: #fff;
-        }
-        .explore-btn {
-          background: #ffc63a;
-          color: #000;
-          font-weight: 700;
-          padding: 10px 24px;
-          border-radius: 8px;
-          text-decoration: none;
-          display: inline-block;
-        }
-        .explore-btn:hover {
-          background: #e6b230;
-          color: #000;
-        }
+        .metric-value.sm { font-size: 1.75rem; }
+
+        /* ── Rating pill ── */
         .rating-pill {
           display: inline-flex;
           align-items: center;
@@ -137,12 +118,119 @@ export default function SellerDashboardClient() {
           color: #a07c1a;
           border-radius: 999px;
           padding: 4px 14px;
-          font-size: 0.85rem;
+          font-size: 0.82rem;
           font-weight: 600;
         }
+
+        /* ── Plan bar ── */
+        .plan-bar {
+          background: #fff;
+          border-radius: 16px;
+          padding: 1.25rem 1.75rem;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+        .manage-btn {
+          background: #D7B467;
+          color: #fff !important;
+          border: none;
+          padding: 10px 24px;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 0.9rem;
+          cursor: pointer;
+          text-decoration: none !important;
+          transition: transform 0.2s, box-shadow 0.2s;
+          white-space: nowrap;
+        }
+        .manage-btn:hover {
+          transform: scale(1.04);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+          color: #fff !important;
+        }
+
+        /* ── Table ── */
+        .offers-wrap {
+          background: #fff;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.05);
+        }
+        .offers-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem 2rem 0.75rem;
+        }
+        .offers-title {
+          font-size: 1.25rem;
+          font-weight: 800;
+          color: #1a1a1a;
+        }
+        .view-all {
+          font-size: 0.62rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+          color: #9ca3af;
+          text-decoration: none;
+          transition: color 0.15s;
+        }
+        .view-all:hover { color: #1a1a1a; }
+
+        .offers-table { width: 100%; border-collapse: collapse; }
+        .offers-table thead tr { border-bottom: 1px solid #f3f4f6; }
+        .offers-table thead th {
+          padding: 0.9rem 1.5rem;
+          font-size: 0.6rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.14em;
+          color: #9ca3af;
+          white-space: nowrap;
+        }
+        .offers-table thead th.tr { text-align: right; }
+
+        .offers-table tbody tr { border-bottom: 1px solid #f9fafb; transition: background 0.12s; }
+        .offers-table tbody tr:last-child { border-bottom: none; }
+        .offers-table tbody tr:hover { background: #fafafa; }
+        .offers-table tbody td { padding: 1.1rem 1.5rem; vertical-align: middle; }
+        .offers-table tbody td.tr { text-align: right; }
+
+        .product-name { font-weight: 700; font-size: 0.82rem; color: #1a1a1a; }
+
+        .pill {
+          display: inline-block;
+          padding: 3px 11px;
+          border-radius: 9999px;
+          font-size: 0.6rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .price-val { font-weight: 800; font-size: 0.88rem; color: #ffc63a; }
+        .date-val  { font-size: 0.72rem; color: #9ca3af; }
+
+        /* ── Upload button ── */
+        .upload-btn {
+          background: #ffc63a;
+          color: #000 !important;
+          font-weight: 700;
+          padding: 10px 22px;
+          border-radius: 8px;
+          text-decoration: none !important;
+          display: inline-block;
+          font-size: 0.9rem;
+          transition: background 0.2s;
+        }
+        .upload-btn:hover { background: #e6b230; color: #000 !important; }
       `}</style>
 
-      <div className="container" style={{ marginTop: '3%' }}>
+      <div>
         {loading ? (
           <div className="text-center py-5">
             <div className="spinner-border" style={{ color: '#ffc63a' }}></div>
@@ -152,139 +240,127 @@ export default function SellerDashboardClient() {
             {/* Welcome */}
             <div className="row mb-4 align-items-center">
               <div className="col-md-8">
-                <h1 style={{ fontWeight: 700 }}>Hello, {data?.user.name || '...'}!</h1>
-                <p style={{ color: '#6f6f6f', marginBottom: '0.75rem' }}>
-                  Manage your listings, track offers, and grow your business.
-                </p>
-                <span className="rating-pill">
-                  <i className="fa-solid fa-star" style={{ color: '#ffc63a' }}></i>
-                  {Number(data?.user.seller_rating_avg ?? 0).toFixed(1)} &nbsp;
-                  <span style={{ color: '#aaa', fontWeight: 400 }}>({data?.user.seller_rating_count ?? 0} reviews)</span>
-                </span>
+                <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: "poppins" }}>
+                  Hello, {data?.user.name || '...'}!
+                </h1>
+                <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '0.75rem' }}>{subtitle}</p>
+
               </div>
-              <div className="col-md-4 mt-3 mt-md-0 text-md-end">
-                <Link href="/seller/upload-product" className="explore-btn">
-                  + Upload Product
-                </Link>
-              </div>
+
             </div>
 
-            {/* Stats */}
+            {/* Analytics Cards */}
             <div className="row g-3 mb-4">
-              <div className="col-6 col-md-3">
-                <div className="stat-card">
-                  <h4>{data?.stats.ttl_products ?? 0}</h4>
-                  <i className="fa-solid fa-layer-group card-icon"></i>
-                  <span className="card-label">Total Products</span>
+              {statCards.map((card, i) => (
+                <div key={i} className="col-6 col-md-3">
+                  <div className="metric-card">
+                    <i className={`${card.icon} metric-icon`} />
+                    <p className="metric-label mb-1">{card.label}</p>
+                    <div className={`metric-value${card.icon.includes('rupee') ? ' sm' : ''}`}>{card.value}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="stat-card">
-                  <h4>{data?.stats.pending ?? 0}</h4>
-                  <i className="fa-solid fa-clock card-icon"></i>
-                  <span className="card-label">Pending Review</span>
-                </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="stat-card">
-                  <h4>{data?.stats.approved ?? 0}</h4>
-                  <i className="fa-solid fa-check-circle card-icon"></i>
-                  <span className="card-label">Approved</span>
-                </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="stat-card">
-                  <h4 style={{ fontSize: '1.8rem' }}>&#8377;{Number(data?.total_revenue ?? 0).toLocaleString('en-IN')}</h4>
-                  <i className="fa-solid fa-indian-rupee-sign card-icon"></i>
-                  <span className="card-label">Total Revenue</span>
-                </div>
-              </div>
+              ))}
             </div>
 
             {/* Subscription Bar */}
             <div className="mb-4">
-              {activeSub ? (
-                <div className="plan-bar">
-                  <div className="d-flex align-items-start gap-3">
-                    <i className="fa-solid fa-circle-check fs-3 text-success mt-1"></i>
-                    <div>
-                      <h6 className="fw-bold mb-1">Active Plan: {activeSub.plan_name}</h6>
-                      <p className="text-muted mb-0 small">
-                        Limit: {Number(activeSub.limit_value) === 0 ? 'Unlimited' : activeSub.limit_value}
-                      </p>
+              <div className="plan-bar">
+                {activeSub ? (
+                  <>
+                    <div className="d-flex align-items-center gap-3">
+                      <i className="fa-solid fa-layer-group fs-4" style={{ color: '#D7B467' }} />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
+                          Active Plan: {activeSub.plan_name}
+                        </div>
+                        <div style={{ fontSize: '0.88rem', color: '#374151' }}>
+                          {Number(activeSub.limit_value) === 0
+                            ? 'Unlimited listings'
+                            : `${activeSub.usage_count ?? 0} used out of ${activeSub.limit_value} Listings`}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-3 border rounded px-3 py-2" style={{ background: '#f8f9fa' }}>
-                    <i className="fa-solid fa-calendar-check text-warning fs-3"></i>
-                    <div>
-                      <small className="text-uppercase text-muted" style={{ fontSize: '0.7rem' }}>Membership Expires</small>
-                      <div className="fw-bold" style={{ fontSize: '1.25rem' }}>{formatDate(activeSub.expires_at)}</div>
+                    <Link href="/seller/subscriptions" className="manage-btn" style={{ color: '#fff', background: '#D7B467', padding: '0.8rem 1.8rem', borderRadius: '10px', fontWeight: 700 }} >Manage Plan</Link>
+                  </>
+                ) : (
+                  <>
+                    <div className="d-flex align-items-center gap-3">
+                      <i className="fa-solid fa-ban fs-4" style={{ color: '#ef4444' }} />
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a1a', marginBottom: 3 }}>
+                          No Active Plan
+                        </div>
+                        <div style={{ fontSize: '0.88rem', color: '#374151' }}>
+                          You need an active subscription to list products and reach buyers.
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <Link href="/seller/subscriptions" className="manage-btn">Manage Plan</Link>
-                </div>
-              ) : (
-                <div className="plan-bar">
-                  <div className="d-flex align-items-start gap-3">
-                    <i className="fa-solid fa-ban fs-3 text-danger mt-1"></i>
-                    <div>
-                      <h6 className="fw-bold mb-1">No Active Plan</h6>
-                      <p className="text-muted mb-0 small">You need an active subscription to list products and reach buyers.</p>
-                    </div>
-                  </div>
-                  <Link href="/seller/subscriptions" className="manage-btn">Get a Plan</Link>
-                </div>
-              )}
+                    <Link href="/seller/subscriptions" className="manage-btn" style={{ color: '#fff', background: '#D7B467', padding: '0.8rem 1.8rem', borderRadius: '10px', fontWeight: 700 }} >Get a Plan</Link>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Pending Offers Table */}
-            <div className="card shadow-sm border-0" style={{ borderRadius: '16px' }}>
-              <div
-                className="card-header bg-white d-flex align-items-center justify-content-between fw-semibold"
-                style={{ borderRadius: '16px 16px 0 0' }}
-              >
-                <span className="d-flex align-items-center gap-2">
-                  <i className="fa-solid fa-handshake"></i>
-                  Pending Offers
-                </span>
-                <Link href="/seller/offers" className="btn btn-sm" style={{ background: '#ffc63a', color: '#000', fontWeight: 600 }}>
-                  View All
-                </Link>
+            <div className="offers-wrap">
+              <div className="offers-head">
+                <span className="offers-title">Pending Offers</span>
+                <Link href="/seller/offers" className="view-all">View All</Link>
               </div>
-              <div className="table-responsive p-3">
-                <table className="table align-middle mb-0">
-                  <thead className="text-muted small text-uppercase border-bottom">
+
+              <div className="table-responsive">
+                <table className="offers-table">
+                  <thead>
                     <tr>
                       <th>Product</th>
                       <th>Buyer</th>
                       <th>Type</th>
-                      <th>Offer Price</th>
-                      <th>Date</th>
+                      <th className="tr">Offer Price</th>
+                      <th className="tr">Date</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data?.pending_offers && data.pending_offers.length > 0 ? (
                       data.pending_offers.map((offer, i) => (
                         <tr key={i}>
-                          <td className="fw-semibold">{offer.product_title || '—'}</td>
-                          <td>{offer.buyer_name || '—'}</td>
+                          <td>
+                            <span className="product-name">{offer.product_title || '—'}</span>
+                          </td>
+                          <td style={{ color: '#374151', fontWeight: 500, fontSize: '0.82rem' }}>
+                            {offer.buyer_name || '—'}
+                          </td>
                           <td>
                             <span
-                              className="badge rounded-pill px-3 py-2 fw-semibold"
-                              style={{ background: offer.listing_type === 'rent' ? '#cf0048' : '#008080', color: '#fff' }}
+                              className="pill"
+                              style={
+                                offer.listing_type === 'rent'
+                                  ? { background: '#fce7f3', color: '#be185d' }
+                                  : { background: '#d1fae5', color: '#065f46' }
+                              }
                             >
                               {offer.listing_type === 'rent' ? 'Rent' : 'Sell'}
                             </span>
                           </td>
-                          <td className="fw-semibold">&#8377;{Number(offer.offer_price || 0).toLocaleString('en-IN')}</td>
-                          <td className="text-muted">
-                            {offer.created_at ? formatDate(offer.created_at) : '—'}
+                          <td className="tr">
+                            <span className="price-val">
+                              &#8377;{Number(offer.offer_price || 0).toLocaleString('en-IN')}
+                            </span>
+                          </td>
+                          <td className="tr">
+                            <span className="date-val">
+                              {offer.created_at ? formatDate(offer.created_at) : '—'}
+                            </span>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="text-center text-muted py-4">No pending offers at the moment.</td>
+                        <td
+                          colSpan={5}
+                          style={{ textAlign: 'center', color: '#9ca3af', padding: '3rem 1.5rem', fontSize: '0.85rem' }}
+                        >
+                          No pending offers at the moment.
+                        </td>
                       </tr>
                     )}
                   </tbody>
