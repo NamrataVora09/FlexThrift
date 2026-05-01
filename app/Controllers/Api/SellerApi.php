@@ -19,12 +19,12 @@ class SellerApi extends ResourceController
         $stats = [
             'ttl_products' => $db->table('products')->where('seller_id', $userId)->countAllResults(),
             'pending'      => $db->table('products')->where('seller_id', $userId)->where('status', 'pending')->countAllResults(),
-            'approved'     => $db->table('offers')->where('seller_id', $userId)->where('status', 'accepted')->countAllResults(),
-            'rejected'     => $db->table('offers')->where('seller_id', $userId)->whereIn('status', ['rejected', 'cancelled', 'missed'])->countAllResults(),
+            'approved'     => $db->table('products')->where('seller_id', $userId)->where('status', 'approved')->countAllResults(),
+            'rejected'     => $db->table('products')->where('seller_id', $userId)->where('status', 'rejected')->countAllResults(),
         ];
 
         $recentProductsRaw = $db->table('products p')
-            ->select('p.id, p.title, p.listing_type, p.original_price, p.selling_price, p.rental_cost, p.status, p.created_at,
+            ->select('p.id, p.title, p.listing_type, p.original_price, p.price as selling_price, p.rental_cost, p.status, p.created_at,
                 (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as product_image,
                 (SELECT COUNT(*) FROM offers o WHERE o.product_id = p.id) as offer_count')
             ->where('p.seller_id', $userId)
@@ -97,7 +97,7 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $offers = $db->table('offers o')
-            ->select('o.id, o.product_id, o.buyer_id, o.seller_id, o.offer_price, o.counter_price, o.rental_start_date, o.rental_end_date, o.message, o.status, o.offer_type, o.delivery_pin_code, o.delivery_country, o.delivery_state, o.delivery_city, o.deposit_amount, o.accepted_at, o.rejected_at, o.seller_remarks, o.created_at, o.updated_at, o.offer_price as offered_price, p.title as product_title, p.product_number, p.category, p.listing_type, p.original_price, p.price as product_price, p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit, p.views_count as product_views, p.dispatch_city, p.dispatch_state')
+            ->select('o.id, o.product_id, o.buyer_id, o.seller_id, o.offer_price, o.counter_price, o.rental_start_date, o.rental_end_date, o.message, o.status, o.offer_type, o.delivery_pin_code, o.delivery_country, o.delivery_state, o.delivery_city, o.deposit_amount, o.accepted_at, o.rejected_at, o.seller_remarks, o.created_at, o.updated_at, o.offer_price as offered_price, o.seller_rated_buyer, o.buyer_rated_seller, p.title as product_title, p.product_number, p.category, p.listing_type, p.original_price, p.price as product_price, p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit, p.views_count as product_views, p.dispatch_city, p.dispatch_state')
             ->select('(SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image')
             ->select('(SELECT ord.status FROM orders ord WHERE ord.product_id = o.product_id AND ord.buyer_id = o.buyer_id AND ord.status != \'cancelled\' ORDER BY ord.created_at DESC LIMIT 1) as linked_order_status')
             ->select('u.name as buyer_name, u.mobile as buyer_mobile, u.email as buyer_email, u.buyer_rating_avg, u.buyer_rating_count, u.renter_reliability_score as buyer_reliability_score')
@@ -502,7 +502,7 @@ class SellerApi extends ResourceController
 
         // Create order
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
-        $orderId = $db->table('orders')->insert([
+        $db->table('orders')->insert([
             'order_number'      => 'FLX' . strtoupper(uniqid()),
             'product_id'        => $offer['product_id'],
             'buyer_id'          => $offer['buyer_id'],
@@ -518,7 +518,12 @@ class SellerApi extends ResourceController
             'status'            => 'pending',
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s'),
-        ], true);
+        ]);
+        $orderId = $db->insertID();
+
+        if (!$orderId) {
+            return $this->respond(['success' => false, 'message' => 'Failed to create order'], 500);
+        }
 
         $db->table('order_status_history')->insert([
             'order_id'   => $orderId,

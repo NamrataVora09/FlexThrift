@@ -804,11 +804,32 @@ class SuperAdminApi extends ResourceController
     public function originalBrandsList()
     {
         $db = \Config\Database::connect();
-        $brands = $db->table('orignal_brands ob')
-            ->select('ob.*, lt.type_name as listing_type_name')
-            ->join('listing_types lt', 'lt.id = ob.listing_type_id', 'left')
-            ->orderBy('ob.created_at', 'DESC')
+        $brands = $db->table('orignal_brands')
+            ->select('*')
+            ->orderBy('created_at', 'DESC')
             ->get()->getResultArray();
+
+        foreach ($brands as &$b) {
+            $listingTypeNames = [];
+            if (!empty($b['listing_type_ids'])) {
+                try {
+                    $ltIds = json_decode($b['listing_type_ids'], true);
+                    if (is_array($ltIds)) {
+                        foreach ($ltIds as $ltId) {
+                            $lt = $db->table('listing_types')->where('id', $ltId)->select('type_name')->get()->getRowArray();
+                            if ($lt) $listingTypeNames[] = $lt['type_name'];
+                        }
+                    }
+                } catch (\Exception $e) {}
+            }
+            if (empty($listingTypeNames) && !empty($b['listing_type_id'])) {
+                $lt = $db->table('listing_types')->where('id', $b['listing_type_id'])->select('type_name')->get()->getRowArray();
+                if ($lt) $listingTypeNames[] = $lt['type_name'];
+            }
+            $b['listing_type_names'] = $listingTypeNames;
+            $b['listing_type_ids'] = !empty($b['listing_type_ids']) ? json_decode($b['listing_type_ids'], true) : [];
+        }
+
         return $this->respond(['success' => true, 'data' => $brands]);
     }
 

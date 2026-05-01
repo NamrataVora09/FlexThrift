@@ -474,31 +474,28 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     setPreviews(next.map(f => URL.createObjectURL(f)));
   };
 
+  const filterBrandByListingType = (b: { listing_type_ids?: string | null; listing_type_id?: number | string | null }, ltId: number): boolean => {
+    let ids: number[] | null = null;
+    if (b.listing_type_ids) {
+      try {
+        const parsed = typeof b.listing_type_ids === 'string' ? JSON.parse(b.listing_type_ids) : b.listing_type_ids;
+        if (Array.isArray(parsed) && parsed.length > 0) ids = parsed.map(Number);
+      } catch { }
+    }
+    if (ids !== null) return ids.includes(ltId);
+    if (b.listing_type_id != null && b.listing_type_id !== '') return Number(b.listing_type_id) === ltId;
+    return true;
+  };
+
   const filteredOriginalBrands = (meta?.original_brands || []).filter(b => {
     if (obSearch && !b.brand_name.toLowerCase().includes(obSearch.toLowerCase())) return false;
-    if (f.listing_type_category) {
-      const ltId = Number(f.listing_type_category);
-      if (b.listing_type_ids) {
-        const ids: number[] = (typeof b.listing_type_ids === 'string' ? JSON.parse(b.listing_type_ids) : b.listing_type_ids).map(Number);
-        if (!ids.includes(ltId)) return false;
-      } else if (b.listing_type_id != null && b.listing_type_id !== '') {
-        if (Number(b.listing_type_id) !== ltId) return false;
-      }
-    }
+    if (f.listing_type_category) return filterBrandByListingType(b, Number(f.listing_type_category));
     return true;
   });
 
   const filteredSellerBrands = (meta?.seller_brands || []).filter(b => {
     if (sbSearch && !b.brand_name.toLowerCase().includes(sbSearch.toLowerCase())) return false;
-    if (f.listing_type_category) {
-      const ltId = Number(f.listing_type_category);
-      if (b.listing_type_ids) {
-        const ids: number[] = (typeof b.listing_type_ids === 'string' ? JSON.parse(b.listing_type_ids) : b.listing_type_ids).map(Number);
-        if (!ids.includes(ltId)) return false;
-      } else if (b.listing_type_id != null && b.listing_type_id !== '') {
-        if (Number(b.listing_type_id) !== ltId) return false;
-      }
-    }
+    if (f.listing_type_category) return filterBrandByListingType(b, Number(f.listing_type_category));
     return true;
   });
 

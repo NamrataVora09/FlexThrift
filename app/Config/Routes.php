@@ -280,8 +280,8 @@ function register_api_routes($routes)
         $routes->post('bulk-tag-products', 'Api\SuperAdminApi::bulkTagProducts');
         // Original Brands
         $routes->get('original-brands', 'Api\SuperAdminApi::originalBrandsList');
-        $routes->post('add-original-brand', 'Api\SuperAdminApi::createBrand');
-        $routes->post('update-original-brand/(:num)', 'Api\SuperAdminApi::updateBrand/$1');
+        $routes->post('add-original-brand', 'Api\SuperAdminApi::addOriginalBrand');
+        $routes->post('update-original-brand/(:num)', 'Api\SuperAdminApi::updateOriginalBrand/$1');
         $routes->post('delete-original-brand/(:num)', 'Api\SuperAdminApi::deleteOriginalBrandLegacy/$1');
         // User Subscriptions
         $routes->get('user-subscriptions', 'Api\SuperAdminApi::userSubscriptions');

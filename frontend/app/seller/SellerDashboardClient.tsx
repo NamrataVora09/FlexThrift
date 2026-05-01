@@ -76,7 +76,7 @@ export default function SellerDashboardClient() {
 
   const statCards = [
     {
-      icon: 'fa-solid fa-boxes-stacked',
+      icon: 'fa-solid fa-rectangle-list',
       label: 'Approved / Rejected',
       split: true,
       approved: data?.stats.approved ?? 0,
@@ -204,7 +204,7 @@ export default function SellerDashboardClient() {
         .offers-table thead tr { border-bottom: 1px solid #f3f4f6; }
         .offers-table thead th {
           padding: 0.9rem 1.5rem;
-          font-size: 0.6rem;
+          font-size: 12.5px;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.14em;
@@ -302,7 +302,7 @@ export default function SellerDashboardClient() {
                 {activeSub ? (
                   <>
                     <div className="d-flex align-items-center gap-3">
-                      <i className="fa-solid fa-gem text-2xl" style={{ color: '#D7B467' }} />
+                      <i className="fa-solid fa-gem " style={{ color: '#D7B467', fontSize: '1.5rem' }} />
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '17.2px', color: '#1a1a1a', marginBottom: 3 }}>
                           Active Plan: {activeSub.plan_name}
@@ -319,7 +319,7 @@ export default function SellerDashboardClient() {
                 ) : (
                   <>
                     <div className="d-flex align-items-center gap-3">
-                      <i className="fa-solid fa-ban fs-4" style={{ color: '#ef4444' }} />
+                      <i className="fa-solid fa-ban fs-4" style={{ color: '#ef4444', fontSize: '1.5rem' }} />
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '17.2px', color: '#1a1a1a', marginBottom: 3 }}>
                           No Active Plan
@@ -339,10 +339,10 @@ export default function SellerDashboardClient() {
             <div className="offers-wrap">
               <div className="offers-head">
                 <span className="offers-title" style={{ fontSize: '17.2px' }}>
-                  <i className="fa-solid fa-layer-group me-2" style={{ color: '#D7B467', fontSize: '17.2px' }} />
+                  <i className="fa-solid fa-layer-group me-2" style={{ color: '#ffc63a', fontSize: '1.5rem' }} />
                   Recent Products
                 </span>
-                <Link href="/seller/my-products" className="view-all">View All</Link>
+                <Link href="/seller/my-products" className="view-all underline!" style={{ fontSize: 14, color: 'blue' }}>View All Offers</Link>
               </div>
 
               <div className="table-responsive">

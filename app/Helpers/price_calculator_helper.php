@@ -198,6 +198,8 @@ if (!function_exists('validateSalePriceWithRules')) {
 if (!function_exists('validateDepositWithRules')) {
     function validateDepositWithRules(float $originalPrice, float $deposit, $listingTypeId = null, $categoryId = null, $subCategoryId = null): bool
     {
+        if ($originalPrice <= 0) return true;
+
         $ruleResult = getRentalPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, 0);
 
         if ($ruleResult['matched_rules'] > 0) {
@@ -206,8 +208,8 @@ if (!function_exists('validateDepositWithRules')) {
             return $deposit <= (round($maxAllowed) + 0.01);
         }
 
-        // Fallback
-        return validateDeposit($originalPrice, $deposit);
+        // No rules configured — no threshold to enforce
+        return true;
     }
 }
 
@@ -226,8 +228,8 @@ if (!function_exists('validateRentalCostWithRules')) {
             return $rentalCost <= (round($maxAllowed) + 0.01);
         }
 
-        // Fallback to legacy
-        return validateRentalCost($deposit, $rentalCost);
+        // No rules configured — no threshold to enforce
+        return true;
     }
 }
 
@@ -322,6 +324,8 @@ if (!function_exists('validateSalePrice')) {
 if (!function_exists('validateDeposit')) {
     function validateDeposit(float $originalPrice, float $deposit): bool
     {
+        if ($originalPrice <= 0) return true;
+
         $baseDeductionPercent = (float) getSystemSetting('rental_base_deposit_deduction', 10);
         $maxAllowed = $originalPrice * (1 - ($baseDeductionPercent / 100));
         return $deposit <= (round($maxAllowed) + 0.01);
