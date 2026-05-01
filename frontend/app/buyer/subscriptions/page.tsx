@@ -64,16 +64,22 @@ function SubscriptionsInner() {
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const [planSlide, setPlanSlide] = useState(0);
+  const [centerIdx, setCenterIdx] = useState(1);
+  const [animating, setAnimating] = useState(false);
 
   const plans = data?.plans || [];
-  const slideCount = Math.ceil(plans.length / 3);
 
   useEffect(() => {
-    if (slideCount <= 1) return;
-    const t = setInterval(() => setPlanSlide(s => (s + 1) % slideCount), 4000);
+    if (plans.length <= 3) return;
+    const t = setInterval(() => {
+      setAnimating(true);
+      setTimeout(() => {
+        setCenterIdx(c => (c + 1) % plans.length);
+        setAnimating(false);
+      }, 500);
+    }, 3500);
     return () => clearInterval(t);
-  }, [slideCount]);
+  }, [plans.length]);
 
   // SuperAdmin has full access - no subscription needed
   if (user?.role === 'super_admin') {
@@ -169,13 +175,17 @@ function SubscriptionsInner() {
         .btn-brand-sub:hover{background:#000;color:#ffc63a}
         .btn-brand-sub:disabled{opacity:.6;cursor:not-allowed}
         .feature-icon-sub{color:#ffc63a;font-size:1.2rem;margin-right:12px}
-        .slider-arrow{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s;z-index:5}
-        .slider-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467}
-        .slider-arrow.left{left:-22px}
-        .slider-arrow.right{right:-22px}
-        .slider-dots{display:flex;justify-content:center;gap:6px;margin-top:1.5rem}
-        .slider-dot{width:8px;height:8px;border-radius:50%;background:#e5e7eb;cursor:pointer;transition:all .3s}
-        .slider-dot.active{background:#D7B467;width:22px;border-radius:9999px}
+        .plan-conveyor{display:flex;gap:1.5rem;align-items:center;justify-content:center;overflow:hidden;padding:2rem 0 2.5rem;}
+        .plan-card-wrap{flex:0 0 calc(33.333% - 1rem);transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .5s,box-shadow .5s,filter .5s;}
+        .plan-card-wrap.center{transform:scale(1.06) translateY(-8px);z-index:10;filter:drop-shadow(0 20px 40px rgba(0,0,0,.14));}
+        .plan-card-wrap.side{transform:scale(0.93) translateY(0);opacity:0.82;filter:drop-shadow(0 4px 12px rgba(0,0,0,.06));}
+        .plan-card-wrap.exiting{transform:scale(0.85) translateX(-60px);opacity:0;}
+        .plan-card-wrap.entering{transform:scale(0.85) translateX(60px);opacity:0;}
+        .conveyor-dots{display:flex;justify-content:center;gap:6px;margin-top:1rem;}
+        .conveyor-dot{width:8px;height:8px;border-radius:50%;background:#e5e7eb;cursor:pointer;transition:all .3s;border:none;padding:0;}
+        .conveyor-dot.active{background:#D7B467;width:22px;border-radius:9999px;}
+        .slider-arrow{width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s;z-index:5;flex-shrink:0;}
+        .slider-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467;}
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
         @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
         .bento-col-8{grid-column:span 1}
@@ -277,70 +287,80 @@ function SubscriptionsInner() {
         {/* -------- available plans -------- */}
         <div className="mt-5 pt-4" id="available-plans">
           <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
-          {plans.length > 0 ? (
-            <div style={{ position: 'relative', padding: '0 30px' }}>
-              {/* Arrows */}
-              {slideCount > 1 && (
-                <>
-                  <button className="slider-arrow left" onClick={() => setPlanSlide(s => (s - 1 + slideCount) % slideCount)}>
-                    <i className="bi bi-chevron-left" />
-                  </button>
-                  <button className="slider-arrow right" onClick={() => setPlanSlide(s => (s + 1) % slideCount)}>
-                    <i className="bi bi-chevron-right" />
-                  </button>
-                </>
-              )}
-              {/* Slide */}
-              <div className="row g-4 align-items-center">
-                {plans.slice(planSlide * 3, planSlide * 3 + 3).map((plan, idx) => {
-                  const cardType = Number(plan.is_featured) === 1 ? 'standard' : idx === 0 ? 'basic' : idx === 1 ? 'standard' : 'elite';
-                  const isFeatured = cardType === 'standard';
-                  const isElite = cardType === 'elite';
-                  return (
-                    <div key={plan.id} className="col-md-4">
-                      <div className={`tier-${cardType}`}>
-                        {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
-                        <div style={{ marginBottom: '2rem' }}>
-                          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
-                          <p style={{ fontSize: '0.82rem', fontWeight: 500, color: '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {plan.plan_type} Based
-                          </p>
+          {plans.length > 0 ? (() => {
+            // Build the 3-card window: [left, center, right]
+            const n = plans.length;
+            const leftIdx  = (centerIdx - 1 + n) % n;
+            const rightIdx = (centerIdx + 1) % n;
+            const visible  = n === 1 ? [plans[0]] : n === 2 ? [plans[0], plans[1]] : [plans[leftIdx], plans[centerIdx], plans[rightIdx]];
+            const positions = n === 1 ? ['center'] : n === 2 ? ['side', 'center'] : ['side', 'center', 'side'];
+
+            const prev = () => { if (animating) return; setAnimating(true); setTimeout(() => { setCenterIdx(c => (c - 1 + n) % n); setAnimating(false); }, 500); };
+            const next = () => { if (animating) return; setAnimating(true); setTimeout(() => { setCenterIdx(c => (c + 1) % n); setAnimating(false); }, 500); };
+
+            return (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  {n > 3 && <button className="slider-arrow" onClick={prev}><i className="bi bi-chevron-left" /></button>}
+                  <div className="plan-conveyor" style={{ flex: 1 }}>
+                    {visible.map((plan, vi) => {
+                      const pos = positions[vi];
+                      const isCenter = pos === 'center';
+                      const cardType = Number(plan.is_featured) === 1 ? 'standard' : isCenter ? 'standard' : vi === 0 ? 'basic' : 'elite';
+                      return (
+                        <div
+                          key={plan.id}
+                          className={`plan-card-wrap ${animating && pos !== 'center' ? (vi === 0 ? 'exiting' : 'entering') : pos}`}
+                          style={{ flex: '0 0 calc(33.333% - 1rem)' }}
+                        >
+                          <div className={`tier-${cardType}`} style={isCenter ? { borderColor: '#ffc63a55', borderWidth: 1.5 } : {}}>
+                            {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
+                            {isCenter && (
+                              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#ffc63a,#D7B467)', borderRadius: '2rem 2rem 0 0' }} />
+                            )}
+                            <div style={{ marginBottom: '2rem' }}>
+                              <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
+                              <p style={{ fontSize: '0.82rem', fontWeight: 500, color: isCenter ? '#D7B467' : '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                {plan.plan_type} Based
+                              </p>
+                            </div>
+                            <div style={{ marginBottom: '2rem' }}>
+                              <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
+                            </div>
+                            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
+                              {[
+                                { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
+                                { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
+                                { icon: 'chat', text: 'Direct Messaging Access' },
+                              ].map((f, i) => (
+                                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
+                                  <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                  <span style={{ fontSize: '0.85rem', fontWeight: isCenter ? 600 : 400, color: '#374151' }}>{f.text}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            <button className={`tier-btn-${cardType}`} onClick={() => handleChoosePlan(plan.id)}>
+                              Buy Plan
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ marginBottom: '2rem' }}>
-                          <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-                        </div>
-                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
-                          {[
-                            { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
-                            { icon: 'schedule', text: `${Number(plan.duration_hours) || ' '} Hours Validity` },
-                            { icon: 'chat', text: 'Direct Messaging Access' },
-                          ].map((f, i) => (
-                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
-                              <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                              <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#374151' }}>{f.text}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <button className={`tier-btn-${cardType}`} onClick={() => handleChoosePlan(plan.id)}>
-                          Buy Plan
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Dots */}
-              {slideCount > 1 && (
-                <div className="slider-dots">
-                  {Array.from({ length: slideCount }).map((_, i) => (
-                    <div key={i} className={`slider-dot${planSlide === i ? ' active' : ''}`} onClick={() => setPlanSlide(i)} />
-                  ))}
+                      );
+                    })}
+                  </div>
+                  {n > 3 && <button className="slider-arrow" onClick={next}><i className="bi bi-chevron-right" /></button>}
                 </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-muted text-center py-4">No plans available at the moment.</p>
-          )}
+                {/* Dots */}
+                {n > 1 && (
+                  <div className="conveyor-dots">
+                    {plans.map((_, i) => (
+                      <button key={i} className={`conveyor-dot${i === centerIdx ? ' active' : ''}`} onClick={() => setCenterIdx(i)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()
+          : <p className="text-muted text-center py-4">No plans available at the moment.</p>}
         </div>
       </div>
     </DashboardLayout>

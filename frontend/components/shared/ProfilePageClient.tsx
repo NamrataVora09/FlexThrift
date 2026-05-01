@@ -440,6 +440,8 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                       ['Email', user.email || '—'],
                       ['Mobile Number', user.mobile || '—'],
                       ['Current Address', user.address || '—'],
+                      ['City', user.city || '—'],
+                      ['State', user.state || '—'],
                       ['PIN Code', user.pin_code || '—'],
                       ['Alternate Mobile', user.alternate_mobile || '—'],
                       ['Account Type', user.user_type === 'both' ? 'Buyer & Seller' : (user.user_type || user.role)],

@@ -320,9 +320,10 @@ export default function Page() {
     const list = offers || [];
     if (filter !== 'all') return list.filter((o) => o.status === filter);
     const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    const REJECTED = ['rejected', 'cancelled', 'missed'];
     return [
       ...list.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime),
-      ...list.filter(o => o.status === 'rejected').sort(byTime),
+      ...list.filter(o => REJECTED.includes(o.status)).sort(byTime),
       ...list.filter(o => o.status === 'accepted').sort(byTime),
     ];
   }, [offers, filter]);
@@ -427,12 +428,12 @@ export default function Page() {
           transition: all 0.2s;
         }
         .filter-pill:hover {
-          border-color: #ffc63a;
+          border-color: #eee;
         }
         .filter-pill.active {
-          background: #d6b06b;
+          background: #ffc63a;
           color: #fff;
-          border-color: #d6b06b;
+          border-color: #ffc63a;
         }
         .filter-pill .count-badge {
           background: rgba(0,0,0,0.08);
@@ -572,7 +573,7 @@ export default function Page() {
                           return (
                             <div style={{ background: '', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '0.75rem' }}>
                               <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
-                                <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Negotiation Logs
+                                Negotiation Logs
                               </div>
                               {steps.map((step, idx) => (
                                 <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>

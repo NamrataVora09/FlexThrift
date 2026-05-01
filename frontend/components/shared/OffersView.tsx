@@ -195,8 +195,8 @@ const CSS = `
     transition: all 0.2s;
     text-decoration: none !important;
   }
-  .filter-tabs .nav-link:hover {  color: #666 !important; background: #fff; }
-  .filter-tabs .nav-link.active { background: #ffc63a; color: #fff !important; border-color: #d6b06b; }
+  .filter-tabs .nav-link:hover { color: #666 !important; background: #fff; border-color: #eee; }
+  .filter-tabs .nav-link.active { background: #ffc63a; color: #fff !important; border-color: #ffc63a; }
   .filter-tabs .nav-link .count-badge { background: rgba(0,0,0,0.08); padding: 2px 8px; border-radius: 20px; font-size: 11px; margin-left: 6px; }
   .filter-tabs .nav-link.active .count-badge { background: rgba(255,255,255,0.25); }
 
@@ -1172,7 +1172,14 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
     const m: Record<number, Offer[]> = {};
     offers.forEach(o => { (m[o.product_id] = m[o.product_id] || []).push(o); });
     // sort offers within each group newest-first
-    Object.values(m).forEach(arr => arr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+    Object.values(m).forEach(arr => {
+      const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      const REJECTED = ['rejected', 'cancelled', 'missed'];
+      const p = arr.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime);
+      const r = arr.filter(o => REJECTED.includes(o.status)).sort(byTime);
+      const a = arr.filter(o => o.status === 'accepted').sort(byTime);
+      arr.splice(0, arr.length, ...p, ...r, ...a);
+    });
     return m;
   }, [offers]);
 
@@ -1378,7 +1385,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                         return (
                           <div style={{ background: '', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '0.75rem' }}>
                             <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
-                              <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Negotiation Logs
+                              Negotiation Logs
                             </div>
                             {steps.map((step, idx) => (
                               <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>

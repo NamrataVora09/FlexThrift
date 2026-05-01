@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth-context';
@@ -32,16 +32,10 @@ export default function SubscriptionsView({ role, userType }: Props) {
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  // Seller carousel
-  const sellerRef = useRef<HTMLDivElement>(null);
-  const [sellerW, setSellerW] = useState(0);
   const [sellerCenter, setSellerCenter] = useState(1);
-  const [sellerTrans, setSellerTrans] = useState(true);
-  // Buyer carousel
-  const buyerRef = useRef<HTMLDivElement>(null);
-  const [buyerW, setBuyerW] = useState(0);
+  const [sellerAnimating, setSellerAnimating] = useState(false);
   const [buyerCenter, setBuyerCenter] = useState(1);
-  const [buyerTrans, setBuyerTrans] = useState(true);
+  const [buyerAnimating, setBuyerAnimating] = useState(false);
 
   // Payment modal state
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -120,56 +114,19 @@ export default function SubscriptionsView({ role, userType }: Props) {
 
   const sellerPlans = data?.plans || [];
 
-  // Measure wrapper widths
+  // Seller auto-advance
   useEffect(() => {
-    const obs = new ResizeObserver(entries => {
-      for (const e of entries) {
-        if (e.target === sellerRef.current) setSellerW(e.contentRect.width);
-        if (e.target === buyerRef.current)  setBuyerW(e.contentRect.width);
-      }
-    });
-    if (sellerRef.current) { obs.observe(sellerRef.current); setSellerW(sellerRef.current.offsetWidth); }
-    if (buyerRef.current)  { obs.observe(buyerRef.current);  setBuyerW(buyerRef.current.offsetWidth); }
-    return () => obs.disconnect();
-  }, [loading]);
-
-  // Seller carousel auto-advance
-  useEffect(() => {
-    if (sellerPlans.length < 2) return;
-    const t = setInterval(() => setSellerCenter(p => p + 1), 3500);
+    if (sellerPlans.length <= 3) return;
+    const t = setInterval(() => { setSellerAnimating(true); setTimeout(() => { setSellerCenter(c => (c + 1) % sellerPlans.length); setSellerAnimating(false); }, 500); }, 3500);
     return () => clearInterval(t);
   }, [sellerPlans.length]);
 
+  // Buyer auto-advance
   useEffect(() => {
-    const n = sellerPlans.length;
-    if (sellerCenter === n + 1) {
-      const t = setTimeout(() => { setSellerTrans(false); setSellerCenter(1); }, 660);
-      return () => clearTimeout(t);
-    }
-  }, [sellerCenter, sellerPlans.length]);
-
-  useEffect(() => {
-    if (!sellerTrans) { const f = requestAnimationFrame(() => requestAnimationFrame(() => setSellerTrans(true))); return () => cancelAnimationFrame(f); }
-  }, [sellerTrans]);
-
-  // Buyer carousel auto-advance
-  useEffect(() => {
-    if (buyerPlans.length < 2) return;
-    const t = setInterval(() => setBuyerCenter(p => p + 1), 3500);
+    if (buyerPlans.length <= 3) return;
+    const t = setInterval(() => { setBuyerAnimating(true); setTimeout(() => { setBuyerCenter(c => (c + 1) % buyerPlans.length); setBuyerAnimating(false); }, 500); }, 3500);
     return () => clearInterval(t);
   }, [buyerPlans.length]);
-
-  useEffect(() => {
-    const n = buyerPlans.length;
-    if (buyerCenter === n + 1) {
-      const t = setTimeout(() => { setBuyerTrans(false); setBuyerCenter(1); }, 660);
-      return () => clearTimeout(t);
-    }
-  }, [buyerCenter, buyerPlans.length]);
-
-  useEffect(() => {
-    if (!buyerTrans) { const f = requestAnimationFrame(() => requestAnimationFrame(() => setBuyerTrans(true))); return () => cancelAnimationFrame(f); }
-  }, [buyerTrans]);
 
   const openCheckout = async (plan: Plan) => {
     setSelectedPlan(plan);
@@ -314,13 +271,17 @@ export default function SubscriptionsView({ role, userType }: Props) {
         .tier-btn-standard:hover{transform:scale(1.03);background:#c9a455}
         .tier-btn-elite{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
         .tier-btn-elite:hover{background:#c9a455;transform:translateY(-2px)}
-        .slider-arrow{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s;z-index:5}
-        .slider-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467}
-        .slider-arrow.left{left:-22px}
-        .slider-arrow.right{right:-22px}
-        .slider-dots{display:flex;justify-content:center;gap:6px;margin-top:1.5rem}
-        .slider-dot{width:8px;height:8px;border-radius:50%;background:#e5e7eb;cursor:pointer;transition:all .3s}
-        .slider-dot.active{background:#D7B467;width:22px;border-radius:9999px}
+        .plan-conveyor{display:flex;gap:1.5rem;align-items:center;justify-content:center;overflow:hidden;padding:2rem 0 2.5rem;}
+        .plan-card-wrap{flex:0 0 calc(33.333% - 1rem);transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .5s,filter .5s;}
+        .plan-card-wrap.center{transform:scale(1.06) translateY(-8px);z-index:10;filter:drop-shadow(0 20px 40px rgba(0,0,0,.14));}
+        .plan-card-wrap.side{transform:scale(0.93);opacity:0.82;filter:drop-shadow(0 4px 12px rgba(0,0,0,.06));}
+        .plan-card-wrap.exiting{transform:scale(0.85) translateX(-60px);opacity:0;}
+        .plan-card-wrap.entering{transform:scale(0.85) translateX(60px);opacity:0;}
+        .conveyor-dots{display:flex;justify-content:center;gap:6px;margin-top:1rem;}
+        .conveyor-dot{width:8px;height:8px;border-radius:50%;background:#e5e7eb;cursor:pointer;transition:all .3s;border:none;padding:0;}
+        .conveyor-dot.active{background:#D7B467;width:22px;border-radius:9999px;}
+        .slider-arrow{width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s;z-index:5;flex-shrink:0;}
+        .slider-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467;}
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
         @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
         .bento-col-8{grid-column:span 1}
@@ -409,150 +370,138 @@ export default function SubscriptionsView({ role, userType }: Props) {
 
         {/* Plans */}
         <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
-        {sellerPlans.length > 0 ? (
-          <div style={{ position: 'relative', padding: '0 30px' }}>
-            {sellerSlideCount > 1 && (
-              <>
-                <button className="slider-arrow left" onClick={() => setPlanSlide(s => (s - 1 + sellerSlideCount) % sellerSlideCount)}><i className="bi bi-chevron-left" /></button>
-                <button className="slider-arrow right" onClick={() => setPlanSlide(s => (s + 1) % sellerSlideCount)}><i className="bi bi-chevron-right" /></button>
-              </>
-            )}
-            <div className="row g-4 align-items-center">
-              {sellerPlans.slice(planSlide * 3, planSlide * 3 + 3).map((plan, idx) => {
-                const cardType = Number(plan.is_featured) === 1 ? 'standard' : idx === 0 ? 'basic' : idx === 1 ? 'standard' : 'elite';
-                const isFeatured = cardType === 'standard';
-                const isElite = cardType === 'elite';
-                return (
-                  <div key={plan.id} className="col-md-4">
-                    <div className={`tier-${cardType}`}>
-                      {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
-                      <div style={{ marginBottom: '2rem' }}>
-                        <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
-                        <p style={{ fontSize: '0.82rem', fontWeight: 500, color: '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{plan.plan_type} Based</p>
-                      </div>
-                      <div style={{ marginBottom: '2rem' }}>
-                        <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-                      </div>
-                      <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
-                        {[
-                          { icon: 'inventory_2', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
-                          { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
-                          { icon: 'verified', text: 'Verified Seller Badge' },
-                        ].map((f, i) => (
-                          <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
-                            <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#374151' }}>{f.text}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      {isSuperAdmin ? (
-                        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          <button
-                            style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_featured) === 1 ? '#D7B467' : '#f3f4f6', color: Number(plan.is_featured) === 1 ? '#fff' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
-                            onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}
-                          >
-                            {togglingId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_featured) === 1 ? "'FILL' 1" : "'FILL' 0" }}>workspace_premium</span>}
-                            {Number(plan.is_featured) === 1 ? 'Premium' : 'Set Premium'}
-                          </button>
-                          <button
-                            style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_most_selected) === 1 ? '#1a1a1a' : '#f3f4f6', color: Number(plan.is_most_selected) === 1 ? '#ffc63a' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
-                            onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}
-                          >
-                            {togglingMsId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_most_selected) === 1 ? "'FILL' 1" : "'FILL' 0" }}>star</span>}
-                            {Number(plan.is_most_selected) === 1 ? 'Most Selected' : 'Set Most Selected'}
-                          </button>
-                        </div>
-                      ) : (
-                        <button className={`tier-btn-${cardType}`} onClick={() => openCheckout(plan)}>Buy Plan</button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {sellerSlideCount > 1 && (
-              <div className="slider-dots">
-                {Array.from({ length: sellerSlideCount }).map((_, i) => (
-                  <div key={i} className={`slider-dot${planSlide === i ? ' active' : ''}`} onClick={() => setPlanSlide(i)} />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : <p className="normal_label_font text-center py-4">No seller plans available</p>}
-
-        {user?.role === 'admin' && buyerPlans.length > 0 && (
-          <>
-            <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem', marginTop: '2rem' }}>Buyer Plans</h2>
-            <div style={{ position: 'relative', padding: '0 30px' }}>
-              {buyerSlideCount > 1 && (
-                <>
-                  <button className="slider-arrow left" onClick={() => setBuyerSlide(s => (s - 1 + buyerSlideCount) % buyerSlideCount)}><i className="bi bi-chevron-left" /></button>
-                  <button className="slider-arrow right" onClick={() => setBuyerSlide(s => (s + 1) % buyerSlideCount)}><i className="bi bi-chevron-right" /></button>
-                </>
-              )}
-              <div className="row g-4 align-items-center">
-                {buyerPlans.slice(buyerSlide * 3, buyerSlide * 3 + 3).map((plan, idx) => {
-                  const cardType = Number(plan.is_featured) === 1 ? 'standard' : idx === 0 ? 'basic' : idx === 1 ? 'standard' : 'elite';
-                  const isFeatured = cardType === 'standard';
-                  const isElite = cardType === 'elite';
-                  return (
-                    <div key={plan.id} className="col-md-4">
-                      <div className={`tier-${cardType}`}>
-                        {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
-                        <div style={{ marginBottom: '2rem' }}>
-                          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
-                          <p style={{ fontSize: '0.82rem', fontWeight: 500, color: '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{plan.plan_type} Based</p>
-                        </div>
-                        <div style={{ marginBottom: '2rem' }}>
-                          <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-                        </div>
-                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
-                          {[
-                            { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
-                            { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
-                            { icon: 'chat', text: 'Direct Messaging Access' },
-                          ].map((f, i) => (
-                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
-                              <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                              <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#374151' }}>{f.text}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {isSuperAdmin ? (
-                          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <button
-                              style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_featured) === 1 ? '#D7B467' : '#f3f4f6', color: Number(plan.is_featured) === 1 ? '#fff' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
-                              onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}
-                            >
-                              {togglingId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_featured) === 1 ? "'FILL' 1" : "'FILL' 0" }}>workspace_premium</span>}
-                              {Number(plan.is_featured) === 1 ? 'Premium' : 'Set Premium'}
-                            </button>
-                            <button
-                              style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_most_selected) === 1 ? '#1a1a1a' : '#f3f4f6', color: Number(plan.is_most_selected) === 1 ? '#ffc63a' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
-                              onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}
-                            >
-                              {togglingMsId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_most_selected) === 1 ? "'FILL' 1" : "'FILL' 0" }}>star</span>}
-                              {Number(plan.is_most_selected) === 1 ? 'Most Selected' : 'Set Most Selected'}
-                            </button>
+        {sellerPlans.length > 0 ? (() => {
+          const n = sellerPlans.length;
+          const li = (sellerCenter - 1 + n) % n, ri = (sellerCenter + 1) % n;
+          const vis = n === 1 ? [sellerPlans[0]] : n === 2 ? [sellerPlans[0], sellerPlans[1]] : [sellerPlans[li], sellerPlans[sellerCenter], sellerPlans[ri]];
+          const pos = n === 1 ? ['center'] : n === 2 ? ['side','center'] : ['side','center','side'];
+          const prev = () => { if (sellerAnimating) return; setSellerAnimating(true); setTimeout(() => { setSellerCenter(c => (c - 1 + n) % n); setSellerAnimating(false); }, 500); };
+          const next = () => { if (sellerAnimating) return; setSellerAnimating(true); setTimeout(() => { setSellerCenter(c => (c + 1) % n); setSellerAnimating(false); }, 500); };
+          return (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {n > 3 && <button className="slider-arrow" onClick={prev}><i className="bi bi-chevron-left" /></button>}
+                <div className="plan-conveyor" style={{ flex: 1 }}>
+                  {vis.map((plan, vi) => {
+                    const p = pos[vi]; const isC = p === 'center';
+                    const ct = Number(plan.is_featured) === 1 ? 'standard' : isC ? 'standard' : vi === 0 ? 'basic' : 'elite';
+                    return (
+                      <div key={plan.id} className={`plan-card-wrap ${sellerAnimating && !isC ? (vi === 0 ? 'exiting' : 'entering') : p}`}>
+                        <div className={`tier-${ct}`} style={isC ? { borderColor: '#ffc63a55', borderWidth: 1.5 } : {}}>
+                          {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
+                          {isC && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#ffc63a,#D7B467)', borderRadius: '2rem 2rem 0 0' }} />}
+                          <div style={{ marginBottom: '2rem' }}>
+                            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
+                            <p style={{ fontSize: '0.82rem', fontWeight: 500, color: isC ? '#D7B467' : '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{plan.plan_type} Based</p>
                           </div>
-                        ) : (
-                          <button className={`tier-btn-${cardType}`} onClick={() => openCheckout(plan)}>Buy Plan</button>
-                        )}
+                          <div style={{ marginBottom: '2rem' }}>
+                            <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
+                          </div>
+                          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
+                            {[{ icon: 'inventory_2', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` }, { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` }, { icon: 'verified', text: 'Verified Seller Badge' }].map((f, i) => (
+                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
+                                <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: isC ? 600 : 400, color: '#374151' }}>{f.text}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {isSuperAdmin ? (
+                            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <button style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_featured) === 1 ? '#D7B467' : '#f3f4f6', color: Number(plan.is_featured) === 1 ? '#fff' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }} onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>
+                                {togglingId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_featured) === 1 ? "'FILL' 1" : "'FILL' 0" }}>workspace_premium</span>}
+                                {Number(plan.is_featured) === 1 ? 'Premium' : 'Set Premium'}
+                              </button>
+                              <button style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_most_selected) === 1 ? '#1a1a1a' : '#f3f4f6', color: Number(plan.is_most_selected) === 1 ? '#ffc63a' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>
+                                {togglingMsId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_most_selected) === 1 ? "'FILL' 1" : "'FILL' 0" }}>star</span>}
+                                {Number(plan.is_most_selected) === 1 ? 'Most Selected' : 'Set Most Selected'}
+                              </button>
+                            </div>
+                          ) : (
+                            <button className={`tier-btn-${ct}`} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                {n > 3 && <button className="slider-arrow" onClick={next}><i className="bi bi-chevron-right" /></button>}
               </div>
-              {buyerSlideCount > 1 && (
-                <div className="slider-dots">
-                  {Array.from({ length: buyerSlideCount }).map((_, i) => (
-                    <div key={i} className={`slider-dot${buyerSlide === i ? ' active' : ''}`} onClick={() => setBuyerSlide(i)} />
-                  ))}
+              {n > 1 && (
+                <div className="conveyor-dots">
+                  {sellerPlans.map((_, i) => <button key={i} className={`conveyor-dot${i === sellerCenter ? ' active' : ''}`} onClick={() => setSellerCenter(i)} />)}
                 </div>
               )}
             </div>
-          </>
-        )}
+          );
+        })() : <p className="normal_label_font text-center py-4">No seller plans available</p>}
+
+        {(user?.role === 'admin' || isSuperAdmin) && buyerPlans.length > 0 && (() => {
+          const n = buyerPlans.length;
+          const li = (buyerCenter - 1 + n) % n, ri = (buyerCenter + 1) % n;
+          const vis = n === 1 ? [buyerPlans[0]] : n === 2 ? [buyerPlans[0], buyerPlans[1]] : [buyerPlans[li], buyerPlans[buyerCenter], buyerPlans[ri]];
+          const pos = n === 1 ? ['center'] : n === 2 ? ['side','center'] : ['side','center','side'];
+          const prev = () => { if (buyerAnimating) return; setBuyerAnimating(true); setTimeout(() => { setBuyerCenter(c => (c - 1 + n) % n); setBuyerAnimating(false); }, 500); };
+          const next = () => { if (buyerAnimating) return; setBuyerAnimating(true); setTimeout(() => { setBuyerCenter(c => (c + 1) % n); setBuyerAnimating(false); }, 500); };
+          return (
+            <>
+              <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem', marginTop: '2rem' }}>Buyer Plans</h2>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  {n > 3 && <button className="slider-arrow" onClick={prev}><i className="bi bi-chevron-left" /></button>}
+                  <div className="plan-conveyor" style={{ flex: 1 }}>
+                    {vis.map((plan, vi) => {
+                      const p = pos[vi]; const isC = p === 'center';
+                      const ct = Number(plan.is_featured) === 1 ? 'standard' : isC ? 'standard' : vi === 0 ? 'basic' : 'elite';
+                      return (
+                        <div key={plan.id} className={`plan-card-wrap ${buyerAnimating && !isC ? (vi === 0 ? 'exiting' : 'entering') : p}`}>
+                          <div className={`tier-${ct}`} style={isC ? { borderColor: '#ffc63a55', borderWidth: 1.5 } : {}}>
+                            {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
+                            {isC && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#ffc63a,#D7B467)', borderRadius: '2rem 2rem 0 0' }} />}
+                            <div style={{ marginBottom: '2rem' }}>
+                              <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
+                              <p style={{ fontSize: '0.82rem', fontWeight: 500, color: isC ? '#D7B467' : '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{plan.plan_type} Based</p>
+                            </div>
+                            <div style={{ marginBottom: '2rem' }}>
+                              <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
+                            </div>
+                            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
+                              {[{ icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` }, { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` }, { icon: 'chat', text: 'Direct Messaging Access' }].map((f, i) => (
+                                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
+                                  <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                  <span style={{ fontSize: '0.85rem', fontWeight: isC ? 600 : 400, color: '#374151' }}>{f.text}</span>
+                                </li>
+                              ))}
+                            </ul>
+                            {isSuperAdmin ? (
+                              <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <button style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_featured) === 1 ? '#D7B467' : '#f3f4f6', color: Number(plan.is_featured) === 1 ? '#fff' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }} onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>
+                                  {togglingId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_featured) === 1 ? "'FILL' 1" : "'FILL' 0" }}>workspace_premium</span>}
+                                  {Number(plan.is_featured) === 1 ? 'Premium' : 'Set Premium'}
+                                </button>
+                                <button style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_most_selected) === 1 ? '#1a1a1a' : '#f3f4f6', color: Number(plan.is_most_selected) === 1 ? '#ffc63a' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>
+                                  {togglingMsId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_most_selected) === 1 ? "'FILL' 1" : "'FILL' 0" }}>star</span>}
+                                  {Number(plan.is_most_selected) === 1 ? 'Most Selected' : 'Set Most Selected'}
+                                </button>
+                              </div>
+                            ) : (
+                              <button className={`tier-btn-${ct}`} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {n > 3 && <button className="slider-arrow" onClick={next}><i className="bi bi-chevron-right" /></button>}
+                </div>
+                {n > 1 && (
+                  <div className="conveyor-dots">
+                    {buyerPlans.map((_, i) => <button key={i} className={`conveyor-dot${i === buyerCenter ? ' active' : ''}`} onClick={() => setBuyerCenter(i)} />)}
+                  </div>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
       </div>
 
