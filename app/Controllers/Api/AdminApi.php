@@ -362,11 +362,10 @@ class AdminApi extends ResourceController
                 u.name as buyer_name, u.mobile as buyer_mobile, u.email as buyer_email,
                 u.buyer_rating_avg, u.buyer_rating_count,
                 u.renter_reliability_score as buyer_reliability_score,
-                cv.viewed_at as contact_viewed_at,
+                (SELECT MAX(cv.viewed_at) FROM contact_views cv WHERE cv.user_id = o.buyer_id AND cv.product_id = o.product_id) as contact_viewed_at,
                 "received" as perspective')
             ->join('products p', 'p.id = o.product_id', 'left')
             ->join('users u', 'u.id = o.buyer_id', 'left')
-            ->join('contact_views cv', 'cv.user_id = o.buyer_id AND cv.product_id = o.product_id', 'left')
             ->where('o.seller_id', $jwtUser['user_id'])
             ->orderBy('o.created_at', 'DESC')
             ->get()->getResultArray();

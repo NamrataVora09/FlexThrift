@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth-context';
 import PageHeader from './PageHeader';
 import { api } from '@/lib/api';
 
-interface Plan { id: number; name: string; plan_type: string; limit_value: number; duration_hours: number; price: string; is_featured?: number | string; }
+interface Plan { id: number; name: string; plan_type: string; limit_value: number; duration_hours: number; price: string; is_featured?: number | string; is_most_selected?: number | string; }
 interface ActiveSub { plan_name: string; plan_type: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; }
 interface HistoryItem { plan_name: string; plan_type: string; price: string; starts_at: string; expires_at: string; is_active: number; }
 interface SubData { plans: Plan[]; active: ActiveSub | null; history: HistoryItem[]; }
@@ -32,8 +32,16 @@ export default function SubscriptionsView({ role, userType }: Props) {
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const [planSlide, setPlanSlide] = useState(0);
-  const [buyerSlide, setBuyerSlide] = useState(0);
+  // Seller carousel
+  const sellerRef = useRef<HTMLDivElement>(null);
+  const [sellerW, setSellerW] = useState(0);
+  const [sellerCenter, setSellerCenter] = useState(1);
+  const [sellerTrans, setSellerTrans] = useState(true);
+  // Buyer carousel
+  const buyerRef = useRef<HTMLDivElement>(null);
+  const [buyerW, setBuyerW] = useState(0);
+  const [buyerCenter, setBuyerCenter] = useState(1);
+  const [buyerTrans, setBuyerTrans] = useState(true);
 
   // Payment modal state
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -51,21 +59,39 @@ export default function SubscriptionsView({ role, userType }: Props) {
   const [paying, setPaying] = useState(false);
 
   const [buyerPlans, setBuyerPlans] = useState<Plan[]>([]);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [togglingMsId, setTogglingMsId] = useState<number | null>(null);
 
-  // SuperAdmin has full access view
-  if (user?.role === 'super_admin') {
-    return (
-      <DashboardLayout requiredRoles={['super_admin']}>
-        <div className="container">
-          <div className="text-center py-5 bg-white rounded-4 border">
-            <i className="bi bi-shield-check" style={{ fontSize: '5rem', color: '#ffc63a' }}></i>
-            <h3 className="mt-4 fw-bold">SuperAdmin Full Access</h3>
-            <p className="text-muted">You have unlimited access to all features. No subscription required.</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  const toggleFeatured = async (plan: Plan) => {
+    setTogglingId(plan.id);
+    const res = await api.post(`/shared/admin-subscription-plans/${plan.id}/toggle-featured`, {});
+    setTogglingId(null);
+    if (res.success) {
+      const newFeatured = Number(plan.is_featured) ? 0 : 1;
+      const updateList = (list: Plan[]) => list.map(p =>
+        p.id === plan.id ? { ...p, is_featured: newFeatured } :
+        (p as any).user_type === (plan as any).user_type ? { ...p, is_featured: 0 } : p
+      );
+      setData(prev => prev ? { ...prev, plans: updateList(prev.plans) } : prev);
+      setBuyerPlans(prev => updateList(prev));
+    }
+  };
+
+  const toggleMostSelected = async (plan: Plan) => {
+    setTogglingMsId(plan.id);
+    const res = await api.post(`/shared/admin-subscription-plans/${plan.id}/toggle-most-selected`, {});
+    setTogglingMsId(null);
+    if (res.success) {
+      const newVal = Number(plan.is_most_selected) ? 0 : 1;
+      const updateList = (list: Plan[]) => list.map(p =>
+        p.id === plan.id ? { ...p, is_most_selected: newVal } : p
+      );
+      setData(prev => prev ? { ...prev, plans: updateList(prev.plans) } : prev);
+      setBuyerPlans(prev => updateList(prev));
+    }
+  };
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -73,8 +99,8 @@ export default function SubscriptionsView({ role, userType }: Props) {
     if (success) setFlashMsg({ text: decodeURIComponent(success), ok: true });
     if (error)   setFlashMsg({ text: decodeURIComponent(error),   ok: false });
 
-    // For regular admins, we show both types of plans for their information
-    if (user?.role === 'admin') {
+    // Super_admin and admin both see both plan types
+    if (isSuperAdmin || user?.role === 'admin') {
       api.get<SubData>(`/shared/subscriptions/seller`).then((r) => {
         if (r.success && r.data) setData(r.data);
       });
@@ -93,20 +119,57 @@ export default function SubscriptionsView({ role, userType }: Props) {
   }, [userType, user?.role]);
 
   const sellerPlans = data?.plans || [];
-  const sellerSlideCount = Math.ceil(sellerPlans.length / 3);
-  const buyerSlideCount = Math.ceil(buyerPlans.length / 3);
+
+  // Measure wrapper widths
+  useEffect(() => {
+    const obs = new ResizeObserver(entries => {
+      for (const e of entries) {
+        if (e.target === sellerRef.current) setSellerW(e.contentRect.width);
+        if (e.target === buyerRef.current)  setBuyerW(e.contentRect.width);
+      }
+    });
+    if (sellerRef.current) { obs.observe(sellerRef.current); setSellerW(sellerRef.current.offsetWidth); }
+    if (buyerRef.current)  { obs.observe(buyerRef.current);  setBuyerW(buyerRef.current.offsetWidth); }
+    return () => obs.disconnect();
+  }, [loading]);
+
+  // Seller carousel auto-advance
+  useEffect(() => {
+    if (sellerPlans.length < 2) return;
+    const t = setInterval(() => setSellerCenter(p => p + 1), 3500);
+    return () => clearInterval(t);
+  }, [sellerPlans.length]);
 
   useEffect(() => {
-    if (sellerSlideCount <= 1) return;
-    const t = setInterval(() => setPlanSlide(s => (s + 1) % sellerSlideCount), 4000);
-    return () => clearInterval(t);
-  }, [sellerSlideCount]);
+    const n = sellerPlans.length;
+    if (sellerCenter === n + 1) {
+      const t = setTimeout(() => { setSellerTrans(false); setSellerCenter(1); }, 660);
+      return () => clearTimeout(t);
+    }
+  }, [sellerCenter, sellerPlans.length]);
 
   useEffect(() => {
-    if (buyerSlideCount <= 1) return;
-    const t = setInterval(() => setBuyerSlide(s => (s + 1) % buyerSlideCount), 4000);
+    if (!sellerTrans) { const f = requestAnimationFrame(() => requestAnimationFrame(() => setSellerTrans(true))); return () => cancelAnimationFrame(f); }
+  }, [sellerTrans]);
+
+  // Buyer carousel auto-advance
+  useEffect(() => {
+    if (buyerPlans.length < 2) return;
+    const t = setInterval(() => setBuyerCenter(p => p + 1), 3500);
     return () => clearInterval(t);
-  }, [buyerSlideCount]);
+  }, [buyerPlans.length]);
+
+  useEffect(() => {
+    const n = buyerPlans.length;
+    if (buyerCenter === n + 1) {
+      const t = setTimeout(() => { setBuyerTrans(false); setBuyerCenter(1); }, 660);
+      return () => clearTimeout(t);
+    }
+  }, [buyerCenter, buyerPlans.length]);
+
+  useEffect(() => {
+    if (!buyerTrans) { const f = requestAnimationFrame(() => requestAnimationFrame(() => setBuyerTrans(true))); return () => cancelAnimationFrame(f); }
+  }, [buyerTrans]);
 
   const openCheckout = async (plan: Plan) => {
     setSelectedPlan(plan);
@@ -245,12 +308,12 @@ export default function SubscriptionsView({ role, userType }: Props) {
         .tier-elite{background:#e7efe5;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;border:1px solid #d1e4cf;transition:all .5s}
         .tier-elite:hover{transform:translateY(-4px)}
         .tier-badge{position:absolute;top:0;right:0;background:#D7B467;color:#fff;padding:.45rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
-        .tier-btn-basic{width:100%;padding:.9rem;border-radius:9999px;border:2px solid #111;background:transparent;color:#111;font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-basic:hover{background:#111;color:#fff}
+        .tier-btn-basic{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-basic:hover{background:#c9a455;transform:translateY(-2px)}
         .tier-btn-standard{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .2s;box-shadow:0 10px 25px rgba(215,180,103,.3);margin-top:auto}
         .tier-btn-standard:hover{transform:scale(1.03);background:#c9a455}
-        .tier-btn-elite{width:100%;padding:.9rem;border-radius:9999px;background:#fff;color:#111;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-elite:hover{background:#D7B467;color:#fff}
+        .tier-btn-elite{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-elite:hover{background:#c9a455;transform:translateY(-2px)}
         .slider-arrow{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s;z-index:5}
         .slider-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467}
         .slider-arrow.left{left:-22px}
@@ -299,19 +362,19 @@ export default function SubscriptionsView({ role, userType }: Props) {
                     </p>
                   </div>
                   <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.6rem' }}>
-                      <div>
+                    <div style={{ marginBottom: '0.6rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
                         <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{isQty ? remaining : '∞'}</span>
-                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.5rem' }}>{isQty ? 'Listings Left' : 'Full Access'}</span>
+                        {isQty && <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>/ {limit}</span>}
                       </div>
-                      <span style={{ fontSize: '0.68rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{isQty ? `${limit} Total Cap` : 'Unlimited Mode'}</span>
+                      <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{isQty ? 'Listings Left' : 'Full Access'}</span>
                     </div>
                     <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: '#D7B467', width: isQty ? `${Math.max(2, 100 - pct)}%` : '100%', transition: 'width 0.5s' }} />
+                      <div style={{ height: '100%', background: '#ffc63a', width: isQty ? `${Math.max(2, 100 - pct)}%` : '100%', transition: 'width 0.5s' }} />
                     </div>
                   </div>
                   <div style={{ position: 'absolute', right: '-5rem', top: '-5rem', width: '20rem', height: '20rem', background: '#D7B467', opacity: 0.05, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
-                  <i className="bi bi-gem" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none' }} />
+                  <span className="material-symbols-outlined" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 48" }}>workspace_premium</span>
                 </div>
               </div>
               <div className="bento-col-4">
@@ -322,10 +385,15 @@ export default function SubscriptionsView({ role, userType }: Props) {
                     <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>Unlock More</span>
                     <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>Elevate to a Higher Tier</h3>
                     <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
-                      {['Unlimited product listings', 'Priority placement in search', 'Advanced seller analytics', 'Dedicated seller support'].map((b, i) => (
+                      {[
+                        { icon: 'all_inclusive', text: 'Unlimited product listings' },
+                        { icon: 'stars', text: 'Priority placement in search' },
+                        { icon: 'insights', text: 'Advanced seller analytics' },
+                        { icon: 'support_agent', text: 'Dedicated seller support' },
+                      ].map((b, i) => (
                         <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
-                          <i className="bi bi-check-circle-fill" style={{ color: '#D7B467', fontSize: '0.85rem', flexShrink: 0 }} />
-                          {b}
+                          <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
+                          {b.text}
                         </li>
                       ))}
                     </ul>
@@ -357,24 +425,46 @@ export default function SubscriptionsView({ role, userType }: Props) {
                 return (
                   <div key={plan.id} className="col-md-4">
                     <div className={`tier-${cardType}`}>
-                      {isFeatured && <div className="tier-badge">Most Selected</div>}
+                      {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
                       <div style={{ marginBottom: '2rem' }}>
                         <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
-                        <p style={{ fontSize: '0.82rem', fontWeight: isFeatured ? 700 : 500, color: isFeatured ? '#D7B467' : '#6b7280', margin: 0 }}>{plan.plan_type === 'duration' ? 'Duration Based' : 'Usage Based'}</p>
+                        <p style={{ fontSize: '0.82rem', fontWeight: 500, color: '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{plan.plan_type} Based</p>
                       </div>
                       <div style={{ marginBottom: '2rem' }}>
                         <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-                        <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 700, color: '#9ca3af', marginTop: '0.4rem', marginBottom: 0 }}>{plan.plan_type === 'duration' ? 'One-time access fee' : 'Usage based pricing'}</p>
                       </div>
                       <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
-                        {[{ icon: 'bi-box-seam', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` }, { icon: 'bi-clock', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` }, { icon: 'bi-shield-check', text: 'Verified Seller Badge' }].map((f, i) => (
+                        {[
+                          { icon: 'inventory_2', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
+                          { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
+                          { icon: 'verified', text: 'Verified Seller Badge' },
+                        ].map((f, i) => (
                           <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
-                            <i className={`bi ${f.icon}`} style={{ color: isFeatured || isElite ? '#D7B467' : '#9ca3af', fontSize: '1rem', width: 20 }} />
-                            <span style={{ fontSize: '0.85rem', fontWeight: isFeatured ? 600 : 400, color: '#374151' }}>{f.text}</span>
+                            <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#374151' }}>{f.text}</span>
                           </li>
                         ))}
                       </ul>
-                      <button className={`tier-btn-${cardType}`} onClick={() => openCheckout(plan)}>{hasActiveSub ? 'Purchase More' : 'Subscribe & Pay'}</button>
+                      {isSuperAdmin ? (
+                        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <button
+                            style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_featured) === 1 ? '#D7B467' : '#f3f4f6', color: Number(plan.is_featured) === 1 ? '#fff' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
+                            onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}
+                          >
+                            {togglingId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_featured) === 1 ? "'FILL' 1" : "'FILL' 0" }}>workspace_premium</span>}
+                            {Number(plan.is_featured) === 1 ? 'Premium' : 'Set Premium'}
+                          </button>
+                          <button
+                            style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_most_selected) === 1 ? '#1a1a1a' : '#f3f4f6', color: Number(plan.is_most_selected) === 1 ? '#ffc63a' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
+                            onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}
+                          >
+                            {togglingMsId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_most_selected) === 1 ? "'FILL' 1" : "'FILL' 0" }}>star</span>}
+                            {Number(plan.is_most_selected) === 1 ? 'Most Selected' : 'Set Most Selected'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button className={`tier-btn-${cardType}`} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                      )}
                     </div>
                   </div>
                 );
@@ -408,24 +498,46 @@ export default function SubscriptionsView({ role, userType }: Props) {
                   return (
                     <div key={plan.id} className="col-md-4">
                       <div className={`tier-${cardType}`}>
-                        {isFeatured && <div className="tier-badge">Most Selected</div>}
+                        {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
                         <div style={{ marginBottom: '2rem' }}>
                           <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
-                          <p style={{ fontSize: '0.82rem', fontWeight: isFeatured ? 700 : 500, color: isFeatured ? '#D7B467' : '#6b7280', margin: 0 }}>{plan.plan_type === 'duration' ? 'Duration Based' : 'Usage Based'}</p>
+                          <p style={{ fontSize: '0.82rem', fontWeight: 500, color: '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{plan.plan_type} Based</p>
                         </div>
                         <div style={{ marginBottom: '2rem' }}>
                           <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-                          <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 700, color: '#9ca3af', marginTop: '0.4rem', marginBottom: 0 }}>{plan.plan_type === 'duration' ? 'One-time access fee' : 'Usage based pricing'}</p>
                         </div>
                         <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
-                          {[{ icon: 'bi-people', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` }, { icon: 'bi-clock', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` }, { icon: 'bi-chat-dots', text: 'Direct Messaging Access' }].map((f, i) => (
+                          {[
+                            { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
+                            { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
+                            { icon: 'chat', text: 'Direct Messaging Access' },
+                          ].map((f, i) => (
                             <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
-                              <i className={`bi ${f.icon}`} style={{ color: isFeatured || isElite ? '#D7B467' : '#9ca3af', fontSize: '1rem', width: 20 }} />
-                              <span style={{ fontSize: '0.85rem', fontWeight: isFeatured ? 600 : 400, color: '#374151' }}>{f.text}</span>
+                              <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#374151' }}>{f.text}</span>
                             </li>
                           ))}
                         </ul>
-                        <button className={`tier-btn-${cardType}`} onClick={() => openCheckout(plan)}>{hasActiveSub ? 'Purchase More' : 'Subscribe & Pay'}</button>
+                        {isSuperAdmin ? (
+                          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <button
+                              style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_featured) === 1 ? '#D7B467' : '#f3f4f6', color: Number(plan.is_featured) === 1 ? '#fff' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
+                              onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}
+                            >
+                              {togglingId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_featured) === 1 ? "'FILL' 1" : "'FILL' 0" }}>workspace_premium</span>}
+                              {Number(plan.is_featured) === 1 ? 'Premium' : 'Set Premium'}
+                            </button>
+                            <button
+                              style={{ width: '100%', padding: '.7rem', borderRadius: '9999px', background: Number(plan.is_most_selected) === 1 ? '#1a1a1a' : '#f3f4f6', color: Number(plan.is_most_selected) === 1 ? '#ffc63a' : '#374151', border: 'none', fontWeight: 700, fontSize: '.65rem', textTransform: 'uppercase', letterSpacing: '.1em', cursor: 'pointer', transition: 'all .3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
+                              onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}
+                            >
+                              {togglingMsId === plan.id ? <span className="spinner-border spinner-border-sm" /> : <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', fontVariationSettings: Number(plan.is_most_selected) === 1 ? "'FILL' 1" : "'FILL' 0" }}>star</span>}
+                              {Number(plan.is_most_selected) === 1 ? 'Most Selected' : 'Set Most Selected'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button className={`tier-btn-${cardType}`} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                        )}
                       </div>
                     </div>
                   );

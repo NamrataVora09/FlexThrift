@@ -15,6 +15,7 @@ interface Plan {
   duration_hours: number;
   price: string;
   is_featured?: number | string;
+  is_most_selected?: number | string;
 }
 interface ActiveSub {
   id: number;
@@ -158,12 +159,12 @@ function SubscriptionsInner() {
         .tier-elite{background:#e7efe5;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;border:1px solid #d1e4cf;transition:all .5s}
         .tier-elite:hover{transform:translateY(-4px)}
         .tier-badge{position:absolute;top:0;right:0;background:#D7B467;color:#fff;padding:.45rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
-        .tier-btn-basic{width:100%;padding:.9rem;border-radius:9999px;border:2px solid #111;background:transparent;color:#111;font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-basic:hover{background:#111;color:#fff}
+        .tier-btn-basic{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-basic:hover{background:#c9a455;transform:translateY(-2px)}
         .tier-btn-standard{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .2s;box-shadow:0 10px 25px rgba(215,180,103,.3);margin-top:auto}
         .tier-btn-standard:hover{transform:scale(1.03);background:#c9a455}
-        .tier-btn-elite{width:100%;padding:.9rem;border-radius:9999px;background:#fff;color:#111;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-elite:hover{background:#D7B467;color:#fff}
+        .tier-btn-elite{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-elite:hover{background:#c9a455;transform:translateY(-2px)}
         .btn-brand-sub{background:#ffc63a;color:#000;border:none;padding:14px;border-radius:12px;font-weight:700;width:100%;transition:.3s;cursor:pointer}
         .btn-brand-sub:hover{background:#000;color:#ffc63a}
         .btn-brand-sub:disabled{opacity:.6;cursor:not-allowed}
@@ -226,21 +227,19 @@ function SubscriptionsInner() {
                     </p>
                   </div>
                   <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.6rem' }}>
-                      <div>
-                        <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{sub.remaining === 'Unlimited' ? '∞' : sub.remaining}</span>
-                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.5rem' }}>{sub.remaining === 'Unlimited' ? 'Full Access' : 'Contacts Left'}</span>
+                    <div style={{ marginBottom: '0.6rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{sub.remaining === 'Unlimited' ? " " : sub.remaining}</span>
+                        {sub.plan_type !== 'duration' && <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>/ {sub.limit}</span>}
                       </div>
-                      <span style={{ fontSize: '0.68rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                        {sub.plan_type === 'duration' ? 'Unlimited Mode' : `${sub.limit} Total Cap`}
-                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{sub.remaining === 'Unlimited' ? 'Full Access' : 'Contacts Left'}</span>
                     </div>
                     <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: '#D7B467', width: sub.plan_type === 'duration' ? '100%' : `${Math.max(2, 100 - sub.percentUsed)}%`, transition: 'width 0.5s' }} />
+                      <div style={{ height: '100%', background: '#ffc63a', width: sub.plan_type === 'duration' ? '100%' : `${Math.max(2, 100 - sub.percentUsed)}%`, transition: 'width 0.5s' }} />
                     </div>
                   </div>
                   <div style={{ position: 'absolute', right: '-5rem', top: '-5rem', width: '20rem', height: '20rem', background: '#D7B467', opacity: 0.05, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
-                  <i className="bi bi-gem" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none' }} />
+                  <span className="material-symbols-outlined" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 48" }}>workspace_premium</span>
                 </div>
               </div>
 
@@ -253,10 +252,15 @@ function SubscriptionsInner() {
                     <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>Unlock More</span>
                     <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>Elevate to a Higher Tier</h3>
                     <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
-                      {['Unlimited concierge contacts', 'Early access to new listings', 'Custom market reporting', 'Priority support'].map((b, i) => (
+                      {[
+                        { icon: 'all_inclusive', text: 'Unlimited concierge contacts' },
+                        { icon: 'stars', text: 'Early access to new listings' },
+                        { icon: 'insights', text: 'Custom market reporting' },
+                        { icon: 'support_agent', text: 'Priority support' },
+                      ].map((b, i) => (
                         <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
-                          <i className="bi bi-check-circle-fill" style={{ color: '#D7B467', fontSize: '0.85rem', flexShrink: 0 }} />
-                          {b}
+                          <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
+                          {b.text}
                         </li>
                       ))}
                     </ul>
@@ -295,31 +299,30 @@ function SubscriptionsInner() {
                   return (
                     <div key={plan.id} className="col-md-4">
                       <div className={`tier-${cardType}`}>
-                        {isFeatured && <div className="tier-badge">Most Selected</div>}
+                        {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
                         <div style={{ marginBottom: '2rem' }}>
                           <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
-                          <p style={{ fontSize: '0.82rem', fontWeight: isFeatured ? 700 : 500, color: isFeatured ? '#D7B467' : '#6b7280', margin: 0 }}>
-                            {plan.plan_type.toUpperCase() + " " + "BASED"}
+                          <p style={{ fontSize: '0.82rem', fontWeight: 500, color: '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {plan.plan_type} Based
                           </p>
                         </div>
                         <div style={{ marginBottom: '2rem' }}>
                           <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-
                         </div>
                         <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
                           {[
-                            { icon: 'bi-people', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
-                            { icon: 'bi-clock', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
-                            { icon: 'bi-chat-dots', text: 'Direct Messaging Access' },
+                            { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
+                            { icon: 'schedule', text: `${Number(plan.duration_hours) || ' '} Hours Validity` },
+                            { icon: 'chat', text: 'Direct Messaging Access' },
                           ].map((f, i) => (
                             <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
-                              <i className={`bi ${f.icon}`} style={{ color: isFeatured || isElite ? '#D7B467' : '#9ca3af', fontSize: '1rem', width: 20 }} />
-                              <span style={{ fontSize: '0.85rem', fontWeight: isFeatured ? 600 : 400, color: '#374151' }}>{f.text}</span>
+                              <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#374151' }}>{f.text}</span>
                             </li>
                           ))}
                         </ul>
                         <button className={`tier-btn-${cardType}`} onClick={() => handleChoosePlan(plan.id)}>
-                          {hasActiveSub ? 'Purchase More' : 'Choose Plan'}
+                          Buy Plan
                         </button>
                       </div>
                     </div>

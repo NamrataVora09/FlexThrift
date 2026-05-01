@@ -13,6 +13,8 @@ interface SellerData {
   total_deals: number;
   total_revenue: number;
   active_orders: number;
+  active_offers: number;
+  offer_stats: { accepted: number; rejected: number };
 }
 
 interface Subscription {
@@ -80,12 +82,12 @@ export default function SellerDashboardClient() {
       icon: 'fa-solid fa-rectangle-list',
       label: 'Approved / Rejected Offers',
       split: true,
-      approved: data?.stats.approved ?? 0,
-      rejected: data?.stats.rejected ?? 0,
+      approved: data?.offer_stats?.accepted ?? 0,
+      rejected: data?.offer_stats?.rejected ?? 0,
     },
     { icon: 'fa-solid fa-clock', label: 'Pending Review', value: String(data?.stats.pending ?? 0) },
     { icon: 'fa-solid fa-tags stat-icon', label: 'Product Upload Left', value: uploadsLeft },
-    { icon: 'fa-solid fa-cart-shopping', label: 'Active Offers', value: String(data?.active_orders ?? 0) },
+    { icon: 'fa-solid fa-cart-shopping', label: 'Active Offers', value: String(data?.active_offers ?? 0) },
   ];
 
   return (

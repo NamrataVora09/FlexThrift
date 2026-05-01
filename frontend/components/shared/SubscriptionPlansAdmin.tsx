@@ -10,7 +10,7 @@ import { confirmToast } from '@/lib/toast-utils';
 
 interface Plan {
   id: number; name: string; user_type: string; plan_type: string;
-  limit_value: string; duration_hours: string; price: string; base_price: string; is_active: string; is_featured: string; created_at: string;
+  limit_value: string; duration_hours: string; price: string; base_price: string; is_active: string; is_featured: string; is_most_selected: string; created_at: string;
 }
 
 const thStyle: React.CSSProperties = { backgroundColor: '#f8f9fa', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, color: '#677788', padding: '1.1rem 1rem' };
@@ -21,7 +21,7 @@ const modalLabel: React.CSSProperties = { fontWeight: 700, fontSize: '0.8rem', c
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 const filterPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', fontWeight: 600, padding: '0.25rem 0.6rem', borderRadius: '2rem', background: 'rgba(255,198,58,0.08)', color: '#ffc63a', border: '1px solid rgba(255,198,58,0.2)' };
 
-const emptyForm = { name: '', user_type: 'seller', plan_type: 'quantity', limit_value: '', duration_hours: '', price: '', base_price: '', is_featured: '0' };
+const emptyForm = { name: '', user_type: 'seller', plan_type: 'quantity', limit_value: '', duration_hours: '', price: '', base_price: '', is_featured: '0', is_most_selected: '0' };
 
 export default function SubscriptionPlansAdmin() {
   const { user } = useAuth();
@@ -64,7 +64,7 @@ export default function SubscriptionPlansAdmin() {
 
   const openEdit = (p: Plan) => {
     setEditId(p.id);
-    setForm({ name: p.name, user_type: p.user_type, plan_type: p.plan_type, limit_value: p.limit_value, duration_hours: p.duration_hours, price: p.price, base_price: p.base_price, is_featured: String(p.is_featured ?? '0') });
+    setForm({ name: p.name, user_type: p.user_type, plan_type: p.plan_type, limit_value: p.limit_value, duration_hours: p.duration_hours, price: p.price, base_price: p.base_price, is_featured: String(p.is_featured ?? '0'), is_most_selected: String(p.is_most_selected ?? '0') });
     setShowModal(true);
   };
 
@@ -95,6 +95,16 @@ export default function SubscriptionPlansAdmin() {
 
   const togglePlan = async (id: number) => {
     await api.post(`/shared/admin-subscription-plans/${id}/toggle`);
+    load();
+  };
+
+  const toggleFeatured = async (id: number) => {
+    await api.post(`/shared/admin-subscription-plans/${id}/toggle-featured`, {});
+    load();
+  };
+
+  const toggleMostSelected = async (id: number) => {
+    await api.post(`/shared/admin-subscription-plans/${id}/toggle-most-selected`, {});
     load();
   };
 
@@ -220,6 +230,11 @@ export default function SubscriptionPlansAdmin() {
                           {p.name}
                           {String(p.is_featured) === '1' && (
                             <span style={{ marginLeft: 6, background: '#D7B467', color: '#fff', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', padding: '2px 8px', borderRadius: '9999px' }}>
+                              Premium
+                            </span>
+                          )}
+                          {String(p.is_most_selected) === '1' && (
+                            <span style={{ marginLeft: 4, background: '#1a1a1a', color: '#ffc63a', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', padding: '2px 8px', borderRadius: '9999px' }}>
                               Most Selected
                             </span>
                           )}
@@ -262,6 +277,26 @@ export default function SubscriptionPlansAdmin() {
                           </div>
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'end', paddingRight: '1.5rem' }}>
+                          {isSuperAdmin && (
+                            <>
+                              <button
+                                className="btn btn-sm border me-1"
+                                style={{ borderRadius: 8, background: String(p.is_featured) === '1' ? '#D7B467' : '#f8f9fa', color: String(p.is_featured) === '1' ? '#fff' : '#D7B467', borderColor: '#D7B467' }}
+                                onClick={() => toggleFeatured(p.id)}
+                                title={String(p.is_featured) === '1' ? 'Remove Premium' : 'Mark as Premium'}
+                              >
+                                <i className="bi bi-gem"></i>
+                              </button>
+                              <button
+                                className="btn btn-sm border me-1"
+                                style={{ borderRadius: 8, background: String(p.is_most_selected) === '1' ? '#1a1a1a' : '#f8f9fa', color: String(p.is_most_selected) === '1' ? '#ffc63a' : '#6c757d', borderColor: String(p.is_most_selected) === '1' ? '#1a1a1a' : '#dee2e6' }}
+                                onClick={() => toggleMostSelected(p.id)}
+                                title={String(p.is_most_selected) === '1' ? 'Remove Most Selected' : 'Mark as Most Selected'}
+                              >
+                                <i className={`bi ${String(p.is_most_selected) === '1' ? 'bi-star-fill' : 'bi-star'}`}></i>
+                              </button>
+                            </>
+                          )}
                           <button className="btn btn-sm btn-light border me-1" style={{ borderRadius: 8 }} onClick={() => openEdit(p)} title="Edit">
                             <i className="bi bi-pencil"></i>
                           </button>
@@ -360,26 +395,34 @@ export default function SubscriptionPlansAdmin() {
                     </div>
                   </div>
 
-                  {/* Most Selected — super_admin only */}
+                  {/* Premium + Most Selected — super_admin only */}
                   {isSuperAdmin && (
-                    <div className="mt-3 p-3 rounded-3" style={{ background: '#fffdf0', border: '1px solid #fde68a' }}>
-                      <div className="form-check form-switch d-flex align-items-center gap-2 mb-0">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          role="switch"
-                          id="isFeaturedSwitch"
-                          checked={form.is_featured === '1'}
-                          onChange={(e) => setForm({ ...form, is_featured: e.target.checked ? '1' : '0' })}
-                          style={{ width: '2.5rem', height: '1.3rem', cursor: 'pointer' }}
-                        />
-                        <label className="form-check-label fw-bold small" htmlFor="isFeaturedSwitch" style={{ cursor: 'pointer' }}>
-                          <i className="bi bi-star-fill me-1" style={{ color: '#D7B467' }} />
-                          Mark as <span style={{ color: '#D7B467' }}>Most Selected</span>
-                          <span className="d-block text-muted fw-normal" style={{ fontSize: '0.72rem' }}>
-                            Only one plan per user type can be featured. Enabling this will unmark others.
-                          </span>
-                        </label>
+                    <div className="mt-3 d-flex flex-column gap-2">
+                      <div className="p-3 rounded-3" style={{ background: '#fffdf0', border: '1px solid #fde68a' }}>
+                        <div className="form-check form-switch d-flex align-items-center gap-2 mb-0">
+                          <input className="form-check-input" type="checkbox" role="switch" id="isFeaturedSwitch"
+                            checked={form.is_featured === '1'}
+                            onChange={(e) => setForm({ ...form, is_featured: e.target.checked ? '1' : '0' })}
+                            style={{ width: '2.5rem', height: '1.3rem', cursor: 'pointer' }} />
+                          <label className="form-check-label fw-bold small" htmlFor="isFeaturedSwitch" style={{ cursor: 'pointer' }}>
+                            <i className="bi bi-gem me-1" style={{ color: '#D7B467' }} />
+                            Mark as <span style={{ color: '#D7B467' }}>Premium</span>
+                            <span className="d-block text-muted fw-normal" style={{ fontSize: '0.72rem' }}>Only one plan per user type can be Premium.</span>
+                          </label>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-3" style={{ background: '#f8f9fa', border: '1px solid #dee2e6' }}>
+                        <div className="form-check form-switch d-flex align-items-center gap-2 mb-0">
+                          <input className="form-check-input" type="checkbox" role="switch" id="isMostSelectedSwitch"
+                            checked={form.is_most_selected === '1'}
+                            onChange={(e) => setForm({ ...form, is_most_selected: e.target.checked ? '1' : '0' })}
+                            style={{ width: '2.5rem', height: '1.3rem', cursor: 'pointer' }} />
+                          <label className="form-check-label fw-bold small" htmlFor="isMostSelectedSwitch" style={{ cursor: 'pointer' }}>
+                            <i className="bi bi-star-fill me-1" style={{ color: '#ffc63a' }} />
+                            Mark as <span style={{ color: '#1a1a1a' }}>Most Selected</span>
+                            <span className="d-block text-muted fw-normal" style={{ fontSize: '0.72rem' }}>Multiple plans per user type can have this badge.</span>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   )}

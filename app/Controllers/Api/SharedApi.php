@@ -407,6 +407,7 @@ class SharedApi extends ResourceController
             'base_price' => (float) ($data['base_price'] ?? $data['price']),
             'is_active' => 1,
             'is_featured' => $isFeatured,
+            'is_most_selected' => (int) ($data['is_most_selected'] ?? 0),
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
@@ -433,6 +434,45 @@ class SharedApi extends ResourceController
         $db->table('subscription_plans')->where('id', $id)->update(['is_active' => $newStatus]);
 
         return $this->respond(['success' => true, 'message' => $newStatus ? 'Plan activated' : 'Plan deactivated']);
+    }
+
+    public function toggleMostSelected(int $id)
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $db = \Config\Database::connect();
+        $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
+        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+
+        $newVal = (int) $plan['is_most_selected'] ? 0 : 1;
+        $db->table('subscription_plans')->where('id', $id)->update(['is_most_selected' => $newVal, 'updated_at' => date('Y-m-d H:i:s')]);
+
+        return $this->respond(['success' => true, 'message' => $newVal ? 'Marked as Most Selected' : 'Removed Most Selected', 'is_most_selected' => $newVal]);
+    }
+
+    public function togglePlanFeatured(int $id)
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $db = \Config\Database::connect();
+        $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
+        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+
+        $newFeatured = (int) $plan['is_featured'] ? 0 : 1;
+
+        if ($newFeatured) {
+            $db->table('subscription_plans')->where('user_type', $plan['user_type'])->update(['is_featured' => 0]);
+        }
+
+        $db->table('subscription_plans')->where('id', $id)->update(['is_featured' => $newFeatured, 'updated_at' => date('Y-m-d H:i:s')]);
+
+        return $this->respond(['success' => true, 'message' => $newFeatured ? 'Plan marked as premium' : 'Premium removed', 'is_featured' => $newFeatured]);
     }
 
     public function updateSubscriptionPlan(int $id)
@@ -462,6 +502,7 @@ class SharedApi extends ResourceController
             'updated_at' => date('Y-m-d H:i:s'),
         ];
         if ($isFeatured !== null) $updateData['is_featured'] = $isFeatured;
+        if (isset($data['is_most_selected'])) $updateData['is_most_selected'] = (int) $data['is_most_selected'];
 
         $db->table('subscription_plans')->where('id', $id)->update($updateData);
 

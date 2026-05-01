@@ -147,6 +147,8 @@ function register_api_routes($routes)
         $routes->get('admin-subscription-plans', 'Api\SharedApi::adminSubscriptionPlans');
         $routes->post('admin-subscription-plans', 'Api\SharedApi::createSubscriptionPlan');
         $routes->post('admin-subscription-plans/(:num)/toggle', 'Api\SharedApi::togglePlanStatus/$1');
+        $routes->post('admin-subscription-plans/(:num)/toggle-featured', 'Api\SharedApi::togglePlanFeatured/$1');
+        $routes->post('admin-subscription-plans/(:num)/toggle-most-selected', 'Api\SharedApi::toggleMostSelected/$1');
         $routes->post('admin-subscription-plans/(:num)/update', 'Api\SharedApi::updateSubscriptionPlan/$1');
         $routes->post('admin-subscription-plans/(:num)/delete', 'Api\SharedApi::deleteSubscriptionPlan/$1');
         $routes->get('moderation-history', 'Api\SharedApi::moderationHistory');

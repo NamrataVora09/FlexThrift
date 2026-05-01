@@ -608,11 +608,13 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
   const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 
+  const REJECTED_STATUSES = ['rejected', 'cancelled', 'missed'];
+
   const sorted = (() => {
     const all = [...offers];
     return [
       ...all.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime),
-      ...all.filter(o => o.status === 'rejected').sort(byTime),
+      ...all.filter(o => REJECTED_STATUSES.includes(o.status)).sort(byTime),
       ...all.filter(o => o.status === 'accepted').sort(byTime),
     ];
   })();
@@ -638,8 +640,13 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     if (filter === '') return pool;
 
     // Step 3 (product-level filter): find all product_ids that have ≥1 offer matching the status
+    const statusMatch = (o: Offer) => {
+      if (filter === 'rejected') return REJECTED_STATUSES.includes(o.status);
+      if (filter === 'pending') return ['pending', 'negotiating'].includes(o.status);
+      return o.status === filter;
+    };
     const matchingProductIds = new Set(
-      pool.filter(o => o.status === filter).map(o => o.product_id)
+      pool.filter(o => statusMatch(o)).map(o => o.product_id)
     );
 
     // Step 4: return ALL offers belonging to those qualifying products
@@ -672,10 +679,10 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       <div className="d-flex flex-wrap align-items-center gap-3 mb-4">
         <div className="filter-tabs mb-0">
           {[
-            { key: '', label: 'All', count: offers.length },
+            { key: '', label: 'All', count: sorted.length },
             { key: 'pending', label: 'Pending', count: offers.filter(o => ['pending', 'negotiating'].includes(o.status)).length },
             { key: 'accepted', label: 'Accepted', count: offers.filter(o => o.status === 'accepted').length },
-            { key: 'rejected', label: 'Rejected', count: offers.filter(o => o.status === 'rejected').length },
+            { key: 'rejected', label: 'Rejected', count: offers.filter(o => REJECTED_STATUSES.includes(o.status)).length },
           ].map(({ key, label, count }) => (
             <button key={key} className={`nav-link ${filter === key ? ' active' : ''}`} onClick={() => setFilter(key)}>
               {label}<span className="count-badge">{count}</span>
