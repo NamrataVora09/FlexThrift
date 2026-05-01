@@ -4,12 +4,13 @@ import { useEffect, useState, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface Plan {
   id: number; name: string; user_type: string; plan_type: string;
-  limit_value: string; duration_hours: string; price: string; base_price: string; is_active: string; created_at: string;
+  limit_value: string; duration_hours: string; price: string; base_price: string; is_active: string; is_featured: string; created_at: string;
 }
 
 const thStyle: React.CSSProperties = { backgroundColor: '#f8f9fa', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, color: '#677788', padding: '1.1rem 1rem' };
@@ -20,9 +21,11 @@ const modalLabel: React.CSSProperties = { fontWeight: 700, fontSize: '0.8rem', c
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 const filterPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', fontWeight: 600, padding: '0.25rem 0.6rem', borderRadius: '2rem', background: 'rgba(255,198,58,0.08)', color: '#ffc63a', border: '1px solid rgba(255,198,58,0.2)' };
 
-const emptyForm = { name: '', user_type: 'seller', plan_type: 'quantity', limit_value: '', duration_hours: '', price: '', base_price: '' };
+const emptyForm = { name: '', user_type: 'seller', plan_type: 'quantity', limit_value: '', duration_hours: '', price: '', base_price: '', is_featured: '0' };
 
 export default function SubscriptionPlansAdmin() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -61,7 +64,7 @@ export default function SubscriptionPlansAdmin() {
 
   const openEdit = (p: Plan) => {
     setEditId(p.id);
-    setForm({ name: p.name, user_type: p.user_type, plan_type: p.plan_type, limit_value: p.limit_value, duration_hours: p.duration_hours, price: p.price, base_price: p.base_price });
+    setForm({ name: p.name, user_type: p.user_type, plan_type: p.plan_type, limit_value: p.limit_value, duration_hours: p.duration_hours, price: p.price, base_price: p.base_price, is_featured: String(p.is_featured ?? '0') });
     setShowModal(true);
   };
 
@@ -77,7 +80,8 @@ export default function SubscriptionPlansAdmin() {
       price: parseFloat(form.price),
       base_price: parseFloat(form.base_price) || parseFloat(form.price),
       duration_hours: parseFloat(form.duration_hours) || 0,
-      limit_value: parseInt(form.limit_value) || 0
+      limit_value: parseInt(form.limit_value) || 0,
+      is_featured: parseInt(form.is_featured) || 0,
     };
     if (editId) {
       await api.post(`/shared/admin-subscription-plans/${editId}/update`, payload);
@@ -212,7 +216,14 @@ export default function SubscriptionPlansAdmin() {
                   <tbody>
                     {filtered.length > 0 ? filtered.map((p) => (
                       <tr key={p.id}>
-                        <td style={{ ...tdStyle, paddingLeft: '1.5rem' }} className="fw-bold">{p.name}</td>
+                        <td style={{ ...tdStyle, paddingLeft: '1.5rem' }} className="fw-bold">
+                          {p.name}
+                          {String(p.is_featured) === '1' && (
+                            <span style={{ marginLeft: 6, background: '#D7B467', color: '#fff', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', padding: '2px 8px', borderRadius: '9999px' }}>
+                              Most Selected
+                            </span>
+                          )}
+                        </td>
                         <td style={tdStyle}>
                           <span className="badge px-3 py-2" style={p.user_type === 'seller' ? { background: 'rgba(13,202,240,0.1)', color: '#0dcaf0', fontWeight: 600 } : { background: 'rgba(255,193,7,0.1)', color: '#ffc107', fontWeight: 600 }}>
                             {p.user_type.charAt(0).toUpperCase() + p.user_type.slice(1)}
@@ -348,7 +359,32 @@ export default function SubscriptionPlansAdmin() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Most Selected — super_admin only */}
+                  {isSuperAdmin && (
+                    <div className="mt-3 p-3 rounded-3" style={{ background: '#fffdf0', border: '1px solid #fde68a' }}>
+                      <div className="form-check form-switch d-flex align-items-center gap-2 mb-0">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          id="isFeaturedSwitch"
+                          checked={form.is_featured === '1'}
+                          onChange={(e) => setForm({ ...form, is_featured: e.target.checked ? '1' : '0' })}
+                          style={{ width: '2.5rem', height: '1.3rem', cursor: 'pointer' }}
+                        />
+                        <label className="form-check-label fw-bold small" htmlFor="isFeaturedSwitch" style={{ cursor: 'pointer' }}>
+                          <i className="bi bi-star-fill me-1" style={{ color: '#D7B467' }} />
+                          Mark as <span style={{ color: '#D7B467' }}>Most Selected</span>
+                          <span className="d-block text-muted fw-normal" style={{ fontSize: '0.72rem' }}>
+                            Only one plan per user type can be featured. Enabling this will unmark others.
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
                 <div className="modal-footer border-0" style={{ background: '#f8f9fa' }}>
                   <button type="button" className="btn btn-secondary px-4" onClick={() => setShowModal(false)}>Cancel</button>
                   <button type="submit" className="btn sa-filter-btn px-4" style={btnGold} disabled={saving}>

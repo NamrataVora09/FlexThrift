@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import PageHeader from './PageHeader';
 import { api } from '@/lib/api';
 
-interface Plan { id: number; name: string; plan_type: string; limit_value: number; duration_hours: number; price: string; }
+interface Plan { id: number; name: string; plan_type: string; limit_value: number; duration_hours: number; price: string; is_featured?: number | string; }
 interface ActiveSub { plan_name: string; plan_type: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; }
 interface HistoryItem { plan_name: string; plan_type: string; price: string; starts_at: string; expires_at: string; is_active: number; }
 interface SubData { plans: Plan[]; active: ActiveSub | null; history: HistoryItem[]; }
@@ -32,6 +32,8 @@ export default function SubscriptionsView({ role, userType }: Props) {
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [planSlide, setPlanSlide] = useState(0);
+  const [buyerSlide, setBuyerSlide] = useState(0);
 
   // Payment modal state
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -89,6 +91,22 @@ export default function SubscriptionsView({ role, userType }: Props) {
       });
     }
   }, [userType, user?.role]);
+
+  const sellerPlans = data?.plans || [];
+  const sellerSlideCount = Math.ceil(sellerPlans.length / 3);
+  const buyerSlideCount = Math.ceil(buyerPlans.length / 3);
+
+  useEffect(() => {
+    if (sellerSlideCount <= 1) return;
+    const t = setInterval(() => setPlanSlide(s => (s + 1) % sellerSlideCount), 4000);
+    return () => clearInterval(t);
+  }, [sellerSlideCount]);
+
+  useEffect(() => {
+    if (buyerSlideCount <= 1) return;
+    const t = setInterval(() => setBuyerSlide(s => (s + 1) % buyerSlideCount), 4000);
+    return () => clearInterval(t);
+  }, [buyerSlideCount]);
 
   const openCheckout = async (plan: Plan) => {
     setSelectedPlan(plan);
@@ -221,10 +239,34 @@ export default function SubscriptionsView({ role, userType }: Props) {
         @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
         @keyframes slideUp { from { transform: translateY(30px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
         .privilege-list li { display: flex; align-items: flex-start; gap: .5rem; margin-bottom: .55rem; font-size: .88rem; }
+        .tier-basic{background:#fff;border-radius:2rem;padding:2.5rem;height:100%;border-top:4px solid transparent;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;transition:all .5s;display:flex;flex-direction:column}
+        .tier-basic:hover{border-top-color:#acadad44;transform:translateY(-4px)}
+        .tier-standard{background:#fff;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,.12);transform:scale(1.04);z-index:10;border:1px solid #f0f0f0}
+        .tier-elite{background:#e7efe5;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;border:1px solid #d1e4cf;transition:all .5s}
+        .tier-elite:hover{transform:translateY(-4px)}
+        .tier-badge{position:absolute;top:0;right:0;background:#D7B467;color:#fff;padding:.45rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
+        .tier-btn-basic{width:100%;padding:.9rem;border-radius:9999px;border:2px solid #111;background:transparent;color:#111;font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-basic:hover{background:#111;color:#fff}
+        .tier-btn-standard{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .2s;box-shadow:0 10px 25px rgba(215,180,103,.3);margin-top:auto}
+        .tier-btn-standard:hover{transform:scale(1.03);background:#c9a455}
+        .tier-btn-elite{width:100%;padding:.9rem;border-radius:9999px;background:#fff;color:#111;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-elite:hover{background:#D7B467;color:#fff}
+        .slider-arrow{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s;z-index:5}
+        .slider-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467}
+        .slider-arrow.left{left:-22px}
+        .slider-arrow.right{right:-22px}
+        .slider-dots{display:flex;justify-content:center;gap:6px;margin-top:1.5rem}
+        .slider-dot{width:8px;height:8px;border-radius:50%;background:#e5e7eb;cursor:pointer;transition:all .3s}
+        .slider-dot.active{background:#D7B467;width:22px;border-radius:9999px}
+        .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
+        @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
+        .bento-col-8{grid-column:span 1}
+        .bento-col-4{grid-column:span 1}
+        @media(min-width:992px){.bento-col-8{grid-column:span 8}.bento-col-4{grid-column:span 4}}
       `}</style>
 
       <div className="container">
-        <PageHeader title="Subscriptions" />
+        <PageHeader title="Subscription Details" />
 
         {flashMsg && (
           <div className={`alert ${flashMsg.ok ? 'alert-success' : 'alert-danger'} alert-dismissible fade show mb-4`}>
@@ -235,120 +277,171 @@ export default function SubscriptionsView({ role, userType }: Props) {
         )}
 
         {/* Active Subscription */}
-        {data?.active && (
-          <div className="card mb-4" style={{ border: '2px solid #ffc63a' }}>
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <span className="accept_sts">Active</span>
-                  <h5 className="mt-2 fw-bold">{data.active.plan_name}</h5>
-                  <p className="normal_label_font mb-0">
-                    {data.active.plan_type === 'duration'
-                      ? `Expires: ${new Date(data.active.expires_at).toLocaleDateString('en-IN')}`
-                      : `Usage: ${data.active.usage_count} / ${data.active.limit_value}`}
-                  </p>
+        {data?.active && (() => {
+          const used = data.active.usage_count;
+          const limit = data.active.limit_value;
+          const isQty = data.active.plan_type !== 'duration';
+          const remaining = isQty ? Math.max(0, limit - used) : null;
+          const pct = isQty && limit > 0 ? Math.round((used / limit) * 100) : 0;
+          const expires = data.active.expires_at ? new Date(data.active.expires_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'No Expiry';
+          return (
+            <div className="bento-grid">
+              <div className="bento-col-8">
+                <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 1px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 260, border: '1px solid #f0f0f0', height: '100%' }}>
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
+                      <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active Plan</span>
+                      <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Valid until {expires}</span>
+                    </div>
+                    <h2 style={{ fontSize: 'clamp(2rem,5vw,3.25rem)', fontWeight: 900, letterSpacing: '-0.04em', color: '#111', marginBottom: '0.6rem', lineHeight: 1 }}>{data.active.plan_name}</h2>
+                    <p style={{ color: '#6b7280', fontSize: '0.88rem', maxWidth: '28rem', marginBottom: '2rem' }}>
+                      {isQty ? `Usage-based plan · ${used} used out of ${limit} listings.` : 'Full duration-based access to all platform features.'}
+                    </p>
+                  </div>
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.6rem' }}>
+                      <div>
+                        <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{isQty ? remaining : '∞'}</span>
+                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.5rem' }}>{isQty ? 'Listings Left' : 'Full Access'}</span>
+                      </div>
+                      <span style={{ fontSize: '0.68rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{isQty ? `${limit} Total Cap` : 'Unlimited Mode'}</span>
+                    </div>
+                    <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: '#D7B467', width: isQty ? `${Math.max(2, 100 - pct)}%` : '100%', transition: 'width 0.5s' }} />
+                    </div>
+                  </div>
+                  <div style={{ position: 'absolute', right: '-5rem', top: '-5rem', width: '20rem', height: '20rem', background: '#D7B467', opacity: 0.05, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
+                  <i className="bi bi-gem" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none' }} />
                 </div>
-                <h4 className="fw-bold" style={{ color: '#ffc63a' }}>₹{data.active.price}</h4>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Plans */}
-        <h5 className="subsection_label_font mb-3">{user?.role === 'admin' ? 'Seller Plans' : 'Available Plans'}</h5>
-        <div className="row">
-          {data?.plans && data.plans.length > 0 ? data.plans.map((plan) => (
-            <div key={plan.id} className="col-md-4 mb-4">
-              <div className="card h-100">
-                <div className="card-body text-center d-flex flex-column">
-                  <h5 className="fw-bold">{plan.name}</h5>
-                  <span className="type-badge sell">{plan.plan_type}</span>
-                  <h3 className="fw-bold mt-3" style={{ color: '#ffc63a' }}>₹{Number(plan.price).toLocaleString('en-IN')}</h3>
-                  <p className="normal_label_font">
-                    {plan.plan_type === 'duration'
-                      ? `${plan.duration_hours} hours`
-                      : `${plan.limit_value} items`}
-                  </p>
-                  <button
-                    className="btn yellow_button w-100 mt-auto"
-                    onClick={() => openCheckout(plan)}
-                  >
-                    <i className="bi bi-credit-card me-2" />
-                    {hasActiveSub ? 'Purchase More' : 'Subscribe & Pay'}
+              <div className="bento-col-4">
+                <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 260, cursor: 'pointer', transition: 'transform 0.4s', border: '1px solid #d1e4cf' }}
+                  onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+                  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
+                  <div>
+                    <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>Unlock More</span>
+                    <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>Elevate to a Higher Tier</h3>
+                    <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
+                      {['Unlimited product listings', 'Priority placement in search', 'Advanced seller analytics', 'Dedicated seller support'].map((b, i) => (
+                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
+                          <i className="bi bi-check-circle-fill" style={{ color: '#D7B467', fontSize: '0.85rem', flexShrink: 0 }} />
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', cursor: 'pointer', transition: 'background 0.3s' }}>
+                    Upgrade Plan
                   </button>
                 </div>
               </div>
             </div>
-          )) : (
-            <div className="col-12 text-center py-4">
-              <p className="normal_label_font">No seller plans available</p>
+          );
+        })()}
+
+        {/* Plans */}
+        <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
+        {sellerPlans.length > 0 ? (
+          <div style={{ position: 'relative', padding: '0 30px' }}>
+            {sellerSlideCount > 1 && (
+              <>
+                <button className="slider-arrow left" onClick={() => setPlanSlide(s => (s - 1 + sellerSlideCount) % sellerSlideCount)}><i className="bi bi-chevron-left" /></button>
+                <button className="slider-arrow right" onClick={() => setPlanSlide(s => (s + 1) % sellerSlideCount)}><i className="bi bi-chevron-right" /></button>
+              </>
+            )}
+            <div className="row g-4 align-items-center">
+              {sellerPlans.slice(planSlide * 3, planSlide * 3 + 3).map((plan, idx) => {
+                const cardType = Number(plan.is_featured) === 1 ? 'standard' : idx === 0 ? 'basic' : idx === 1 ? 'standard' : 'elite';
+                const isFeatured = cardType === 'standard';
+                const isElite = cardType === 'elite';
+                return (
+                  <div key={plan.id} className="col-md-4">
+                    <div className={`tier-${cardType}`}>
+                      {isFeatured && <div className="tier-badge">Most Selected</div>}
+                      <div style={{ marginBottom: '2rem' }}>
+                        <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
+                        <p style={{ fontSize: '0.82rem', fontWeight: isFeatured ? 700 : 500, color: isFeatured ? '#D7B467' : '#6b7280', margin: 0 }}>{plan.plan_type === 'duration' ? 'Duration Based' : 'Usage Based'}</p>
+                      </div>
+                      <div style={{ marginBottom: '2rem' }}>
+                        <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
+                        <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 700, color: '#9ca3af', marginTop: '0.4rem', marginBottom: 0 }}>{plan.plan_type === 'duration' ? 'One-time access fee' : 'Usage based pricing'}</p>
+                      </div>
+                      <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
+                        {[{ icon: 'bi-box-seam', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` }, { icon: 'bi-clock', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` }, { icon: 'bi-shield-check', text: 'Verified Seller Badge' }].map((f, i) => (
+                          <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
+                            <i className={`bi ${f.icon}`} style={{ color: isFeatured || isElite ? '#D7B467' : '#9ca3af', fontSize: '1rem', width: 20 }} />
+                            <span style={{ fontSize: '0.85rem', fontWeight: isFeatured ? 600 : 400, color: '#374151' }}>{f.text}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <button className={`tier-btn-${cardType}`} onClick={() => openCheckout(plan)}>{hasActiveSub ? 'Purchase More' : 'Subscribe & Pay'}</button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </div>
+            {sellerSlideCount > 1 && (
+              <div className="slider-dots">
+                {Array.from({ length: sellerSlideCount }).map((_, i) => (
+                  <div key={i} className={`slider-dot${planSlide === i ? ' active' : ''}`} onClick={() => setPlanSlide(i)} />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : <p className="normal_label_font text-center py-4">No seller plans available</p>}
 
         {user?.role === 'admin' && buyerPlans.length > 0 && (
           <>
-            <h5 className="subsection_label_font mt-4 mb-3">Buyer Plans</h5>
-            <div className="row">
-              {buyerPlans.map((plan) => (
-                <div key={plan.id} className="col-md-4 mb-4">
-                  <div className="card h-100">
-                    <div className="card-body text-center d-flex flex-column">
-                      <h5 className="fw-bold">{plan.name}</h5>
-                      <span className="type-badge sell">{plan.plan_type}</span>
-                      <h3 className="fw-bold mt-3" style={{ color: '#ffc63a' }}>₹{Number(plan.price).toLocaleString('en-IN')}</h3>
-                      <p className="normal_label_font">
-                        {plan.plan_type === 'duration'
-                          ? `${plan.duration_hours} hours`
-                          : `${plan.limit_value} items`}
-                      </p>
-                      <button
-                        className="btn yellow_button w-100 mt-auto"
-                        onClick={() => openCheckout(plan)}
-                      >
-                        <i className="bi bi-credit-card me-2" />
-                        {hasActiveSub ? 'Purchase More' : 'Subscribe & Pay'}
-                      </button>
+            <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem', marginTop: '2rem' }}>Buyer Plans</h2>
+            <div style={{ position: 'relative', padding: '0 30px' }}>
+              {buyerSlideCount > 1 && (
+                <>
+                  <button className="slider-arrow left" onClick={() => setBuyerSlide(s => (s - 1 + buyerSlideCount) % buyerSlideCount)}><i className="bi bi-chevron-left" /></button>
+                  <button className="slider-arrow right" onClick={() => setBuyerSlide(s => (s + 1) % buyerSlideCount)}><i className="bi bi-chevron-right" /></button>
+                </>
+              )}
+              <div className="row g-4 align-items-center">
+                {buyerPlans.slice(buyerSlide * 3, buyerSlide * 3 + 3).map((plan, idx) => {
+                  const cardType = Number(plan.is_featured) === 1 ? 'standard' : idx === 0 ? 'basic' : idx === 1 ? 'standard' : 'elite';
+                  const isFeatured = cardType === 'standard';
+                  const isElite = cardType === 'elite';
+                  return (
+                    <div key={plan.id} className="col-md-4">
+                      <div className={`tier-${cardType}`}>
+                        {isFeatured && <div className="tier-badge">Most Selected</div>}
+                        <div style={{ marginBottom: '2rem' }}>
+                          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
+                          <p style={{ fontSize: '0.82rem', fontWeight: isFeatured ? 700 : 500, color: isFeatured ? '#D7B467' : '#6b7280', margin: 0 }}>{plan.plan_type === 'duration' ? 'Duration Based' : 'Usage Based'}</p>
+                        </div>
+                        <div style={{ marginBottom: '2rem' }}>
+                          <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
+                          <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 700, color: '#9ca3af', marginTop: '0.4rem', marginBottom: 0 }}>{plan.plan_type === 'duration' ? 'One-time access fee' : 'Usage based pricing'}</p>
+                        </div>
+                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
+                          {[{ icon: 'bi-people', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` }, { icon: 'bi-clock', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` }, { icon: 'bi-chat-dots', text: 'Direct Messaging Access' }].map((f, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
+                              <i className={`bi ${f.icon}`} style={{ color: isFeatured || isElite ? '#D7B467' : '#9ca3af', fontSize: '1rem', width: 20 }} />
+                              <span style={{ fontSize: '0.85rem', fontWeight: isFeatured ? 600 : 400, color: '#374151' }}>{f.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <button className={`tier-btn-${cardType}`} onClick={() => openCheckout(plan)}>{hasActiveSub ? 'Purchase More' : 'Subscribe & Pay'}</button>
+                      </div>
                     </div>
-                  </div>
+                  );
+                })}
+              </div>
+              {buyerSlideCount > 1 && (
+                <div className="slider-dots">
+                  {Array.from({ length: buyerSlideCount }).map((_, i) => (
+                    <div key={i} className={`slider-dot${buyerSlide === i ? ' active' : ''}`} onClick={() => setBuyerSlide(i)} />
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </>
         )}
 
-        {/* History */}
-        {data?.history && data.history.length > 0 && (
-          <>
-            <h5 className="subsection_label_font mt-4 mb-3">Subscription History</h5>
-            <div className="card">
-              <div className="card-body">
-                <div className="table-responsive">
-                  <table className="table align-middle">
-                    <thead><tr><th>Plan</th><th>Type</th><th>Price</th><th>Period</th><th>Status</th></tr></thead>
-                    <tbody>
-                      {data.history.map((h, i) => (
-                        <tr key={i}>
-                          <td className="fw-semibold">{h.plan_name}</td>
-                          <td><span className="type-badge sell">{h.plan_type}</span></td>
-                          <td>₹{h.price}</td>
-                          <td className="normal_label_font">
-                            {new Date(h.starts_at).toLocaleDateString('en-IN')} – {new Date(h.expires_at).toLocaleDateString('en-IN')}
-                          </td>
-                          <td>
-                            {Number(h.is_active) === 1
-                              ? <span className="accept_sts">Active</span>
-                              : <span className="status-badge pending">Expired</span>}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
       </div>
 
       {/* ── Payment Modal ── */}

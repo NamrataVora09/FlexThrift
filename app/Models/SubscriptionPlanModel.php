@@ -18,7 +18,8 @@ class SubscriptionPlanModel extends Model
         'duration_hours',
         'price',
         'base_price',
-        'is_active'
+        'is_active',
+        'is_featured'
     ];
 
     protected $useTimestamps = true;

@@ -91,6 +91,16 @@ function historyLabel(action: string) {
   }
 }
 
+function historyIcon(action: string) {
+  switch (action) {
+    case 'initial_offer': return 'fa-solid fa-tag';
+    case 'buyer_date_update': return 'fa-solid fa-calendar-plus';
+    case 'seller_suggest_dates': return 'fa-solid fa-calendar-days';
+    case 'buyer_accept_negotiation': return 'fa-solid fa-calendar-check';
+    default: return 'fa-solid fa-clock';
+  }
+}
+
 function fmtShort(d?: string) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
@@ -303,14 +313,14 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const [remarks, setRemarks] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const [dateModal, setDateModal] = useState<{ 
-    id: number; 
-    title: string; 
-    start: string; 
-    end: string; 
-    price?: number | string; 
-    type?: string; 
-    status?: string; 
+  const [dateModal, setDateModal] = useState<{
+    id: number;
+    title: string;
+    start: string;
+    end: string;
+    price?: number | string;
+    type?: string;
+    status?: string;
     rentalCostPerDay?: number;
     depositAmount?: number;
     delivery_address?: string;
@@ -379,11 +389,11 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     else if (actionModal.action === 'reject') res = await api.post(`/seller/reject-offer/${actionModal.id}`, { remarks });
     else res = await api.post(`/buyer/cancel-offer/${actionModal.id}`);
     setActionLoading(false);
-    if (res?.success) { 
+    if (res?.success) {
       toast.success(`Offer ${actionModal.action === 'accept' ? 'accepted' : actionModal.action === 'reject' ? 'rejected' : 'cancelled'}`);
-      setActionModal(null); 
-      setRemarks(''); 
-      load(); 
+      setActionModal(null);
+      setRemarks('');
+      load();
     }
     else toast.error(res?.message || 'Action failed');
   };
@@ -395,10 +405,10 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     const endpoint = ratingModal.target === 'seller' ? '/buyer/rate-seller' : '/seller/rate-buyer';
     const res = await api.post<any>(endpoint, { offer_id: ratingModal.id, rating: 5 });
     setRatingLoading(false);
-    if (res.success) { 
+    if (res.success) {
       toast.success('Rating submitted!');
-      setRatingModal(null); 
-      load(); 
+      setRatingModal(null);
+      load();
     }
     else toast.error(res.message || 'Failed to submit rating');
   };
@@ -424,10 +434,10 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
     const res = await api.post(`/buyer/update-offer-dates/${dateModal.id}`, payload);
     setDateLoading(false);
-    if (res?.success) { 
+    if (res?.success) {
       toast.success('Offer updated successfully!');
-      setDateModal(null); 
-      load(); 
+      setDateModal(null);
+      load();
     }
     else toast.error(res?.message || 'Update failed');
   };
@@ -460,10 +470,10 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       offered_price: Math.round(days * Number(offer.rental_cost ?? 0)),
     });
     setCdLoading(false);
-    if (res?.success) { 
+    if (res?.success) {
       toast.success('Dates updated!');
-      setChangeDatesModal(null); 
-      load(); 
+      setChangeDatesModal(null);
+      load();
     }
     else toast.error(res?.message || 'Failed to update dates');
   };
@@ -473,7 +483,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     if (!suggestModal) return;
     if (!sdStart || !sdEnd) { toast.error('Please select both start and end dates'); return; }
     if (sdEnd <= sdStart) { toast.error('End date must be after start date'); return; }
-    
+
     const days = daysBetween(sdStart, sdEnd);
     if (days < settings.minRentalDays) {
       toast.error(`Minimum ${settings.minRentalDays} days rental required`);
@@ -517,10 +527,10 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
         if (!map[pid]) map[pid] = { isSold: false, bookedRanges: [] };
         if (o.listing_type === 'sell') map[pid].isSold = true;
         else if (o.listing_type === 'rent' && o.rental_start_date && o.rental_end_date) {
-          map[pid].bookedRanges.push({ 
-            start: toDateVal(o.rental_start_date), 
+          map[pid].bookedRanges.push({
+            start: toDateVal(o.rental_start_date),
             end: toDateVal(o.rental_end_date),
-            id: o.id 
+            id: o.id
           });
         }
       }
@@ -536,12 +546,12 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     if ((o.offer_type ?? o.listing_type) !== 'rent') return null;
     const status = o.status;
     if (status !== 'pending' && status !== 'negotiating') return null;
-    
+
     if (!o.rental_start_date || !o.rental_end_date) return null;
 
     const s1 = toDateVal(o.rental_start_date);
     const e1 = toDateVal(o.rental_end_date);
-    
+
     // Safety check: if dates are invalid or start > end, we can't check for conflict
     if (!s1 || !e1 || s1 > e1) return null;
 
@@ -550,7 +560,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       if (Number(b.product_id) === Number(o.product_id)) {
         const s2 = toDateVal(b.rental_start_date);
         const e2 = toDateVal(b.rental_end_date);
-        
+
         if (s2 && e2) {
           // Standard overlap check: (Start1 <= End2) AND (End1 >= Start2)
           const overlap = (s1 <= e2 && e1 >= s2);
@@ -568,15 +578,15 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       for (const r of ps.bookedRanges) {
         // Self-exclusion: Don't conflict with yourself
         if (Number(r.id) === Number(o.id)) continue;
-        
+
         // Standard overlap check: (Start1 <= End2) AND (End1 >= Start2)
         const overlap = (s1 <= r.end && e1 >= r.start);
         if (overlap) {
           // find the offer to get raw date strings for display
           const other = offers.find(x => Number(x.id) === Number(r.id));
-          return { 
-            start: other?.rental_start_date || '?', 
-            end: other?.rental_end_date || '?', 
+          return {
+            start: other?.rental_start_date || '?',
+            end: other?.rental_end_date || '?',
             source: 'offer',
             id: r.id
           };
@@ -727,14 +737,14 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           isSoldOut={isSoldOut}
           onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
           onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({ 
-            id: o.id, 
-            title: o.product_title, 
-            start: o.rental_start_date || '', 
-            end: o.rental_end_date || '', 
-            price: o.offered_price ?? o.offer_price, 
-            type: o.offer_type ?? o.listing_type, 
-            status: o.status, 
+          onUpdateDates={o => setDateModal({
+            id: o.id,
+            title: o.product_title,
+            start: o.rental_start_date || '',
+            end: o.rental_end_date || '',
+            price: o.offered_price ?? o.offer_price,
+            type: o.offer_type ?? o.listing_type,
+            status: o.status,
             rentalCostPerDay: Number(o.product_rental_cost ?? o.rental_cost ?? 0),
             depositAmount: Number(o.product_rental_deposit ?? o.deposit_amount ?? 0),
             delivery_address: o.delivery_address || '',
@@ -756,14 +766,14 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
           onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
           onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({ 
-            id: o.id, 
-            title: o.product_title, 
-            start: o.rental_start_date || '', 
-            end: o.rental_end_date || '', 
-            price: o.offered_price ?? o.offer_price, 
-            type: o.offer_type ?? o.listing_type, 
-            status: o.status, 
+          onUpdateDates={o => setDateModal({
+            id: o.id,
+            title: o.product_title,
+            start: o.rental_start_date || '',
+            end: o.rental_end_date || '',
+            price: o.offered_price ?? o.offer_price,
+            type: o.offer_type ?? o.listing_type,
+            status: o.status,
             rentalCostPerDay: Number(o.product_rental_cost ?? o.rental_cost ?? 0),
             depositAmount: Number(o.product_rental_deposit ?? o.deposit_amount ?? 0),
             delivery_address: o.delivery_address || '',
@@ -882,11 +892,11 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
               </div>
               <div className="modal-body p-4">
                 <p className="text-muted small mb-4">
-                  {dateModal.status === 'rejected' 
+                  {dateModal.status === 'rejected'
                     ? `You are re-submitting your offer for "${dateModal.title}".`
                     : `Modify the proposal details for "${dateModal.title}"`}
                 </p>
-                
+
                 {dateModal.type === 'rent' && (
                   <div className="mb-4">
                     <div className="d-flex align-items-center justify-content-between mb-2">
@@ -899,7 +909,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                       onRangeChange={(start, end) => setDateModal({ ...dateModal, start, end })}
                       minRentalDays={settings.minRentalDays || 3}
                     />
-                    
+
                     <div className="mt-4 mb-3">
                       <label className="form-label fw-bold small">Deposit Amount (₹)</label>
                       <input
@@ -914,28 +924,28 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                 )}
 
                 <div className="mb-4">
-                   <label className="form-label fw-bold small">Offer Price (₹)</label>
-                   {(() => {
-                     const daily = Number(dateModal.rentalCostPerDay ?? 0);
-                     const days = daysBetween(dateModal.start, dateModal.end);
-                     const computed = (dateModal.type === 'rent' && daily > 0 && days > 0) 
-                       ? Math.round(days * daily) 
-                       : Number(dateModal.price || 0);
-                     return (
-                       <input
-                         type="text"
-                         className="form-control bg-warning bg-opacity-10 border-warning fw-bold"
-                         value={`₹${computed.toLocaleString('en-IN')}`}
-                         readOnly
-                         style={{ cursor: 'default' }}
-                       />
-                     );
-                   })()}
-                    {dateModal.type === 'rent' && (dateModal.rentalCostPerDay ?? 0) > 0 && dateModal.start && dateModal.end && (
-                      <small className="text-muted mt-1 d-block">
-                        Calculated: ₹{Number(dateModal.rentalCostPerDay || 0).toLocaleString('en-IN')} × {daysBetween(dateModal.start, dateModal.end)} days
-                      </small>
-                   )}
+                  <label className="form-label fw-bold small">Offer Price (₹)</label>
+                  {(() => {
+                    const daily = Number(dateModal.rentalCostPerDay ?? 0);
+                    const days = daysBetween(dateModal.start, dateModal.end);
+                    const computed = (dateModal.type === 'rent' && daily > 0 && days > 0)
+                      ? Math.round(days * daily)
+                      : Number(dateModal.price || 0);
+                    return (
+                      <input
+                        type="text"
+                        className="form-control bg-warning bg-opacity-10 border-warning fw-bold"
+                        value={`₹${computed.toLocaleString('en-IN')}`}
+                        readOnly
+                        style={{ cursor: 'default' }}
+                      />
+                    );
+                  })()}
+                  {dateModal.type === 'rent' && (dateModal.rentalCostPerDay ?? 0) > 0 && dateModal.start && dateModal.end && (
+                    <small className="text-muted mt-1 d-block">
+                      Calculated: ₹{Number(dateModal.rentalCostPerDay || 0).toLocaleString('en-IN')} × {daysBetween(dateModal.start, dateModal.end)} days
+                    </small>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -962,9 +972,9 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
               </div>
               <div className="modal-footer border-0 px-4 pb-4 mt-0">
                 <button className="btn btn-light rounded-pill px-4" onClick={() => setDateModal(null)}>Cancel</button>
-                <button 
-                  className="btn btn-dark rounded-pill px-4 fw-bold" 
-                  onClick={handleUpdateDates} 
+                <button
+                  className="btn btn-dark rounded-pill px-4 fw-bold"
+                  onClick={handleUpdateDates}
                   disabled={dateLoading || (dateModal.type === 'rent' && (!dateModal.start || !dateModal.end))}
                 >
                   {dateLoading ? 'Wait…' : (dateModal.status === 'rejected' ? 'Submit Offer' : 'Update Offer')}
@@ -1174,10 +1184,10 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
         const isGroupSold = productOffers.some(o => o.status === 'accepted' && (o.offer_type ?? o.listing_type) === 'sell');
         const acceptedRentalRanges = productOffers
           .filter(o => o.status === 'accepted' && (o.offer_type ?? o.listing_type) === 'rent' && o.rental_start_date && o.rental_end_date)
-          .map(o => ({ 
-            start: toDateVal(o.rental_start_date!), 
+          .map(o => ({
+            start: toDateVal(o.rental_start_date!),
             end: toDateVal(o.rental_end_date!),
-            id: o.id 
+            id: o.id
           }));
 
         return (
@@ -1188,6 +1198,11 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                 ? <img src={getImageUrl(first.product_image)} className="product-thumb" alt={first.product_title} />
                 : <div className="product-thumb d-flex align-items-center justify-content-center bg-light"><i className="bi bi-image text-muted"></i></div>}
               <div>
+                <div className="mb-1">
+                  <small className="text-muted" style={{ fontSize: '0.72rem' }}>
+                    <i className="bi bi-eye me-1"></i>{first.product_views ?? 0} Views
+                  </small>
+                </div>
                 <h5 className="fw-bold mb-0">{first.product_title}</h5>
                 <div className="d-flex align-items-center gap-2 mt-1">
                   <small className="text-muted"><i className="bi bi-hash"></i> ID: {first.product_number || `#${first.product_id}`}</small>
@@ -1260,17 +1275,12 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                       <div className="buyer-contact-info border-top pt-2 w-100">
                         <div className="buyer-contact-item"><i className="bi bi-telephone text-primary"></i><span>{offer.buyer_mobile || 'N/A'}</span></div>
                         <div className="buyer-contact-item"><i className="bi bi-envelope text-primary"></i><span className="text-truncate" style={{ maxWidth: 180, display: 'block' }}>{offer.buyer_email || 'N/A'}</span></div>
-                        <div className="buyer-contact-item"><i className="bi bi-geo-alt text-danger"></i><span>{offer.delivery_city || 'N/A'}, {offer.delivery_pin_code || 'No Pin'} {offer.delivery_state || ''}</span></div>
+                        <div className="buyer-contact-item"><i className="bi bi-geo-alt text-danger"></i><span>{offer.delivery_state || ''},{offer.delivery_city || 'N/A'}, {offer.delivery_pin_code || 'No Pin'} </span></div>
                       </div>
                     </div>
 
                     {/* ── offer details column ── */}
                     <div className="offer-details flex-grow-1">
-                      {/* meta badges */}
-                      <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
-                        <div className="product-meta-badge"><i className="bi bi-eye"></i> {offer.product_views ?? 0} Views</div>
-                        <div className="product-meta-badge"><i className="bi bi-geo"></i> {offer.dispatch_city ?? 'N/A'}, {offer.dispatch_state ?? 'N/A'}</div>
-                      </div>
 
                       {/* price + status */}
                       <div className="price-container d-flex align-items-end gap-2 mb-2">
@@ -1311,8 +1321,8 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                                 <div style={{ fontSize: '0.7rem', fontWeight: 'normal', marginTop: '2px' }}>
                                   Conflicts with: {fmtShort(conflict.start)} - {fmtShort(conflict.end)} ({conflict.source === 'order' ? 'Confirmed Booking' : `Accepted Offer #${conflict.id}`})
                                   {conflict.source === 'offer' && (
-                                    <button 
-                                      className="btn btn-link p-0 ms-2 text-danger fw-bold" 
+                                    <button
+                                      className="btn btn-link p-0 ms-2 text-danger fw-bold"
                                       style={{ fontSize: '0.7rem', textDecoration: 'none' }}
                                       onClick={() => {
                                         const other = offers.find(x => Number(x.id) === Number(conflict.id));
@@ -1347,26 +1357,42 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                         </div>
                       )}
 
-                      {/* history / detailed tracker */}
-                      {offer.history && offer.history.length > 0 && (
-                        <div className="mt-3 pt-3 border-top w-100">
-                          <h6 className="small fw-bold text-muted mb-2"><i className="bi bi-clock-history me-1"></i>Detailed Tracker</h6>
-                          <div className="history-list small">
-                            {offer.history.map(h => (
-                              <div key={h.id} className="history-item d-flex gap-2 mb-2 text-start">
-                                <div className="text-primary"><i className="bi bi-dot"></i></div>
-                                <div>
-                                  <span className="text-dark fw-semibold">{historyLabel(h.action)}</span>
-                                  <div className="text-muted opacity-75" style={{ fontSize: '0.75rem' }}>
-                                    {fmtDateTime(h.created_at)}
-                                    {h.new_start_date && <> • {fmtShort(h.new_start_date)} - {fmtShort(h.new_end_date)}</>}
+                      {/* Negotiation Timeline */}
+                      {(() => {
+                        const sortedHistory = [...(offer.history || [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                        const steps = [
+                          ...sortedHistory.filter(h => h.action !== 'initial_offer').map(h => ({
+                            label: historyLabel(h.action),
+                            date: fmtDateTime(h.created_at) + (h.new_start_date && h.new_end_date ? ` • ${fmtShort(h.new_start_date)} – ${fmtShort(h.new_end_date)}` : ''),
+                            icon: historyIcon(h.action),
+                          })),
+                          { label: 'Offer Initiated', date: fmtDateTime(offer.created_at), icon: 'fa-solid fa-tag' },
+                        ];
+                        return (
+                          <div style={{ background: '', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '0.75rem' }}>
+                            <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                              <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Negotiation Logs
+                            </div>
+                            {steps.map((step, idx) => (
+                              <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                                  <div style={{ width: 28, height: 28, background: '#D7B467', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>
+                                    {idx + 1}
                                   </div>
+                                  {idx < steps.length - 1 && <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />}
+                                </div>
+                                <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <i className={step.icon} style={{ color: '#D7B467', fontSize: '0.8rem' }}></i>
+                                    <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
+                                  </div>
+                                  <div style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: 2 }}>{step.date}</div>
                                 </div>
                               </div>
                             ))}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
 
                     {/* ── offer actions column ── */}

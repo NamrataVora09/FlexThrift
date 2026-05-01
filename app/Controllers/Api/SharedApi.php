@@ -390,15 +390,23 @@ class SharedApi extends ResourceController
         $data = $this->request->getJSON(true);
         $db = \Config\Database::connect();
 
+        $isFeatured = ($jwtUser['role'] === 'super_admin') ? (int) ($data['is_featured'] ?? 0) : 0;
+        $userType = $data['user_type'];
+
+        if ($isFeatured) {
+            $db->table('subscription_plans')->where('user_type', $userType)->update(['is_featured' => 0]);
+        }
+
         $db->table('subscription_plans')->insert([
             'name' => $data['name'],
-            'user_type' => $data['user_type'],
+            'user_type' => $userType,
             'plan_type' => $data['plan_type'] ?? 'duration',
             'limit_value' => (int) ($data['limit_value'] ?? 0),
             'duration_hours' => (float) ($data['duration_hours'] ?? 0),
             'price' => (float) ($data['price']),
             'base_price' => (float) ($data['base_price'] ?? $data['price']),
             'is_active' => 1,
+            'is_featured' => $isFeatured,
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
@@ -436,16 +444,26 @@ class SharedApi extends ResourceController
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
 
-        $db->table('subscription_plans')->where('id', $id)->update([
+        $isFeatured = ($jwtUser['role'] === 'super_admin') ? (int) ($data['is_featured'] ?? 0) : null;
+        $userType = $data['user_type'];
+
+        if ($isFeatured) {
+            $db->table('subscription_plans')->where('user_type', $userType)->where('id !=', $id)->update(['is_featured' => 0]);
+        }
+
+        $updateData = [
             'name' => $data['name'],
-            'user_type' => $data['user_type'],
+            'user_type' => $userType,
             'plan_type' => $data['plan_type'] ?? 'duration',
             'limit_value' => (int) ($data['limit_value'] ?? 0),
             'duration_hours' => (float) ($data['duration_hours'] ?? 0),
             'price' => (float) ($data['price']),
             'base_price' => (float) ($data['base_price'] ?? $data['price']),
             'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
+        if ($isFeatured !== null) $updateData['is_featured'] = $isFeatured;
+
+        $db->table('subscription_plans')->where('id', $id)->update($updateData);
 
         return $this->respond(['success' => true, 'message' => 'Plan updated']);
     }
