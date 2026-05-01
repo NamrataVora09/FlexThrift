@@ -573,7 +573,7 @@ export default function Page() {
                           return (
                             <div style={{ background: '', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '0.75rem' }}>
                               <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
-                                Negotiation Logs
+                                <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Negotiation Logs
                               </div>
                               {steps.map((step, idx) => (
                                 <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
@@ -593,7 +593,6 @@ export default function Page() {
                                   {/* content */}
                                   <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                      <i className={step.icon} style={{ color: '#D7B467', fontSize: '0.8rem' }}></i>
                                       <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
                                     </div>
                                     <div style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: 2 }}>{step.date}</div>

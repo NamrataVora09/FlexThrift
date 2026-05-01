@@ -1384,22 +1384,21 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                         ];
                         return (
                           <div style={{ background: '', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '0.75rem' }}>
-                            <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
-                              Negotiation Logs
-                            </div>
-                            {steps.map((step, idx) => (
-                              <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                                  <div style={{ width: 28, height: 28, background: '#D7B467', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>
-                                    {idx + 1}
-                                  </div>
-                                  {idx < steps.length - 1 && <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />}
-                                </div>
-                                <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <i className={step.icon} style={{ color: '#D7B467', fontSize: '0.8rem' }}></i>
-                                    <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
-                                  </div>
+                             <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                               <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Negotiation Logs
+                             </div>
+                             {steps.map((step, idx) => (
+                               <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
+                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                                   <div style={{ width: 28, height: 28, background: '#D7B467', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>
+                                     {idx + 1}
+                                   </div>
+                                   {idx < steps.length - 1 && <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />}
+                                 </div>
+                                 <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
+                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                     <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
+                                   </div>
                                   <div style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: 2 }}>{step.date}</div>
                                 </div>
                               </div>
@@ -1625,7 +1624,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                   {/* negotiation logs */}
                   {o.history && o.history.length > 0 && (
                     <div className="mt-3 pt-3 border-top">
-                      <h6 className="small fw-bold text-muted mb-2"><i className="bi bi-clock-history me-1"></i>Negotiation Logs</h6>
+                      <h6 className="small fw-bold text-muted mb-2"><i className="fa-solid fa-clock-rotate-left me-1"></i>Negotiation Logs</h6>
                       <div className="history-list small">
                         {o.history.map(h => (
                           <div key={h.id} className="history-item d-flex gap-2 mb-2">

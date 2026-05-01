@@ -22,6 +22,101 @@ function Section({ title, icon, children }: { title: string; icon: string; child
   );
 }
 
+function ListEditor({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+  const [items, setItems] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(value || '[]');
+      if (Array.isArray(parsed)) setItems(parsed);
+    } catch (e) {
+      setItems([]);
+    }
+  }, [value]);
+
+  const updateItems = (newItems: string[]) => {
+    setItems(newItems);
+    onChange(JSON.stringify(newItems));
+  };
+
+  const addItem = () => updateItems([...items, '']);
+  const removeItem = (idx: number) => updateItems(items.filter((_, i) => i !== idx));
+  const editItem = (idx: number, val: string) => {
+    const next = [...items];
+    next[idx] = val;
+    updateItems(next);
+  };
+
+  return (
+    <div className="mb-3">
+      <label className="form-label fw-semibold d-flex justify-content-between align-items-center">
+        {label}
+        <button type="button" className="btn btn-sm btn-outline-warning" onClick={addItem}><i className="bi bi-plus-lg me-1"></i>Add Item</button>
+      </label>
+      <div className="d-flex flex-column gap-2">
+        {items.map((item, i) => (
+          <div key={i} className="d-flex gap-2">
+            <input className="form-control" style={inputStyle} value={item} onChange={(e) => editItem(i, e.target.value)} placeholder={placeholder} />
+            <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removeItem(i)}><i className="bi bi-trash"></i></button>
+          </div>
+        ))}
+        {items.length === 0 && <div className="text-center py-3 rounded-3" style={{ border: '1px dashed #ccc', color: '#999' }}>No items added.</div>}
+      </div>
+    </div>
+  );
+}
+
+function StepsEditor({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [steps, setSteps] = useState<{ title: string; desc: string }[]>([]);
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(value || '[]');
+      if (Array.isArray(parsed)) setSteps(parsed);
+    } catch (e) {
+      setSteps([]);
+    }
+  }, [value]);
+
+  const updateSteps = (newSteps: { title: string; desc: string }[]) => {
+    setSteps(newSteps);
+    onChange(JSON.stringify(newSteps));
+  };
+
+  const addStep = () => updateSteps([...steps, { title: '', desc: '' }]);
+  const removeStep = (idx: number) => updateSteps(steps.filter((_, i) => i !== idx));
+  const editStep = (idx: number, field: 'title' | 'desc', val: string) => {
+    const next = [...steps];
+    next[idx] = { ...next[idx], [field]: val };
+    updateSteps(next);
+  };
+
+  return (
+    <div className="mb-4">
+      <label className="form-label fw-semibold d-flex justify-content-between align-items-center">
+        {label}
+        <button type="button" className="btn btn-sm btn-outline-warning" onClick={addStep}><i className="bi bi-plus-lg me-1"></i>Add Step</button>
+      </label>
+      <div className="d-flex flex-column gap-3">
+        {steps.map((step, i) => (
+          <div key={i} className="p-3 rounded-3 position-relative" style={{ background: '#f8f9fa', border: '1px solid #eee' }}>
+            <button type="button" className="btn btn-outline-danger btn-sm position-absolute top-0 end-0 m-2" onClick={() => removeStep(i)}><i className="bi bi-trash"></i></button>
+            <div className="row g-2">
+              <div className="col-12">
+                <input className="form-control fw-bold border-0 bg-transparent mb-1" style={{ padding: '0.2rem 0', fontSize: '0.95rem' }} value={step.title} onChange={(e) => editStep(i, 'title', e.target.value)} placeholder="Step Title (e.g. Share Your Code)" />
+              </div>
+              <div className="col-12">
+                <textarea className="form-control border-0 bg-transparent" style={{ padding: '0', fontSize: '0.875rem', minHeight: '40px', resize: 'none' }} value={step.desc} onChange={(e) => editStep(i, 'desc', e.target.value)} placeholder="Step Description..." />
+              </div>
+            </div>
+          </div>
+        ))}
+        {steps.length === 0 && <div className="text-center py-3 rounded-3" style={{ border: '1px dashed #ccc', color: '#999' }}>No steps added.</div>}
+      </div>
+    </div>
+  );
+}
+
 function Toggle({ label, desc, settingKey, settings, update }: { label: string; desc?: string; settingKey: string; settings: Record<string, string>; update: (k: string, v: string) => void }) {
   const checked = settings[settingKey] === '1' || settings[settingKey] === 'true';
   return (
@@ -306,6 +401,53 @@ export default function SettingsClient() {
             </div>
           </Section>
 
+          {/* ── Referral Program ── */}
+          <Section title="Referral Program" icon="bi-people">
+            <div className="row g-3">
+              <div className="col-12">
+                <Toggle
+                  label="Enable Referral Program"
+                  desc="When enabled, users can refer friends and earn rewards."
+                  settingKey="referral_enabled"
+                  settings={settings}
+                  update={update}
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Reward Amount (₹)</label>
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.referral_reward_amount || '40'} onChange={(e) => update('referral_reward_amount', e.target.value)} />
+                <small className="text-muted">Amount credited to both referrer and referee</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Min. Purchase for Reward (₹)</label>
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.referral_min_purchase || '100'} onChange={(e) => update('referral_min_purchase', e.target.value)} />
+                <small className="text-muted">Minimum first purchase value to trigger reward</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Reward Expiry (days)</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.referral_expiry_days || '7'} onChange={(e) => update('referral_expiry_days', e.target.value)} />
+                <small className="text-muted">Days before the referral reward balance expires</small>
+              </div>
+
+              <div className="col-12 mt-4">
+                <StepsEditor 
+                  label="How It Works Steps"
+                  value={settings.referral_how_it_works || '[]'}
+                  onChange={(val) => update('referral_how_it_works', val)}
+                />
+              </div>
+
+              <div className="col-12">
+                <ListEditor 
+                  label="Terms & Conditions"
+                  value={settings.referral_terms || '[]'}
+                  onChange={(val) => update('referral_terms', val)}
+                  placeholder="Enter a term or condition..."
+                />
+              </div>
+            </div>
+          </Section>
+
           {/* ── Save Button ── */}
           <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '0.75rem' }}>
             <div className="card-body d-flex justify-content-end gap-3 align-items-center">
@@ -326,29 +468,7 @@ export default function SettingsClient() {
           </div>
           <div className="card-body d-flex flex-column gap-3">
 
-            {/* Fix missed offers */}
-            <div className="p-3 rounded-3" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
-              <h6 className="fw-bold mb-1">Fix Missed Offers in Database</h6>
-              <p className="text-muted small mb-3">
-                Marks all <strong>pending offers older than the acceptance limit</strong> as <code>missed</code> in the database.
-                This fixes the Approved/Rejected counts on Buyer &amp; Seller dashboards.
-              </p>
-              <button
-                className="btn btn-warning px-4"
-                disabled={fixingMissed}
-                onClick={async () => {
-                  setFixingMissed(true);
-                  const res = await api.post('/superadmin/mark-missed-offers', {});
-                  setFixingMissed(false);
-                  if (res.success) toast.success((res as any).message || 'Done');
-                  else toast.error((res as any).message || 'Failed');
-                }}
-              >
-                {fixingMissed
-                  ? <><span className="spinner-border spinner-border-sm me-2"></span>Running…</>
-                  : <><i className="bi bi-arrow-repeat me-2"></i>Run Fix Now</>}
-              </button>
-            </div>
+
 
             {/* Delete rejected products */}
             <div className="p-3 rounded-3" style={{ background: '#fff5f5', border: '1px solid #ffeaea' }}>

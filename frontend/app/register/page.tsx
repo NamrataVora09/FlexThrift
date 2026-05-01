@@ -21,6 +21,14 @@ export default function RegisterPage() {
     }
   }, [isLoading, isAuthenticated, user]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      setFormData(prev => ({ ...prev, referred_by: ref.toUpperCase() }));
+    }
+  }, []);
+
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '', email: '', mobile: '', password: '', address: '', pin_code: '', user_type: 'buyer', referred_by: '',
@@ -232,8 +240,11 @@ export default function RegisterPage() {
                 {mobileError && <div className="mobile-error">Please enter a valid 10-digit mobile number</div>}
               </div>
               <div className="auth-input-group">
-                <label>Password</label>
                 <input className="auth-input" type="password" name="password" placeholder="Create a strong password" value={formData.password} onChange={handleChange} required />
+              </div>
+              <div className="auth-input-group">
+                <label>Referral Code <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+                <input className="auth-input" type="text" name="referred_by" placeholder="Enter a referral code" value={formData.referred_by} onChange={handleChange} style={{ textTransform: 'uppercase' }} />
               </div>
 
               <div className="btn-row">
@@ -260,10 +271,6 @@ export default function RegisterPage() {
               <div className="auth-input-group">
                 <label>PIN Code</label>
                 <input className="auth-input" type="text" name="pin_code" placeholder="Enter PIN code" value={formData.pin_code} onChange={handleChange} required />
-              </div>
-              <div className="auth-input-group">
-                <label>Referral Code <span style={{ fontWeight: 400, color: '#aaa', textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-                <input className="auth-input" type="text" name="referred_by" placeholder="Enter a referral code to earn rewards" value={formData.referred_by} onChange={handleChange} style={{ textTransform: 'uppercase' }} />
               </div>
 
               <div className="btn-row">

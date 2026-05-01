@@ -22,6 +22,8 @@ interface ReferralStats {
   total_earned: number;
   reward_amount: number;
   referral_enabled: boolean;
+  how_it_works?: { title: string; desc: string }[];
+  terms?: string[];
   referred_users: ReferredUser[];
 }
 
@@ -29,6 +31,7 @@ export default function BuyerReferralPage() {
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [regCopied, setRegCopied] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
 
   useEffect(() => {
@@ -43,6 +46,14 @@ export default function BuyerReferralPage() {
     navigator.clipboard.writeText(stats.referral_code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyRegLink = () => {
+    if (!stats?.referral_code) return;
+    const link = window.location.origin + '/register?ref=' + stats.referral_code;
+    navigator.clipboard.writeText(link);
+    setRegCopied(true);
+    setTimeout(() => setRegCopied(false), 2000);
   };
 
   const handleShare = () => {
@@ -165,6 +176,11 @@ export default function BuyerReferralPage() {
           padding: 28px 24px;
           text-align: center;
           transition: 0.3s;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
         }
         .stat-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.06); transform: translateY(-2px); }
         .stat-icon {
@@ -194,6 +210,8 @@ export default function BuyerReferralPage() {
           border: 1px solid #eee;
           padding: 28px;
           margin-bottom: 20px;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
         }
         .info-card h5 {
           font-weight: 800;
@@ -205,20 +223,41 @@ export default function BuyerReferralPage() {
         .step-item {
           display: flex;
           gap: 16px;
-          align-items: flex-start;
-          padding: 16px 0;
-          border-bottom: 1px solid #f5f5f5;
+          margin-bottom: 0;
+          position: relative;
         }
-        .step-item:last-child { border-bottom: none; }
-        .step-num {
-          width: 36px; height: 36px;
-          background: #ffc63a;
-          color: #000;
-          border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-weight: 900;
-          font-size: 0.9rem;
+        .step-num-wrap {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           flex-shrink: 0;
+        }
+        .step-num {
+          width: 32px;
+          height: 32px;
+          background: #d6b06b;
+          color: #fff;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 0.9rem;
+          line-height: 1;
+          z-index: 1;
+        }
+        .step-line {
+          width: 2px;
+          flex-grow: 1;
+          background: rgba(0,0,0,0.1);
+          margin: 4px 0;
+          min-height: 30px;
+        }
+        .step-text {
+          flex: 1;
+          min-width: 0;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
         }
         .step-text h6 { font-weight: 800; margin-bottom: 4px; font-size: 0.95rem; }
         .step-text p { color: #6b7280; font-size: 0.85rem; margin: 0; }
@@ -274,62 +313,16 @@ export default function BuyerReferralPage() {
             <div className="spinner-border" style={{ color: '#ffc63a' }}></div>
           </div>
         ) : !stats?.referral_enabled ? (
-          <div className="disabled-overlay">
-            <i className="bi bi-gift" style={{ fontSize: '3rem', color: '#d1d5db' }}></i>
-            <h4 className="fw-bold mt-3 text-muted">Referral Program Unavailable</h4>
-            <p className="text-muted">The referral program is currently disabled. Check back later!</p>
-          </div>
+        ''
         ) : (
           <>
             {/* Hero */}
-            <div className="ref-hero">
-              <div className="hero-label">
-                <i className="bi bi-gift-fill me-2"></i>Referral Program
-              </div>
-              <h1 className="hero-title">Earn ₹{stats.reward_amount} for Every Friend!</h1>
-              <p className="hero-sub">
-                Share your unique code. When a friend signs up and buys a subscription, you earn a reward credit.
-              </p>
-              {stats.referral_code ? (
-                <div className="code-box">
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '6px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>Your Code</div>
-                    <div className="code-display">{stats.referral_code}</div>
-                  </div>
-                  <div className="d-flex gap-2 flex-wrap">
-                    <button className="btn-copy" onClick={handleCopy}>
-                      <i className={`bi ${copied ? 'bi-check2' : 'bi-clipboard'} me-2`}></i>
-                      {copied ? 'Copied!' : 'Copy Code'}
-                    </button>
-                    <button className="btn-share" onClick={handleShare}>
-                      <i className="bi bi-share me-2"></i>Share
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ marginTop: '24px', color: 'rgba(255,255,255,0.5)' }}>
-                  Referral code not available for your account yet.
-                </div>
-              )}
-              {shareMsg && (
-                <div style={{ marginTop: '12px', color: '#ffc63a', fontSize: '0.85rem', fontWeight: 700 }}>
-                  <i className="bi bi-check2-circle me-1"></i>{shareMsg}
-                </div>
-              )}
-            </div>
+           
 
             {/* Stats Row */}
             <div className="row g-3 mb-4">
-              <div className="col-6 col-md-3">
-                <div className="stat-card">
-                  <div className="stat-icon" style={{ background: 'rgba(255,198,58,0.1)' }}>
-                    <i className="bi bi-people-fill" style={{ color: '#ffc63a' }}></i>
-                  </div>
-                  <div className="stat-value">{stats.total_referrals}</div>
-                  <div className="stat-label">Friends Referred</div>
-                </div>
-              </div>
-              <div className="col-6 col-md-3">
+
+<div className="col-6 col-md-4">
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: 'rgba(16,185,129,0.1)' }}>
                     <i className="bi bi-currency-rupee" style={{ color: '#10b981' }}></i>
@@ -339,7 +332,7 @@ export default function BuyerReferralPage() {
                   <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '4px' }}>after friend buys a plan</div>
                 </div>
               </div>
-              <div className="col-6 col-md-3">
+<div className="col-6 col-md-4">
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: 'rgba(99,102,241,0.1)' }}>
                     <i className="bi bi-wallet2" style={{ color: '#6366f1' }}></i>
@@ -348,7 +341,7 @@ export default function BuyerReferralPage() {
                   <div className="stat-label">Current Balance</div>
                 </div>
               </div>
-              <div className="col-6 col-md-3">
+<div className="col-6 col-md-4">
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: 'rgba(239,68,68,0.1)' }}>
                     <i className="bi bi-gift-fill" style={{ color: '#ef4444' }}></i>
@@ -368,70 +361,75 @@ export default function BuyerReferralPage() {
                     <i className="bi bi-info-circle-fill" style={{ color: '#ffc63a' }}></i>
                     How It Works
                   </h5>
-                  <div className="step-item">
-                    <div className="step-num">1</div>
-                    <div className="step-text">
-                      <h6>Share Your Code</h6>
-                      <p>Copy your unique referral code above and share it with friends via WhatsApp, email, or social media.</p>
-                    </div>
-                  </div>
-                  <div className="step-item">
-                    <div className="step-num">2</div>
-                    <div className="step-text">
-                      <h6>Friend Signs Up</h6>
-                      <p>Your friend registers on Flex and enters your referral code during sign-up.</p>
-                    </div>
-                  </div>
-                  <div className="step-item">
-                    <div className="step-num">3</div>
-                    <div className="step-text">
-                      <h6>They Purchase a Plan</h6>
-                      <p>When your friend buys their first subscription plan, the reward is unlocked.</p>
-                    </div>
-                  </div>
-                  <div className="step-item">
-                    <div className="step-num">4</div>
-                    <div className="step-text">
-                      <h6>You Earn ₹{stats.reward_amount}</h6>
-                      <p>A ₹{stats.reward_amount} credit is added to your referral balance, automatically applied on your next plan purchase.</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Referred Users */}
-                <div className="info-card">
-                  <h5>
-                    <i className="bi bi-people-fill" style={{ color: '#ffc63a' }}></i>
-                    Friends Referred
-                    <span className="ms-auto badge" style={{ background: '#f3f4f6', color: '#374151', borderRadius: '50px', padding: '6px 14px', fontSize: '0.8rem', fontWeight: 700 }}>
-                      {stats.total_referrals}
-                    </span>
-                  </h5>
-                  {stats.referred_users.length === 0 ? (
-                    <div className="text-center py-4">
-                      <i className="bi bi-person-plus" style={{ fontSize: '2.5rem', color: '#d1d5db' }}></i>
-                      <p className="text-muted mt-2 mb-0">No referrals yet. Share your code to get started!</p>
-                    </div>
-                  ) : (
-                    stats.referred_users.map((u, i) => (
-                      <div key={i} className="referred-item">
-                        <div className="ref-avatar">{u.initials}</div>
-                        <div>
-                          <div className="ref-name">{u.name}</div>
-                          <div className="ref-date">Joined {formatDate(u.joined_at)}</div>
+                  {stats.how_it_works && stats.how_it_works.length > 0 ? (
+                    stats.how_it_works.map((step, idx) => (
+                      <div key={idx} className="step-item">
+                        <div className="step-num-wrap">
+                          <div className="step-num">{idx + 1}</div>
+                          {idx < stats.how_it_works.length - 1 && <div className="step-line"></div>}
                         </div>
-                        {u.reward_used ? (
-                          <span className="ref-badge" style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-                            <i className="bi bi-check-circle-fill me-1"></i>₹{u.reward_earned} Earned
-                          </span>
-                        ) : (
-                          <span className="ref-badge" style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
-                            <i className="bi bi-clock me-1"></i>Pending
-                          </span>
-                        )}
+                        <div className="step-text" style={{ paddingBottom: idx < stats.how_it_works.length - 1 ? '24px' : '0' }}>
+                          <h6>{step.title}</h6>
+                          <p>{step.desc}</p>
+                        </div>
                       </div>
                     ))
+                  ) : (
+                    <>
+                      <div className="step-item">
+                        <div className="step-num-wrap">
+                          <div className="step-num">1</div>
+                          <div className="step-line"></div>
+                        </div>
+                        <div className="step-text" style={{ paddingBottom: '24px' }}>
+                          <h6>Share Your Code</h6>
+                          <p>Invite your friends to Flex using your unique referral code.</p>
+                        </div>
+                      </div>
+                      <div className="step-item">
+                        <div className="step-num-wrap">
+                          <div className="step-num">2</div>
+                          <div className="step-line"></div>
+                        </div>
+                        <div className="step-text" style={{ paddingBottom: '24px' }}>
+                          <h6>Friends Join Flex</h6>
+                          <p>Your friend registers on Flex and enters your referral code during sign-up.</p>
+                        </div>
+                      </div>
+                      <div className="step-item">
+                        <div className="step-num-wrap">
+                          <div className="step-num">3</div>
+                        </div>
+                        <div className="step-text">
+                          <h6>They Purchase a Plan</h6>
+                          <p>When your friend buys their first subscription plan, the reward is unlocked.</p>
+                        </div>
+                      </div>
+                    </>
                   )}
+
+                </div>
+
+
+                {/* Terms */}
+                <div className="info-card">
+                  <h5>
+                    <i className="bi bi-shield-check" style={{ color: '#ffc63a' }}></i>
+                    Terms & Conditions
+                  </h5>
+                  <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.85rem', color: '#6b7280', lineHeight: '1.8' }}>
+                    {stats.terms && stats.terms.length > 0 ? (
+                      stats.terms.map((term, i) => <li key={i}>{term}</li>)
+                    ) : (
+                      <>
+                        <li>Reward is credited when referred friend makes their first subscription purchase.</li>
+                        <li>Referral balance is automatically applied at checkout.</li>
+                        <li>Each user can only use one referral code during registration.</li>
+                        <li>Referral rewards cannot be transferred or withdrawn as cash.</li>
+                        <li>Flex reserves the right to modify or cancel the program at any time.</li>
+                      </>
+                    )}
+                  </ul>
                 </div>
               </div>
 
@@ -475,19 +473,40 @@ export default function BuyerReferralPage() {
                   </div>
                 )}
 
-                {/* Terms */}
+                {/* Share Your Code */}
                 <div className="info-card">
                   <h5>
-                    <i className="bi bi-shield-check" style={{ color: '#ffc63a' }}></i>
-                    Terms & Conditions
+                    <i className="bi bi-share-fill" style={{ color: '#ffc63a' }}></i>
+                    Share Your Code
                   </h5>
-                  <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.85rem', color: '#6b7280', lineHeight: '1.8' }}>
-                    <li>Reward is credited when referred friend makes their first subscription purchase.</li>
-                    <li>Referral balance is automatically applied at checkout.</li>
-                    <li>Each user can only use one referral code during registration.</li>
-                    <li>Referral rewards cannot be transferred or withdrawn as cash.</li>
-                    <li>Flex reserves the right to modify or cancel the program at any time.</li>
-                  </ul>
+                  {stats.referral_code ? (
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ background: '#f8f9fa', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Your Referral Code</div>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, letterSpacing: '4px', color: '#ffc63a', fontFamily: 'monospace' }}>{stats.referral_code}</div>
+                      </div>
+                      <div className="d-flex flex-column gap-2">
+                        <button className="btn-copy w-100" style={{ height: '45px' }} onClick={handleCopy}>
+                          <i className={`bi ${copied ? 'bi-check2' : 'bi-clipboard'} me-2`}></i>
+                          {copied ? 'Copied!' : 'Copy Code Only'}
+                        </button>
+                        <button className="btn-share w-100" style={{ height: '45px', background: '#000', color: '#ffc63a', borderColor: '#000' }} onClick={handleCopyRegLink}>
+                          <i className={`bi ${regCopied ? 'bi-check2' : 'bi-link-45deg'} me-2`}></i>
+                          {regCopied ? 'Link Copied!' : 'Copy Registration Link'}
+                        </button>
+                        <button className="btn-share w-100" style={{ height: '45px' }} onClick={handleShare}>
+                          <i className="bi bi-share me-2"></i>Share Link
+                        </button>
+                      </div>
+                      {shareMsg && (
+                        <div style={{ marginTop: '12px', color: '#ffc63a', fontSize: '0.85rem', fontWeight: 700 }}>
+                          <i className="bi bi-check2-circle me-1"></i>{shareMsg}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-muted small">Referral code not available.</p>
+                  )}
                 </div>
               </div>
             </div>

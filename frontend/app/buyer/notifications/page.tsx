@@ -16,18 +16,18 @@ interface Notification {
   created_at: string;
 }
 
-function getIconInfo(title: string, type: string) {
+function getIconInfo(title: string, type: string, message: string) {
   const titleLower = (title || '').toLowerCase();
-  if (titleLower.includes('order')) {
-    return { iconClass: 'icon-order', icon: 'bi-receipt' };
-  } else if (titleLower.includes('offer')) {
-    return { iconClass: 'icon-offer', icon: 'bi-chat-left-dots-fill' };
-  } else if (type === 'success' || titleLower.includes('success') || titleLower.includes('accepted')) {
-    return { iconClass: 'icon-success', icon: 'bi-check-circle-fill' };
-  } else if (type === 'system') {
-    return { iconClass: 'icon-system', icon: 'bi-shield-fill-check' };
+  const msgLower = (message || '').toLowerCase();
+  
+  if (titleLower.includes('accepted') || titleLower.includes('finalized') || titleLower.includes('confirmed')) {
+    return { iconClass: 'icon-success', icon: 'fa-solid fa-circle-check' };
+  } else if (titleLower.includes('rejected') || titleLower.includes('not accepted')) {
+    return { iconClass: 'icon-reject', icon: 'fa-solid fa-circle-xmark' };
+  } else if (titleLower.includes('suggested') || titleLower.includes('proposed') || msgLower.includes('suggested') || msgLower.includes('proposed')) {
+    return { iconClass: 'icon-suggest', icon: 'fa-solid fa-calendar-days' };
   }
-  return { iconClass: 'icon-default', icon: 'bi-info-circle-fill' };
+  return { iconClass: 'icon-default', icon: 'fa-solid fa-circle-info' };
 }
 
 function getRelatedLink(title: string, relatedId: number) {
@@ -103,10 +103,9 @@ export default function Page() {
           margin-right: 20px;
           flex-shrink: 0;
         }
-        .icon-order { background: #e3f2fd; color: #1976d2; }
-        .icon-offer { background: #fff8e1; color: #ffc107; }
-        .icon-system { background: #f5f5f5; color: #616161; }
         .icon-success { background: #e8f5e9; color: #2e7d32; }
+        .icon-reject { background: #ffebee; color: #d32f2f; }
+        .icon-suggest { background: #e3f2fd; color: #1976d2; }
         .icon-default { background: #f8f9fa; color: #adb5bd; }
         .unread-indicator {
           width: 12px;
@@ -174,7 +173,7 @@ export default function Page() {
       ) : (
         <div className="notification-list mb-5">
           {items.map((notif) => {
-            const { iconClass, icon } = getIconInfo(notif.title, notif.type);
+            const { iconClass, icon } = getIconInfo(notif.title, notif.type, notif.message);
             const link = notif.related_id ? getRelatedLink(notif.title, notif.related_id) : null;
 
             return (
@@ -183,7 +182,7 @@ export default function Page() {
 
                 <div className="d-flex align-items-start">
                   <div className={`notif-icon-box ${iconClass}`}>
-                    <i className={`bi ${icon}`}></i>
+                    <i className={icon}></i>
                   </div>
                   <div className="flex-grow-1">
                     <div className="d-flex justify-content-between align-items-center mb-1">

@@ -369,11 +369,17 @@ class AuthApi extends ResourceController
             return $this->respond(['success' => false, 'message' => 'User not found'], 404);
         }
 
+        // Generate referral code if missing (for legacy users)
+        if (empty($user['referral_code'])) {
+            $user['referral_code'] = strtoupper(substr(md5(uniqid((string)$user['id'], true)), 0, 8));
+            $this->userModel->update($user['id'], ['referral_code' => $user['referral_code']]);
+        }
+
         $db = \Config\Database::connect();
 
         // Fetch referral settings
         $rows = $db->table('system_settings')
-            ->whereIn('setting_key', ['referral_enabled', 'referral_reward_amount', 'referral_expiry_days'])
+            ->whereIn('setting_key', ['referral_enabled', 'referral_reward_amount', 'referral_expiry_days', 'referral_how_it_works', 'referral_terms'])
             ->get()->getResultArray();
         $cfg = [];
         foreach ($rows as $r) {
@@ -382,6 +388,8 @@ class AuthApi extends ResourceController
 
         $rewardAmount = (float) ($cfg['referral_reward_amount'] ?? 40);
         $referralEnabled = ($cfg['referral_enabled'] ?? '1') === '1';
+        $howItWorks = json_decode($cfg['referral_how_it_works'] ?? '[]', true);
+        $terms = json_decode($cfg['referral_terms'] ?? '[]', true);
 
         // Get users referred by this user's code
         $referredUsers = [];
@@ -419,6 +427,8 @@ class AuthApi extends ResourceController
                 'total_earned'      => $totalEarned,
                 'reward_amount'     => $rewardAmount,
                 'referral_enabled'  => $referralEnabled,
+                'how_it_works'      => $howItWorks,
+                'terms'             => $terms,
                 'referred_users'    => $referredUsers,
             ],
         ]);
@@ -481,12 +491,14 @@ class AuthApi extends ResourceController
         } else {
             // New user — auto-register as buyer
             $db = \Config\Database::connect();
+            $referralCode = strtoupper(substr(md5(uniqid()), 0, 8));
             $db->table('users')->insert([
                 'name' => $name,
                 'email' => $email,
                 'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
                 'user_type' => 'buyer',
                 'role' => 'buyer',
+                'referral_code' => $referralCode,
                 'is_verified' => 1,
                 'reliability_score' => 100,
                 'created_at' => date('Y-m-d H:i:s'),
