@@ -94,7 +94,7 @@ function SubscriptionsInner() {
     const success = searchParams.get('success');
     const error = searchParams.get('error');
     if (success) setFlashMsg({ text: decodeURIComponent(success), ok: true });
-    if (error)   setFlashMsg({ text: decodeURIComponent(error),   ok: false });
+    if (error) setFlashMsg({ text: decodeURIComponent(error), ok: false });
 
     api.get<SubData>('/shared/subscriptions/buyer').then((r) => {
       if (r.success && r.data) setData(r.data);
@@ -193,9 +193,9 @@ function SubscriptionsInner() {
         )}
 
         {/* -------- header -------- */}
-        <div className="mb-5">
+        {/* <div className="mb-5">
           <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', fontFamily: 'Poppins' }} className="mb-1">Subscription Details</h1>
-        </div>
+        </div> */}
 
         {/* -------- active subscriptions -------- */}
         {subsWithMeta.length === 0 ? (
@@ -299,14 +299,12 @@ function SubscriptionsInner() {
                         <div style={{ marginBottom: '2rem' }}>
                           <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
                           <p style={{ fontSize: '0.82rem', fontWeight: isFeatured ? 700 : 500, color: isFeatured ? '#D7B467' : '#6b7280', margin: 0 }}>
-                            {plan.plan_type === 'duration' ? 'Duration Based' : 'Usage Based'}
+                            {plan.plan_type.toUpperCase() + " " + "BASED"}
                           </p>
                         </div>
                         <div style={{ marginBottom: '2rem' }}>
                           <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-                          <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 700, color: '#9ca3af', marginTop: '0.4rem', marginBottom: 0 }}>
-                            {plan.plan_type === 'duration' ? 'One-time access fee' : 'Usage based pricing'}
-                          </p>
+
                         </div>
                         <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
                           {[

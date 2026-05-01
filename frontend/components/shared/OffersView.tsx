@@ -195,8 +195,8 @@ const CSS = `
     transition: all 0.2s;
     text-decoration: none !important;
   }
-  .filter-tabs .nav-link:hover { border-color: #ffc63a; color: #666 !important; background: #fff; }
-  .filter-tabs .nav-link.active { background: #d6b06b; color: #fff !important; border-color: #d6b06b; }
+  .filter-tabs .nav-link:hover {  color: #666 !important; background: #fff; }
+  .filter-tabs .nav-link.active { background: #ffc63a; color: #fff !important; border-color: #d6b06b; }
   .filter-tabs .nav-link .count-badge { background: rgba(0,0,0,0.08); padding: 2px 8px; border-radius: 20px; font-size: 11px; margin-left: 6px; }
   .filter-tabs .nav-link.active .count-badge { background: rgba(255,255,255,0.25); }
 
@@ -677,7 +677,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
             { key: 'accepted', label: 'Accepted', count: offers.filter(o => o.status === 'accepted').length },
             { key: 'rejected', label: 'Rejected', count: offers.filter(o => o.status === 'rejected').length },
           ].map(({ key, label, count }) => (
-            <button key={key} className={`nav-link${filter === key ? ' active' : ''}`} onClick={() => setFilter(key)}>
+            <button key={key} className={`nav-link ${filter === key ? ' active' : ''}`} onClick={() => setFilter(key)}>
               {label}<span className="count-badge">{count}</span>
             </button>
           ))}

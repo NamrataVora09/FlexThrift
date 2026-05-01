@@ -266,7 +266,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
       `}</style>
 
       <div className="container">
-        <PageHeader title="Subscription Details" />
+        {/* <PageHeader title="Subscription Details" /> */}
 
         {flashMsg && (
           <div className={`alert ${flashMsg.ok ? 'alert-success' : 'alert-danger'} alert-dismissible fade show mb-4`}>

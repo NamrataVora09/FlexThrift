@@ -214,7 +214,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           background: #fff;
           border-radius: 12px;
           border: 1px solid #e5e7eb;
-          padding: 2rem;
+          padding:  2rem;
           box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         .section-title {
@@ -425,7 +425,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
 
 
             {/* ── Main Grid ── */}
-            <div className="flex gap-10">
+            <div className="flex gap-16">
               {/* Left — Profile Details */}
               <div className='w-full' >
                 <div className="section-card">
@@ -433,7 +433,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                     <i className="fa-regular fa-user" style={{ color: '' }} />
                     Profile Details
                   </div>
-                  <div className="info-grid">
+                  <div className="info-grid mb-5">
                     {[
                       ['Full Name', user.name || '—'],
                       ['Gender', user.gender || '—'],
@@ -450,7 +450,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                       </div>
                     ))}
                   </div>
-                  <div className="text-center">
+                  <div className="text-left mb-5">
                     <button className="edit-profile-btn" onClick={() => setModalOpen(true)}>
                       <i className="fa-solid fa-pencil" />
                       Edit Profile

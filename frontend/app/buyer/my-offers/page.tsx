@@ -450,7 +450,7 @@ export default function Page() {
         {/* Header */}
         <div className="d-flex justify-content-between align-items-end mb-4">
           <div>
-            <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', fontFamily: 'Poppins', marginBottom: 4 }}>Sent Proposals</h1>
+            <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', fontFamily: 'Poppins', marginBottom: 4 }}>Offers Sent</h1>
             <p className="text-muted mb-0">Track offers and negotiation status with sellers.</p>
           </div>
         </div>

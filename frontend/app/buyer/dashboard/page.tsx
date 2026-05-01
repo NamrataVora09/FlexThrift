@@ -83,7 +83,7 @@ export default function BuyerDashboardPage() {
   const statCards = [
     {
       icon: 'fa-solid fa-rectangle-list',
-      label: 'Approved / Rejected',
+      label: 'Approved / Rejected Offers',
       split: true,
       approved: data?.stats.accepted ?? 0,
       rejected: data?.stats.rejected ?? 0,
@@ -99,9 +99,8 @@ export default function BuyerDashboardPage() {
         /* ── Analytics Cards ── */
         .metric-card {
           background: #fff;
-          border-radius: 16px;
+          border-radius: 32px;
           padding: 2rem;
-          box-shadow: 0 20px 40px -15px rgba(0,0,0,0.06);
           border: 1px solid #f0f0f0;
           cursor: default;
           height: 100%;

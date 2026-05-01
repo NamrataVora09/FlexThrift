@@ -74,17 +74,18 @@ export default function SellerDashboardClient() {
     ? (Number(activeSub.limit_value) === 0 ? '∞' : String(Math.max(0, Number(activeSub.limit_value) - Number(activeSub.usage_count))))
     : '0';
 
+
   const statCards = [
     {
       icon: 'fa-solid fa-rectangle-list',
-      label: 'Approved / Rejected',
+      label: 'Approved / Rejected Offers',
       split: true,
       approved: data?.stats.approved ?? 0,
       rejected: data?.stats.rejected ?? 0,
     },
     { icon: 'fa-solid fa-clock', label: 'Pending Review', value: String(data?.stats.pending ?? 0) },
     { icon: 'fa-solid fa-tags stat-icon', label: 'Product Upload Left', value: uploadsLeft },
-    { icon: 'fa-solid fa-cart-shopping', label: 'Active Orders', value: String(data?.active_orders ?? 0) },
+    { icon: 'fa-solid fa-cart-shopping', label: 'Active Offers', value: String(data?.active_orders ?? 0) },
   ];
 
   return (
@@ -96,7 +97,6 @@ export default function SellerDashboardClient() {
           border-radius: 32px;
           padding: 2rem;
           
-          box-shadow: 0 20px 40px -15px rgba(0,0,0,0.06);
           border: 1px solid #f0f0f0;
           cursor: default;
           height: 100%;
