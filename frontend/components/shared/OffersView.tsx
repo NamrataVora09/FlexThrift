@@ -168,29 +168,27 @@ function getImageUrl(path?: string) {
 const CSS = `
   /* ── filter tabs (offers_new.php) ── */
   .filter-tabs {
-    background: white;
-    padding: 8px;
-    border-radius: 15px;
-    display: inline-flex;
+    display: flex;
     gap: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    margin-bottom: 30px;
-    border: 1px solid #eee;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
   }
   .filter-tabs .nav-link {
-    border-radius: 10px;
-    padding: 8px 20px;
-    color: #6f6f6f;
-    font-weight: 600;
-    transition: all 0.3s;
-    font-size: 14px;
+    padding: 8px 18px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid #eee;
+    background: #fff;
+    color: #666;
     cursor: pointer;
-    border: none;
-    background: transparent;
+    transition: all 0.2s;
     text-decoration: none !important;
   }
-  .filter-tabs .nav-link:hover { background: #f8f9fa; color: #000 !important; }
-  .filter-tabs .nav-link.active { background: #ffc63a; color: #000 !important; box-shadow: 0 4px 10px rgba(255,198,58,0.2); }
+  .filter-tabs .nav-link:hover { border-color: #ffc63a; color: #666 !important; background: #fff; }
+  .filter-tabs .nav-link.active { background: #d6b06b; color: #fff !important; border-color: #d6b06b; }
+  .filter-tabs .nav-link .count-badge { background: rgba(0,0,0,0.08); padding: 2px 8px; border-radius: 20px; font-size: 11px; margin-left: 6px; }
+  .filter-tabs .nav-link.active .count-badge { background: rgba(255,255,255,0.25); }
 
   /* ── product group (seller view) ── */
   .product-group { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; border: 1px solid #eee; }
@@ -598,7 +596,16 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   };
 
 
-  const sorted = [...offers].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+
+  const sorted = (() => {
+    const all = [...offers];
+    return [
+      ...all.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime),
+      ...all.filter(o => o.status === 'rejected').sort(byTime),
+      ...all.filter(o => o.status === 'accepted').sort(byTime),
+    ];
+  })();
 
   const filtered = (() => {
     // Step 1: apply perspective + search to get the candidate pool
@@ -617,7 +624,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       );
     });
 
-    // Step 2: when no status filter active, return everything
+    // Step 2: when no status filter active, return everything (already grouped)
     if (filter === '') return pool;
 
     // Step 3 (product-level filter): find all product_ids that have ≥1 offer matching the status
@@ -637,10 +644,10 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       {!noHeader && (
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h2 style={{ fontFamily: "'Maven Pro', sans-serif", fontWeight: 700 }}>
+            <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4 }}>
               {perspective === 'buyer'
-                ? <><i className="bi bi-tag me-2"></i>Sent Proposals 🏷️</>
-                : <><i className="bi bi-envelope-paper me-2"></i>Offers Received</>}
+                ? 'Sent Proposals'
+                : 'Offers Received'}
             </h2>
             <p className="text-muted mb-0">
               {perspective === 'buyer'
@@ -654,9 +661,14 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       {/* Status Filter + Search */}
       <div className="d-flex flex-wrap align-items-center gap-3 mb-4">
         <div className="filter-tabs mb-0">
-          {['', 'pending', 'accepted', 'rejected'].map(f => (
-            <button key={f} className={`nav-link${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
-              {f === '' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+          {[
+            { key: '', label: 'All', count: offers.length },
+            { key: 'pending', label: 'Pending', count: offers.filter(o => ['pending', 'negotiating'].includes(o.status)).length },
+            { key: 'accepted', label: 'Accepted', count: offers.filter(o => o.status === 'accepted').length },
+            { key: 'rejected', label: 'Rejected', count: offers.filter(o => o.status === 'rejected').length },
+          ].map(({ key, label, count }) => (
+            <button key={key} className={`nav-link${filter === key ? ' active' : ''}`} onClick={() => setFilter(key)}>
+              {label}<span className="count-badge">{count}</span>
             </button>
           ))}
         </div>
@@ -1178,7 +1190,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
               <div>
                 <h5 className="fw-bold mb-0">{first.product_title}</h5>
                 <div className="d-flex align-items-center gap-2 mt-1">
-                  <small className="text-muted"><i className="bi bi-hash"></i> ID: {first.product_number ?? 'N/A'}</small>
+                  <small className="text-muted"><i className="bi bi-hash"></i> ID: {first.product_number || `#${first.product_id}`}</small>
                   <span className={`badge badge-${first.listing_type} text-uppercase`} style={{ fontSize: '0.65rem' }}>
                     {first.listing_type}
                   </span>

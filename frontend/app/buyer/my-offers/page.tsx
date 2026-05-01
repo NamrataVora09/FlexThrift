@@ -7,86 +7,88 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 
 // ── Inline rental calendar (reused from ProductDetailClient) ────────────────
-const M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const D = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+const M = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const D = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 function RentalCalendar({ bookedRanges, startDate, endDate, onRangeChange }: {
   bookedRanges: { start: string; end: string }[];
   startDate: string; endDate: string;
   onRangeChange: (s: string, e: string) => void;
 }) {
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const [view, setView] = useState(() => { const d = new Date(); d.setDate(1); return d; });
-  const [phase, setPhase] = useState<'start'|'end'>('start');
-  const [hover, setHover] = useState<Date|null>(null);
+  const [phase, setPhase] = useState<'start' | 'end'>('start');
+  const [hover, setHover] = useState<Date | null>(null);
 
-  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  const parse = (s: string) => { if (!s) return null; const [y,m,day]=s.split('-').map(Number); return new Date(y,m-1,day); };
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const parse = (s: string) => { if (!s) return null; const [y, m, day] = s.split('-').map(Number); return new Date(y, m - 1, day); };
 
-  const isBooked = (d: Date) => { const ds=fmt(d); return bookedRanges.some(r=>ds>=r.start&&ds<=r.end); };
-  const sD=parse(startDate), eD=parse(endDate);
+  const isBooked = (d: Date) => { const ds = fmt(d); return bookedRanges.some(r => ds >= r.start && ds <= r.end); };
+  const sD = parse(startDate), eD = parse(endDate);
   const inRange = (d: Date) => {
     if (!sD) return false;
-    const eff=eD||hover; if(!eff) return false;
-    const lo=sD<=eff?sD:eff, hi=sD<=eff?eff:sD;
-    return d>lo&&d<hi;
+    const eff = eD || hover; if (!eff) return false;
+    const lo = sD <= eff ? sD : eff, hi = sD <= eff ? eff : sD;
+    return d > lo && d < hi;
   };
 
-  const yr=view.getFullYear(), mo=view.getMonth();
-  const cells:(Date|null)[]=[];
-  for(let i=0;i<new Date(yr,mo,1).getDay();i++) cells.push(null);
-  for(let i=1;i<=new Date(yr,mo+1,0).getDate();i++) cells.push(new Date(yr,mo,i));
+  const yr = view.getFullYear(), mo = view.getMonth();
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < new Date(yr, mo, 1).getDay(); i++) cells.push(null);
+  for (let i = 1; i <= new Date(yr, mo + 1, 0).getDate(); i++) cells.push(new Date(yr, mo, i));
 
-  const click=(d:Date)=>{
-    if(d<today||isBooked(d)) return;
-    if(phase==='start'||(sD&&eD)){onRangeChange(fmt(d),'');setPhase('end');}
-    else{
-      const s=sD!;
-      d<s?onRangeChange(fmt(d),fmt(s)):onRangeChange(fmt(s),fmt(d));
+  const click = (d: Date) => {
+    if (d < today || isBooked(d)) return;
+    if (phase === 'start' || (sD && eD)) { onRangeChange(fmt(d), ''); setPhase('end'); }
+    else {
+      const s = sD!;
+      d < s ? onRangeChange(fmt(d), fmt(s)) : onRangeChange(fmt(s), fmt(d));
       setPhase('start');
     }
   };
 
   return (
-    <div style={{background:'#fff',border:'1px solid #eee',borderRadius:12,padding:12,userSelect:'none',fontSize:'0.8rem'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-        <button type="button" onClick={()=>setView(new Date(yr,mo-1,1))} style={{background:'none',border:'1px solid #eee',borderRadius:6,cursor:'pointer',padding:'1px 10px',fontWeight:700}}>‹</button>
-        <span style={{fontWeight:700}}>{M[mo]} {yr}</span>
-        <button type="button" onClick={()=>setView(new Date(yr,mo+1,1))} style={{background:'none',border:'1px solid #eee',borderRadius:6,cursor:'pointer',padding:'1px 10px',fontWeight:700}}>›</button>
+    <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 12, padding: 12, userSelect: 'none', fontSize: '0.8rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <button type="button" onClick={() => setView(new Date(yr, mo - 1, 1))} style={{ background: 'none', border: '1px solid #eee', borderRadius: 6, cursor: 'pointer', padding: '1px 10px', fontWeight: 700 }}>‹</button>
+        <span style={{ fontWeight: 700 }}>{M[mo]} {yr}</span>
+        <button type="button" onClick={() => setView(new Date(yr, mo + 1, 1))} style={{ background: 'none', border: '1px solid #eee', borderRadius: 6, cursor: 'pointer', padding: '1px 10px', fontWeight: 700 }}>›</button>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:2}}>
-        {D.map(n=><div key={n} style={{textAlign:'center',fontWeight:700,color:'#aaa',padding:2}}>{n}</div>)}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 2 }}>
+        {D.map(n => <div key={n} style={{ textAlign: 'center', fontWeight: 700, color: '#aaa', padding: 2 }}>{n}</div>)}
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
-        {cells.map((d,i)=>{
-          if(!d) return <div key={i}/>;
-          const past=d<today, bk=isBooked(d), dis=past||bk;
-          const isS=sD&&fmt(d)===fmt(sD), isE=eD&&fmt(d)===fmt(eD), rng=inRange(d), isT=fmt(d)===fmt(today);
-          let bg='transparent',col='#000',br='6px';
-          if(bk){bg='#fee2e2';col='#dc2626';}
-          else if(isS||isE){bg='#ffc63a';col='#000';br='8px';}
-          else if(rng){bg='#fff3cc';col='#555';br='0';}
-          if(past&&!bk) col='#ccc';
-          return <div key={i} onClick={()=>click(d)} onMouseEnter={()=>{if(!dis)setHover(d);}} onMouseLeave={()=>setHover(null)}
-            title={bk?'Already booked':undefined}
-            style={{textAlign:'center',padding:'5px 2px',borderRadius:br,background:bg,color:col,cursor:dis?'not-allowed':'pointer',
-              fontWeight:(isS||isE||isT)?700:400,border:isT&&!isS&&!isE?'1.5px solid #ffc63a':'1.5px solid transparent',
-              opacity:past&&!bk?0.35:1,transition:'background .1s'}}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} />;
+          const past = d < today, bk = isBooked(d), dis = past || bk;
+          const isS = sD && fmt(d) === fmt(sD), isE = eD && fmt(d) === fmt(eD), rng = inRange(d), isT = fmt(d) === fmt(today);
+          let bg = 'transparent', col = '#000', br = '6px';
+          if (bk) { bg = '#fee2e2'; col = '#dc2626'; }
+          else if (isS || isE) { bg = '#ffc63a'; col = '#000'; br = '8px'; }
+          else if (rng) { bg = '#fff3cc'; col = '#555'; br = '0'; }
+          if (past && !bk) col = '#ccc';
+          return <div key={i} onClick={() => click(d)} onMouseEnter={() => { if (!dis) setHover(d); }} onMouseLeave={() => setHover(null)}
+            title={bk ? 'Already booked' : undefined}
+            style={{
+              textAlign: 'center', padding: '5px 2px', borderRadius: br, background: bg, color: col, cursor: dis ? 'not-allowed' : 'pointer',
+              fontWeight: (isS || isE || isT) ? 700 : 400, border: isT && !isS && !isE ? '1.5px solid #ffc63a' : '1.5px solid transparent',
+              opacity: past && !bk ? 0.35 : 1, transition: 'background .1s'
+            }}>
             {d.getDate()}
-            {bk&&<div style={{width:3,height:3,background:'#dc2626',borderRadius:'50%',margin:'1px auto 0'}}/>}
+            {bk && <div style={{ width: 3, height: 3, background: '#dc2626', borderRadius: '50%', margin: '1px auto 0' }} />}
           </div>;
         })}
       </div>
-      <div style={{display:'flex',gap:8,marginTop:8,color:'#888',fontSize:'0.72rem',flexWrap:'wrap'}}>
-        <span><span style={{display:'inline-block',width:8,height:8,background:'#ffc63a',borderRadius:2,marginRight:3}}/>Selected</span>
-        <span><span style={{display:'inline-block',width:8,height:8,background:'#fff3cc',borderRadius:2,marginRight:3}}/>Range</span>
-        <span><span style={{display:'inline-block',width:8,height:8,background:'#fee2e2',borderRadius:2,marginRight:3}}/>Booked</span>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8, color: '#888', fontSize: '0.72rem', flexWrap: 'wrap' }}>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#ffc63a', borderRadius: 2, marginRight: 3 }} />Selected</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#fff3cc', borderRadius: 2, marginRight: 3 }} />Range</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: '#fee2e2', borderRadius: 2, marginRight: 3 }} />Booked</span>
       </div>
-      {startDate&&(
-        <div style={{marginTop:8,padding:'6px 10px',background:'#fffdf0',borderRadius:7,border:'1px solid #ffc63a44',fontSize:'0.78rem'}}>
+      {startDate && (
+        <div style={{ marginTop: 8, padding: '6px 10px', background: '#fffdf0', borderRadius: 7, border: '1px solid #ffc63a44', fontSize: '0.78rem' }}>
           {endDate
             ? <><strong>{startDate}</strong> → <strong>{endDate}</strong>
-                {' '}·{' '}<span style={{color:'#888'}}>{Math.round((new Date(endDate).getTime()-new Date(startDate).getTime())/86400000)+1} days</span></>
+              {' '}·{' '}<span style={{ color: '#888' }}>{Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000) + 1} days</span></>
             : <><strong>{startDate}</strong> — click an end date</>}
         </div>
       )}
@@ -145,11 +147,11 @@ function getImageUrl(path?: string) {
   return `${BASE_URL}/uploads/products/${path}`;
 }
 
-const STATUS_FILTERS = ['all', 'pending', 'negotiating', 'accepted', 'rejected'] as const;
+const STATUS_FILTERS = ['all', 'pending', 'accepted', 'rejected'] as const;
 
 const pillStyles: Record<string, React.CSSProperties> = {
   pending: { background: '#f8f9fa', color: '#666', border: '1px solid #eee' },
-  negotiating: { background: '#fff7e6', color: '#d97706', border: '1px solid #fde68a' },
+  negotiating: { background: '', color: '#d97706', border: '1px solid #fde68a' },
   accepted: { background: '#eaffea', color: '#1a8a1a', border: '1px solid #c9f9c9' },
   rejected: { background: '#fff5f5', color: '#d63031', border: '1px solid #ffeaea' },
   cancelled: { background: '#f8f9fa', color: '#999', border: '1px solid #eee' },
@@ -162,6 +164,16 @@ function getHistoryLabel(action: string): string {
     case 'seller_suggest_dates': return 'Seller suggested new dates';
     case 'buyer_accept_negotiation': return 'Buyer accepted suggested dates';
     default: return action;
+  }
+}
+
+function getHistoryIcon(action: string): string {
+  switch (action) {
+    case 'initial_offer': return 'fa-solid fa-tag';
+    case 'buyer_date_update': return 'fa-solid fa-calendar-plus';
+    case 'seller_suggest_dates': return 'fa-solid fa-calendar-days';
+    case 'buyer_accept_negotiation': return 'fa-solid fa-calendar-check';
+    default: return 'fa-solid fa-clock';
   }
 }
 
@@ -258,7 +270,7 @@ export default function Page() {
     // fetch booked ranges so calendar shows unavailable dates
     api.get<{ booked_ranges: { start: string; end: string }[] }>(`/product/${o.product_id}/booked-dates`)
       .then(r => { if (r.success && r.data) setCdBookedRanges(r.data.booked_ranges.filter(br => !(br.start === o.rental_start_date && br.end === o.rental_end_date))); })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   // Recalculate price in modal
@@ -277,15 +289,15 @@ export default function Page() {
   const handleChangeDates = async () => {
     if (!changeDatesModal) return;
     if (!cdStart || !cdEnd) { setCdError('Please select both start and end dates.'); return; }
-    
+
     const s = new Date(cdStart);
     const e = new Date(cdEnd);
     const diffTime = Math.abs(e.getTime() - s.getTime());
     const totalDays = Math.ceil(diffTime / 86400000) + 1; // inclusive
 
-    if (totalDays < minRentalDays) { 
-      setCdError(`Minimum ${minRentalDays} days rental required. You selected ${totalDays} day${totalDays === 1 ? '' : 's'}.`); 
-      return; 
+    if (totalDays < minRentalDays) {
+      setCdError(`Minimum ${minRentalDays} days rental required. You selected ${totalDays} day${totalDays === 1 ? '' : 's'}.`);
+      return;
     }
     setCdLoading(true);
     setCdError(null);
@@ -306,7 +318,13 @@ export default function Page() {
 
   const filtered = useMemo(() => {
     const list = offers || [];
-    return filter === 'all' ? list : list.filter((o) => o.status === filter);
+    if (filter !== 'all') return list.filter((o) => o.status === filter);
+    const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    return [
+      ...list.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime),
+      ...list.filter(o => o.status === 'rejected').sort(byTime),
+      ...list.filter(o => o.status === 'accepted').sort(byTime),
+    ];
   }, [offers, filter]);
 
   const counts = useMemo(() => {
@@ -412,9 +430,9 @@ export default function Page() {
           border-color: #ffc63a;
         }
         .filter-pill.active {
-          background: #000;
-          color: #ffc63a;
-          border-color: #000;
+          background: #d6b06b;
+          color: #fff;
+          border-color: #d6b06b;
         }
         .filter-pill .count-badge {
           background: rgba(0,0,0,0.08);
@@ -424,7 +442,7 @@ export default function Page() {
           margin-left: 6px;
         }
         .filter-pill.active .count-badge {
-          background: rgba(255,198,58,0.25);
+          background: rgba(255,255,255,0.25);
         }
       `}</style>
 
@@ -432,16 +450,9 @@ export default function Page() {
         {/* Header */}
         <div className="d-flex justify-content-between align-items-end mb-4">
           <div>
-            <h1 className="fw-bold mb-1" style={{ fontSize: '1.75rem' }}>Sent Proposals</h1>
+            <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', fontFamily: 'Poppins', marginBottom: 4 }}>Sent Proposals</h1>
             <p className="text-muted mb-0">Track offers and negotiation status with sellers.</p>
           </div>
-          <Link
-            href="/buyer"
-            className="btn btn-dark rounded-pill px-4"
-            style={{ fontWeight: 700 }}
-          >
-            New Request
-          </Link>
         </div>
 
         {/* Filter Pills */}
@@ -522,36 +533,75 @@ export default function Page() {
                         </span>
                       </div>
                       <div className="col-md-8 ps-md-4">
-                        {offerType === 'rent' && o.rental_start_date && o.rental_end_date && (
-                          <p className="mb-0 small fw-bold text-muted">
-                            <i className="bi bi-calendar-event me-1 text-primary"></i>
-                            {new Date(o.rental_start_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                            {' '}to{' '}
-                            {new Date(o.rental_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </p>
-                        )}
-
-                        {o.status === 'negotiating' && o.message ? (
-                          <div
-                            className="alert alert-info py-2 px-3 mt-2 rounded-3 border-0 small mb-0"
-                          >
+                        {o.status === 'negotiating' && o.message && (
+                          <div className="alert alert-info py-2 px-3 mt-2 rounded-3 border-0 small mb-0">
                             <i className="bi bi-info-circle-fill me-2"></i>
                             <strong>Action Required:</strong> {o.message}
                           </div>
-                        ) : (
-                          <div className="mt-1">
-                            <p className="mb-0 small text-muted fst-italic">
-                              <i className="bi bi-chat-left-dots me-1"></i>
-                              {o.message || 'No message attached.'}
-                            </p>
-                            {o.seller_remarks && (
-                              <div className="mt-2 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
-                                <i className="bi bi-reply-fill me-1"></i>
-                                Seller: {o.seller_remarks}
-                              </div>
-                            )}
+                        )}
+                        {o.message && o.status !== 'negotiating' && (
+                          <p className="mb-0 small text-muted fst-italic mt-1">
+                            <i className="bi bi-chat-left-dots me-1"></i>
+                            {o.message}
+                          </p>
+                        )}
+                        {o.seller_remarks && (
+                          <div className="mt-2 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
+                            <i className="bi bi-reply-fill me-1"></i>
+                            Seller: {o.seller_remarks}
                           </div>
                         )}
+                        {/* Negotiation Timeline */}
+                        {(() => {
+                          const sortedHistory = [...(o.history || [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                          const steps = [
+                            ...sortedHistory.map(h => ({
+                              label: getHistoryLabel(h.action),
+                              date: new Date(h.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                + (h.new_start_date && h.new_end_date
+                                  ? ` • ${new Date(h.new_start_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – ${new Date(h.new_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`
+                                  : ''),
+                              icon: getHistoryIcon(h.action),
+                            })),
+                            {
+                              label: 'Offer Initiated',
+                              date: new Date(o.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+                              icon: 'fa-solid fa-tag',
+                            },
+                          ];
+                          return (
+                            <div style={{ background: '', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '0.75rem' }}>
+                              <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                                <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Negotiation Logs
+                              </div>
+                              {steps.map((step, idx) => (
+                                <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
+                                  {/* number + line */}
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                                    <div style={{
+                                      width: 28, height: 28, background: '#D7B467', color: '#fff',
+                                      borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      fontWeight: 700, fontSize: 13,
+                                    }}>
+                                      {idx + 1}
+                                    </div>
+                                    {idx < steps.length - 1 && (
+                                      <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />
+                                    )}
+                                  </div>
+                                  {/* content */}
+                                  <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                      <i className={step.icon} style={{ color: '#D7B467', fontSize: '0.8rem' }}></i>
+                                      <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
+                                    </div>
+                                    <div style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: 2 }}>{step.date}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -573,37 +623,6 @@ export default function Page() {
                       </div>
                     )}
 
-                    {/* Negotiation History */}
-                    {o.history && o.history.length > 0 && (
-                      <div className="mt-3 pt-3 border-top">
-                        <h6 className="small fw-bold text-muted mb-2">
-                          <i className="bi bi-clock-history me-1"></i> Negotiation Logs
-                        </h6>
-                        <div className="small">
-                          {o.history.map((h, idx) => (
-                            <div key={idx} className="d-flex gap-2 mb-2">
-                              <div className="text-primary"><i className="bi bi-dot"></i></div>
-                              <div>
-                                <span className="text-dark fw-semibold">
-                                  {getHistoryLabel(h.action)}
-                                </span>
-                                <div className="text-muted" style={{ fontSize: '0.75rem', opacity: 0.75 }}>
-                                  {new Date(h.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                  {h.new_start_date && h.new_end_date && (
-                                    <>
-                                      {' '}&bull;{' '}
-                                      {new Date(h.new_start_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                                      {' - '}
-                                      {new Date(h.new_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -673,7 +692,8 @@ export default function Page() {
 
                     <Link
                       href={`/buyer/product/${o.product_id}`}
-                      className="btn btn-light rounded-pill border"
+                      className="btn rounded-pill"
+                      style={{ background: '#ffc63a', color: '#fff', fontWeight: 700, border: 'none' }}
                     >
                       View Item
                     </Link>
@@ -766,7 +786,7 @@ export default function Page() {
                 <p className="text-muted small mb-3">
                   Offer: <strong>{changeDatesModal.title}</strong>
                 </p>
-                 <RentalCalendar
+                <RentalCalendar
                   bookedRanges={cdBookedRanges}
                   startDate={cdStart}
                   endDate={cdEnd}
@@ -797,7 +817,7 @@ export default function Page() {
                   onClick={handleChangeDates}
                   disabled={cdLoading || !cdStart || !cdEnd}
                 >
-                  {cdLoading ? <><span className="spinner-border spinner-border-sm me-2"/>Saving...</> : 'Save New Dates'}
+                  {cdLoading ? <><span className="spinner-border spinner-border-sm me-2" />Saving...</> : 'Save New Dates'}
                 </button>
               </div>
             </div>
@@ -828,9 +848,9 @@ export default function Page() {
               </div>
               <div className="modal-footer border-0 p-4 pt-0 mt-2">
                 <button type="button" className="btn btn-light rounded-pill px-4 fw-bold" onClick={() => setRatingModal(null)}>Cancel</button>
-                <button 
-                  type="button" 
-                  className="btn btn-dark rounded-pill px-4 fw-bold" 
+                <button
+                  type="button"
+                  className="btn btn-dark rounded-pill px-4 fw-bold"
                   onClick={handleRateSubmit}
                   disabled={ratingLoading}
                 >

@@ -425,12 +425,12 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
 
 
             {/* ── Main Grid ── */}
-            <div className="row g-4">
+            <div className="flex gap-10">
               {/* Left — Profile Details */}
-              <div className="col-lg-8">
+              <div className='w-full' >
                 <div className="section-card">
-                  <div className="section-title">
-                    <i className="fa-regular fa-user" style={{ color: '#FDB814' }} />
+                  <div className="section-title" style={{ fontSize: "20px" }}>
+                    <i className="fa-regular fa-user" style={{ color: '' }} />
                     Profile Details
                   </div>
                   <div className="info-grid">
@@ -460,7 +460,8 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
               </div>
 
               {/* Right — Ratings + Referral */}
-              <div className="col-lg-4">
+              <div className="w-25">
+
                 <div className="d-flex flex-column gap-10!">
                   {/* Buyer Points */}
                   {isBuyer && (
@@ -483,7 +484,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                   {isSeller && (
                     <div className="section-card">
                       <div className="section-title justify-center">
-                        <i className="fa-solid fa-star"  />
+                        <i className="fa-solid fa-star" />
                         Seller Points
                       </div>
                       <div className="rating-circle">

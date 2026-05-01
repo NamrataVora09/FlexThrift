@@ -162,7 +162,7 @@ function SubscriptionsInner() {
         {/* -------- header -------- */}
         <div className="d-flex justify-content-between align-items-center mb-5 flex-wrap gap-3">
           <div>
-            <h1 className="fw-bold mb-1">My Membership <span role="img" aria-label="diamond">💎</span></h1>
+            <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', fontFamily: 'Poppins' }} className="mb-1">Subscription Details</h1>
             <p className="text-muted mb-0">Manage your active plans and contact limits.</p>
           </div>
           <a href="#available-plans" className="btn btn-dark rounded-pill px-4 fw-bold">
