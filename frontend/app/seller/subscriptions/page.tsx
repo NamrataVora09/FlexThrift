@@ -43,9 +43,13 @@ interface SubData {
   plans: Plan[];
   active: ActiveSub | null;
   history: HistoryItem[];
+  unlock_card?: Record<string, string>;
 }
 
 /* ---------- helpers ---------- */
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString('en-IN', { month: 'short', day: '2-digit', year: 'numeric' });
+}
 function fmtDateLong(d: string) {
   return new Date(d).toLocaleDateString('en-IN', { month: 'long', day: '2-digit', year: 'numeric' });
 }
@@ -55,11 +59,13 @@ function isLifetime(expires: string) {
 
 /* ---------- component ---------- */
 function SellerSubscriptionsInner() {
+  const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [purchasing, setPurchasing] = useState<number | null>(null);
   const [pIdx, setPIdx] = useState(0);
   const [pAnim, setPAnim] = useState(true);
 
@@ -86,9 +92,9 @@ function SellerSubscriptionsInner() {
 
   useEffect(() => {
     const success = searchParams.get('success');
-    const error   = searchParams.get('error');
+    const error = searchParams.get('error');
     if (success) setFlashMsg({ text: decodeURIComponent(success), ok: true });
-    if (error)   setFlashMsg({ text: decodeURIComponent(error),   ok: false });
+    if (error) setFlashMsg({ text: decodeURIComponent(error), ok: false });
 
     api.get<SubData>('/seller/subscriptions/seller').then((r) => {
       if (r.success && r.data) setData(r.data);
@@ -99,6 +105,28 @@ function SellerSubscriptionsInner() {
   const handleChoosePlan = (plan: Plan) => {
     router.push(`/seller/checkout-plan/${plan.id}`);
   };
+
+  const goNext = () => { if (plans.length > VISIBLE) setPIdx(i => i + 1); };
+  const goPrev = () => {
+    if (plans.length <= VISIBLE) return;
+    if (pIdx === 0) { setPAnim(false); setPIdx(plans.length - 1); }
+    else setPIdx(i => i - 1);
+  };
+
+  // SuperAdmin has full access - no subscription needed
+  if (user?.role === 'super_admin') {
+    return (
+      <DashboardLayout requiredRoles={['seller', 'super_admin']}>
+        <div className="container py-5">
+          <div className="text-center py-5 bg-white rounded-4 border shadow-sm">
+            <i className="bi bi-shield-check" style={{ fontSize: '5rem', color: '#ffc63a' }}></i>
+            <h3 className="mt-4 fw-bold">SuperAdmin Full Access</h3>
+            <p className="text-muted">You have unlimited access to all features. No subscription required.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (loading)
     return (
@@ -118,29 +146,47 @@ function SellerSubscriptionsInner() {
     );
   }
 
+  const hasActiveSub = activeSubscriptions.length > 0;
+
+  let primaryFound = false;
   const subsWithMeta = activeSubscriptions.map((sub) => {
-    const limit      = Number(sub.limit_value ?? 0);
-    const used       = Number(sub.usage_count ?? 0);
+    const limit = Number(sub.limit_value ?? 0);
+    const used = Number(sub.usage_count ?? 0);
     const isQuantity = sub.plan_type === 'quantity';
-    const remaining  = sub.plan_type === 'duration' ? 'Unlimited' : Math.max(0, limit - used);
+    const remaining = sub.plan_type === 'duration' ? 'Unlimited' : Math.max(0, limit - used);
     const percentUsed = sub.plan_type === 'duration' ? 0 : limit > 0 ? (used / limit) * 100 : 0;
-    return { ...sub, limit, used, isQuantity, remaining, percentUsed };
+    let isPrimary = false;
+    if (isQuantity && used < limit && !primaryFound) {
+      isPrimary = true;
+      primaryFound = true;
+    }
+    return { ...sub, limit, used, isQuantity, remaining, percentUsed, isPrimary };
   });
 
   return (
     <DashboardLayout requiredRoles={['seller', 'super_admin']}>
       <style>{`
+        .luxury-sub-card{background:#fff;border-radius:20px;overflow:hidden;border:1px solid #eee;margin-bottom:30px}
+        .sub-header{background:#000;padding:40px 30px;color:#fff;text-align:center}
+        .sub-body{padding:40px}
+        .stat-circle{width:130px;height:130px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid #ffc63a;margin:0 auto 20px}
+        .value-large{font-size:2.5rem;font-weight:800;color:#000;line-height:1}
+        .label-small{font-size:10px;font-weight:700;color:#6c757d;text-transform:uppercase;margin-top:5px}
         .tier-basic{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;border-top:4px solid transparent;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;display:flex;flex-direction:column}
         .tier-standard{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transform:scale(1.03);z-index:10}
-        .tier-elite{background:#0c0f0f;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
-        .tier-badge{position:absolute;top:0;right:0;background:#fdc003;color:#3d2b00;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
-        .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:none;border:2px solid #0a0a0a;color:#0a0a0a;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-elite{background:#e7efe5;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
+        .tier-badge{position:absolute;top:0px;right:-5px;background:#d7b467;color:#ffff;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
+        .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
         .tier-btn-basic:hover{background:#0a0a0a;color:#fff}
-        .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#3d2b00;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
-        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#fff;color:#0a0a0a;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-elite:hover{background:#fdc003}
-        .btn-brand-sub{background:#fdc003;color:#3d2b00;border:none;padding:14px;border-radius:12px;font-weight:700;width:100%;transition:.3s;cursor:pointer}
-        .btn-brand-sub:hover{background:#0a0a0a;color:#fff}
+        .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
+        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .btn-brand-sub{background:#ffc63a;color:#ffff;border:none;padding:14px;border-radius:12px;font-weight:700;width:100%;transition:.3s;cursor:pointer}
+        .btn-brand-sub:hover{background:#000;color:#ffc63a}
+        .feature-icon-sub{color:#ffc63a;font-size:1.2rem;margin-right:12px}
+        .plan-arrow{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;transition:all .2s;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+        .plan-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467;}
+        .plan-arrow.left{left:8px}
+        .plan-arrow.right{right:8px}
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
         @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
         .bento-col-8{grid-column:span 1}
@@ -170,6 +216,7 @@ function SellerSubscriptionsInner() {
         ) : (
           subsWithMeta.map((sub) => (
             <div className="bento-grid" key={sub.id}>
+              {/* --- Primary Status Card --- */}
               <div className="bento-col-8">
                 <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 280, border: '1px solid #f0f0f0', height: '100%' }}>
                   <div style={{ position: 'relative', zIndex: 1 }}>
@@ -201,30 +248,41 @@ function SellerSubscriptionsInner() {
                 </div>
               </div>
 
-              <div className="bento-col-4">
-                <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
-                  <div>
-                    <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>Unlock More</span>
-                    <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>Elevate to a Higher Tier</h3>
-                    <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
-                      {[
-                        { icon: 'all_inclusive', text: 'Unlimited product listings' },
-                        { icon: 'stars', text: 'Priority placement in search' },
-                        { icon: 'insights', text: 'Advanced seller analytics' },
-                        { icon: 'support_agent', text: 'Dedicated seller support' },
-                      ].map((b, i) => (
-                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
-                          <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
-                          {b.text}
-                        </li>
-                      ))}
-                    </ul>
+              {/* --- Unlock More Card --- */}
+              {(() => {
+                const uc = data?.unlock_card || {};
+                const label = uc['seller_unlock_label'] || 'Unlock More';
+                const title = uc['seller_unlock_title'] || 'Elevate to a Higher Tier';
+                const btn   = uc['seller_unlock_btn']   || 'Upgrade Plan';
+                let items: { icon: string; text: string }[] = [
+                  { icon: 'all_inclusive', text: 'Unlimited product listings' },
+                  { icon: 'stars',         text: 'Priority placement in search' },
+                  { icon: 'insights',      text: 'Advanced seller analytics' },
+                  { icon: 'support_agent', text: 'Dedicated seller support' },
+                ];
+                try { const p = JSON.parse(uc['seller_unlock_items'] || '[]'); if (Array.isArray(p) && p.length) items = p; } catch {}
+                return (
+                  <div className="bento-col-4">
+                    <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
+                      <div>
+                        <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>{label}</span>
+                        <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>{title}</h3>
+                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
+                          {items.map((b, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
+                              <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
+                              {b.text}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <a href="#available-plans" style={{ display: 'block', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', textDecoration: 'none', transition: 'background 0.3s' }}>
+                        {btn}
+                      </a>
+                    </div>
                   </div>
-                  <a href="#available-plans" style={{ display: 'block', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', textDecoration: 'none', transition: 'background 0.3s' }}>
-                    Upgrade Plan
-                  </a>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           ))
         )}
@@ -233,27 +291,35 @@ function SellerSubscriptionsInner() {
         <div className="mt-5 pt-4" id="available-plans">
           <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
           {plans.length > 0 ? (
-            <div style={{ overflow: 'hidden', width: '100%' }}>
+            <div style={{ position: 'relative' }}>
+              {plans.length > VISIBLE && (
+                <>
+                  <button className="plan-arrow left" onClick={goPrev}><i className="bi bi-chevron-left" /></button>
+                  <button className="plan-arrow right" onClick={goNext}><i className="bi bi-chevron-right" /></button>
+                </>
+              )}
+              <div style={{ overflow: 'hidden', width: '100%' }}>
               <div style={{
                 display: 'flex',
+                alignItems: 'stretch',
                 padding: '20px 0',
                 width: `${(loopPlans.length / VISIBLE) * 100}%`,
                 transform: plans.length > VISIBLE ? `translateX(calc(-${pIdx} * 100% / ${loopPlans.length}))` : 'none',
                 transition: pAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none',
               }}>
                 {loopPlans.map((plan, idx) => {
-                  const isPopular  = Number(plan.is_most_selected) === 1;
+                  const isPopular = Number(plan.is_most_selected) === 1;
                   const isFeatured = Number(plan.is_featured) === 1;
-                  const cardClass  = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
-                  const btnClass   = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
-                  const nameColor  = isFeatured ? '#fff' : '#0a0a0a';
-                  const typeColor  = isFeatured ? '#fdc003' : isPopular ? '#755700' : '#5a5c5c';
-                  const priceColor = isFeatured ? '#fff' : '#0a0a0a';
-                  const iconColor  = (isFeatured || isPopular) ? '#fdc003' : '#9ca3af';
-                  const textColor  = isFeatured ? '#fff' : '#2d2f2f';
+                  const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
+                  const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
+                  const nameColor = '#0a0a0a';
+                  const typeColor = isPopular ? '#755700' : '#5a5c5c';
+                  const priceColor = '#0a0a0a';
+                  const iconColor = (isFeatured || isPopular) ? '#fdc003' : '#9ca3af';
+                  const textColor = '#2d2f2f';
                   return (
                     <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopPlans.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
-                      <div className={cardClass} style={{ width: '100%' }}>
+                      <div className={cardClass}>
                         {isPopular && <div className="tier-badge">Most Selected</div>}
                         <div style={{ marginBottom: '3rem' }}>
                           <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h2>
@@ -267,8 +333,8 @@ function SellerSubscriptionsInner() {
                         <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                           {[
                             { icon: 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
-                            { icon: 'schedule',   text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
-                            { icon: 'verified',   text: 'Verified Seller Badge' },
+                            { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
+                            { icon: 'verified', text: 'Verified Seller Badge' },
                           ].map((f, i) => (
                             <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
                               <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: (isFeatured || isPopular) ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
@@ -281,6 +347,7 @@ function SellerSubscriptionsInner() {
                     </div>
                   );
                 })}
+              </div>
               </div>
             </div>
           ) : (

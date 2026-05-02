@@ -117,6 +117,32 @@ function StepsEditor({ label, value, onChange }: { label: string; value: string;
   );
 }
 
+function UnlockItemsEditor({ settingKey, settings, update }: { settingKey: string; settings: Record<string, string>; update: (k: string, v: string) => void }) {
+  const defaultItems = [{ icon: '', text: '' }];
+  let items: { icon: string; text: string }[] = defaultItems;
+  try { const p = JSON.parse(settings[settingKey] || '[]'); if (Array.isArray(p) && p.length) items = p; } catch {}
+
+  const save = (next: { icon: string; text: string }[]) => update(settingKey, JSON.stringify(next));
+  const add = () => save([...items, { icon: '', text: '' }]);
+  const remove = (i: number) => save(items.filter((_, idx) => idx !== i));
+  const edit = (i: number, field: 'icon' | 'text', val: string) => {
+    const next = [...items]; next[i] = { ...next[i], [field]: val }; save(next);
+  };
+
+  return (
+    <div className="d-flex flex-column gap-2">
+      {items.map((item, i) => (
+        <div key={i} className="d-flex gap-2 align-items-center">
+          <input className="form-control form-control-sm" style={{ ...{ background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' }, width: 160 }} placeholder="Icon (e.g. stars)" value={item.icon} onChange={(e) => edit(i, 'icon', e.target.value)} />
+          <input className="form-control form-control-sm" style={{ background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' }} placeholder="Feature text" value={item.text} onChange={(e) => edit(i, 'text', e.target.value)} />
+          <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => remove(i)}><i className="bi bi-trash" /></button>
+        </div>
+      ))}
+      <button type="button" className="btn btn-sm btn-outline-warning mt-1" style={{ width: 'fit-content' }} onClick={add}><i className="bi bi-plus-lg me-1" />Add Item</button>
+    </div>
+  );
+}
+
 function Toggle({ label, desc, settingKey, settings, update }: { label: string; desc?: string; settingKey: string; settings: Record<string, string>; update: (k: string, v: string) => void }) {
   const checked = settings[settingKey] === '1' || settings[settingKey] === 'true';
   return (
@@ -447,7 +473,54 @@ export default function SettingsClient() {
 
           {/* ── Save Button ── */}
           <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '0.75rem' }}>
-            <div className="card-body d-flex justify-content-end gap-3 align-items-center">
+            {/* ── Subscription Upgrade Card ── */}
+          <Section title="Subscription Upgrade Card" icon="bi-stars">
+            <p className="text-muted small mb-4">Controls the "Unlock More" card shown next to an active subscription for both sellers and buyers.</p>
+            <div className="row g-4">
+              {/* Seller */}
+              <div className="col-md-6">
+                <h6 className="fw-bold mb-3" style={{ color: '#ffc63a' }}><i className="bi bi-shop me-2" />Seller Card</h6>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Label <small className="text-muted">(e.g. "Unlock More")</small></label>
+                  <input className="form-control" style={inputStyle} value={settings.seller_unlock_label || ''} onChange={(e) => update('seller_unlock_label', e.target.value)} placeholder="Unlock More" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Title</label>
+                  <input className="form-control" style={inputStyle} value={settings.seller_unlock_title || ''} onChange={(e) => update('seller_unlock_title', e.target.value)} placeholder="Elevate to a Higher Tier" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Button Text</label>
+                  <input className="form-control" style={inputStyle} value={settings.seller_unlock_btn || ''} onChange={(e) => update('seller_unlock_btn', e.target.value)} placeholder="Upgrade Plan" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold mb-2">Feature Items <small className="text-muted">(icon = material-symbols name)</small></label>
+                  <UnlockItemsEditor settingKey="seller_unlock_items" settings={settings} update={update} />
+                </div>
+              </div>
+              {/* Buyer */}
+              <div className="col-md-6">
+                <h6 className="fw-bold mb-3" style={{ color: '#ffc63a' }}><i className="bi bi-person me-2" />Buyer Card</h6>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Label</label>
+                  <input className="form-control" style={inputStyle} value={settings.buyer_unlock_label || ''} onChange={(e) => update('buyer_unlock_label', e.target.value)} placeholder="Unlock More" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Title</label>
+                  <input className="form-control" style={inputStyle} value={settings.buyer_unlock_title || ''} onChange={(e) => update('buyer_unlock_title', e.target.value)} placeholder="Elevate to a Higher Tier" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Button Text</label>
+                  <input className="form-control" style={inputStyle} value={settings.buyer_unlock_btn || ''} onChange={(e) => update('buyer_unlock_btn', e.target.value)} placeholder="Upgrade Plan" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold mb-2">Feature Items</label>
+                  <UnlockItemsEditor settingKey="buyer_unlock_items" settings={settings} update={update} />
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          <div className="card-body d-flex justify-content-end gap-3 align-items-center">
               <small className="text-muted">All sections are saved together.</small>
               <button type="submit" className="btn" style={btnGold} disabled={saving}>
                 {saving

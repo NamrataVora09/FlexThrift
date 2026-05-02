@@ -178,9 +178,20 @@ class SharedApi extends ResourceController
             ->limit(10)
             ->get()->getResultArray();
 
+        // Unlock card settings for this user type
+        $keys = [
+            "{$userType}_unlock_label",
+            "{$userType}_unlock_title",
+            "{$userType}_unlock_btn",
+            "{$userType}_unlock_items",
+        ];
+        $rows = $db->table('system_settings')->whereIn('setting_key', $keys)->get()->getResultArray();
+        $unlockCard = [];
+        foreach ($rows as $r) $unlockCard[$r['setting_key']] = $r['setting_value'];
+
         return $this->respond([
             'success' => true,
-            'data' => ['plans' => $plans, 'active' => $active, 'history' => $history],
+            'data' => ['plans' => $plans, 'active' => $active, 'history' => $history, 'unlock_card' => $unlockCard],
         ]);
     }
 

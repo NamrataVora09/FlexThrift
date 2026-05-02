@@ -43,6 +43,7 @@ interface SubData {
   plans: Plan[];
   active: ActiveSub | null;
   history: HistoryItem[];
+  unlock_card?: Record<string, string>;
 }
 
 /* ---------- helpers ---------- */
@@ -103,6 +104,13 @@ function SubscriptionsInner() {
 
   const handleChoosePlan = (plan: Plan) => {
     router.push(`/buyer/checkout-plan/${plan.id}`);
+  };
+
+  const goNext = () => { if (plans.length > VISIBLE) setPIdx(i => i + 1); };
+  const goPrev = () => {
+    if (plans.length <= VISIBLE) return;
+    if (pIdx === 0) { setPAnim(false); setPIdx(plans.length - 1); }
+    else setPIdx(i => i - 1);
   };
 
   // SuperAdmin has full access - no subscription needed
@@ -188,8 +196,10 @@ function SubscriptionsInner() {
         .conveyor-dots{display:flex;justify-content:center;gap:6px;margin-top:1rem;}
         .conveyor-dot{width:8px;height:8px;border-radius:50%;background:#e5e7eb;cursor:pointer;transition:all .3s;border:none;padding:0;}
         .conveyor-dot.active{background:#D7B467;width:22px;border-radius:9999px;}
-        .slider-arrow{width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;transition:all .2s;z-index:5;flex-shrink:0;}
-        .slider-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467;}
+        .plan-arrow{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;transition:all .2s;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+        .plan-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467;}
+        .plan-arrow.left{left:8px}
+        .plan-arrow.right{right:8px}
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
         @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
         .bento-col-8{grid-column:span 1}
@@ -258,30 +268,40 @@ function SubscriptionsInner() {
               </div>
 
               {/* --- Unlock More Card --- */}
-              <div className="bento-col-4">
-                <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
-                  <div>
-                    <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>Unlock More</span>
-                    <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>Elevate to a Higher Tier</h3>
-                    <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
-                      {[
-                        { icon: 'all_inclusive', text: 'Unlimited concierge contacts' },
-                        { icon: 'stars', text: 'Early access to new listings' },
-                        { icon: 'insights', text: 'Custom market reporting' },
-                        { icon: 'support_agent', text: 'Priority support' },
-                      ].map((b, i) => (
-                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
-                          <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
-                          {b.text}
-                        </li>
-                      ))}
-                    </ul>
+              {(() => {
+                const uc = data?.unlock_card || {};
+                const label = uc['buyer_unlock_label'] || 'Unlock More';
+                const title = uc['buyer_unlock_title'] || 'Elevate to a Higher Tier';
+                const btn   = uc['buyer_unlock_btn']   || 'Upgrade Plan';
+                let items: { icon: string; text: string }[] = [
+                  { icon: 'all_inclusive', text: 'Unlimited concierge contacts' },
+                  { icon: 'stars',         text: 'Early access to new listings' },
+                  { icon: 'insights',      text: 'Custom market reporting' },
+                  { icon: 'support_agent', text: 'Priority support' },
+                ];
+                try { const p = JSON.parse(uc['buyer_unlock_items'] || '[]'); if (Array.isArray(p) && p.length) items = p; } catch {}
+                return (
+                  <div className="bento-col-4">
+                    <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
+                      <div>
+                        <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>{label}</span>
+                        <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>{title}</h3>
+                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
+                          {items.map((b, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
+                              <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
+                              {b.text}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <a href="#available-plans" style={{ display: 'block', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', textDecoration: 'none', transition: 'background 0.3s' }}>
+                        {btn}
+                      </a>
+                    </div>
                   </div>
-                  <a href="#available-plans" style={{ display: 'block', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', textDecoration: 'none', transition: 'background 0.3s' }}>
-                    Upgrade Plan
-                  </a>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           ))
         )}
@@ -290,9 +310,17 @@ function SubscriptionsInner() {
         <div className="mt-5 pt-4" id="available-plans">
           <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
           {plans.length > 0 ? (
-            <div style={{ overflow: 'hidden', width: '100%' }}>
+            <div style={{ position: 'relative' }}>
+              {plans.length > VISIBLE && (
+                <>
+                  <button className="plan-arrow left" onClick={goPrev}><i className="bi bi-chevron-left" /></button>
+                  <button className="plan-arrow right" onClick={goNext}><i className="bi bi-chevron-right" /></button>
+                </>
+              )}
+              <div style={{ overflow: 'hidden', width: '100%' }}>
               <div style={{
                 display: 'flex',
+                alignItems: 'stretch',
                 padding: '20px 0',
                 width: `${(loopPlans.length / VISIBLE) * 100}%`,
                 transform: plans.length > VISIBLE ? `translateX(calc(-${pIdx} * 100% / ${loopPlans.length}))` : 'none',
@@ -339,6 +367,7 @@ function SubscriptionsInner() {
                     </div>
                   );
                 })}
+              </div>
               </div>
             </div>
           ) : (

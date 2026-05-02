@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 interface Plan { id: number; name: string; plan_type: string; limit_value: number; duration_hours: number; price: string; is_featured?: number | string; is_most_selected?: number | string; }
 interface ActiveSub { plan_name: string; plan_type: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; }
 interface HistoryItem { plan_name: string; plan_type: string; price: string; starts_at: string; expires_at: string; is_active: number; }
-interface SubData { plans: Plan[]; active: ActiveSub | null; history: HistoryItem[]; }
+interface SubData { plans: Plan[]; active: ActiveSub | null; history: HistoryItem[]; unlock_card?: Record<string, string>; }
 
 interface ChargeItem { name: string; type: 'percentage' | 'fixed'; value: number; amount: number; }
 interface CheckoutData {
@@ -318,30 +318,38 @@ export default function SubscriptionsView({ role, userType }: Props) {
                   <span className="material-symbols-outlined" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 48" }}>workspace_premium</span>
                 </div>
               </div>
-              <div className="bento-col-4">
-                <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 260, border: '1px solid #d1e4cf' }}>
-                  <div>
-                    <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>Unlock More</span>
-                    <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>Elevate to a Higher Tier</h3>
-                    <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
-                      {[
-                        { icon: 'all_inclusive', text: 'Unlimited product listings' },
-                        { icon: 'stars', text: 'Priority placement in search' },
-                        { icon: 'insights', text: 'Advanced seller analytics' },
-                        { icon: 'support_agent', text: 'Dedicated seller support' },
-                      ].map((b, i) => (
-                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
-                          <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
-                          {b.text}
-                        </li>
-                      ))}
-                    </ul>
+              {(() => {
+                const uc = data?.unlock_card || {};
+                const ucLabel = uc[`${userType}_unlock_label`] || 'Unlock More';
+                const ucTitle = uc[`${userType}_unlock_title`] || 'Elevate to a Higher Tier';
+                const ucBtn   = uc[`${userType}_unlock_btn`]   || 'Upgrade Plan';
+                const defaultItems = userType === 'seller'
+                  ? [{ icon: 'all_inclusive', text: 'Unlimited product listings' }, { icon: 'stars', text: 'Priority placement in search' }, { icon: 'insights', text: 'Advanced seller analytics' }, { icon: 'support_agent', text: 'Dedicated seller support' }]
+                  : [{ icon: 'all_inclusive', text: 'Unlimited concierge contacts' }, { icon: 'stars', text: 'Early access to new listings' }, { icon: 'insights', text: 'Custom market reporting' }, { icon: 'support_agent', text: 'Priority support' }];
+                let ucItems: { icon: string; text: string }[] = defaultItems;
+                try { const p = JSON.parse(uc[`${userType}_unlock_items`] || '[]'); if (Array.isArray(p) && p.length) ucItems = p; } catch {}
+                return (
+                  <div className="bento-col-4">
+                    <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 260, border: '1px solid #d1e4cf' }}>
+                      <div>
+                        <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>{ucLabel}</span>
+                        <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>{ucTitle}</h3>
+                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
+                          {ucItems.map((b, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
+                              <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
+                              {b.text}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', cursor: 'pointer', transition: 'background 0.3s' }}>
+                        {ucBtn}
+                      </button>
+                    </div>
                   </div>
-                  <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', cursor: 'pointer', transition: 'background 0.3s' }}>
-                    Upgrade Plan
-                  </button>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           );
         })()}
