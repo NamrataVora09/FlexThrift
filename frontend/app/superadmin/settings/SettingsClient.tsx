@@ -142,9 +142,6 @@ export default function SettingsClient() {
   const [toDate, setToDate] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  // Fix missed offers
-  const [fixingMissed, setFixingMissed] = useState(false);
-
   useEffect(() => {
     api.get<Record<string, string>>('/superadmin/system-settings').then((r) => {
       if (r.success && r.data) setSettings(r.data);

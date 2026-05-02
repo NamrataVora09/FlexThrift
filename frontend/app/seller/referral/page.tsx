@@ -214,8 +214,11 @@ export default function SellerReferralPage() {
           overflow-wrap: break-word;
         }
         .info-card h5 {
-          font-weight: 800;
+          font-size: 1.1rem;
           margin-bottom: 20px;
+          color: #111;
+          overflow-wrap: break-word;
+          font-weight: 800;
           display: flex;
           align-items: center;
           gap: 10px;
@@ -223,8 +226,7 @@ export default function SellerReferralPage() {
         .step-item {
           display: flex;
           gap: 16px;
-          margin-bottom: 0;
-          position: relative;
+          min-width: 0;
         }
         .step-num-wrap {
           display: flex;
@@ -233,34 +235,60 @@ export default function SellerReferralPage() {
           flex-shrink: 0;
         }
         .step-num {
-          width: 32px;
-          height: 32px;
-          background: #d6b06b;
-          color: #fff;
-          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          background: #ffc63a;
+          color: #000;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-weight: 700;
-          font-size: 0.9rem;
-          line-height: 1;
-          z-index: 1;
+          font-weight: 900;
+          font-family: 'Outfit', sans-serif;
+          font-size: 1.1rem;
+          box-shadow: 0 8px 20px rgba(255,198,58,0.25);
+          position: relative;
+          z-index: 2;
         }
         .step-line {
           width: 2px;
           flex-grow: 1;
-          background: rgba(0,0,0,0.1);
-          margin: 4px 0;
-          min-height: 30px;
+          background: #f0f0f0;
+          margin: 8px 0;
         }
         .step-text {
           flex: 1;
           min-width: 0;
+          overflow-wrap: break-word;
           word-wrap: break-word;
+        }
+        .step-text h6 {
+          margin: 0 0 4px;
+          font-weight: 800;
+          font-family: 'Outfit', sans-serif;
+          color: #111;
           overflow-wrap: break-word;
         }
-        .step-text h6 { font-weight: 800; margin-bottom: 4px; font-size: 0.95rem; }
-        .step-text p { color: #6b7280; font-size: 0.85rem; margin: 0; }
+        .step-text p {
+          margin: 0;
+          color: #6b7280;
+          font-size: 0.9rem;
+          line-height: 1.6;
+          overflow-wrap: break-word;
+        }
+        .terms-list {
+          padding-left: 20px;
+          margin: 0;
+          font-size: 0.85rem;
+          color: #6b7280;
+          line-height: 1.8;
+          min-width: 0;
+        }
+        .terms-list li {
+          margin-bottom: 12px;
+          overflow-wrap: break-word;
+          word-wrap: break-word;
+        }
         .referred-item {
           display: flex;
           align-items: center;
@@ -356,68 +384,72 @@ export default function SellerReferralPage() {
               {/* Left Column */}
               <div className="col-lg-8">
                 {/* How it works */}
-                <div className="info-card">
-                  <h5>
+                <div className="info-card" style={{ height: 'auto' }}>
+                  <h5 style={{ fontWeight: 800, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <i className="bi bi-info-circle-fill" style={{ color: '#ffc63a' }}></i>
                     How It Works
                   </h5>
-                  {stats.how_it_works && stats.how_it_works.length > 0 ? (
-                    stats.how_it_works.map((step, idx) => (
-                      <div key={idx} className="step-item">
-                        <div className="step-num-wrap">
-                          <div className="step-num">{idx + 1}</div>
-                          {idx < stats.how_it_works.length - 1 && <div className="step-line"></div>}
+                  <div className="steps-container">
+                    {(stats.how_it_works && stats.how_it_works.length > 0) ? (
+                      stats.how_it_works.map((step, idx) => {
+                        const works = stats.how_it_works || [];
+                        return (
+                          <div key={idx} className="step-item">
+                            <div className="step-num-wrap">
+                              <div className="step-num">{idx + 1}</div>
+                              {idx < works.length - 1 && <div className="step-line"></div>}
+                            </div>
+                            <div className="step-text" style={{ paddingBottom: idx < works.length - 1 ? '24px' : '0' }}>
+                              <h6>{step.title}</h6>
+                              <p>{step.desc}</p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <>
+                        <div className="step-item">
+                          <div className="step-num-wrap">
+                            <div className="step-num">1</div>
+                            <div className="step-line"></div>
+                          </div>
+                          <div className="step-text" style={{ paddingBottom: '24px' }}>
+                            <h6>Share Your Code</h6>
+                            <p>Invite your friends to Flex using your unique referral code.</p>
+                          </div>
                         </div>
-                        <div className="step-text" style={{ paddingBottom: idx < stats.how_it_works.length - 1 ? '24px' : '0' }}>
-                          <h6>{step.title}</h6>
-                          <p>{step.desc}</p>
+                        <div className="step-item">
+                          <div className="step-num-wrap">
+                            <div className="step-num">2</div>
+                            <div className="step-line"></div>
+                          </div>
+                          <div className="step-text" style={{ paddingBottom: '24px' }}>
+                            <h6>Friends Join Flex</h6>
+                            <p>Your friend registers on Flex and enters your referral code during sign-up.</p>
+                          </div>
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    <>
-                      <div className="step-item">
-                        <div className="step-num-wrap">
-                          <div className="step-num">1</div>
-                          <div className="step-line"></div>
+                        <div className="step-item">
+                          <div className="step-num-wrap">
+                            <div className="step-num">3</div>
+                          </div>
+                          <div className="step-text">
+                            <h6>They Purchase a Plan</h6>
+                            <p>When your friend buys their first subscription plan, the reward is unlocked.</p>
+                          </div>
                         </div>
-                        <div className="step-text" style={{ paddingBottom: '24px' }}>
-                          <h6>Share Your Code</h6>
-                          <p>Invite your friends to Flex using your unique referral code.</p>
-                        </div>
-                      </div>
-                      <div className="step-item">
-                        <div className="step-num-wrap">
-                          <div className="step-num">2</div>
-                          <div className="step-line"></div>
-                        </div>
-                        <div className="step-text" style={{ paddingBottom: '24px' }}>
-                          <h6>Friends Join Flex</h6>
-                          <p>Your friend registers on Flex and enters your referral code during sign-up.</p>
-                        </div>
-                      </div>
-                      <div className="step-item">
-                        <div className="step-num-wrap">
-                          <div className="step-num">3</div>
-                        </div>
-                        <div className="step-text">
-                          <h6>They Purchase a Plan</h6>
-                          <p>When your friend buys their first subscription plan, the reward is unlocked.</p>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
 
-
                 {/* Terms */}
-                <div className="info-card">
-                  <h5>
+                <div className="info-card" style={{ height: 'auto' }}>
+                  <h5 style={{ fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <i className="bi bi-shield-check" style={{ color: '#ffc63a' }}></i>
                     Terms & Conditions
                   </h5>
-                  <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.85rem', color: '#6b7280', lineHeight: '1.8' }}>
-                    {stats.terms && stats.terms.length > 0 ? (
+                  <ul className="terms-list">
+                    {(stats.terms && stats.terms.length > 0) ? (
                       stats.terms.map((term, i) => <li key={i}>{term}</li>)
                     ) : (
                       <>

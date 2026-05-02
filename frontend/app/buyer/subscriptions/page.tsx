@@ -64,40 +64,23 @@ function SubscriptionsInner() {
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const [centerIdx, setCenterIdx] = useState(1);
-  const [animating, setAnimating] = useState(false);
+  const [planSlide, setPlanSlide] = useState(0);
+  const [purchasing, setPurchasing] = useState<number | null>(null);
 
   const plans = data?.plans || [];
+  const plansPerPage = 3;
+  const totalSlides = Math.ceil(plans.length / plansPerPage);
+  const visiblePlans = plans.slice(planSlide * plansPerPage, (planSlide + 1) * plansPerPage);
 
   useEffect(() => {
     if (plans.length <= 3) return;
     const t = setInterval(() => {
-      setAnimating(true);
-      setTimeout(() => {
-        setCenterIdx(c => (c + 1) % plans.length);
-        setAnimating(false);
-      }, 500);
-    }, 3500);
+      setPlanSlide(s => (s + 1) % totalSlides);
+    }, 6000);
     return () => clearInterval(t);
-  }, [plans.length]);
-
-  // SuperAdmin has full access - no subscription needed
-  if (user?.role === 'super_admin') {
-    return (
-      <DashboardLayout requiredRoles={['buyer', 'super_admin']}>
-        <div className="container">
-          <div className="text-center py-5 bg-white rounded-4 border">
-            <i className="bi bi-shield-check" style={{ fontSize: '5rem', color: '#ffc63a' }}></i>
-            <h3 className="mt-4 fw-bold">SuperAdmin Full Access</h3>
-            <p className="text-muted">You have unlimited access to all features. No subscription required.</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  }, [plans.length, totalSlides]);
 
   useEffect(() => {
-    // Show flash messages from payment callback redirect
     const success = searchParams.get('success');
     const error = searchParams.get('error');
     if (success) setFlashMsg({ text: decodeURIComponent(success), ok: true });
@@ -107,10 +90,38 @@ function SubscriptionsInner() {
       if (r.success && r.data) setData(r.data);
       setLoading(false);
     });
-  }, []);
+  }, [searchParams]);
+
+  const handleChoosePlan = (plan: Plan) => {
+    router.push(`/buyer/checkout-plan/${plan.id}`);
+  };
+
+  // SuperAdmin has full access - no subscription needed
+  if (user?.role === 'super_admin') {
+    return (
+      <DashboardLayout requiredRoles={['buyer', 'super_admin']}>
+        <div className="container py-5">
+          <div className="text-center py-5 bg-white rounded-4 border shadow-sm">
+            <i className="bi bi-shield-check" style={{ fontSize: '5rem', color: '#ffc63a' }}></i>
+            <h3 className="mt-4 fw-bold">SuperAdmin Full Access</h3>
+            <p className="text-muted">You have unlimited access to all features. No subscription required.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (loading)
+    return (
+      <DashboardLayout requiredRoles={['buyer', 'super_admin']}>
+        <div className="text-center py-5">
+          <div className="spinner-border" style={{ color: '#ffc63a' }} />
+        </div>
+      </DashboardLayout>
+    );
 
   /* Build active subscriptions list (prioritize dedicated active object from backend) */
-  let activeSubscriptions: any[] = [];
+  let activeSubscriptions: (ActiveSub | HistoryItem)[] = [];
   if (data?.active) {
     activeSubscriptions = [data.active];
   } else if (data?.history) {
@@ -137,37 +148,22 @@ function SubscriptionsInner() {
     return { ...sub, limit, used, isQuantity, remaining, percentUsed, isPrimary };
   });
 
-  const handleChoosePlan = (planId: number) => {
-    router.push(`/buyer/checkout-plan/${planId}`);
-  };
-
-  if (loading)
-    return (
-      <DashboardLayout requiredRoles={['buyer', 'super_admin']}>
-        <div className="text-center py-5">
-          <div className="spinner-border" style={{ color: '#ffc63a' }} />
-        </div>
-      </DashboardLayout>
-    );
-
   return (
     <DashboardLayout requiredRoles={['buyer', 'super_admin']}>
       <style>{`
         .luxury-sub-card{background:#fff;border-radius:20px;overflow:hidden;border:1px solid #eee;margin-bottom:30px}
         .sub-header{background:#000;padding:40px 30px;color:#fff;text-align:center}
         .sub-body{padding:40px}
-        .stat-circle{width:130px;height:130px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid #ffc63a;margin:0 auto 20px;box-shadow:0 4px 15px rgba(255,198,58,.1)}
+        .stat-circle{width:130px;height:130px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid #ffc63a;margin:0 auto 20px}
         .value-large{font-size:2.5rem;font-weight:800;color:#000;line-height:1}
         .label-small{font-size:10px;font-weight:700;color:#6c757d;text-transform:uppercase;margin-top:5px}
-        .tier-basic{background:#fff;border-radius:2rem;padding:2.5rem;height:100%;border-top:4px solid transparent;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;transition:all .5s;display:flex;flex-direction:column}
-        .tier-basic:hover{border-top-color:#acadad44;transform:translateY(-4px)}
-        .tier-standard{background:#fff;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,.12);transform:scale(1.04);z-index:10;border:1px solid #f0f0f0}
-        .tier-elite{background:#e7efe5;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;border:1px solid #d1e4cf;transition:all .5s}
-        .tier-elite:hover{transform:translateY(-4px)}
+        .tier-basic{background:#fff;border-radius:2rem;padding:2.5rem;height:100%;border-top:4px solid transparent;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;display:flex;flex-direction:column}
+        .tier-standard{background:#fff;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;border:1px solid #f0f0f0}
+        .tier-elite{background:#e7efe5;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;border:1px solid #d1e4cf}
         .tier-badge{position:absolute;top:0;right:0;background:#D7B467;color:#fff;padding:.45rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
         .tier-btn-basic{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
         .tier-btn-basic:hover{background:#c9a455;transform:translateY(-2px)}
-        .tier-btn-standard{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .2s;box-shadow:0 10px 25px rgba(215,180,103,.3);margin-top:auto}
+        .tier-btn-standard{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .2s;margin-top:auto}
         .tier-btn-standard:hover{transform:scale(1.03);background:#c9a455}
         .tier-btn-elite{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
         .tier-btn-elite:hover{background:#c9a455;transform:translateY(-2px)}
@@ -223,7 +219,7 @@ function SubscriptionsInner() {
             <div className="bento-grid" key={sub.id}>
               {/* --- Primary Status Card --- */}
               <div className="bento-col-8">
-                <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 1px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 280, border: '1px solid #f0f0f0', height: '100%' }}>
+                <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 280, border: '1px solid #f0f0f0', height: '100%' }}>
                   <div style={{ position: 'relative', zIndex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
                       <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active Plan</span>
@@ -255,9 +251,7 @@ function SubscriptionsInner() {
 
               {/* --- Unlock More Card --- */}
               <div className="bento-col-4">
-                <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, cursor: 'pointer', transition: 'transform 0.4s', border: '1px solid #d1e4cf' }}
-                  onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
-                  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
+                <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
                   <div>
                     <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>Unlock More</span>
                     <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>Elevate to a Higher Tier</h3>
@@ -287,80 +281,72 @@ function SubscriptionsInner() {
         {/* -------- available plans -------- */}
         <div className="mt-5 pt-4" id="available-plans">
           <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
-          {plans.length > 0 ? (() => {
-            // Build the 3-card window: [left, center, right]
-            const n = plans.length;
-            const leftIdx  = (centerIdx - 1 + n) % n;
-            const rightIdx = (centerIdx + 1) % n;
-            const visible  = n === 1 ? [plans[0]] : n === 2 ? [plans[0], plans[1]] : [plans[leftIdx], plans[centerIdx], plans[rightIdx]];
-            const positions = n === 1 ? ['center'] : n === 2 ? ['side', 'center'] : ['side', 'center', 'side'];
+          {plans.length > 0 ? (
+            <div style={{ position: 'relative', padding: '0 30px' }}>
+              {/* Arrows */}
+              {plans.length > 3 && (
+                <>
+                  <button 
+                    className="slider-arrow" 
+                    style={{ position: 'absolute', left: -15, top: '50%', transform: 'translateY(-50%)' }}
+                    onClick={() => setPlanSlide(s => (s - 1 + totalSlides) % totalSlides)}
+                  >
+                    <i className="bi bi-chevron-left" />
+                  </button>
+                  <button 
+                    className="slider-arrow" 
+                    style={{ position: 'absolute', right: -15, top: '50%', transform: 'translateY(-50%)' }}
+                    onClick={() => setPlanSlide(s => (s + 1) % totalSlides)}
+                  >
+                    <i className="bi bi-chevron-right" />
+                  </button>
+                </>
+              )}
 
-            const prev = () => { if (animating) return; setAnimating(true); setTimeout(() => { setCenterIdx(c => (c - 1 + n) % n); setAnimating(false); }, 500); };
-            const next = () => { if (animating) return; setAnimating(true); setTimeout(() => { setCenterIdx(c => (c + 1) % n); setAnimating(false); }, 500); };
-
-            return (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  {n > 3 && <button className="slider-arrow" onClick={prev}><i className="bi bi-chevron-left" /></button>}
-                  <div className="plan-conveyor" style={{ flex: 1 }}>
-                    {visible.map((plan, vi) => {
-                      const pos = positions[vi];
-                      const isCenter = pos === 'center';
-                      const cardType = Number(plan.is_featured) === 1 ? 'standard' : isCenter ? 'standard' : vi === 0 ? 'basic' : 'elite';
-                      return (
-                        <div
-                          key={plan.id}
-                          className={`plan-card-wrap ${animating && pos !== 'center' ? (vi === 0 ? 'exiting' : 'entering') : pos}`}
-                          style={{ flex: '0 0 calc(33.333% - 1rem)' }}
-                        >
-                          <div className={`tier-${cardType}`} style={isCenter ? { borderColor: '#ffc63a55', borderWidth: 1.5 } : {}}>
-                            {Number(plan.is_most_selected) === 1 && <div className="tier-badge">Most Selected</div>}
-                            {isCenter && (
-                              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#ffc63a,#D7B467)', borderRadius: '2rem 2rem 0 0' }} />
-                            )}
-                            <div style={{ marginBottom: '2rem' }}>
-                              <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
-                              <p style={{ fontSize: '0.82rem', fontWeight: 500, color: isCenter ? '#D7B467' : '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                {plan.plan_type} Based
-                              </p>
-                            </div>
-                            <div style={{ marginBottom: '2rem' }}>
-                              <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-                            </div>
-                            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
-                              {[
-                                { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
-                                { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
-                                { icon: 'chat', text: 'Direct Messaging Access' },
-                              ].map((f, i) => (
-                                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
-                                  <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                                  <span style={{ fontSize: '0.85rem', fontWeight: isCenter ? 600 : 400, color: '#374151' }}>{f.text}</span>
-                                </li>
-                              ))}
-                            </ul>
-                            <button className={`tier-btn-${cardType}`} onClick={() => handleChoosePlan(plan.id)}>
-                              Buy Plan
-                            </button>
-                          </div>
+              <div className="row g-4">
+                {visiblePlans.map((plan) => {
+                  const isPopular = Number(plan.is_most_selected) === 1;
+                  const isFeatured = Number(plan.is_featured) === 1;
+                  const cardType = isPopular || isFeatured ? 'standard' : 'basic';
+                  const colClass = visiblePlans.length === 1 ? 'col-md-8 mx-auto' : visiblePlans.length === 2 ? 'col-md-6' : 'col-md-4';
+                  return (
+                    <div key={plan.id} className={colClass}>
+                      <div className={`tier-${cardType}`} style={isPopular || isFeatured ? { borderColor: '#ffc63a', borderWidth: 2 } : {}}>
+                        {isPopular && <div className="tier-badge">Most Popular</div>}
+                        <div style={{ marginBottom: '2rem' }}>
+                          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
+                          <p style={{ fontSize: '0.82rem', fontWeight: 500, color: (isPopular || isFeatured) ? '#D7B467' : '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {plan.plan_type} Based
+                          </p>
                         </div>
-                      );
-                    })}
-                  </div>
-                  {n > 3 && <button className="slider-arrow" onClick={next}><i className="bi bi-chevron-right" /></button>}
-                </div>
-                {/* Dots */}
-                {n > 1 && (
-                  <div className="conveyor-dots">
-                    {plans.map((_, i) => (
-                      <button key={i} className={`conveyor-dot${i === centerIdx ? ' active' : ''}`} onClick={() => setCenterIdx(i)} />
-                    ))}
-                  </div>
-                )}
+                        <div style={{ marginBottom: '2rem' }}>
+                          <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
+                          <span className="text-muted small">/{Number(plan.duration_hours) || '∞'}h</span>
+                        </div>
+                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
+                          {[
+                            { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
+                            { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
+                            { icon: 'chat', text: 'Direct Messaging Access' },
+                          ].map((f, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
+                              <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                              <span style={{ fontSize: '0.85rem', color: '#374151' }}>{f.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <button className={`tier-btn-${cardType}`} onClick={() => handleChoosePlan(plan)}>
+                          Buy Plan
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })()
-          : <p className="text-muted text-center py-4">No plans available at the moment.</p>}
+            </div>
+          ) : (
+            <p className="text-muted text-center py-4">No plans available at the moment.</p>
+          )}
         </div>
       </div>
     </DashboardLayout>
