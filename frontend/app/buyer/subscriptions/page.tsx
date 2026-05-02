@@ -64,21 +64,30 @@ function SubscriptionsInner() {
   const [data, setData] = useState<SubData | null>(null);
   const [loading, setLoading] = useState(true);
   const [flashMsg, setFlashMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  const [planSlide, setPlanSlide] = useState(0);
   const [purchasing, setPurchasing] = useState<number | null>(null);
+  const [pIdx, setPIdx] = useState(0);
+  const [pAnim, setPAnim] = useState(true);
 
   const plans = data?.plans || [];
-  const plansPerPage = 3;
-  const totalSlides = Math.ceil(plans.length / plansPerPage);
-  const visiblePlans = plans.slice(planSlide * plansPerPage, (planSlide + 1) * plansPerPage);
+  const VISIBLE = 3;
+  const loopPlans = plans.length > VISIBLE ? [...plans, ...plans.slice(0, VISIBLE - 1)] : plans;
 
   useEffect(() => {
-    if (plans.length <= 3) return;
-    const t = setInterval(() => {
-      setPlanSlide(s => (s + 1) % totalSlides);
-    }, 6000);
+    if (plans.length <= VISIBLE) return;
+    const t = setInterval(() => setPIdx(i => i + 1), 4000);
     return () => clearInterval(t);
-  }, [plans.length, totalSlides]);
+  }, [plans.length]);
+
+  useEffect(() => {
+    if (pIdx >= plans.length) {
+      const id = setTimeout(() => { setPAnim(false); setPIdx(0); }, 620);
+      return () => clearTimeout(id);
+    }
+  }, [pIdx, plans.length]);
+
+  useEffect(() => {
+    if (!pAnim) { const id = setTimeout(() => setPAnim(true), 50); return () => clearTimeout(id); }
+  }, [pAnim]);
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -157,30 +166,29 @@ function SubscriptionsInner() {
         .stat-circle{width:130px;height:130px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid #ffc63a;margin:0 auto 20px}
         .value-large{font-size:2.5rem;font-weight:800;color:#000;line-height:1}
         .label-small{font-size:10px;font-weight:700;color:#6c757d;text-transform:uppercase;margin-top:5px}
-        .tier-basic{background:#fff;border-radius:2rem;padding:2.5rem;height:100%;border-top:4px solid transparent;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;display:flex;flex-direction:column}
-        .tier-standard{background:#fff;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;border:1px solid #f0f0f0}
-        .tier-elite{background:#e7efe5;border-radius:2rem;padding:2.5rem;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;border:1px solid #d1e4cf}
-        .tier-badge{position:absolute;top:0;right:0;background:#D7B467;color:#fff;padding:.45rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
-        .tier-btn-basic{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-basic:hover{background:#c9a455;transform:translateY(-2px)}
-        .tier-btn-standard{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .2s;margin-top:auto}
-        .tier-btn-standard:hover{transform:scale(1.03);background:#c9a455}
-        .tier-btn-elite{width:100%;padding:.9rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-elite:hover{background:#c9a455;transform:translateY(-2px)}
-        .btn-brand-sub{background:#ffc63a;color:#000;border:none;padding:14px;border-radius:12px;font-weight:700;width:100%;transition:.3s;cursor:pointer}
+        .tier-basic{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;border-top:4px solid transparent;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;display:flex;flex-direction:column}
+        .tier-standard{ background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transform:scale(1.03);z-index:10}
+        .tier-elite{background:#e7efe5;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
+        .tier-badge{position:absolute;top:0px;right:-5px;background:#d7b467;color:#ffff;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
+        .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-basic:hover{background:#0a0a0a;color:#fff}
+        .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
+        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+
+        .btn-brand-sub{background:#ffc63a;color:#ffff;border:none;padding:14px;border-radius:12px;font-weight:700;width:100%;transition:.3s;cursor:pointer}
         .btn-brand-sub:hover{background:#000;color:#ffc63a}
-        .btn-brand-sub:disabled{opacity:.6;cursor:not-allowed}
+}
         .feature-icon-sub{color:#ffc63a;font-size:1.2rem;margin-right:12px}
         .plan-conveyor{display:flex;gap:1.5rem;align-items:center;justify-content:center;overflow:hidden;padding:2rem 0 2.5rem;}
         .plan-card-wrap{flex:0 0 calc(33.333% - 1rem);transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .5s,box-shadow .5s,filter .5s;}
-        .plan-card-wrap.center{transform:scale(1.06) translateY(-8px);z-index:10;filter:drop-shadow(0 20px 40px rgba(0,0,0,.14));}
-        .plan-card-wrap.side{transform:scale(0.93) translateY(0);opacity:0.82;filter:drop-shadow(0 4px 12px rgba(0,0,0,.06));}
+        .plan-card-wrap.center{transform:scale(1.06) translateY(-8px);z-index:10;}
+        .plan-card-wrap.side{transform:scale(0.93) translateY(0);opacity:0.82;}
         .plan-card-wrap.exiting{transform:scale(0.85) translateX(-60px);opacity:0;}
         .plan-card-wrap.entering{transform:scale(0.85) translateX(60px);opacity:0;}
         .conveyor-dots{display:flex;justify-content:center;gap:6px;margin-top:1rem;}
         .conveyor-dot{width:8px;height:8px;border-radius:50%;background:#e5e7eb;cursor:pointer;transition:all .3s;border:none;padding:0;}
         .conveyor-dot.active{background:#D7B467;width:22px;border-radius:9999px;}
-        .slider-arrow{width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:all .2s;z-index:5;flex-shrink:0;}
+        .slider-arrow{width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;transition:all .2s;z-index:5;flex-shrink:0;}
         .slider-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467;}
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
         @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
@@ -282,62 +290,51 @@ function SubscriptionsInner() {
         <div className="mt-5 pt-4" id="available-plans">
           <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
           {plans.length > 0 ? (
-            <div style={{ position: 'relative', padding: '0 30px' }}>
-              {/* Arrows */}
-              {plans.length > 3 && (
-                <>
-                  <button 
-                    className="slider-arrow" 
-                    style={{ position: 'absolute', left: -15, top: '50%', transform: 'translateY(-50%)' }}
-                    onClick={() => setPlanSlide(s => (s - 1 + totalSlides) % totalSlides)}
-                  >
-                    <i className="bi bi-chevron-left" />
-                  </button>
-                  <button 
-                    className="slider-arrow" 
-                    style={{ position: 'absolute', right: -15, top: '50%', transform: 'translateY(-50%)' }}
-                    onClick={() => setPlanSlide(s => (s + 1) % totalSlides)}
-                  >
-                    <i className="bi bi-chevron-right" />
-                  </button>
-                </>
-              )}
-
-              <div className="row g-4">
-                {visiblePlans.map((plan) => {
+            <div style={{ overflow: 'hidden', width: '100%' }}>
+              <div style={{
+                display: 'flex',
+                padding: '20px 0',
+                width: `${(loopPlans.length / VISIBLE) * 100}%`,
+                transform: plans.length > VISIBLE ? `translateX(calc(-${pIdx} * 100% / ${loopPlans.length}))` : 'none',
+                transition: pAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none',
+              }}>
+                {loopPlans.map((plan, idx) => {
                   const isPopular = Number(plan.is_most_selected) === 1;
                   const isFeatured = Number(plan.is_featured) === 1;
-                  const cardType = isPopular || isFeatured ? 'standard' : 'basic';
-                  const colClass = visiblePlans.length === 1 ? 'col-md-8 mx-auto' : visiblePlans.length === 2 ? 'col-md-6' : 'col-md-4';
+                  const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
+                  const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
+                  const nameColor =  '#0a0a0a' ;
+                  const typeColor = isPopular ? '#755700' : '#5a5c5c';
+                  const priceColor =  '#0a0a0a';
+                  const iconColor = (isFeatured || isPopular) ? '#fdc003' : '#9ca3af';
+                  const textColor =  '#2d2f2f';
                   return (
-                    <div key={plan.id} className={colClass}>
-                      <div className={`tier-${cardType}`} style={isPopular || isFeatured ? { borderColor: '#ffc63a', borderWidth: 2 } : {}}>
-                        {isPopular && <div className="tier-badge">Most Popular</div>}
-                        <div style={{ marginBottom: '2rem' }}>
-                          <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#111', marginBottom: '0.4rem' }}>{plan.name}</h2>
-                          <p style={{ fontSize: '0.82rem', fontWeight: 500, color: (isPopular || isFeatured) ? '#D7B467' : '#6b7280', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {plan.plan_type} Based
+                    <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopPlans.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
+                      <div className={cardClass}>
+                        {isPopular && <div className="tier-badge" >Most Selected</div>}
+                        <div style={{ marginBottom: '3rem' }}>
+                          <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h2>
+                          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>
+                            {plan.plan_type.toUpperCase()}  BASED
                           </p>
                         </div>
-                        <div style={{ marginBottom: '2rem' }}>
-                          <span style={{ fontSize: '2.8rem', fontWeight: 900, color: '#111' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-                          <span className="text-muted small">/{Number(plan.duration_hours) || '∞'}h</span>
+                        <div style={{ marginBottom: '3rem' }}>
+                          <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
+
                         </div>
-                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', flexGrow: 1 }}>
+                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                           {[
                             { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
                             { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
                             { icon: 'chat', text: 'Direct Messaging Access' },
                           ].map((f, i) => (
-                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: i < 2 ? '1rem' : 0 }}>
-                              <span className="material-symbols-outlined" style={{ color: '#ffc63a', fontSize: '1.1rem', width: 20, flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                              <span style={{ fontSize: '0.85rem', color: '#374151' }}>{f.text}</span>
+                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                              <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: (isFeatured || isPopular) ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                              <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
                             </li>
                           ))}
                         </ul>
-                        <button className={`tier-btn-${cardType}`} onClick={() => handleChoosePlan(plan)}>
-                          Buy Plan
-                        </button>
+                        <button className={btnClass} onClick={() => handleChoosePlan(plan)}>Buy Plan</button>
                       </div>
                     </div>
                   );

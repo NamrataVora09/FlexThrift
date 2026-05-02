@@ -121,7 +121,8 @@ function register_api_routes($routes)
         $routes->get('product/(:num)', 'Api\SellerApi::productDetail/$1');
         $routes->post('report-user/(:num)', 'Api\SellerApi::reportUser/$1');
         $routes->post('rate-buyer', 'Api\SellerApi::rateBuyer');
-        // Subscription payment routes
+        // Subscription routes
+        $routes->get('subscriptions/(:any)', 'Api\SharedApi::subscriptions/$1');
         $routes->get('plan-checkout-details/(:num)', 'Api\SellerApi::planCheckoutDetails/$1');
         $routes->post('apply-coupon', 'Api\SellerApi::applyCoupon');
         $routes->post('initiate-payment', 'Api\SellerApi::initiatePayment');
@@ -177,6 +178,7 @@ function register_api_routes($routes)
 
     // Admin API (protected)
     $routes->group('admin', ['filter' => 'jwt'], function ($routes) {
+        $routes->get('subscriptions/(:any)', 'Api\SharedApi::subscriptions/$1');
         $routes->get('plan-checkout-details/(:num)', 'Api\AdminApi::planCheckoutDetails/$1');
         $routes->post('apply-coupon', 'Api\AdminApi::applyCoupon');
         $routes->post('initiate-payment', 'Api\AdminApi::initiatePayment');

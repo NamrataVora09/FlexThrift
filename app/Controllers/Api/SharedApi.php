@@ -447,7 +447,7 @@ class SharedApi extends ResourceController
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
         if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
-        $newVal = (int) $plan['is_most_selected'] ? 0 : 1;
+        $newVal = (int) ($plan['is_most_selected'] ?? 0) ? 0 : 1;
         $db->table('subscription_plans')->where('id', $id)->update(['is_most_selected' => $newVal, 'updated_at' => date('Y-m-d H:i:s')]);
 
         return $this->respond(['success' => true, 'message' => $newVal ? 'Marked as Most Selected' : 'Removed Most Selected', 'is_most_selected' => $newVal]);
@@ -464,7 +464,7 @@ class SharedApi extends ResourceController
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
         if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
-        $newFeatured = (int) $plan['is_featured'] ? 0 : 1;
+        $newFeatured = (int) ($plan['is_featured'] ?? 0) ? 0 : 1;
 
         if ($newFeatured) {
             $db->table('subscription_plans')->where('user_type', $plan['user_type'])->update(['is_featured' => 0]);

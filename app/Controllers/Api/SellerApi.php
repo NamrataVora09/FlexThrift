@@ -1666,10 +1666,11 @@ class SellerApi extends ResourceController
 
         if ($state === 'COMPLETED') {
             if ($dbSub['is_active'] == 0) {
-                $plan      = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
-                $startsAt  = date('Y-m-d H:i:s');
-                $expiresAt = ((int) $plan['duration_hours'] > 0)
-                    ? date('Y-m-d H:i:s', strtotime("+{$plan['duration_hours']} hours"))
+                $plan          = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
+                $durationHours = (int) $plan['duration_hours'];
+                $startsAt      = date('Y-m-d H:i:s');
+                $expiresAt     = $durationHours > 0
+                    ? date('Y-m-d H:i:s', time() + $durationHours * 3600)
                     : '2099-12-31 23:59:59';
 
                 $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
