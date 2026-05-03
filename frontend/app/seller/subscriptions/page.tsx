@@ -16,6 +16,7 @@ interface Plan {
   price: string;
   is_featured?: number | string;
   is_most_selected?: number | string;
+  features?: string;
 }
 interface ActiveSub {
   id: number;
@@ -334,16 +335,30 @@ function SellerSubscriptionsInner() {
                           <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
                         </div>
                         <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                          {[
-                            { icon: 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
-                            { icon: 'schedule', text: `${Number(plan.duration_hours) || '∞'} Hours Validity` },
-                            { icon: 'verified', text: 'Verified Seller Badge' },
-                          ].map((f, i) => (
-                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
-                              <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                              <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
-                            </li>
-                          ))}
+                          {(() => {
+                            const coreFeatures = [
+                              { icon: 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
+                              { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                            ];
+                            let customFeatures: { icon: string; text: string }[] = [];
+                            try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) {}
+                            
+                            const filteredCustom = customFeatures.filter(cf => 
+                              cf.text && 
+                              !cf.text.toLowerCase().includes('listing') && 
+                              !cf.text.toLowerCase().includes('validity') && 
+                              !cf.text.toLowerCase().includes('hour')
+                            );
+
+                            const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                            return allFeatures.map((f, i) => (
+                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                                <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
+                              </li>
+                            ));
+                          })()}
                         </ul>
                         <button className={btnClass} onClick={() => handleChoosePlan(plan)}>Buy Plan</button>
                       </div>

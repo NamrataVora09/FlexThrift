@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import PageHeader from './PageHeader';
 import { api } from '@/lib/api';
 
-interface Plan { id: number; name: string; plan_type: string; limit_value: number; duration_hours: number; price: string; is_featured?: number | string; is_most_selected?: number | string; }
+interface Plan { id: number; name: string; user_type?: string; plan_type: string; limit_value: number; duration_hours: number; price: string; features?: string; is_featured?: number | string; is_most_selected?: number | string; }
 interface ActiveSub { plan_name: string; plan_type: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; }
 interface HistoryItem { plan_name: string; plan_type: string; price: string; starts_at: string; expires_at: string; is_active: number; }
 interface SubData { plans: Plan[]; active: ActiveSub | null; history: HistoryItem[]; unlock_card?: Record<string, string>; }
@@ -382,12 +382,32 @@ export default function SubscriptionsView({ role, userType }: Props) {
                         <p style={{ fontSize: '0.65rem', color: isFeatured ? '#6b7280' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 700, marginTop: '0.5rem', marginBottom: 0 }}>{plan.plan_type === 'duration' ? 'Full Access' : 'Per Plan'}</p>
                       </div>
                       <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {[{ icon: 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` }, { icon: 'verified', text: 'Verified Seller Badge' }, { icon: 'support_agent', text: 'Priority Support' }].map((f, i) => (
-                          <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
-                            <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                            <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
-                          </li>
-                        ))}
+                        {(() => {
+                          const coreFeatures = [
+                            { icon: plan.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} ${plan.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
+                            { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                          ];
+                          let customFeatures: { icon: string; text: string }[] = [];
+                          try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) {}
+                          
+                          // Filter out custom features that might be duplicates of core features
+                          const filteredCustom = customFeatures.filter(cf => 
+                            cf.text && 
+                            !cf.text.toLowerCase().includes('listing') && 
+                            !cf.text.toLowerCase().includes('contact') && 
+                            !cf.text.toLowerCase().includes('validity') && 
+                            !cf.text.toLowerCase().includes('hour')
+                          );
+
+                          const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                          return allFeatures.map((f, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                              <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                              <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
+                            </li>
+                          ));
+                        })()}
                       </ul>
                       {isSuperAdmin ? (
                         <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
@@ -434,12 +454,30 @@ export default function SubscriptionsView({ role, userType }: Props) {
                           <p style={{ fontSize: '0.65rem', color: isFeatured ? '#6b7280' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 700, marginTop: '0.5rem', marginBottom: 0 }}>{plan.plan_type === 'duration' ? 'Full Access' : 'Per Plan'}</p>
                         </div>
                         <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                          {[{ icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` }, { icon: 'chat', text: 'Direct Messaging Access' }].map((f, i) => (
-                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
-                              <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                              <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
-                            </li>
-                          ))}
+                          {(() => {
+                            const coreFeatures = [
+                              { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
+                              { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                            ];
+                            let customFeatures: { icon: string; text: string }[] = [];
+                            try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) {}
+                            
+                            const filteredCustom = customFeatures.filter(cf => 
+                              cf.text && 
+                              !cf.text.toLowerCase().includes('contact') && 
+                              !cf.text.toLowerCase().includes('validity') && 
+                              !cf.text.toLowerCase().includes('hour')
+                            );
+
+                            const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                            return allFeatures.map((f, i) => (
+                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                                <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
+                              </li>
+                            ));
+                          })()}
                         </ul>
                         {isSuperAdmin ? (
                           <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
@@ -500,20 +538,32 @@ export default function SubscriptionsView({ role, userType }: Props) {
                     {/* Privileges */}
                     <h6 className="fw-bold mb-3">What you get</h6>
                     <ul className="list-unstyled privilege-list">
-                      <li>
-                        <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
-                        {checkoutData?.plan.plan_type === 'quantity'
-                          ? <span><strong>{checkoutData?.plan.limit_value}</strong> product listing slots</span>
-                          : <span><strong>Unlimited</strong> listings for the duration</span>}
-                      </li>
-                      <li>
-                        <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
-                        <span>Validity:&nbsp;<strong>{Number(checkoutData?.plan.duration_hours) > 0 ? checkoutData?.plan.duration_hours + ' Hours' : 'Life-Time'}</strong></span>
-                      </li>
-                      <li>
-                        <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
-                        <span>Priority visibility &amp; seller badge</span>
-                      </li>
+                      {(() => {
+                        let features: { icon: string; text: string }[] = [];
+                        try { if (checkoutData.plan.features) features = JSON.parse(checkoutData.plan.features); } catch (e) {}
+                        if (!features.length) {
+                          return (
+                            <>
+                              <li>
+                                <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
+                                {checkoutData.plan.plan_type === 'quantity'
+                                  ? <span><strong>{checkoutData.plan.limit_value}</strong> {userType === 'buyer' ? 'contact' : 'listing'} slots</span>
+                                  : <span><strong>Unlimited</strong> {userType === 'buyer' ? 'contacts' : 'listings'} for the duration</span>}
+                              </li>
+                              <li>
+                                <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
+                                <span>Validity:&nbsp;<strong>{Number(checkoutData.plan.duration_hours) > 0 ? checkoutData.plan.duration_hours + ' Hours' : 'Life-Time'}</strong></span>
+                              </li>
+                            </>
+                          );
+                        }
+                        return features.map((f, i) => (
+                          <li key={i}>
+                            <span className="material-symbols-outlined text-success" style={{ fontSize: '1.2rem', flexShrink: 0, fontVariationSettings: "'FILL' 1" }}>{f.icon}</span>
+                            <span>{f.text}</span>
+                          </li>
+                        ));
+                      })()}
                     </ul>
 
                     {/* Billing info */}

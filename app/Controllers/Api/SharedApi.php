@@ -416,6 +416,7 @@ class SharedApi extends ResourceController
             'duration_hours' => (float) ($data['duration_hours'] ?? 0),
             'price' => (float) ($data['price']),
             'base_price' => (float) ($data['base_price'] ?? $data['price']),
+            'features' => $data['features'] ?? null,
             'is_active' => 1,
             'is_featured' => $isFeatured,
             'is_most_selected' => (int) ($data['is_most_selected'] ?? 0),
@@ -510,6 +511,7 @@ class SharedApi extends ResourceController
             'duration_hours' => (float) ($data['duration_hours'] ?? 0),
             'price' => (float) ($data['price']),
             'base_price' => (float) ($data['base_price'] ?? $data['price']),
+            'features' => $data['features'] ?? null,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
         if ($isFeatured !== null) $updateData['is_featured'] = $isFeatured;

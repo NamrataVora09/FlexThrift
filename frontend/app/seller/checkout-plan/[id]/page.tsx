@@ -20,6 +20,7 @@ interface CheckoutData {
     limit_value: number;
     duration_hours: number;
     price: string;
+    features?: string;
   };
   user: { name: string; email: string; mobile: string; address: string };
   charge_breakdown: ChargeItem[];
@@ -172,24 +173,38 @@ export default function SellerCheckoutPlanPage() {
               </div>
 
               {/* Plan privileges */}
-              <div className="mb-4">
-                <h6 className="fw-bold mb-3">Plan Privileges</h6>
-                <ul className="list-unstyled mb-0">
-                  <li className="mb-2 small d-flex align-items-center">
-                    <i className="bi bi-check-circle-fill text-success me-2" />
-                    {plan.plan_type === 'quantity'
-                      ? <><strong className="mx-1">{plan.limit_value}</strong> product listing slots</>
-                      : <><strong>Unlimited</strong>&nbsp;listings for the duration</>}
-                  </li>
-                  <li className="mb-2 small d-flex align-items-center">
-                    <i className="bi bi-check-circle-fill text-success me-2" />
-                    Validity:&nbsp;<strong>{Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'}</strong>
-                  </li>
-                  <li className="small d-flex align-items-center text-muted">
-                    <i className="bi bi-info-circle me-2" />Priority visibility & seller badge
-                  </li>
-                </ul>
-              </div>
+                <div className="mb-4">
+                  <h6 className="fw-bold mb-3">Plan Privileges</h6>
+                  <ul className="list-unstyled mb-0">
+                    {(() => {
+                      const coreFeatures = [
+                        { icon: 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
+                        { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                      ];
+                      let customFeatures: { icon: string; text: string }[] = [];
+                      try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) {}
+                      
+                      const filteredCustom = customFeatures.filter(cf => 
+                        cf.text && 
+                        !cf.text.toLowerCase().includes('listing') && 
+                        !cf.text.toLowerCase().includes('validity') && 
+                        !cf.text.toLowerCase().includes('hour')
+                      );
+
+                      const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                      return allFeatures.map((f, i) => (
+                        <li key={i} className="mb-2 small d-flex align-items-start gap-2">
+                          <span className="material-symbols-outlined text-success" style={{ fontSize: '1.2rem', flexShrink: 0, fontVariationSettings: "'FILL' 1" }}>{f.icon}</span>
+                          <span>{f.text}</span>
+                        </li>
+                      ));
+                    })()}
+                    <li className="small d-flex align-items-center text-muted mt-2">
+                      <i className="bi bi-info-circle me-2" />Priority visibility & seller badge
+                    </li>
+                  </ul>
+                </div>
 
               {/* Billing info */}
               <div className="mt-auto pt-4 border-top">

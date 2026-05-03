@@ -10,7 +10,7 @@ import { confirmToast } from '@/lib/toast-utils';
 
 interface Plan {
   id: number; name: string; user_type: string; plan_type: string;
-  limit_value: string; duration_hours: string; price: string; base_price: string; is_active: string; is_featured: string; is_most_selected: string; created_at: string;
+  limit_value: string; duration_hours: string; price: string; base_price: string; features: string; is_active: string; is_featured: string; is_most_selected: string; created_at: string;
 }
 
 const thStyle: React.CSSProperties = { backgroundColor: '#f8f9fa', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, color: '#677788', padding: '1.1rem 1rem' };
@@ -21,7 +21,106 @@ const modalLabel: React.CSSProperties = { fontWeight: 700, fontSize: '0.8rem', c
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 const filterPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', fontWeight: 600, padding: '0.25rem 0.6rem', borderRadius: '2rem', background: 'rgba(255,198,58,0.08)', color: '#ffc63a', border: '1px solid rgba(255,198,58,0.2)' };
 
-const emptyForm = { name: '', user_type: 'seller', plan_type: 'quantity', limit_value: '', duration_hours: '', price: '', base_price: '', is_featured: '0', is_most_selected: '0' };
+const emptyForm = { name: '', user_type: 'seller', plan_type: 'quantity', limit_value: '', duration_hours: '', price: '', base_price: '', features: '[]', is_featured: '0', is_most_selected: '0' };
+
+function PlanPointsEditor({ value, onChange, form }: { value: string; onChange: (v: string) => void; form?: any }) {
+  const points = useMemo(() => {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      // Fallback for legacy newline-separated text
+      return value.split('\n').filter(t => t.trim()).map(t => ({ icon: 'check_circle', text: t.trim() }));
+    }
+  }, [value]);
+
+  const updatePoints = (newPoints: any[]) => onChange(JSON.stringify(newPoints));
+
+  const addPoint = () => updatePoints([...points, { icon: 'check_circle', text: '' }]);
+  const removePoint = (idx: number) => updatePoints(points.filter((_: any, i: number) => i !== idx));
+  const editPoint = (idx: number, field: string, val: string) => {
+    const p = [...points];
+    p[idx] = { ...p[idx], [field]: val };
+    updatePoints(p);
+  };
+
+  const syncFromDetails = () => {
+    if (!form) return;
+    const generated = [
+      { icon: form.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${form.plan_type === 'duration' ? 'Unlimited' : (form.limit_value || '0')} ${form.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
+      { icon: 'schedule', text: `${Number(form.duration_hours) || '∞'} Hours Validity` },
+      { icon: 'payments', text: `₹${Number(form.price).toLocaleString('en-IN')} - ${form.plan_type.charAt(0).toUpperCase() + form.plan_type.slice(1)} Based` }
+    ];
+    // Avoid duplicates if already synced
+    const existingTexts = points.map((p: any) => p.text);
+    const newPoints = [...points];
+    generated.forEach(g => {
+      if (!existingTexts.includes(g.text)) newPoints.unshift(g);
+    });
+    updatePoints(newPoints);
+  };
+
+  return (
+    <div className="mt-3">
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <label style={modalLabel}>Plan Points (Features)</label>
+        <div className="d-flex gap-2">
+          {form && (
+            <button type="button" className="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" style={{ fontSize: '0.7rem' }} onClick={syncFromDetails}>
+              <i className="bi bi-arrow-repeat me-1"></i>Sync Details
+            </button>
+          )}
+          <button type="button" className="btn btn-sm btn-outline-primary rounded-pill py-0 px-2" style={{ fontSize: '0.7rem' }} onClick={addPoint}>
+            <i className="bi bi-plus-lg me-1"></i>Add Point
+          </button>
+        </div>
+      </div>
+      <div className="d-flex flex-column gap-2">
+        {points.map((p: any, idx: number) => (
+          <div key={idx} className="d-flex gap-2 align-items-start p-2 rounded-3 border bg-white" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+            <div style={{ width: '100px' }}>
+              <label className="small text-muted mb-1 d-block" style={{ fontSize: '0.65rem' }}>Icon</label>
+              <div className="d-flex align-items-center gap-1">
+                 <span className="material-symbols-outlined text-muted" style={{ fontSize: '1.2rem' }}>{p.icon || 'check_circle'}</span>
+                 <input
+                  className="form-control form-control-sm"
+                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem' }}
+                  value={p.icon}
+                  onChange={(e) => editPoint(idx, 'icon', e.target.value)}
+                  placeholder="icon_name"
+                />
+              </div>
+            </div>
+            <div className="flex-grow-1">
+              <label className="small text-muted mb-1 d-block" style={{ fontSize: '0.65rem' }}>Benefit Description</label>
+              <input
+                className="form-control form-control-sm"
+                style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem' }}
+                value={p.text}
+                onChange={(e) => editPoint(idx, 'text', e.target.value)}
+                placeholder="e.g. Unlimited Listings"
+              />
+            </div>
+            <button type="button" className="btn btn-sm text-danger mt-3 px-1" onClick={() => removePoint(idx)}>
+              <i className="bi bi-x-lg"></i>
+            </button>
+          </div>
+        ))}
+        {points.length === 0 && (
+          <div className="text-center py-3 border rounded-3 border-dashed" style={{ background: '#fcfcfc', borderStyle: 'dashed' }}>
+            <p className="text-muted small mb-0">No plan points added. Click &quot;Add Point&quot; to begin.</p>
+          </div>
+        )}
+      </div>
+      <div className="mt-2 text-muted" style={{ fontSize: '0.65rem' }}>
+        <i className="bi bi-info-circle me-1"></i>
+        Use <a href="https://fonts.google.com/icons" target="_blank" rel="noreferrer">Material Icons</a> names (e.g., <code>verified</code>, <code>rocket_launch</code>, <code>check_circle</code>).
+      </div>
+    </div>
+  );
+}
+
 
 export default function SubscriptionPlansAdmin() {
   const { user } = useAuth();
@@ -60,11 +159,21 @@ export default function SubscriptionPlansAdmin() {
 
   const resetFilters = () => { setSearch(''); setFilterRole(''); setFilterType(''); setFilterStatus(''); };
 
-  const openCreate = () => { setEditId(null); setForm(emptyForm); setShowModal(true); };
+  const handleAdd = () => {
+    setEditId(null);
+    const initialFeatures = [
+      { icon: 'storefront', text: '0 Listings' },
+      { icon: 'schedule', text: '0 Hours Validity' },
+      { icon: 'verified', text: 'Verified Badge' },
+      { icon: 'support_agent', text: 'Priority Support' }
+    ];
+    setForm({ ...emptyForm, features: JSON.stringify(initialFeatures) });
+    setShowModal(true);
+  };
 
   const openEdit = (p: Plan) => {
     setEditId(p.id);
-    setForm({ name: p.name, user_type: p.user_type, plan_type: p.plan_type, limit_value: p.limit_value, duration_hours: p.duration_hours, price: p.price, base_price: p.base_price, is_featured: String(p.is_featured ?? '0'), is_most_selected: String(p.is_most_selected ?? '0') });
+    setForm({ name: p.name, user_type: p.user_type, plan_type: p.plan_type, limit_value: p.limit_value, duration_hours: p.duration_hours, price: p.price, base_price: p.base_price, features: p.features || '', is_featured: String(p.is_featured ?? '0'), is_most_selected: String(p.is_most_selected ?? '0') });
     setShowModal(true);
   };
 
@@ -133,7 +242,7 @@ export default function SubscriptionPlansAdmin() {
             </h1>
             <p className="text-muted small mb-0">Define flexible pricing and limits for Buyers and Sellers.</p>
           </div>
-          <button className="btn sa-filter-btn d-flex align-items-center gap-2" style={btnGold} onClick={openCreate}>
+          <button className="btn sa-filter-btn d-flex align-items-center gap-2" style={btnGold} onClick={handleAdd}>
             <i className="bi bi-plus-lg"></i> Create New Plan
           </button>
         </div>
@@ -394,6 +503,13 @@ export default function SubscriptionPlansAdmin() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Plan Points (Features) */}
+                  <PlanPointsEditor
+                    value={form.features}
+                    onChange={(v) => setForm({ ...form, features: v })}
+                    form={form}
+                  />
 
                   {/* Premium + Most Selected — super_admin only */}
                   {isSuperAdmin && (
