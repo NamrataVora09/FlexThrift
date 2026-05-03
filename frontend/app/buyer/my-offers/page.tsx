@@ -573,7 +573,7 @@ export default function Page() {
                           return (
                             <div style={{ background: '', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '0.75rem' }}>
                               <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
-                                <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Negotiation Logs
+                                <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Date/Time Logs
                               </div>
                               {steps.map((step, idx) => (
                                 <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>

@@ -257,8 +257,8 @@ function SubscriptionsInner() {
                     <div style={{ marginBottom: '0.6rem' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
                         <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{sub.remaining === 'Unlimited' ? " " : sub.remaining}</span>
-                        {sub.plan_type !== 'duration' && <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>/ {sub.limit}</span>}
-                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.5rem' }}>{sub.remaining === 'Unlimited' ? 'Full Access' : 'Contacts Left'}</span>
+                        {sub.plan_type !== 'duration' && <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {sub.limit}</span>}
+                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{sub.remaining === 'Unlimited' ? 'Full Access' : 'Contacts Left'}</span>
                       </div>
                     </div>
                     <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
@@ -360,7 +360,7 @@ function SubscriptionsInner() {
                             { icon: 'chat', text: 'Direct Messaging Access' },
                           ].map((f, i) => (
                             <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
-                              <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: (isFeatured || isPopular) ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                              <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
                               <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
                             </li>
                           ))}
