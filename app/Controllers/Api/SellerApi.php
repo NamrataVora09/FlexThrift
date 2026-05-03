@@ -1448,11 +1448,19 @@ class SellerApi extends ResourceController
 
         $referralDiscount = 0;
         $referralBalance  = (float) ($user['referral_balance'] ?? 0);
-        $hasUsed          = (int) ($user['has_used_referral'] ?? 0);
         $expiry           = $user['referral_expires_at'] ?? null;
-        if ($referralBalance > 0 && $hasUsed === 0) {
+        
+        if ($referralBalance > 0) {
             if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
-                $referralDiscount = $referralBalance;
+                $settingsRows = $db->table('system_settings')
+                    ->where('setting_key', 'referral_max_discount_percent')
+                    ->get()->getRowArray();
+                $maxPercent = (float) ($settingsRows['setting_value'] ?? 50);
+                
+                // Calculate max discount allowed for this plan
+                $maxAllowed = ($plan['price'] * $maxPercent) / 100;
+                
+                $referralDiscount = min($referralBalance, $maxAllowed);
             }
         }
 
@@ -1471,6 +1479,7 @@ class SellerApi extends ResourceController
                 'charge_breakdown' => $chargeBreakdown,
                 'total_charges'    => $totalCharges,
                 'referral_discount'=> $referralDiscount,
+                'total_referral_balance' => $referralBalance,
                 'total'            => $total,
             ],
         ]);
@@ -1582,11 +1591,19 @@ class SellerApi extends ResourceController
         $referralDiscountApplied = 0;
         if ($useReferral) {
             $referralBalance = (float) ($user['referral_balance'] ?? 0);
-            $hasUsed         = (int) ($user['has_used_referral'] ?? 0);
             $expiry          = $user['referral_expires_at'] ?? null;
-            if ($referralBalance > 0 && $hasUsed === 0) {
+            
+            if ($referralBalance > 0) {
                 if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
-                    $referralDiscountApplied = $referralBalance;
+                    $settingsRows = $db->table('system_settings')
+                        ->where('setting_key', 'referral_max_discount_percent')
+                        ->get()->getRowArray();
+                    $maxPercent = (float) ($settingsRows['setting_value'] ?? 50);
+                    
+                    // Calculate max discount allowed for this plan
+                    $maxAllowed = ($basePrice * $maxPercent) / 100;
+                    
+                    $referralDiscountApplied = min($referralBalance, $maxAllowed);
                     $finalAmount -= $referralDiscountApplied;
                 }
             }
@@ -1695,11 +1712,12 @@ class SellerApi extends ResourceController
                     'transaction_id'   => $status['data']['transactionId'] ?? ('SLR-' . time()),
                     'created_at'       => date('Y-m-d H:i:s'),
                 ]);
-                // Mark referral discount as used if seller used their own referral balance
+                // Deduct used referral balance
                 if ((float) $dbSub['referral_discount_applied'] > 0) {
+                    $user = $db->table('users')->where('id', $dbSub['user_id'])->get()->getRowArray();
+                    $newBalance = max(0, (float)$user['referral_balance'] - (float)$dbSub['referral_discount_applied']);
                     $db->table('users')->where('id', $dbSub['user_id'])->update([
-                        'has_used_referral' => 1,
-                        'referral_balance'  => 0,
+                        'referral_balance'  => $newBalance,
                         'updated_at'        => date('Y-m-d H:i:s'),
                     ]);
                 }
@@ -1710,14 +1728,14 @@ class SellerApi extends ResourceController
                     $referrer = $db->table('users')->where('referral_code', $buyer['referred_by'])->get()->getRowArray();
                     if ($referrer) {
                         $settings = $db->table('system_settings')
-                            ->whereIn('setting_key', ['referral_reward_amount', 'referral_expiry_days', 'referral_enabled'])
+                            ->whereIn('setting_key', ['referral_referrer_reward', 'referral_reward_amount', 'referral_expiry_days', 'referral_enabled'])
                             ->get()->getResultArray();
                         $cfg = [];
                         foreach ($settings as $s) $cfg[$s['setting_key']] = $s['setting_value'];
 
                         if (($cfg['referral_enabled'] ?? '1') === '1') {
-                            $rewardAmount = (float) ($cfg['referral_reward_amount'] ?? 40);
-                            $expiryDays   = (int)   ($cfg['referral_expiry_days']   ?? 7);
+                            $rewardAmount = (float) ($cfg['referral_referrer_reward'] ?? $cfg['referral_reward_amount'] ?? 50);
+                            $expiryDays   = (int)   ($cfg['referral_expiry_days']   ?? 30);
                             $newBalance   = (float) ($referrer['referral_balance']   ?? 0) + $rewardAmount;
                             $expiresAt    = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
 
@@ -1726,7 +1744,7 @@ class SellerApi extends ResourceController
                                 'referral_expires_at' => $expiresAt,
                                 'updated_at'          => date('Y-m-d H:i:s'),
                             ]);
-                            // Mark buyer's referral as processed so referrer isn't credited again
+                            // Mark buyer's referral as processed so referrer isn't credited again for this friend
                             $db->table('users')->where('id', $dbSub['user_id'])->update([
                                 'has_used_referral' => 1,
                                 'updated_at'        => date('Y-m-d H:i:s'),

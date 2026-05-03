@@ -278,24 +278,30 @@ class AuthApi extends ResourceController
             return $this->respond(['success' => false, 'message' => 'Registration failed'], 500);
         }
 
-        // Process referral code — only record it; reward is credited after friend buys a plan
+        // Process referral code
         $referredBy = strtoupper(trim($data['referred_by'] ?? ''));
         if ($referredBy) {
             $db = \Config\Database::connect();
             $referrer = $db->table('users')->where('referral_code', $referredBy)->get()->getRowArray();
             if ($referrer && $referrer['id'] !== $userId) {
-                $settings = $db->table('system_settings')
-                    ->whereIn('setting_key', ['referral_enabled'])
+                $settingsRows = $db->table('system_settings')
+                    ->whereIn('setting_key', ['referral_enabled', 'referral_receiver_reward', 'referral_expiry_days'])
                     ->get()->getResultArray();
                 $cfg = [];
-                foreach ($settings as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+                foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
 
                 if (($cfg['referral_enabled'] ?? '1') === '1') {
-                    // Record that this user was referred; referrer balance credited on first plan purchase
+                    $receiverReward = (float) ($cfg['referral_receiver_reward'] ?? 50);
+                    $expiryDays     = (int)   ($cfg['referral_expiry_days']      ?? 30);
+                    $expiresAt      = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
+
+                    // Credit the receiver immediately
                     $db->table('users')->where('id', $userId)->update([
-                        'referred_by'       => $referredBy,
-                        'has_used_referral' => 0,
-                        'updated_at'        => date('Y-m-d H:i:s'),
+                        'referred_by'         => $referredBy,
+                        'referral_balance'    => $receiverReward,
+                        'referral_expires_at' => $expiresAt,
+                        'has_used_referral'   => 0, // Mark 0 so referrer can still be credited on first purchase
+                        'updated_at'          => date('Y-m-d H:i:s'),
                     ]);
                 }
             }
@@ -379,14 +385,14 @@ class AuthApi extends ResourceController
 
         // Fetch referral settings
         $rows = $db->table('system_settings')
-            ->whereIn('setting_key', ['referral_enabled', 'referral_reward_amount', 'referral_expiry_days', 'referral_how_it_works', 'referral_terms'])
+            ->whereIn('setting_key', ['referral_enabled', 'referral_referrer_reward', 'referral_reward_amount', 'referral_expiry_days', 'referral_how_it_works', 'referral_terms'])
             ->get()->getResultArray();
         $cfg = [];
         foreach ($rows as $r) {
             $cfg[$r['setting_key']] = $r['setting_value'];
         }
 
-        $rewardAmount = (float) ($cfg['referral_reward_amount'] ?? 40);
+        $rewardAmount = (float) ($cfg['referral_referrer_reward'] ?? $cfg['referral_reward_amount'] ?? 50);
         $referralEnabled = ($cfg['referral_enabled'] ?? '1') === '1';
         $howItWorks = json_decode($cfg['referral_how_it_works'] ?? '[]', true);
         $terms = json_decode($cfg['referral_terms'] ?? '[]', true);

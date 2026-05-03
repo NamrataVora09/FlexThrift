@@ -26,6 +26,7 @@ interface CheckoutData {
   charge_breakdown: ChargeItem[];
   total_charges: number;
   referral_discount: number;
+  total_referral_balance: number;
   total: number;
 }
 
@@ -62,8 +63,9 @@ export default function SellerCheckoutPlanPage() {
 
   const basePrice = Number(checkoutData?.plan?.price ?? 0);
   const totalCharges = checkoutData?.total_charges ?? 0;
-  const availableReferral = checkoutData?.referral_discount ?? 0;
-  const referralDiscount = useReferral ? availableReferral : 0;
+  const availableReferral = checkoutData?.total_referral_balance ?? 0;
+  const appliedReferral = checkoutData?.referral_discount ?? 0;
+  const referralDiscount = useReferral ? appliedReferral : 0;
   const displayTotal = Math.max(0, basePrice + totalCharges - referralDiscount - couponDiscount);
 
   const applyCoupon = useCallback(async () => {
@@ -280,6 +282,11 @@ export default function SellerCheckoutPlanPage() {
                         </div>
                         <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
                           ₹{availableReferral.toFixed(2)} available
+                          {availableReferral > appliedReferral && useReferral && (
+                            <span className="ms-1 text-primary" style={{ fontSize: '0.7rem' }}>
+                              (Max ₹{appliedReferral.toFixed(0)} applicable for this plan)
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

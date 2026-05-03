@@ -265,13 +265,47 @@ export default function SettingsClient() {
                 <input type="number" min="1" className="form-control" style={inputStyle} value={settings.min_rental_days || '3'} onChange={(e) => update('min_rental_days', e.target.value)} />
                 <small className="text-muted">Min days a buyer must rent a product.</small>
               </div>
-              <div className="col-md-6">
+              <div className="col-md-9">
                 <label className="form-label fw-semibold">Fallback Rental Cost Per Day (%)</label>
                 <input type="number" min="0" max="100" className="form-control" style={inputStyle} value={settings.fallback_rental_cost_per_day || '0'} onChange={(e) => update('fallback_rental_cost_per_day', e.target.value)} />
                 <small className="text-muted">
                   <i className="bi bi-info-circle me-1 text-warning"></i>
                   When no pricing rules exist: <strong>Deposit = Original Price</strong>, and <strong>Daily Rent = Deposit - {settings.fallback_rental_cost_per_day || '0'}%</strong>.
                 </small>
+              </div>
+            </div>
+          </Section>
+
+          {/* ── Referral Settings ── */}
+          <Section title="Referral Settings" icon="bi-people">
+            <div className="row g-3">
+              <div className="col-12">
+                <Toggle
+                  label="Enable Referral Program"
+                  desc="When enabled, users can refer others using their unique code and earn rewards."
+                  settingKey="referral_enabled"
+                  settings={settings}
+                  update={update}
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Referrer Reward (₹)</label>
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.referral_referrer_reward || settings.referral_reward_amount || '50'} onChange={(e) => update('referral_referrer_reward', e.target.value)} />
+                <small className="text-muted">Amount earned by the person whose code is used (after purchase).</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Receiver Reward (₹)</label>
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.referral_receiver_reward || '50'} onChange={(e) => update('referral_receiver_reward', e.target.value)} />
+                <small className="text-muted">Amount earned by the person using the referral code (immediately).</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Max Discount Usage (%)</label>
+                <input type="number" min="0" max="100" className="form-control" style={inputStyle} value={settings.referral_max_discount_percent || '50'} onChange={(e) => update('referral_max_discount_percent', e.target.value)} />
+                <small className="text-muted">Max percentage of plan price that can be covered by rewards.</small>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Reward Expiry (days)</label>
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.referral_expiry_days || '30'} onChange={(e) => update('referral_expiry_days', e.target.value)} />
               </div>
             </div>
           </Section>
