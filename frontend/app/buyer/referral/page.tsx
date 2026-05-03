@@ -341,16 +341,16 @@ export default function BuyerReferralPage() {
             <div className="spinner-border" style={{ color: '#ffc63a' }}></div>
           </div>
         ) : !stats?.referral_enabled ? (
-        ''
+          ''
         ) : (
           <>
             {/* Hero */}
-           
+
 
             {/* Stats Row */}
             <div className="row g-3 mb-4">
 
-<div className="col-6 col-md-4">
+              <div className="col-6 col-md-4">
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: 'rgba(16,185,129,0.1)' }}>
                     <i className="bi bi-currency-rupee" style={{ color: '#10b981' }}></i>
@@ -360,7 +360,7 @@ export default function BuyerReferralPage() {
                   <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '4px' }}>after friend buys a plan</div>
                 </div>
               </div>
-<div className="col-6 col-md-4">
+              <div className="col-6 col-md-4">
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: 'rgba(99,102,241,0.1)' }}>
                     <i className="bi bi-wallet2" style={{ color: '#6366f1' }}></i>
@@ -369,7 +369,7 @@ export default function BuyerReferralPage() {
                   <div className="stat-label">Current Balance</div>
                 </div>
               </div>
-<div className="col-6 col-md-4">
+              <div className="col-6 col-md-4">
                 <div className="stat-card">
                   <div className="stat-icon" style={{ background: 'rgba(239,68,68,0.1)' }}>
                     <i className="bi bi-gift-fill" style={{ color: '#ef4444' }}></i>
@@ -475,8 +475,8 @@ export default function BuyerReferralPage() {
                       {stats.referral_expires_at && !isExpired
                         ? `Valid until ${formatDate(stats.referral_expires_at)}`
                         : isExpired
-                        ? 'Balance has expired'
-                        : 'Applied automatically at checkout'}
+                          ? 'Balance has expired'
+                          : 'Applied automatically at checkout'}
                     </p>
                     <div style={{ marginTop: '16px', fontSize: '0.85rem', fontWeight: 600, opacity: 0.75 }}>
                       <i className="bi bi-info-circle me-1"></i>
@@ -506,15 +506,15 @@ export default function BuyerReferralPage() {
 
                 {/* Share Your Code */}
                 <div className="info-card">
-                  <h5>
+                  <h5 className='flex items-center justify-center'>
                     <i className="bi bi-share-fill" style={{ color: '#ffc63a' }}></i>
                     Share Your Code
                   </h5>
                   {stats.referral_code ? (
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ background: '#f8f9fa', borderRadius: '16px', padding: '24px', marginBottom: '16px', textAlign: 'left' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', marginLeft: '4px' }}>Your Referral Code</div>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 900, letterSpacing: '4px', color: '#ffc63a', fontFamily: 'monospace', textAlign: 'center' }}>{stats.referral_code}</div>
+                      <div style={{ background: '#f8f9fa', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#000', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', marginLeft: '4px' }}>Your Referral Code</div>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, letterSpacing: '4px', color: '#9ca3af', fontFamily: 'monospace', textAlign: 'center' }}>{stats.referral_code}</div>
                       </div>
                       <div className="d-flex flex-column gap-2">
                         <button className="btn-copy w-100" style={{ height: '45px' }} onClick={handleCopy}>
