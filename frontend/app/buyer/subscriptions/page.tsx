@@ -22,6 +22,7 @@ interface ActiveSub {
   plan_name: string;
   plan_type: string;
   limit_value: number;
+  duration_hours: number;
   price: string;
   starts_at: string;
   created_at: string;
@@ -33,6 +34,7 @@ interface HistoryItem {
   plan_name: string;
   plan_type: string;
   limit_value: number;
+  duration_hours: number;
   price: string;
   starts_at: string;
   expires_at: string;
@@ -174,14 +176,15 @@ function SubscriptionsInner() {
         .stat-circle{width:130px;height:130px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid #ffc63a;margin:0 auto 20px}
         .value-large{font-size:2.5rem;font-weight:800;color:#000;line-height:1}
         .label-small{font-size:10px;font-weight:700;color:#6c757d;text-transform:uppercase;margin-top:5px}
-        .tier-basic{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;border-top:4px solid transparent;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;display:flex;flex-direction:column}
-        .tier-standard{ background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transform:scale(1.03);z-index:10}
-        .tier-elite{background:#e7efe5;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
+        .tier-basic{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;border:1px solid #e5e7eb;box-shadow: 0 10px 30px rgba(0,0,0,0.05);display:flex;flex-direction:column}
+        .tier-standard{ background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transform:scale(1.03);z-index:10; border:1px solid #e5e7eb;box-shadow: 0 10px 30px rgba(0,0,0,0.05);border:1px solid #e5e7eb;box-shadow: 0 10px 30px rgba(0,0,0,0.05);}
+        .tier-elite{background:#e7efe5;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);}
         .tier-badge{position:absolute;top:0px;right:-5px;background:#d7b467;color:#ffff;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
         .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
         .tier-btn-basic:hover{background:#0a0a0a;color:#fff}
         .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
-        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#D7B467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#d7b467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-elite:hover{background:#c5a356}
 
         .btn-brand-sub{background:#ffc63a;color:#ffff;border:none;padding:14px;border-radius:12px;font-weight:700;width:100%;transition:.3s;cursor:pointer}
         .btn-brand-sub:hover{background:#000;color:#ffc63a}
@@ -242,12 +245,12 @@ function SubscriptionsInner() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
                       <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active Plan</span>
                       <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>
-                        Valid until {isLifetime(sub.expires_at) ? 'No Expiry' : fmtDateLong(sub.expires_at)}
+                        Valid For {sub.duration_hours > 0 ? `${sub.duration_hours} hour/s` : 'Unlimited hours'} 
                       </span>
                     </div>
                     <h2 style={{ fontSize: 'clamp(2rem,5vw,3.25rem)', fontWeight: 900, letterSpacing: '-0.04em', color: '#111', marginBottom: '0.6rem', lineHeight: 1 }}>{sub.plan_name}</h2>
-                    <p style={{ color: '#6b7280', fontSize: '0.88rem', maxWidth: '28rem', marginBottom: '2rem' }}>
-                      {sub.plan_type === 'duration' ? 'Full duration-based access to all platform features.' : `Usage-based plan · ${sub.used} used out of ${sub.limit} contacts.`}
+                    <p style={{ color: '#6b7280', fontSize: '0.88rem', maxWidth: '28rem', marginBottom: '2rem', textTransform: 'capitalize' }}>
+                      {sub.plan_type.toUpperCase()} BASED
                     </p>
                   </div>
                   <div style={{ position: 'relative', zIndex: 1 }}>
@@ -255,8 +258,8 @@ function SubscriptionsInner() {
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
                         <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{sub.remaining === 'Unlimited' ? " " : sub.remaining}</span>
                         {sub.plan_type !== 'duration' && <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>/ {sub.limit}</span>}
+                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.5rem' }}>{sub.remaining === 'Unlimited' ? 'Full Access' : 'Contacts Left'}</span>
                       </div>
-                      <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{sub.remaining === 'Unlimited' ? 'Full Access' : 'Contacts Left'}</span>
                     </div>
                     <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
                       <div style={{ height: '100%', background: '#ffc63a', width: sub.plan_type === 'duration' ? '100%' : `${Math.max(2, 100 - sub.percentUsed)}%`, transition: 'width 0.5s' }} />
@@ -332,9 +335,9 @@ function SubscriptionsInner() {
                   const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
                   const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
                   const nameColor =  '#0a0a0a' ;
-                  const typeColor = isPopular ? '#755700' : '#5a5c5c';
+                  const typeColor = isFeatured ? '#734d26' : '#6b7280';
                   const priceColor =  '#0a0a0a';
-                  const iconColor = (isFeatured || isPopular) ? '#fdc003' : '#9ca3af';
+                  const iconColor = '#fdc003';
                   const textColor =  '#2d2f2f';
                   return (
                     <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopPlans.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>

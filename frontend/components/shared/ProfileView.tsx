@@ -123,10 +123,10 @@ export default function ProfileView({ role }: Props) {
                       ['Full Name', profile?.name],
                       ['Email', profile?.email],
                       ['Mobile', profile?.mobile],
+                      ['State', profile?.state],
+                      ['City', profile?.city],
                       ['Address', profile?.address],
                       ['PIN Code', profile?.pin_code],
-                      ['City', profile?.city],
-                      ['State', profile?.state],
                       ['Account Type', profile?.user_type],
                       ['Role', profile?.role],
                       ['Reliability Score', profile?.reliability_score],
@@ -144,10 +144,10 @@ export default function ProfileView({ role }: Props) {
                     {[
                       { key: 'name', label: 'Full Name' },
                       { key: 'mobile', label: 'Mobile' },
+                      { key: 'state', label: 'State' },
+                      { key: 'city', label: 'City' },
                       { key: 'address', label: 'Address' },
                       { key: 'pin_code', label: 'PIN Code' },
-                      { key: 'city', label: 'City' },
-                      { key: 'state', label: 'State' },
                     ].map((field) => (
                       <div className="col-md-6" key={field.key}>
                         <label className="form-label small fw-bold">{field.label}</label>

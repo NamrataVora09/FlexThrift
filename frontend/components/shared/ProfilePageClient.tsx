@@ -439,9 +439,9 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                       ['Gender', user.gender || '—'],
                       ['Email', user.email || '—'],
                       ['Mobile Number', user.mobile || '—'],
-                      ['Current Address', user.address || '—'],
-                      ['City', user.city || '—'],
                       ['State', user.state || '—'],
+                      ['City', user.city || '—'],
+                      ['Current Address', user.address || '—'],
                       ['PIN Code', user.pin_code || '—'],
                       ['Alternate Mobile', user.alternate_mobile || '—'],
                       ['Account Type', user.user_type === 'both' ? 'Buyer & Seller' : (user.user_type || user.role)],
@@ -565,6 +565,14 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                       <label>Alternate Mobile</label>
                       <input type="tel" value={form.alternate_mobile} onChange={(e) => setForm({ ...form, alternate_mobile: e.target.value })} />
                     </div>
+                    <div className="col-md-6 modal-field">
+                      <label>State</label>
+                      <input type="text" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+                    </div>
+                    <div className="col-md-6 modal-field">
+                      <label>City</label>
+                      <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                    </div>
                     <div className="col-12 modal-field">
                       <label>Current Address</label>
                       <textarea rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
@@ -572,14 +580,6 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                     <div className="col-md-4 modal-field">
                       <label>PIN Code</label>
                       <input type="text" value={form.pin_code} onChange={(e) => setForm({ ...form, pin_code: e.target.value })} />
-                    </div>
-                    <div className="col-md-4 modal-field">
-                      <label>City</label>
-                      <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-                    </div>
-                    <div className="col-md-4 modal-field">
-                      <label>State</label>
-                      <input type="text" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
                     </div>
                   </div>
 

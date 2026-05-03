@@ -162,7 +162,7 @@ class SharedApi extends ResourceController
             ->get()->getResultArray();
 
         $active = $db->table('user_subscriptions us')
-            ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price')
+            ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours')
             ->join('subscription_plans sp', 'sp.id = us.plan_id')
             ->where('us.user_id', $jwtUser['user_id'])
             ->where('us.is_active', 1)
@@ -171,7 +171,7 @@ class SharedApi extends ResourceController
             ->get()->getRowArray();
 
         $history = $db->table('user_subscriptions us')
-            ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price')
+            ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours')
             ->join('subscription_plans sp', 'sp.id = us.plan_id')
             ->where('us.user_id', $jwtUser['user_id'])
             ->orderBy('us.created_at', 'DESC')

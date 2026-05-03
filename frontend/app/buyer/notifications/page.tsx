@@ -21,9 +21,9 @@ function getIconInfo(title: string, type: string, message: string) {
   const msgLower = (message || '').toLowerCase();
   
   if (titleLower.includes('accepted') || titleLower.includes('finalized') || titleLower.includes('confirmed')) {
-    return { iconClass: 'icon-success', icon: 'fa-solid fa-circle-check' };
+    return { iconClass: 'icon-success', icon: 'bi bi-chat-left-dots-fill' };
   } else if (titleLower.includes('rejected') || titleLower.includes('not accepted')) {
-    return { iconClass: 'icon-reject', icon: 'fa-solid fa-circle-xmark' };
+    return { iconClass: 'icon-reject', icon: 'bi bi-chat-left-dots-fill' };
   } else if (titleLower.includes('suggested') || titleLower.includes('proposed') || msgLower.includes('suggested') || msgLower.includes('proposed')) {
     return { iconClass: 'icon-suggest', icon: 'fa-solid fa-calendar-days' };
   }

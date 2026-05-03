@@ -50,11 +50,11 @@ export default function NotificationsView({ role, apiPath }: Props) {
                   let bg = '#f8f9fa';
 
                   if (title.includes('accepted') || title.includes('finalized') || title.includes('confirmed')) {
-                    icon = 'fa-solid fa-circle-check';
+                    icon = 'bi bi-chat-left-dots-fill';
                     color = '#2e7d32'; // Green
                     bg = '#e8f5e9';
                   } else if (title.includes('rejected') || title.includes('not accepted')) {
-                    icon = 'fa-solid fa-circle-xmark';
+                    icon = 'bi bi-chat-left-dots-fill';
                     color = '#d32f2f'; // Red
                     bg = '#ffebee';
                   } else if (title.includes('suggested') || title.includes('proposed') || msg.includes('suggested') || msg.includes('proposed')) {
@@ -65,8 +65,8 @@ export default function NotificationsView({ role, apiPath }: Props) {
 
                   return (
                     <div key={n.id} className={`list-group-item d-flex align-items-start gap-3 py-3 ${n.is_read ? '' : 'bg-light bg-opacity-50'}`}>
-                      <div 
-                        className="d-flex align-items-center justify-content-center flex-shrink-0" 
+                      <div
+                        className="d-flex align-items-center justify-content-center flex-shrink-0"
                         style={{ width: 40, height: 40, borderRadius: 10, background: bg, color: color }}
                       >
                         <i className={`${icon}`} style={{ fontSize: 18 }}></i>

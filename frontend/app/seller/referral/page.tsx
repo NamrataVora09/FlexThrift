@@ -145,7 +145,7 @@ export default function SellerReferralPage() {
         }
         .btn-copy {
           background: #ffc63a;
-          color: #000;
+          color: #fff;
           border: none;
           padding: 12px 24px;
           border-radius: 12px;
@@ -237,24 +237,24 @@ export default function SellerReferralPage() {
         .step-num {
           width: 40px;
           height: 40px;
-          background: #ffc63a;
-          color: #000;
-          border-radius: 12px;
+          background: #d6b06b;
+          color: #fff;
+          border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: 900;
           font-family: 'Outfit', sans-serif;
           font-size: 1.1rem;
-          box-shadow: 0 8px 20px rgba(255,198,58,0.25);
           position: relative;
           z-index: 2;
         }
         .step-line {
           width: 2px;
           flex-grow: 1;
-          background: #f0f0f0;
-          margin: 8px 0;
+          background: #000;
+          opacity: 0.4;
+          margin: 4px 0;
         }
         .step-text {
           flex: 1;
@@ -512,21 +512,20 @@ export default function SellerReferralPage() {
                   </h5>
                   {stats.referral_code ? (
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ background: '#f8f9fa', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Your Referral Code</div>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 900, letterSpacing: '4px', color: '#ffc63a', fontFamily: 'monospace' }}>{stats.referral_code}</div>
+                      <div style={{ background: '#f8f9fa', borderRadius: '16px', padding: '24px', marginBottom: '16px', textAlign: 'left' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px', marginLeft: '4px' }}>
+                           Your Referral Code
+                        </div>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, letterSpacing: '4px', color: '#ffc63a', fontFamily: 'monospace', textAlign: 'center' }}>{stats.referral_code}</div>
                       </div>
                       <div className="d-flex flex-column gap-2">
                         <button className="btn-copy w-100" style={{ height: '45px' }} onClick={handleCopy}>
                           <i className={`bi ${copied ? 'bi-check2' : 'bi-clipboard'} me-2`}></i>
                           {copied ? 'Copied!' : 'Copy Code Only'}
                         </button>
-                        <button className="btn-share w-100" style={{ height: '45px', background: '#000', color: '#ffc63a', borderColor: '#000' }} onClick={handleCopyRegLink}>
+                        <button className="btn-share w-100" style={{ height: '45px', background: '#d7b467', color: '#fff', borderColor: '#d7b467' }} onClick={handleCopyRegLink}>
                           <i className={`bi ${regCopied ? 'bi-check2' : 'bi-link-45deg'} me-2`}></i>
                           {regCopied ? 'Link Copied!' : 'Copy Registration Link'}
-                        </button>
-                        <button className="btn-share w-100" style={{ height: '45px' }} onClick={handleShare}>
-                          <i className="bi bi-share me-2"></i>Share Link
                         </button>
                       </div>
                       {shareMsg && (

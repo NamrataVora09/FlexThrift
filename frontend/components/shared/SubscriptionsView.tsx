@@ -251,15 +251,15 @@ export default function SubscriptionsView({ role, userType }: Props) {
         .nav-btn.left { left: -15px; }
         .nav-btn.right { right: -15px; }
 
-        .tier-basic{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;border-top:4px solid transparent;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;display:flex;flex-direction:column}
-        .tier-standard{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transform:scale(1.03);z-index:10}
-        .tier-elite{background:#0c0f0f;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden}
+        .tier-basic{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;border:1px solid #e5e7eb;box-shadow: 0 10px 30px rgba(0,0,0,0.05);display:flex;flex-direction:column}
+        .tier-standard{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transform:scale(1.03);z-index:10; border: 2px solid #fdc003; box-shadow: 0 15px 40px rgba(253,192,3,0.15);}
+        .tier-elite{background:#0c0f0f;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);}
         .tier-badge{position:absolute;top:0;right:0;background:#fdc003;color:#3d2b00;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
-        .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:none;border:2px solid #0a0a0a;color:#0a0a0a;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:none;border:2px solid #fdc003;color:#0a0a0a;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
         .tier-btn-basic:hover{background:#0a0a0a;color:#fff}
         .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#3d2b00;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
-        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#fff;color:#0a0a0a;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-elite:hover{background:#fdc003}
+        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#d7b467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-elite:hover{background:#c5a356}
         
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
         @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
@@ -365,9 +365,9 @@ export default function SubscriptionsView({ role, userType }: Props) {
                 const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
                 const btnClass  = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
                 const nameColor  = isFeatured ? '#fff' : '#0a0a0a';
-                const typeColor  = isFeatured ? '#fdc003' : isPopular ? '#755700' : '#5a5c5c';
+                const typeColor  = isFeatured ? '#734d26' : '#6b7280';
                 const priceColor = isFeatured ? '#fff' : '#0a0a0a';
-                const iconColor  = (isFeatured || isPopular) ? '#fdc003' : '#9ca3af';
+                const iconColor  = '#fdc003';
                 const textColor  = isFeatured ? '#fff' : '#2d2f2f';
                 return (
                   <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopSeller.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
@@ -417,9 +417,9 @@ export default function SubscriptionsView({ role, userType }: Props) {
                   const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
                   const btnClass  = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
                   const nameColor  = isFeatured ? '#fff' : '#0a0a0a';
-                  const typeColor  = isFeatured ? '#fdc003' : isPopular ? '#755700' : '#5a5c5c';
+                  const typeColor  = isFeatured ? '#734d26' : '#6b7280';
                   const priceColor = isFeatured ? '#fff' : '#0a0a0a';
-                  const iconColor  = (isFeatured || isPopular) ? '#fdc003' : '#9ca3af';
+                  const iconColor  = '#fdc003';
                   const textColor  = isFeatured ? '#fff' : '#2d2f2f';
                   return (
                     <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopBuyer.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
