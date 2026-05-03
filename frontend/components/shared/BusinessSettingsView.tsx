@@ -64,7 +64,8 @@ const TABS = [
   { key: 'messages',  label: 'App Messages',          icon: 'bi-chat-dots' },
   { key: 'payment',   label: 'Payment Integration',   icon: 'bi-phone' },
   { key: 'charges',   label: 'Fee Management',        icon: 'bi-receipt' },
-  { key: 'referral',  label: 'Referral System',       icon: 'bi-person-plus' },
+  { key: 'referral',  label: 'Referral Program',    icon: 'bi-person-plus' },
+  { key: 'upgrades',  label: 'Subscription Upgrade',  icon: 'bi-rocket-takeoff' },
   { key: 'rejection', label: 'Rejection Templates',   icon: 'bi-x-circle' },
 ];
 
@@ -107,6 +108,12 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
   referral_expiry_days: { label: 'Referral Expiry (Days)' },
   referral_min_purchase: { label: 'Min Purchase for Reward (₹)', hint: 'Minimum purchase to activate referral reward.' },
   referral_enabled: { label: 'Referral System Enabled', type: 'toggle' },
+  seller_unlock_label: { label: 'Unlock Label' },
+  seller_unlock_title: { label: 'Unlock Title' },
+  seller_unlock_btn: { label: 'Unlock Button Text' },
+  buyer_unlock_label: { label: 'Unlock Label' },
+  buyer_unlock_title: { label: 'Unlock Title' },
+  buyer_unlock_btn: { label: 'Unlock Button Text' },
 };
 
 const TAB_FIELDS: Record<string, string[]> = {
@@ -116,12 +123,96 @@ const TAB_FIELDS: Record<string, string[]> = {
   smtp: ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name'],
   messages: [],
   payment: ['phonepe_env', 'phonepe_merchant_id', 'phonepe_client_id', 'phonepe_client_secret', 'phonepe_client_version'],
-  referral: ['referral_reward_amount', 'referral_expiry_days', 'referral_min_purchase', 'referral_enabled'],
+  referral: [],
+  upgrades: [],
   rejection: [],
 };
 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 const labelStyle: React.CSSProperties = { fontWeight: 500, fontSize: '0.875rem', color: '#4b566b', marginBottom: '0.5rem' };
+const sectionHeaderStyle: React.CSSProperties = { fontWeight: 700, fontSize: '1rem', color: '#1e2022', marginBottom: '1rem', borderBottom: '2px solid #ffc63a', display: 'inline-block', paddingBottom: '0.2rem' };
+
+// ==================== HELPER COMPONENTS ====================
+function ListEditor({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+  const [items, setItems] = useState<string[]>([]);
+  useEffect(() => { try { const parsed = JSON.parse(value || '[]'); if (Array.isArray(parsed)) setItems(parsed); } catch (e) { setItems([]); } }, [value]);
+  const updateItems = (newItems: string[]) => { setItems(newItems); onChange(JSON.stringify(newItems)); };
+  const addItem = () => updateItems([...items, '']);
+  const removeItem = (idx: number) => updateItems(items.filter((_, i) => i !== idx));
+  const editItem = (idx: number, val: string) => { const next = [...items]; next[idx] = val; updateItems(next); };
+  return (
+    <div className="mb-3">
+      <label className="form-label fw-semibold d-flex justify-content-between align-items-center" style={{ fontSize: '0.875rem' }}>
+        {label}
+        <button type="button" className="btn btn-sm btn-outline-warning" onClick={addItem}><i className="bi bi-plus-lg me-1"></i>Add Item</button>
+      </label>
+      <div className="d-flex flex-column gap-2">
+        {items.map((item, i) => (
+          <div key={i} className="d-flex gap-2">
+            <input className="form-control" style={inputStyle} value={item} onChange={(e) => editItem(i, e.target.value)} placeholder={placeholder} />
+            <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removeItem(i)}><i className="bi bi-trash"></i></button>
+          </div>
+        ))}
+        {items.length === 0 && <div className="text-center py-3 rounded-3" style={{ border: '1px dashed #ccc', color: '#999', fontSize: '0.8rem' }}>No items added.</div>}
+      </div>
+    </div>
+  );
+}
+
+function StepsEditor({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [steps, setSteps] = useState<{ title: string; desc: string }[]>([]);
+  useEffect(() => { try { const parsed = JSON.parse(value || '[]'); if (Array.isArray(parsed)) setSteps(parsed); } catch (e) { setSteps([]); } }, [value]);
+  const updateSteps = (newSteps: { title: string; desc: string }[]) => { setSteps(newSteps); onChange(JSON.stringify(newSteps)); };
+  const addStep = () => updateSteps([...steps, { title: '', desc: '' }]);
+  const removeStep = (idx: number) => updateSteps(steps.filter((_, i) => i !== idx));
+  const editStep = (idx: number, field: 'title' | 'desc', val: string) => { const next = [...steps]; next[idx] = { ...next[idx], [field]: val }; updateSteps(next); };
+  return (
+    <div className="mb-4">
+      <label className="form-label fw-semibold d-flex justify-content-between align-items-center" style={{ fontSize: '0.875rem' }}>
+        {label}
+        <button type="button" className="btn btn-sm btn-outline-warning" onClick={addStep}><i className="bi bi-plus-lg me-1"></i>Add Step</button>
+      </label>
+      <div className="d-flex flex-column gap-3">
+        {steps.map((step, i) => (
+          <div key={i} className="p-3 rounded-3 position-relative" style={{ background: '#f8f9fa', border: '1px solid #eee' }}>
+            <button type="button" className="btn btn-outline-danger btn-sm position-absolute top-0 end-0 m-2" onClick={() => removeStep(i)}><i className="bi bi-trash"></i></button>
+            <div className="row g-2">
+              <div className="col-12">
+                <input className="form-control fw-bold border-0 bg-transparent mb-1" style={{ padding: '0.2rem 0', fontSize: '0.95rem' }} value={step.title} onChange={(e) => editStep(i, 'title', e.target.value)} placeholder="Step Title (e.g. Share Your Code)" />
+              </div>
+              <div className="col-12">
+                <textarea className="form-control border-0 bg-transparent" style={{ padding: '0', fontSize: '0.875rem', minHeight: '40px', resize: 'none' }} value={step.desc} onChange={(e) => editStep(i, 'desc', e.target.value)} placeholder="Step Description..." />
+              </div>
+            </div>
+          </div>
+        ))}
+        {steps.length === 0 && <div className="text-center py-3 rounded-3" style={{ border: '1px dashed #ccc', color: '#999', fontSize: '0.8rem' }}>No steps added.</div>}
+      </div>
+    </div>
+  );
+}
+
+function UnlockItemsEditor({ settingKey, settings, update }: { settingKey: string; settings: Record<string, string>; update: (k: string, v: string) => void }) {
+  const defaultItems = [{ icon: '', text: '' }];
+  let items: { icon: string; text: string }[] = defaultItems;
+  try { const p = JSON.parse(settings[settingKey] || '[]'); if (Array.isArray(p) && p.length) items = p; } catch {}
+  const save = (next: { icon: string; text: string }[]) => update(settingKey, JSON.stringify(next));
+  const add = () => save([...items, { icon: '', text: '' }]);
+  const remove = (i: number) => save(items.filter((_, idx) => idx !== i));
+  const edit = (i: number, field: 'icon' | 'text', val: string) => { const next = [...items]; next[i] = { ...next[i], [field]: val }; save(next); };
+  return (
+    <div className="d-flex flex-column gap-2">
+      {items.map((item, i) => (
+        <div key={i} className="d-flex gap-2 align-items-center">
+          <input className="form-control form-control-sm" style={{ ...inputStyle, width: 140 }} placeholder="Icon (e.g. stars)" value={item.icon} onChange={(e) => edit(i, 'icon', e.target.value)} />
+          <input className="form-control form-control-sm" style={inputStyle} placeholder="Feature text" value={item.text} onChange={(e) => edit(i, 'text', e.target.value)} />
+          <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => remove(i)}><i className="bi bi-trash" /></button>
+        </div>
+      ))}
+      <button type="button" className="btn btn-sm btn-outline-warning mt-1" style={{ width: 'fit-content' }} onClick={add}><i className="bi bi-plus-lg me-1" />Add Item</button>
+    </div>
+  );
+}
 
 // ==================== COMPONENT ====================
 export default function BusinessSettingsView() {
@@ -1121,6 +1212,74 @@ export default function BusinessSettingsView() {
                 </div>
               </div>
             )}
+          </div>
+        ) : activeTab === 'referral' ? (
+          <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="card-header bg-white d-flex align-items-center gap-2" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>
+              <i className="bi bi-person-plus" style={{ color: '#ffc63a' }}></i>
+              <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>Referral Program Settings</h5>
+            </div>
+            <div className="card-body" style={{ padding: '1.5rem' }}>
+              <h6 style={sectionHeaderStyle}><i className="bi bi-people me-2"></i>Configure Referral Program</h6>
+              <div className="row g-3 mb-4">
+                {renderField('referral_enabled')}
+                {renderField('referral_reward_amount')}
+                {renderField('referral_min_purchase')}
+                {renderField('referral_expiry_days')}
+              </div>
+              <div className="row">
+                <div className="col-md-6">
+                  <StepsEditor label="Referral Steps (How it Works)" value={config.referral_how_it_works || '[]'} onChange={(v) => update('referral_how_it_works', v)} />
+                </div>
+                <div className="col-md-6">
+                  <ListEditor label="Referral Terms & Conditions" value={config.referral_terms || '[]'} onChange={(v) => update('referral_terms', v)} placeholder="e.g. Valid for first purchase only" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'upgrades' ? (
+          <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="card-header bg-white d-flex align-items-center gap-2" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>
+              <i className="bi bi-rocket-takeoff" style={{ color: '#ffc63a' }}></i>
+              <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>Subscription Upgrade Card</h5>
+            </div>
+            <div className="card-body" style={{ padding: '1.5rem' }}>
+              <p className="text-muted small mb-4">Customize the "Unlock More" card displayed to users with an active subscription.</p>
+              <div className="row g-4">
+                <div className="col-md-6">
+                  <div className="p-4 rounded-3 border bg-white h-100" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                    <div className="fw-bold mb-4 d-flex align-items-center gap-2" style={{ color: '#ffc63a', fontSize: '1.05rem' }}>
+                      <i className="bi bi-shop" style={{ fontSize: '1.2rem' }}></i> Seller Unlock Card
+                    </div>
+                    <div className="d-flex flex-column gap-3">
+                      {renderField('seller_unlock_label')}
+                      {renderField('seller_unlock_title')}
+                      {renderField('seller_unlock_btn')}
+                      <div className="mt-2">
+                        <label className="form-label fw-semibold small mb-2 text-muted uppercase tracking-wider" style={{ fontSize: '0.7rem' }}>FEATURE HIGHLIGHTS</label>
+                        <UnlockItemsEditor settingKey="seller_unlock_items" settings={config} update={update} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="p-4 rounded-3 border bg-white h-100" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                    <div className="fw-bold mb-4 d-flex align-items-center gap-2" style={{ color: '#0d6efd', fontSize: '1.05rem' }}>
+                      <i className="bi bi-person" style={{ fontSize: '1.2rem' }}></i> Buyer Unlock Card
+                    </div>
+                    <div className="d-flex flex-column gap-3">
+                      {renderField('buyer_unlock_label')}
+                      {renderField('buyer_unlock_title')}
+                      {renderField('buyer_unlock_btn')}
+                      <div className="mt-2">
+                        <label className="form-label fw-semibold small mb-2 text-muted uppercase tracking-wider" style={{ fontSize: '0.7rem' }}>FEATURE HIGHLIGHTS</label>
+                        <UnlockItemsEditor settingKey="buyer_unlock_items" settings={config} update={update} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : activeTab === 'payment' ? (
           /* ─── PhonePe Payment Integration ─── */
