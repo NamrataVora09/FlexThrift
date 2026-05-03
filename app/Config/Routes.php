@@ -168,6 +168,12 @@ function register_api_routes($routes)
         $routes->get('cms-pages', 'Api\SharedApi::cmsPages');
         $routes->post('cms-pages', 'Api\SharedApi::saveCmsPage');
 
+        $routes->get('faqs', 'Api\SharedApi::faqs');
+        $routes->get('support-info', 'Api\SharedApi::supportInfo');
+        $routes->post('faqs', 'Api\SharedApi::createFaq');
+        $routes->post('faqs/(:num)/update', 'Api\SharedApi::updateFaq/$1');
+        $routes->post('faqs/(:num)/delete', 'Api\SharedApi::deleteFaq/$1');
+
         $routes->get('taxonomy', 'Api\SharedApi::taxonomy');
         $routes->get('contacted-sellers', 'Api\SharedApi::contactedSellers');
         $routes->get('transactions-reports', 'Api\SharedApi::transactionsReports');

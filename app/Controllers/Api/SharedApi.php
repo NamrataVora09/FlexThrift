@@ -271,6 +271,7 @@ class SharedApi extends ResourceController
             $config[$s['setting_key']] = $s['setting_value'];
 
         $groups = [
+            'General' => ['support_email', 'support_phone', 'support_hours'],
             'Pricing' => ['sale_base_discount', 'usage_no_dep_max', 'sale_depreciation_per_use', 'sale_max_additional_depreciation'],
             'Rental' => ['fallback_rental_cost_per_day', 'min_rental_days', 'rental_base_deposit_deduction', 'rental_suggested_cost_percent', 'rental_max_cost_cap_per_day'],
             'Commission & Delivery' => ['commission_rate', 'delivery_charge', 'min_order_value'],
@@ -395,6 +396,75 @@ class SharedApi extends ResourceController
         $plans = $db->table('subscription_plans')->orderBy('user_type', 'ASC')->orderBy('price', 'ASC')->get()->getResultArray();
 
         return $this->respond(['success' => true, 'data' => $plans]);
+    }
+
+    /**
+     * GET /api/v1/shared/faqs
+     */
+    public function faqs()
+    {
+        $db = \Config\Database::connect();
+        $faqs = $db->table('faqs')->orderBy('display_order', 'ASC')->get()->getResultArray();
+        return $this->respond(['success' => true, 'data' => $faqs]);
+    }
+
+    /**
+     * GET /api/v1/shared/support-info
+     */
+    public function supportInfo()
+    {
+        $db = \Config\Database::connect();
+        $keys = ['support_email', 'support_phone', 'support_hours'];
+        $rows = $db->table('system_settings')->whereIn('setting_key', $keys)->get()->getResultArray();
+        $data = [];
+        foreach ($rows as $r) $data[$r['setting_key']] = $r['setting_value'];
+        return $this->respond(['success' => true, 'data' => $data]);
+    }
+
+    /**
+     * POST /api/v1/shared/faqs
+     */
+    public function createFaq()
+    {
+        if ($this->request->jwt_user['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        $db = \Config\Database::connect();
+        $data = $this->request->getJSON(true);
+        $db->table('faqs')->insert([
+            'question' => $data['question'],
+            'answer' => $data['answer'],
+            'display_order' => (int)($data['display_order'] ?? 0),
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        return $this->respond(['success' => true, 'message' => 'FAQ created']);
+    }
+
+    /**
+     * POST /api/v1/shared/faqs/{id}/update
+     */
+    public function updateFaq($id)
+    {
+        if ($this->request->jwt_user['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        $db = \Config\Database::connect();
+        $data = $this->request->getJSON(true);
+        $db->table('faqs')->where('id', $id)->update([
+            'question' => $data['question'],
+            'answer' => $data['answer'],
+            'display_order' => (int)($data['display_order'] ?? 0),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        return $this->respond(['success' => true, 'message' => 'FAQ updated']);
+    }
+
+    /**
+     * POST /api/v1/shared/faqs/{id}/delete
+     */
+    public function deleteFaq($id)
+    {
+        if ($this->request->jwt_user['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        $db = \Config\Database::connect();
+        $db->table('faqs')->where('id', $id)->delete();
+        return $this->respond(['success' => true, 'message' => 'FAQ deleted']);
     }
 
     /**

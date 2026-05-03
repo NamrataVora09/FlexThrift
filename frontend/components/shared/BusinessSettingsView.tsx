@@ -68,6 +68,7 @@ const TABS = [
   { key: 'referral',  label: 'Referral Program',    icon: 'bi-person-plus' },
   { key: 'upgrades',  label: 'Subscription Upgrade',  icon: 'bi-rocket-takeoff' },
   { key: 'rejection', label: 'Rejection Templates',   icon: 'bi-x-circle' },
+  { key: 'faqs',      label: 'FAQ Management',        icon: 'bi-question-circle' },
 ];
 
 const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }> = {
@@ -117,6 +118,9 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
   buyer_unlock_label: { label: 'Unlock Label' },
   buyer_unlock_title: { label: 'Unlock Title' },
   buyer_unlock_btn: { label: 'Unlock Button Text' },
+  support_email: { label: 'Support Email' },
+  support_phone: { label: 'Support Phone' },
+  support_hours: { label: 'Support Hours', hint: 'e.g. 9:00 AM - 6:00 PM (Mon-Sat)' },
 };
 
 const TAB_FIELDS: Record<string, string[]> = {
@@ -129,6 +133,7 @@ const TAB_FIELDS: Record<string, string[]> = {
   referral: [],
   upgrades: [],
   rejection: [],
+  faqs: [],
 };
 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
@@ -299,6 +304,42 @@ export default function BusinessSettingsView() {
 
   const [taxonomy, setTaxonomy] = useState<{ listing_type: TaxonomyItem[]; category: TaxonomyItem[]; sub_category: TaxonomyItem[] }>({ listing_type: [], category: [], sub_category: [] });
 
+  // FAQs
+  interface FAQItem { id: number; question: string; answer: string; display_order: number; }
+  const [faqs, setFaqs] = useState<FAQItem[]>([]);
+  const [faqModal, setFaqModal] = useState(false);
+  const [editingFaq, setEditingFaq] = useState<Partial<FAQItem> | null>(null);
+  const [faqSaving, setFaqSaving] = useState(false);
+
+  const loadFaqs = useCallback(async () => {
+    const res = await api.get<FAQItem[]>('/shared/faqs');
+    if (res.success) setFaqs(res.data || []);
+  }, []);
+
+  const openFaqModal = (faq?: FAQItem) => {
+    setEditingFaq(faq ? { ...faq } : { question: '', answer: '', display_order: 0 });
+    setFaqModal(true);
+  };
+
+  const saveFaq = async (updatedFaq: Partial<FAQItem>) => {
+    if (!updatedFaq.question || !updatedFaq.answer) { showToast.warning('Question and Answer are required'); return; }
+    setFaqSaving(true);
+    const res = updatedFaq.id
+      ? await api.post(`/shared/faqs/${updatedFaq.id}/update`, updatedFaq)
+      : await api.post('/shared/faqs', updatedFaq);
+    if (res.success) { showToast.success(updatedFaq.id ? 'FAQ updated!' : 'FAQ created!'); setFaqModal(false); loadFaqs(); }
+    else showToast.error(res.message || 'Failed to save');
+    setFaqSaving(false);
+  };
+
+  const deleteFaq = (id: number) => {
+    confirmToast('Delete this FAQ?', async () => {
+      const res = await api.post(`/shared/faqs/${id}/delete`, {});
+      if (res.success) { showToast.success('FAQ deleted'); loadFaqs(); }
+      else showToast.error('Failed to delete');
+    }, 'Delete');
+  };
+
   // Multiple depreciation ranges for modal
   const [saleDepRanges, setSaleDepRanges] = useState<Array<{ min: string; max: string; amount: string }>>([{ min: '', max: '', amount: '' }]);
 
@@ -340,7 +381,8 @@ export default function BusinessSettingsView() {
     loadTaxonomy();
     loadRejectionTemplates();
     loadCharges();
-  }, [loadPricingRules, loadTaxonomy, loadRejectionTemplates, loadCharges]);
+    loadFaqs();
+  }, [loadPricingRules, loadTaxonomy, loadRejectionTemplates, loadCharges, loadFaqs]);
 
   // ==================== SETTINGS SAVE ====================
   const handleSave = async () => {
@@ -992,6 +1034,50 @@ export default function BusinessSettingsView() {
               </div>
             </div>
           </div>
+        ) : activeTab === 'faqs' ? (
+          <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div className="card-header bg-white d-flex justify-content-between align-items-center" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>
+              <div className="d-flex align-items-center gap-2">
+                <i className="bi bi-question-circle" style={{ color: '#ffc63a' }}></i>
+                <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>FAQ Management</h5>
+              </div>
+              <button className="btn btn-sm btn-warning fw-bold" onClick={() => openFaqModal()}>
+                <i className="bi bi-plus-lg me-1"></i>Add FAQ
+              </button>
+            </div>
+            <div className="card-body" style={{ padding: '1.5rem' }}>
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th style={{ width: 80 }}>Order</th>
+                      <th style={{ width: 250 }}>Question</th>
+                      <th>Answer</th>
+                      <th style={{ width: 100 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {faqs.length === 0 && (
+                      <tr><td colSpan={4} className="text-center py-5 text-muted">No FAQs found. Add your first question above.</td></tr>
+                    )}
+                    {faqs.map(faq => (
+                      <tr key={faq.id}>
+                        <td className="fw-bold">{faq.display_order}</td>
+                        <td className="fw-semibold" style={{ fontSize: '0.85rem' }}>{faq.question}</td>
+                        <td className="text-muted" style={{ fontSize: '0.8rem' }}>{faq.answer.substring(0, 100)}{faq.answer.length > 100 ? '...' : ''}</td>
+                        <td>
+                          <div className="d-flex gap-1">
+                            <button className="btn btn-sm btn-outline-primary" onClick={() => openFaqModal(faq)}><i className="bi bi-pencil"></i></button>
+                            <button className="btn btn-sm btn-outline-danger" onClick={() => deleteFaq(faq.id)}><i className="bi bi-trash"></i></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div className="card-header bg-white d-flex align-items-center gap-2" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>
@@ -1008,6 +1094,7 @@ export default function BusinessSettingsView() {
             </div>
           </div>
         )}
+        {faqModal && editingFaq && <FAQModal faq={editingFaq} onSave={saveFaq} onClose={() => setFaqModal(false)} saving={faqSaving} />}
 
         {/* Fixed Save Footer */}
         <div className="save-footer" style={{
@@ -1074,5 +1161,54 @@ export default function BusinessSettingsView() {
         </div>
       )}
     </DashboardLayout>
+  );
+}
+
+// ==================== FAQ MODAL ====================
+function FAQModal({ faq: initialFaq, onSave, onClose, saving }: { faq: any; onSave: (updated: any) => void; onClose: () => void; saving: boolean }) {
+  const [faq, setFaq] = useState<any>({ ...initialFaq });
+
+  const handleChange = (field: string, value: any) => {
+    setFaq((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={onClose}>
+      <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+        <div className="modal-content" style={{ borderRadius: '0.75rem' }}>
+          <div className="modal-header border-0 pb-0">
+            <h5 className="modal-title fw-bold">
+              <i className="bi bi-question-circle me-2" style={{ color: '#ffc63a' }}></i>
+              {faq.id ? 'Edit FAQ' : 'Add New FAQ'}
+            </h5>
+            <button type="button" className="btn-close" onClick={onClose}></button>
+          </div>
+          <div className="modal-body p-4">
+            <div className="mb-3">
+              <label className="form-label fw-bold small">Question <span className="text-danger">*</span></label>
+              <input className="form-control" placeholder="e.g. How do I list a product?" value={faq.question || ''}
+                onChange={e => handleChange('question', e.target.value)} />
+            </div>
+            <div className="mb-3">
+              <label className="form-label fw-bold small">Answer <span className="text-danger">*</span></label>
+              <textarea className="form-control" rows={4} placeholder="Detailed answer..." value={faq.answer || ''}
+                onChange={e => handleChange('answer', e.target.value)} />
+            </div>
+            <div className="mb-3">
+              <label className="form-label fw-bold small">Display Order</label>
+              <input type="number" className="form-control" value={faq.display_order || 0}
+                onChange={e => handleChange('display_order', parseInt(e.target.value) || 0)} />
+              <div className="form-text">Lower numbers appear first.</div>
+            </div>
+          </div>
+          <div className="modal-footer border-0 pt-0">
+            <button className="btn btn-light" onClick={onClose}>Cancel</button>
+            <button className="btn btn-warning fw-bold" disabled={saving} onClick={() => onSave(faq)}>
+              {saving ? <><span className="spinner-border spinner-border-sm me-1"></span>Saving…</> : <><i className="bi bi-check-lg me-1"></i>Save FAQ</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

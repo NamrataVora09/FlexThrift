@@ -109,7 +109,6 @@ export default function SettingsClient() {
 
         <form onSubmit={handleSave}>
 
-          {/* ── General ── */}
           <Section title="General" icon="bi-globe">
             <div className="row g-3">
               <div className="col-md-6">
@@ -118,11 +117,15 @@ export default function SettingsClient() {
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Support Email</label>
-                <input type="email" className="form-control" style={inputStyle} value={settings.site_email || settings.support_email || ''} onChange={(e) => update('site_email', e.target.value)} />
+                <input type="email" className="form-control" style={inputStyle} value={settings.support_email || ''} onChange={(e) => update('support_email', e.target.value)} />
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Support Phone</label>
-                <input className="form-control" style={inputStyle} value={settings.site_phone || settings.support_mobile || ''} onChange={(e) => update('site_phone', e.target.value)} />
+                <input className="form-control" style={inputStyle} value={settings.support_phone || ''} onChange={(e) => update('support_phone', e.target.value)} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Support Hours</label>
+                <input className="form-control" style={inputStyle} value={settings.support_hours || ''} onChange={(e) => update('support_hours', e.target.value)} placeholder="e.g. 9:00 AM - 6:00 PM (Mon-Sat)" />
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Currency</label>
