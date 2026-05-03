@@ -996,41 +996,51 @@ class SharedApi extends ResourceController
 
         // Apply Range Filter
         $now = date('Y-m-d H:i:s');
+        $thisMonday = date('Y-m-d 00:00:00', strtotime('monday this week'));
+        $lastMonday = date('Y-m-d 00:00:00', strtotime('monday last week'));
+        $lastSunday = date('Y-m-d 23:59:59', strtotime('sunday last week'));
+
         switch ($range) {
             case 'current_week':
-                $builder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week')));
+                $builder->where('us.created_at >=', $thisMonday);
                 break;
             case 'last_week':
-                $start = date('Y-m-d 00:00:00', strtotime('monday last week'));
-                $end = date('Y-m-d 23:59:59', strtotime('sunday last week'));
-                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
+                $builder->where('us.created_at >=', $lastMonday)->where('us.created_at <=', $lastSunday);
                 break;
             case 'last_2_weeks':
-                $builder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks')));
+                // 2 weeks before this week
+                $start = date('Y-m-d 00:00:00', strtotime($thisMonday . ' -2 weeks'));
+                $end = date('Y-m-d 23:59:59', strtotime($thisMonday . ' -1 second'));
+                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
                 break;
             case 'current_quarter':
-                // Current month + last 2 months
+                // Current month + last 2 months (Rolling 3 months)
                 $builder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months')));
                 break;
             case 'last_quarter':
-                // Last 3 months (excluding current)
-                $start = date('Y-m-01 00:00:00', strtotime('-3 months'));
-                $end = date('Y-m-t 23:59:59', strtotime('-1 month'));
+                // The 3 months before the current quarter
+                $start = date('Y-m-01 00:00:00', strtotime('-5 months'));
+                $end = date('Y-m-t 23:59:59', strtotime('-3 months'));
                 $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
                 break;
             case 'last_2_quarters':
-                $builder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months')));
+                // The 6 months before the current quarter
+                $start = date('Y-m-01 00:00:00', strtotime('-8 months'));
+                $end = date('Y-m-t 23:59:59', strtotime('-3 months'));
+                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
                 break;
             case 'current_year':
                 $builder->where('us.created_at >=', date('Y-01-01 00:00:00'));
                 break;
             case 'last_year':
-                $start = date('Y-01-01 00:00:00', strtotime('-1 year'));
-                $end = date('Y-12-31 23:59:59', strtotime('-1 year'));
+                $start = date('Y-01-01 00:00:00', strtotime('first day of last year'));
+                $end = date('Y-12-31 23:59:59', strtotime('last day of last year'));
                 $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
                 break;
             case 'last_2_years':
-                $builder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('-2 years')));
+                $start = date('Y-01-01 00:00:00', strtotime('first day of -2 years'));
+                $end = date('Y-12-31 23:59:59', strtotime('last day of -1 year'));
+                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
                 break;
         }
 

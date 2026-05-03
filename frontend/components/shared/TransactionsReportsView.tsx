@@ -39,9 +39,23 @@ const RANGES = [
 ];
 
 export default function TransactionsReportsView({ role }: { role: string }) {
-  const [data, setData] = useState<ReportData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState('current_week');
+  const [globalRange, setGlobalRange] = useState('current_week');
+  const [barRange, setBarRange] = useState('current_week');
+  const [pieRange, setPieRange] = useState('current_week');
+  const [countRange, setCountRange] = useState('current_week');
+  const [historyRange, setHistoryRange] = useState('current_week');
+
+  const [summaryData, setSummaryData] = useState<ReportData | null>(null);
+  const [barData, setBarData] = useState<ReportData | null>(null);
+  const [pieData, setPieData] = useState<ReportData | null>(null);
+  const [countData, setCountData] = useState<ReportData | null>(null);
+  const [historyData, setHistoryData] = useState<ReportData | null>(null);
+
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [barLoading, setBarLoading] = useState(false);
+  const [pieLoading, setPieLoading] = useState(false);
+  const [countLoading, setCountLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const barChartRef = useRef<HTMLCanvasElement>(null);
   const pieChartRef = useRef<HTMLCanvasElement>(null);
@@ -51,147 +65,84 @@ export default function TransactionsReportsView({ role }: { role: string }) {
   const pieChartInstance = useRef<Chart | null>(null);
   const countChartInstance = useRef<Chart | null>(null);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const themeColors = {
+    buyer: '#008080',
+    seller: '#d96459',
+    discount: '#ffc63a',
+    text: '#1e2022'
+  };
+
+  const fetchSectionData = async (range: string, setter: (d: ReportData) => void, loadingSetter: (b: boolean) => void) => {
+    loadingSetter(true);
     const res = await api.get<ReportData>(`/shared/transactions-reports?range=${range}`);
     if (res.success && res.data) {
-      setData(res.data);
+      setter(res.data);
     }
-    setLoading(false);
-  }, [range]);
+    loadingSetter(false);
+  };
+
+  useEffect(() => { fetchSectionData(globalRange, setSummaryData, setSummaryLoading); }, [globalRange]);
+  useEffect(() => { fetchSectionData(barRange, setBarData, setBarLoading); }, [barRange]);
+  useEffect(() => { fetchSectionData(pieRange, setPieData, setPieLoading); }, [pieRange]);
+  useEffect(() => { fetchSectionData(countRange, setCountData, setCountLoading); }, [countRange]);
+  useEffect(() => { fetchSectionData(historyRange, setHistoryData, setHistoryLoading); }, [historyRange]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    if (!data) return;
-
-    // Destroy old instances
+    if (!barData) return;
     if (barChartInstance.current) barChartInstance.current.destroy();
-    if (pieChartInstance.current) pieChartInstance.current.destroy();
-    if (countChartInstance.current) countChartInstance.current.destroy();
-
-    const themeColors = {
-      buyer: '#0d6efd',
-      seller: '#ffc63a',
-      discount: '#d6b06b',
-      text: '#1e2022'
-    };
-
-    const isBoth = data.user_role === 'super_admin' || data.user_role === 'admin';
-    const isSeller = data.user_role === 'seller';
-    const isBuyer = data.user_role === 'buyer';
-
-    // ── 2nd Row: Bar Graph (Amount vs Discount) ──
     if (barChartRef.current) {
-      const labels = [];
-      const barData = [];
-      const colors = [];
-
-      if (isBoth || isBuyer) {
-        labels.push('Buyer Spent');
-        barData.push(data.charts.amount_discount.buyer.spent);
-        colors.push(themeColors.buyer);
-      }
-      if (isBoth || isSeller) {
-        labels.push('Seller Spent');
-        barData.push(data.charts.amount_discount.seller.spent);
-        colors.push(themeColors.seller);
-      }
-      
-      const totalDisc = data.charts.amount_discount.buyer.discount + data.charts.amount_discount.seller.discount;
-      labels.push('Discount');
-      barData.push(totalDisc);
-      colors.push(themeColors.discount);
-
+      const isBoth = barData.user_role === 'super_admin' || barData.user_role === 'admin';
+      const isSeller = barData.user_role === 'seller';
+      const isBuyer = barData.user_role === 'buyer';
+      const labels = []; const values = []; const colors = [];
+      if (isBoth || isBuyer) { labels.push('Buyer Spent'); values.push(barData.charts.amount_discount.buyer.spent); colors.push(themeColors.buyer); }
+      if (isBoth || isSeller) { labels.push('Seller Spent'); values.push(barData.charts.amount_discount.seller.spent); colors.push(themeColors.seller); }
+      labels.push('Discount'); values.push(barData.charts.amount_discount.buyer.discount + barData.charts.amount_discount.seller.discount); colors.push(themeColors.discount);
       barChartInstance.current = new Chart(barChartRef.current, {
         type: 'bar',
-        data: {
-          labels,
-          datasets: [{ label: 'Amount (₹)', data: barData, backgroundColor: colors }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, ticks: { callback: (v) => '₹' + v } } }
-        }
+        data: { labels, datasets: [{ label: 'Amount (₹)', data: values, backgroundColor: colors }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
       });
     }
+  }, [barData]);
 
-    // ── 2nd Row: Pie Chart (Distribution) ──
+  useEffect(() => {
+    if (!pieData) return;
+    if (pieChartInstance.current) pieChartInstance.current.destroy();
     if (pieChartRef.current) {
-      const labels = [];
-      const pieData = [];
-      const colors = [];
-
-      if (isBoth || isBuyer) {
-        labels.push('Buyer Spent');
-        pieData.push(data.charts.amount_discount.buyer.spent);
-        colors.push(themeColors.buyer);
-      }
-      if (isBoth || isSeller) {
-        labels.push('Seller Spent');
-        pieData.push(data.charts.amount_discount.seller.spent);
-        colors.push(themeColors.seller);
-      }
-      
-      // Discount portion
-      const totalDisc = data.charts.amount_discount.buyer.discount + data.charts.amount_discount.seller.discount;
-      if (totalDisc > 0) {
-        labels.push('Total Discount');
-        pieData.push(totalDisc);
-        colors.push(themeColors.discount);
-      }
-
+      const isBoth = pieData.user_role === 'super_admin' || pieData.user_role === 'admin';
+      const isSeller = pieData.user_role === 'seller';
+      const isBuyer = pieData.user_role === 'buyer';
+      const labels = []; const values = []; const colors = [];
+      if (isBoth || isBuyer) { labels.push('Buyer Spent'); values.push(pieData.charts.amount_discount.buyer.spent); colors.push(themeColors.buyer); }
+      if (isBoth || isSeller) { labels.push('Seller Spent'); values.push(pieData.charts.amount_discount.seller.spent); colors.push(themeColors.seller); }
+      const totalDisc = pieData.charts.amount_discount.buyer.discount + pieData.charts.amount_discount.seller.discount;
+      if (totalDisc > 0) { labels.push('Total Discount'); values.push(totalDisc); colors.push(themeColors.discount); }
       pieChartInstance.current = new Chart(pieChartRef.current, {
         type: 'pie',
-        data: {
-          labels,
-          datasets: [{ data: pieData, backgroundColor: colors }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'right' } }
-        }
+        data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
       });
     }
+  }, [pieData]);
 
-    // ── 3rd Row: Bar Graph (Plan Counts) ──
+  useEffect(() => {
+    if (!countData) return;
+    if (countChartInstance.current) countChartInstance.current.destroy();
     if (countChartRef.current) {
-      const labels = [];
-      const counts = [];
-      const bgColors = [];
-
-      if (isBoth || isBuyer) {
-        labels.push('Buyer Plans');
-        counts.push(data.charts.plan_counts.buyer);
-        bgColors.push(themeColors.buyer);
-      }
-      if (isBoth || isSeller) {
-        labels.push('Seller Plans');
-        counts.push(data.charts.plan_counts.seller);
-        bgColors.push(themeColors.seller);
-      }
-
+      const isBoth = countData.user_role === 'super_admin' || countData.user_role === 'admin';
+      const isSeller = countData.user_role === 'seller';
+      const isBuyer = countData.user_role === 'buyer';
+      const labels = []; const counts = []; const bgColors = [];
+      if (isBoth || isBuyer) { labels.push('Buyer Plans'); counts.push(countData.charts.plan_counts.buyer); bgColors.push(themeColors.buyer); }
+      if (isBoth || isSeller) { labels.push('Seller Plans'); counts.push(countData.charts.plan_counts.seller); bgColors.push(themeColors.seller); }
       countChartInstance.current = new Chart(countChartRef.current, {
         type: 'bar',
-        data: {
-          labels,
-          datasets: [{ label: 'No. of Subscriptions', data: counts, backgroundColor: bgColors }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-        }
+        data: { labels, datasets: [{ label: 'No. of Subscriptions', data: counts, backgroundColor: bgColors }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
       });
     }
-
-  }, [data]);
+  }, [countData]);
 
   const columns: Column<any>[] = [
     { key: 'id', label: '#', render: (r) => <span className="small text-muted">#{r.id}</span> },
@@ -206,134 +157,130 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     { key: 'created_at', label: 'Date', render: (r) => <span className="small">{new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span> },
   ];
 
+  const RangePicker = ({ value, onChange }: { value: string, onChange: (v: string) => void }) => (
+    <select className="form-select form-select-sm" style={{ width: '160px', borderRadius: '10px', border: '1px solid #ddd', padding: '0.4rem', fontSize: '0.75rem' }} value={value} onChange={(e) => onChange(e.target.value)}>
+      {RANGES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+    </select>
+  );
+
+  const LoadingOverlay = () => (
+    <div className="loading-overlay">
+      <div className="spinner-border spinner-border-sm text-warning" role="status"></div>
+      <span className="ms-2 small text-muted">Refreshing...</span>
+    </div>
+  );
+
   return (
     <DashboardLayout requiredRoles={[role]}>
+      <style jsx>{`
+        .metric-card { background: #fff; border-radius: 32px; padding: 2rem; border: 1px solid #f0f0f0; cursor: default; height: 100%; transition: transform 0.2s ease; position: relative; }
+        .metric-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .metric-icon { color: #ffc63a; font-size: 1.5rem; margin-bottom: 1.5rem; display: block; }
+        .metric-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: #ffc63a; margin-bottom: 8px; }
+        .metric-value { font-size: 2.4rem; font-weight: 800; color: rgb(51, 51, 51); line-height: 1; }
+        .container-fluid { font-family: 'Poppins', 'Inter', sans-serif; }
+        .card-wrap { background: #fff; border-radius: 24px; border: 1px solid #f0f0f0; box-shadow: 0 4px 24px rgba(0,0,0,0.03); overflow: hidden; height: 100%; position: relative; }
+        .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .loading-overlay {
+          position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center;
+          z-index: 10; border-radius: inherit; backdrop-filter: blur(2px);
+        }
+      `}</style>
+
       <div className="container-fluid py-4" style={{ minHeight: '100vh' }}>
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: 'Poppins' }}>
-            Transactions / Reports
-          </h1>
-          <div className="d-flex align-items-center gap-2">
-            <i className="bi bi-calendar3 text-muted"></i>
-            <select className="form-select form-select-sm" style={{ width: '200px', borderRadius: '0.5rem', border: '1px solid #ddd' }} value={range} onChange={(e) => setRange(e.target.value)}>
-              {RANGES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-            </select>
+        <div className="d-flex justify-content-between align-items-center mb-5">
+          <div>
+            <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: 'Poppins' }}>Transactions / Reports</h1>
+            <p style={{ color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>Review financial performance and subscription analytics.</p>
           </div>
         </div>
 
-        {/* ── Row 1: Summary Cards ── */}
-        <div className="row g-4 mb-4">
+        {/* Summary Cards */}
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h6 className="fw-bold mb-0" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#666' }}>Summary Overview</h6>
+          <RangePicker value={globalRange} onChange={setGlobalRange} />
+        </div>
+        <div className="row g-4 mb-5">
           <div className="col-md-4">
-            <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '1.5rem', background: '#ffc63a', minHeight: '160px' }}>
-              <div className="card-body p-4 d-flex align-items-center gap-3">
-                <div className="rounded-circle bg-white bg-opacity-25 p-3 text-dark">
-                  <i className="bi bi-box-seam" style={{ fontSize: '1.5rem' }}></i>
-                </div>
-                <div>
-                  <h6 className="text-dark small mb-1 opacity-75 fw-bold">Total Subscriptions Purchased</h6>
-                  <h3 className="fw-bold mb-0" style={{ color: '#6c757d', fontSize: '2.4rem' }}>{data?.summary.total_subscriptions || 0}</h3>
-                </div>
-              </div>
+            <div className="metric-card">
+              {summaryLoading && <LoadingOverlay />}
+              <i className="bi bi-box-seam metric-icon"></i>
+              <p className="metric-label">Total Subscriptions Purchased</p>
+              <div className="metric-value">{summaryData?.summary.total_subscriptions || 0}</div>
             </div>
           </div>
           <div className="col-md-4">
-            <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '1.5rem', background: '#ffc63a', minHeight: '160px' }}>
-              <div className="card-body p-4 d-flex align-items-center gap-3">
-                <div className="rounded-circle bg-white bg-opacity-25 p-3 text-dark">
-                  <i className="bi bi-currency-rupee" style={{ fontSize: '1.5rem' }}></i>
-                </div>
-                <div>
-                  <h6 className="text-dark small mb-1 opacity-75 fw-bold">Total Amount Spent</h6>
-                  <h3 className="fw-bold mb-0" style={{ color: '#6c757d', fontSize: '2.4rem' }}>₹{data?.summary.total_spent.toLocaleString() || 0}</h3>
-                </div>
-              </div>
+            <div className="metric-card">
+              {summaryLoading && <LoadingOverlay />}
+              <i className="bi bi-currency-rupee metric-icon"></i>
+              <p className="metric-label">Total Amount Spent</p>
+              <div className="metric-value">₹{summaryData?.summary.total_spent.toLocaleString() || 0}</div>
             </div>
           </div>
           <div className="col-md-4">
-            <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '1.5rem', background: '#ffc63a', minHeight: '160px' }}>
-              <div className="card-body p-4 d-flex align-items-center gap-3">
-                <div className="rounded-circle bg-white bg-opacity-25 p-3 text-dark">
-                  <i className="bi bi-percent" style={{ fontSize: '1.5rem' }}></i>
-                </div>
-                <div>
-                  <h6 className="text-dark small mb-1 opacity-75 fw-bold">Total Discount Availed</h6>
-                  <h3 className="fw-bold mb-0" style={{ color: '#6c757d', fontSize: '2.4rem' }}>₹{data?.summary.total_discount.toLocaleString() || 0}</h3>
-                </div>
-              </div>
+            <div className="metric-card">
+              {summaryLoading && <LoadingOverlay />}
+              <i className="bi bi-percent metric-icon"></i>
+              <p className="metric-label">Total Discount Availed</p>
+              <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString() || 0}</div>
             </div>
           </div>
         </div>
 
-        {/* ── Row 2: Charts (Amount vs Discount) ── */}
-        <div className="row g-4 mb-4">
+        {/* Charts Row */}
+        <div className="row g-4 mb-5">
           <div className="col-md-8">
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '1rem' }}>
-              <div className="card-body p-4">
-                <h6 className="fw-bold mb-4">Total Amount Spent & Discount Availed (Bar Graph)</h6>
-                <div style={{ height: '300px' }}>
-                  <canvas ref={barChartRef}></canvas>
-                </div>
+            <div className="card-wrap p-4">
+              {barLoading && <LoadingOverlay />}
+              <div className="card-header-flex">
+                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Amount Spent & Discount (Bar)</h6>
+                <RangePicker value={barRange} onChange={setBarRange} />
               </div>
+              <div style={{ height: '320px' }}><canvas ref={barChartRef}></canvas></div>
             </div>
           </div>
           <div className="col-md-4">
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '1rem' }}>
-              <div className="card-body p-4">
-                <h6 className="fw-bold mb-4">Expense Distribution (Pie Chart)</h6>
-                <div style={{ height: '300px' }}>
-                  <canvas ref={pieChartRef}></canvas>
-                </div>
+            <div className="card-wrap p-4">
+              {pieLoading && <LoadingOverlay />}
+              <div className="card-header-flex">
+                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Distribution (Pie)</h6>
+                <RangePicker value={pieRange} onChange={setPieRange} />
               </div>
+              <div style={{ height: '320px' }}><canvas ref={pieChartRef}></canvas></div>
             </div>
           </div>
         </div>
 
-        {/* ── Row 3: Subscription Plan Counts ── */}
-        <div className="row g-4 mb-4">
-          <div className="col-md-8">
-            <div className="card border-0 shadow-sm" style={{ borderRadius: '1rem' }}>
-              <div className="card-body p-4">
-                <h6 className="fw-bold mb-4">Total Number of Subscription Plans</h6>
-                <div style={{ height: '300px' }}>
-                  <canvas ref={countChartRef}></canvas>
-                </div>
+        {/* Plan Counts Row */}
+        <div className="row g-4 mb-5">
+          <div className="col-md-12">
+            <div className="card-wrap p-4">
+              {countLoading && <LoadingOverlay />}
+              <div className="card-header-flex">
+                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Total Number of Subscription Plans</h6>
+                <RangePicker value={countRange} onChange={setCountRange} />
               </div>
+              <div style={{ height: '320px' }}><canvas ref={countChartRef}></canvas></div>
             </div>
-          </div>
-          <div className="col-md-4">
-             {/* Reserved or decorative space if needed, matching the layout */}
           </div>
         </div>
 
-        {/* ── Row 4: Transaction History ── */}
-        <div className="card border-0 shadow-sm mb-5" style={{ borderRadius: '1rem' }}>
-          <div className="card-header bg-white border-0 p-4 pb-0">
-            <h6 className="fw-bold mb-0">Payment History</h6>
-            <p className="text-muted small">Latest transactions for the selected range.</p>
-          </div>
-          <div className="card-body p-0">
-            <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-              <DataTable 
-                columns={columns} 
-                data={data?.transactions || []} 
-                loading={loading} 
-                emptyIcon="bi bi-receipt" 
-                emptyText="No transaction history for this period." 
-              />
+        {/* History Table */}
+        <div className="card-wrap mb-5">
+          {historyLoading && <LoadingOverlay />}
+          <div className="p-4 d-flex justify-content-between align-items-center">
+            <div>
+              <h6 className="fw-bold mb-1" style={{ color: '#1a1a1a' }}>Payment History</h6>
+              <p className="text-muted small mb-0">Latest transactions for the selected range.</p>
             </div>
+            <RangePicker value={historyRange} onChange={setHistoryRange} />
+          </div>
+          <div className="table-responsive" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+            <DataTable columns={columns} data={historyData?.transactions || []} loading={false} emptyIcon="bi bi-receipt" emptyText="No transaction history for this period." />
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        .container-fluid {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        select:focus {
-          box-shadow: 0 0 0 0.25rem rgba(255, 198, 58, 0.25);
-          border-color: #ffc63a;
-        }
-      `}</style>
     </DashboardLayout>
   );
 }

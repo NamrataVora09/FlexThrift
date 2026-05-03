@@ -1637,6 +1637,8 @@ class SellerApi extends ResourceController
             'amount_paid'                => $finalAmount,
             'referral_discount_applied'  => $referralDiscountApplied,
             'merchant_transaction_id'    => $merchantOrderId,
+            'created_at'                 => date('Y-m-d H:i:s'),
+            'updated_at'                 => date('Y-m-d H:i:s'),
         ]);
 
         $phonepe  = new \App\Libraries\PhonePe();
