@@ -1,13 +1,11 @@
 import { Metadata } from 'next';
-import TransactionsView from '@/components/shared/TransactionsView';
-
-export const revalidate = 60;
+import TransactionsReportsView from '@/components/shared/TransactionsReportsView';
 
 export const metadata: Metadata = {
-  title: 'Transactions — Seller — FlexMarket',
-  description: 'View your transaction history on FlexMarket.',
+  title: 'Transactions & Reports — Seller — FlexMarket',
+  description: 'View your transaction reports and history on FlexMarket.',
 };
 
-export default async function SellerTransactionsPage() {
-  return <TransactionsView role="seller" apiPath="/seller/transactions" />;
+export default function SellerTransactionsPage() {
+  return <TransactionsReportsView role="seller" />;
 }

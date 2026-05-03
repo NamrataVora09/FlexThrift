@@ -977,4 +977,147 @@ class SharedApi extends ResourceController
 
         return $this->respond(['success' => true, 'data' => $products]);
     }
+
+    public function transactionsReports()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $db = \Config\Database::connect();
+        $range = $this->request->getGet('range') ?? 'all';
+
+        $builder = $db->table('user_subscriptions us')
+            ->select('us.*, sp.user_type as plan_user_type, sp.name as plan_name')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.payment_status', 'paid');
+
+        // If not admin/superadmin, filter by user_id
+        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+            $builder->where('us.user_id', $jwtUser['user_id']);
+        }
+
+        // Apply Range Filter
+        $now = date('Y-m-d H:i:s');
+        switch ($range) {
+            case 'current_week':
+                $builder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week')));
+                break;
+            case 'last_week':
+                $start = date('Y-m-d 00:00:00', strtotime('monday last week'));
+                $end = date('Y-m-d 23:59:59', strtotime('sunday last week'));
+                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
+                break;
+            case 'last_2_weeks':
+                $builder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks')));
+                break;
+            case 'current_quarter':
+                // Current month + last 2 months
+                $builder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months')));
+                break;
+            case 'last_quarter':
+                // Last 3 months (excluding current)
+                $start = date('Y-m-01 00:00:00', strtotime('-3 months'));
+                $end = date('Y-m-t 23:59:59', strtotime('-1 month'));
+                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
+                break;
+            case 'last_2_quarters':
+                $builder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months')));
+                break;
+            case 'current_year':
+                $builder->where('us.created_at >=', date('Y-01-01 00:00:00'));
+                break;
+            case 'last_year':
+                $start = date('Y-01-01 00:00:00', strtotime('-1 year'));
+                $end = date('Y-12-31 23:59:59', strtotime('-1 year'));
+                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
+                break;
+            case 'last_2_years':
+                $builder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('-2 years')));
+                break;
+        }
+
+        $subs = $builder->get()->getResultArray();
+
+        // Calculate Stats
+        $totalSubs = count($subs);
+        $totalSpent = 0;
+        $totalDiscount = 0;
+
+        $buyerSpent = 0;
+        $sellerSpent = 0;
+        $buyerDiscount = 0;
+        $sellerDiscount = 0;
+        $buyerCount = 0;
+        $sellerCount = 0;
+
+        foreach ($subs as $s) {
+            $amt = (float)$s['amount_paid'];
+            $disc = (float)$s['referral_discount_applied'];
+            $totalSpent += $amt;
+            $totalDiscount += $disc;
+
+            if ($s['plan_user_type'] === 'buyer') {
+                $buyerSpent += $amt;
+                $buyerDiscount += $disc;
+                $buyerCount++;
+            } else {
+                $sellerSpent += $amt;
+                $sellerDiscount += $disc;
+                $sellerCount++;
+            }
+        }
+
+        // Recent Transactions (merged)
+        $txBuilder = $db->table('transactions t')
+            ->select('t.*, u.name as user_name')
+            ->join('users u', 'u.id = t.user_id', 'left')
+            ->orderBy('t.created_at', 'DESC')
+            ->limit(100);
+
+        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+            $txBuilder->where('t.user_id', $jwtUser['user_id']);
+        }
+        
+        // Apply the same range filter to transactions table if needed, 
+        // but user requested "Payment History of All time" in some part?
+        // Actually, "Payment History of All time with a latest at the top" for the scrollable box.
+        // But also says "same above plicklist for Date range".
+        // I'll apply the range filter to the transaction list too.
+        
+        $rangeTxBuilder = clone $txBuilder;
+        switch ($range) {
+            case 'current_week': $rangeTxBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
+            case 'last_week': $rangeTxBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
+            case 'last_2_weeks': $rangeTxBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks'))); break;
+            case 'current_quarter': $rangeTxBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
+            case 'last_quarter': $rangeTxBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('-1 month'))); break;
+            case 'last_2_quarters': $rangeTxBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months'))); break;
+            case 'current_year': $rangeTxBuilder->where('t.created_at >=', date('Y-01-01 00:00:00')); break;
+            case 'last_year': $rangeTxBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-1 year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('-1 year'))); break;
+            case 'last_2_years': $rangeTxBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-2 years'))); break;
+        }
+        
+        $transactions = $rangeTxBuilder->get()->getResultArray();
+
+        return $this->respond([
+            'success' => true,
+            'data' => [
+                'summary' => [
+                    'total_subscriptions' => $totalSubs,
+                    'total_spent' => $totalSpent,
+                    'total_discount' => $totalDiscount,
+                ],
+                'charts' => [
+                    'amount_discount' => [
+                        'buyer' => ['spent' => $buyerSpent, 'discount' => $buyerDiscount],
+                        'seller' => ['spent' => $sellerSpent, 'discount' => $sellerDiscount],
+                    ],
+                    'plan_counts' => [
+                        'buyer' => $buyerCount,
+                        'seller' => $sellerCount,
+                    ]
+                ],
+                'transactions' => $transactions,
+                'user_role' => $jwtUser['role']
+            ]
+        ]);
+    }
 }

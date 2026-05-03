@@ -170,6 +170,7 @@ function register_api_routes($routes)
 
         $routes->get('taxonomy', 'Api\SharedApi::taxonomy');
         $routes->get('contacted-sellers', 'Api\SharedApi::contactedSellers');
+        $routes->get('transactions-reports', 'Api\SharedApi::transactionsReports');
         $routes->post('purchase-subscription', 'Api\SharedApi::purchaseSubscription');
         $routes->post('update-profile', 'Api\SharedApi::updateProfile');
         $routes->post('upload-profile-image', 'Api\SharedApi::uploadProfileImage');
