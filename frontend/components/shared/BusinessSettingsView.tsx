@@ -292,36 +292,14 @@ export default function BusinessSettingsView() {
   const [rejType, setRejType] = useState('Products');
   const [rejSaving, setRejSaving] = useState(false);
 
-  // Pricing Rules state
-  const [saleRules, setSaleRules] = useState<PricingRule[]>([]);
-  const [rentalRules, setRentalRules] = useState<RentalPricingRule[]>([]);
   const [taxonomy, setTaxonomy] = useState<{ listing_type: TaxonomyItem[]; category: TaxonomyItem[]; sub_category: TaxonomyItem[] }>({ listing_type: [], category: [], sub_category: [] });
-
-  // Modal state
-  const [showSaleModal, setShowSaleModal] = useState(false);
-  const [showRentalModal, setShowRentalModal] = useState(false);
-  const [editingSaleRule, setEditingSaleRule] = useState<Partial<PricingRule> | null>(null);
-  const [editingRentalRule, setEditingRentalRule] = useState<Partial<RentalPricingRule> | null>(null);
-  const [modalSaving, setModalSaving] = useState(false);
-
-
-  // Filter dropdown values
-  const [filterValues, setFilterValues] = useState<TaxonomyItem[]>([]);
-  const [rentalFilterValues, setRentalFilterValues] = useState<TaxonomyItem[]>([]);
 
   // Multiple depreciation ranges for modal
   const [saleDepRanges, setSaleDepRanges] = useState<Array<{ min: string; max: string; amount: string }>>([{ min: '', max: '', amount: '' }]);
 
   // ==================== DATA LOADING ====================
   const loadPricingRules = useCallback(async () => {
-    try {
-      const [saleRes, rentalRes] = await Promise.all([
-        api.get<any>('/superadmin/all-pricing-rules'),
-        api.get<any>('/superadmin/all-rental-pricing-rules'),
-      ]);
-      if (saleRes.success) setSaleRules(saleRes.data || []);
-      if (rentalRes.success) setRentalRules(rentalRes.data || []);
-    } catch { /* ignore */ }
+    // Moved to Settings page
   }, []);
 
     const loadRejectionTemplates = useCallback(async () => {
@@ -720,165 +698,7 @@ export default function BusinessSettingsView() {
   );
 
   // ==================== PRICING TAB CONTENT ====================
-  const renderPricingTab = () => (
-    <>
-
-
-      {/* ===== Filter-Based Sale Pricing Rules ===== */}
-      <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1rem' }}>
-        <div className="card-header bg-white d-flex justify-content-between align-items-center" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>
-          <div className="d-flex align-items-center gap-2">
-            <i className="bi bi-funnel" style={{ color: '#0d6efd' }}></i>
-            <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>Filter-Based Pricing Rules</h5>
-          </div>
-          <div className="d-flex gap-2">
-            <button className="btn btn-sm btn-primary" onClick={() => openSaleModal()}>
-              <i className="bi bi-plus-lg me-1"></i>Add Rule
-            </button>
-            <button className="btn btn-sm btn-outline-success" onClick={() => bulkSaleAction('activate')}>
-              <i className="bi bi-play-circle me-1"></i>Activate All
-            </button>
-            <button className="btn btn-sm btn-outline-warning" onClick={() => bulkSaleAction('deactivate')}>
-              <i className="bi bi-pause-circle me-1"></i>Deactivate All
-            </button>
-            <button className="btn btn-sm btn-outline-danger" onClick={() => bulkSaleAction('delete')}>
-              <i className="bi bi-trash me-1"></i>Delete All
-            </button>
-          </div>
-        </div>
-        <div className="card-body" style={{ padding: '1.25rem' }}>
-          <div className="alert alert-info py-2 small mb-3">
-            <i className="bi bi-info-circle me-1"></i>
-            <strong>How it works:</strong> Define deduction rules per Listing Type, Category or Sub-Category.
-            When a product matches multiple rules, the <strong>highest</strong> deduction threshold (base) always applies,
-            and the <strong>highest</strong> depreciation amount (among rules where usage falls in range) is picked — they are <strong>not</strong> summed.
-            <br /><strong>Formula:</strong> Suggested Price = Original Price - (Original x Base Threshold%) - (Original x Max Depreciation%)
-          </div>
-          <div className="table-responsive">
-            <table className="table table-sm table-bordered table-hover align-middle">
-              <thead className="table-light">
-                <tr>
-                  <th>Filter Type</th><th>Filtered Value</th><th>Deduction Threshold (%)</th>
-                  <th>Depreciation Range</th><th>Depreciation Amt (%)</th><th>Status</th><th style={{ width: 100 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {saleRules.length === 0 && (
-                  <tr><td colSpan={7} className="text-center text-muted py-4">
-                    <i className="bi bi-inbox" style={{ fontSize: '1.5rem' }}></i><br />
-                    No pricing rules yet. Click <strong>Add Rule</strong> to create one.
-                  </td></tr>
-                )}
-                {saleRules.map(rule => (
-                  <tr key={rule.id}>
-                    <td><span className={`badge bg-${filterBadgeColor(rule.filter_type)}`}>{rule.filter_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span></td>
-                    <td>{rule.filter_label}</td>
-                    <td><strong>{rule.deduction_threshold}%</strong></td>
-                    <td>{Number(rule.depreciation_range_max) > 0 ? `${rule.depreciation_range_min} – ${rule.depreciation_range_max}` : `${rule.depreciation_range_min}+`}</td>
-                    <td><strong>{rule.depreciation_amount}%</strong></td>
-                    <td>
-                      <span className={`badge bg-${Number(rule.is_active) ? 'success' : 'secondary'}`}>
-                        {Number(rule.is_active) ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openSaleModal(rule)} title="Edit"><i className="bi bi-pencil"></i></button>
-                      <button
-                        className={`btn btn-sm me-1 ${Number(rule.is_active) ? 'btn-outline-warning' : 'btn-outline-success'}`}
-                        onClick={() => toggleSaleRule(rule.id)}
-                        title={Number(rule.is_active) ? 'Deactivate' : 'Activate'}
-                      >
-                        <i className={`bi ${Number(rule.is_active) ? 'bi-pause-fill' : 'bi-play-fill'}`}></i>
-                      </button>
-                      <button className="btn btn-sm btn-outline-danger" onClick={() => deleteSaleRule(rule.id)} title="Delete"><i className="bi bi-trash"></i></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* ===== Filter-Based Rental & Deposit Rules ===== */}
-      <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1rem' }}>
-        <div className="card-header bg-white d-flex justify-content-between align-items-center" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>
-          <div className="d-flex align-items-center gap-2">
-            <i className="bi bi-calendar2-range text-info"></i>
-            <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>Filter-Based Rental & Deposit Rules</h5>
-          </div>
-          <div className="d-flex gap-2">
-            <button className="btn btn-sm btn-outline-info" onClick={() => openRentalModal()}>
-              <i className="bi bi-plus-lg me-1"></i>Add Rental Rule
-            </button>
-            <button className="btn btn-sm btn-outline-success" onClick={() => bulkRentalAction('activate')}>
-              <i className="bi bi-play-circle me-1"></i>Activate All
-            </button>
-            <button className="btn btn-sm btn-outline-warning" onClick={() => bulkRentalAction('deactivate')}>
-              <i className="bi bi-pause-circle me-1"></i>Deactivate All
-            </button>
-            <button className="btn btn-sm btn-outline-danger" onClick={() => bulkRentalAction('delete')}>
-              <i className="bi bi-trash me-1"></i>Delete All
-            </button>
-          </div>
-        </div>
-        <div className="card-body" style={{ padding: '1.25rem' }}>
-          <div className="alert alert-info py-2 small mb-3">
-            <i className="bi bi-info-circle me-1"></i>
-            <strong>How it works:</strong> Rules match by Listing Type / Category / Sub-Category.
-            When multiple rules match, pick <strong>MAX</strong> values (not sum).
-            Each rule defines its own deposit deduction %, depreciation, deposit % and max rental cap.
-            When multiple rules match, the highest values apply (not summed).
-          </div>
-          <div className="table-responsive">
-            <table className="table table-sm table-bordered table-hover align-middle">
-              <thead className="table-light">
-                <tr>
-                  <th>Filter</th><th>Value</th><th>Deposit Deduction %</th><th>Depreciation Range</th>
-                  <th>Depreciation %</th><th>Max Rental/Day %</th><th>Status</th><th style={{ width: 100 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rentalRules.length === 0 && (
-                  <tr><td colSpan={9} className="text-center text-muted py-4">
-                    <i className="bi bi-inbox" style={{ fontSize: '1.5rem' }}></i><br />
-                    No rental pricing rules defined yet.
-                  </td></tr>
-                )}
-                {rentalRules.map(rule => (
-                  <tr key={rule.id}>
-                    <td><span className={`badge bg-${filterBadgeColor(rule.filter_type)}`}>{rule.filter_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span></td>
-                    <td>{rule.filter_label || rule.filter_value}</td>
-                    <td className="text-center">{rule.deposit_deduction_threshold}%</td>
-                    <td className="text-center">{Number(rule.depreciation_range_max) > 0 ? `${rule.depreciation_range_min} – ${rule.depreciation_range_max}` : `${rule.depreciation_range_min}+`}</td>
-                    <td className="text-center">{rule.depreciation_amount}%</td>
-                    <td className="text-center">{rule.max_cost_cap_per_day}%</td>
-                    <td className="text-center">
-                      <span className={`badge bg-${Number(rule.is_active) ? 'success' : 'secondary'}`}>
-                        {Number(rule.is_active) ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openRentalModal(rule)} title="Edit"><i className="bi bi-pencil-square"></i></button>
-                      <button
-                        className={`btn btn-sm me-1 ${Number(rule.is_active) ? 'btn-outline-warning' : 'btn-outline-success'}`}
-                        onClick={() => toggleRentalRule(rule.id)}
-                        title={Number(rule.is_active) ? 'Deactivate' : 'Activate'}
-                      >
-                        <i className={`bi ${Number(rule.is_active) ? 'bi-pause-fill' : 'bi-play-fill'}`}></i>
-                      </button>
-                      <button className="btn btn-sm btn-outline-danger" onClick={() => deleteRentalRule(rule.id)} title="Delete"><i className="bi bi-trash"></i></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-    </>
-  );
+  const renderPricingTab = () => null;
 
   return (
     <DashboardLayout requiredRoles={['super_admin']}>

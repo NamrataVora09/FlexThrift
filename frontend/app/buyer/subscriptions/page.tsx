@@ -29,6 +29,8 @@ interface ActiveSub {
   created_at: string;
   expires_at: string;
   usage_count: number;
+  payment_status: string;
+  is_active: number;
 }
 interface HistoryItem {
   id: number;
@@ -41,6 +43,7 @@ interface HistoryItem {
   expires_at: string;
   is_active: number;
   usage_count: number;
+  payment_status: string;
 }
 interface SubData {
   plans: Plan[];
@@ -142,11 +145,11 @@ function SubscriptionsInner() {
 
   /* Build active subscriptions list (prioritize dedicated active object from backend) */
   let activeSubscriptions: (ActiveSub | HistoryItem)[] = [];
-  if (data?.active && new Date(data.active.expires_at) >= new Date()) {
+  if (data?.active && data.active.payment_status === 'paid' && new Date(data.active.expires_at) >= new Date()) {
     activeSubscriptions = [data.active];
   } else if (data?.history) {
     activeSubscriptions = data.history.filter(
-      (h) => Number(h.is_active) === 1 && new Date(h.expires_at) >= new Date()
+      (h) => Number(h.is_active) === 1 && h.payment_status === 'paid' && new Date(h.expires_at) >= new Date()
     );
   }
 

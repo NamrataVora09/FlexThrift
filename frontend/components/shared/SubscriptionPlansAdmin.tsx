@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
@@ -45,14 +45,27 @@ function PlanPointsEditor({ value, onChange, form }: { value: string; onChange: 
     updatePoints(p);
   };
 
-  const syncFromDetails = () => {
-    if (!form) return;
-    const generated = [
+  const [autoSync, setAutoSync] = useState(false);
+
+  const getGeneratedPoints = useCallback(() => {
+    if (!form) return [];
+    return [
       { icon: form.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${form.plan_type === 'duration' ? 'Unlimited' : (form.limit_value || '0')} ${form.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
       { icon: 'schedule', text: `${Number(form.duration_hours) || '∞'} Hours Validity` },
       { icon: 'payments', text: `₹${Number(form.price).toLocaleString('en-IN')} - ${form.plan_type.charAt(0).toUpperCase() + form.plan_type.slice(1)} Based` }
     ];
-    // Avoid duplicates if already synced
+  }, [form]);
+
+  useEffect(() => {
+    if (autoSync && form) {
+      const generated = getGeneratedPoints();
+      // Only sync if generated points differ significantly or if list is empty
+      updatePoints(generated);
+    }
+  }, [autoSync, form?.limit_value, form?.duration_hours, form?.price, form?.user_type, form?.plan_type]);
+
+  const syncFromDetails = () => {
+    const generated = getGeneratedPoints();
     const existingTexts = points.map((p: any) => p.text);
     const newPoints = [...points];
     generated.forEach(g => {
@@ -65,14 +78,20 @@ function PlanPointsEditor({ value, onChange, form }: { value: string; onChange: 
     <div className="mt-3">
       <div className="d-flex justify-content-between align-items-center mb-2">
         <label style={modalLabel}>Plan Points (Features)</label>
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 align-items-center">
+          {form && (
+            <div className="form-check form-switch mb-0 me-2" title="Automatically update points based on plan details">
+              <input className="form-check-input" type="checkbox" checked={autoSync} onChange={e => setAutoSync(e.target.checked)} style={{ cursor: 'pointer' }} />
+              <label className="form-check-label small text-muted" style={{ fontSize: '0.65rem' }}>Auto-Sync</label>
+            </div>
+          )}
           {form && (
             <button type="button" className="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" style={{ fontSize: '0.7rem' }} onClick={syncFromDetails}>
-              <i className="bi bi-arrow-repeat me-1"></i>Sync Details
+              <i className="bi bi-arrow-repeat me-1"></i>Sync
             </button>
           )}
           <button type="button" className="btn btn-sm btn-outline-primary rounded-pill py-0 px-2" style={{ fontSize: '0.7rem' }} onClick={addPoint}>
-            <i className="bi bi-plus-lg me-1"></i>Add Point
+            <i className="bi bi-plus-lg me-1"></i>Add
           </button>
         </div>
       </div>
