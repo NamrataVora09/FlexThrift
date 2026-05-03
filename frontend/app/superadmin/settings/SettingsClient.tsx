@@ -5,7 +5,6 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
-import PricingRulesManager from '@/components/shared/PricingRulesManager';
 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
@@ -275,46 +274,8 @@ export default function SettingsClient() {
                 </small>
               </div>
             </div>
-
-            <div className="mt-5">
-              <h6 className="fw-bold mb-3 text-muted small uppercase"><i className="bi bi-sliders2-vertical me-2"></i>Filter-Based Advanced Rules</h6>
-              <PricingRulesManager />
-            </div>
           </Section>
 
-          {/* ── Referral Settings ── */}
-          <Section title="Referral Settings" icon="bi-people">
-            <div className="row g-3">
-              <div className="col-12">
-                <Toggle
-                  label="Enable Referral Program"
-                  desc="When enabled, users can refer others using their unique code and earn rewards."
-                  settingKey="referral_enabled"
-                  settings={settings}
-                  update={update}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Referrer Reward (₹)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.referral_referrer_reward || settings.referral_reward_amount || '50'} onChange={(e) => update('referral_referrer_reward', e.target.value)} />
-                <small className="text-muted">Amount earned by the person whose code is used (after purchase).</small>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Receiver Reward (₹)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.referral_receiver_reward || '50'} onChange={(e) => update('referral_receiver_reward', e.target.value)} />
-                <small className="text-muted">Amount earned by the person using the referral code (immediately).</small>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Max Discount Usage (%)</label>
-                <input type="number" min="0" max="100" className="form-control" style={inputStyle} value={settings.referral_max_discount_percent || '50'} onChange={(e) => update('referral_max_discount_percent', e.target.value)} />
-                <small className="text-muted">Max percentage of plan price that can be covered by rewards.</small>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Reward Expiry (days)</label>
-                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.referral_expiry_days || '30'} onChange={(e) => update('referral_expiry_days', e.target.value)} />
-              </div>
-            </div>
-          </Section>
 
           {/* ── PhonePe Payment ── */}
           <Section title="PhonePe Payment Gateway" icon="bi-credit-card">

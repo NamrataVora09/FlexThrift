@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
+import PricingRulesManager from '@/components/shared/PricingRulesManager';
 import { showToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
@@ -57,6 +58,7 @@ interface SettingsData {
 
 // ==================== CONSTANTS ====================
 const TABS = [
+  { key: 'pricing',   label: 'Pricing Rules',         icon: 'bi-tag' },
   { key: 'offers',    label: 'Offer Settings',        icon: 'bi-chat-left-quote' },
   { key: 'images',    label: 'Image Settings',        icon: 'bi-images' },
   { key: 'smtp',      label: 'SMTP Settings',         icon: 'bi-envelope-at' },
@@ -103,8 +105,10 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
   delivery_charge: { label: 'Delivery Charge (₹)', hint: 'Fixed delivery charge per order.' },
   min_order_value: { label: 'Min Order Value (₹)', hint: 'Minimum amount for placing orders.' },
   platform_fee: { label: 'Platform Fee (%)', hint: 'Global platform service fee.' },
-  referral_reward_amount: { label: 'Referral Reward (₹)' },
-  referral_expiry_days: { label: 'Referral Expiry (Days)' },
+  referral_referrer_reward: { label: 'Referrer Reward (₹)', hint: 'Amount earned by the person whose code is used.' },
+  referral_receiver_reward: { label: 'Receiver Reward (₹)', hint: 'Amount earned by the person using the code.' },
+  referral_max_discount_percent: { label: 'Max Discount Usage (%)', hint: 'Max % of plan price covered by rewards.' },
+  referral_expiry_days: { label: 'Reward Expiry (Days)', hint: 'Days until earned rewards expire.' },
   referral_min_purchase: { label: 'Min Purchase for Reward (₹)', hint: 'Minimum purchase to activate referral reward.' },
   referral_enabled: { label: 'Referral System Enabled', type: 'toggle' },
   seller_unlock_label: { label: 'Unlock Label' },
@@ -116,6 +120,7 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
 };
 
 const TAB_FIELDS: Record<string, string[]> = {
+  pricing: ['sale_base_discount', 'usage_no_dep_max', 'sale_depreciation_per_use', 'sale_max_additional_depreciation', 'rental_base_deposit_deduction', 'rental_suggested_cost_percent', 'rental_max_cost_cap_per_day', 'min_rental_days', 'fallback_rental_cost_per_day'],
   offers: ['offer_acceptance_limit_days', 'seller_rating_period_days', 'seller_rejection_window_hours', 'buyer_rating_period_days'],
   images: ['max_product_images', 'max_image_size_mb', 'image_upload_guidelines'],
   smtp: ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name'],
@@ -217,7 +222,7 @@ export default function BusinessSettingsView() {
   const [config, setConfig] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('offers');
+  const [activeTab, setActiveTab] = useState('pricing');
   const [showPw, setShowPw] = useState<Record<string, boolean>>({});
 
   // PhonePe test connection
@@ -352,248 +357,7 @@ export default function BusinessSettingsView() {
 
   const update = (key: string, val: string) => setConfig((c) => ({ ...c, [key]: val }));
 
-  // ==================== SALE PRICING RULES CRUD ====================
-  const openSaleModal = (rule?: PricingRule) => {
-    setEditingSaleRule(rule || { filter_type: '', filter_value: '', deduction_threshold: '', depreciation_range_min: '', depreciation_range_max: '', depreciation_amount: '' });
-    if (rule) {
-      setSaleDepRanges([{ min: rule.depreciation_range_min || '', max: Number(rule.depreciation_range_max) > 0 ? rule.depreciation_range_max : '', amount: rule.depreciation_amount || '' }]);
-    } else {
-      setSaleDepRanges([{ min: '', max: '', amount: '' }]);
-    }
-    if (rule?.filter_type) {
-      setFilterValues(taxonomy[rule.filter_type as keyof typeof taxonomy] || []);
-    } else {
-      setFilterValues([]);
-    }
-    setShowSaleModal(true);
-  };
 
-  // Returns true if [minA, maxA] overlaps [minB, maxB] (0 means ∞)
-  const rangesOverlap = (minA: number, maxA: number, minB: number, maxB: number) => {
-    const endA = maxA === 0 ? 999999999 : maxA;
-    const endB = maxB === 0 ? 999999999 : maxB;
-    return minA <= endB && minB <= endA;
-  };
-
-  const saveSaleRule = async () => {
-    if (!editingSaleRule) return;
-    const { filter_type, filter_value, deduction_threshold } = editingSaleRule;
-    if (!deduction_threshold) {
-      showToast.warning('Deduction Threshold is required'); return;
-    }
-    if (filter_type && !filter_value) {
-      showToast.warning('Please select a Filter Value'); return;
-    }
-    for (let i = 0; i < saleDepRanges.length; i++) {
-      const r = saleDepRanges[i];
-      if (!r.min || !r.amount) {
-        showToast.warning(`Range ${i + 1}: Min and Depreciation % are required`); return;
-      }
-      if (r.max && Number(r.max) < Number(r.min)) {
-        showToast.warning(`Range ${i + 1}: Max cannot be less than Min`); return;
-      }
-    }
-    const normFv = (v: any) => (!v || v === '0' || Number(v) === 0) ? '' : String(v);
-    const ft = filter_type || '';
-    const fv = normFv(filter_value);
-    const sameGroup = (r: PricingRule) => (r.filter_type || '') === ft && normFv(r.filter_value) === fv && r.id !== editingSaleRule.id;
-
-    // Only 1 record per group can have open-ended Used To (range_max = 0/blank)
-    for (const newRange of saleDepRanges) {
-      if (!Number(newRange.max)) {
-        const duplicate = saleRules.find(r => sameGroup(r) && !Number(r.depreciation_range_max));
-        if (duplicate) {
-          showToast.warning(`Only 1 rule per sub-type can have an open-ended "Used To". A rule for this group already has no end range.`); return;
-        }
-      }
-    }
-    // Check overlap within the new ranges being added
-    for (let i = 0; i < saleDepRanges.length; i++) {
-      for (let j = i + 1; j < saleDepRanges.length; j++) {
-        if (rangesOverlap(Number(saleDepRanges[i].min), Number(saleDepRanges[i].max) || 0, Number(saleDepRanges[j].min), Number(saleDepRanges[j].max) || 0)) {
-          showToast.warning(`Range ${i + 1} and Range ${j + 1} overlap each other`); return;
-        }
-      }
-    }
-    // Check overlap and sequence against existing rules in the same group
-    const existingForSameValue = saleRules.filter(sameGroup);
-    
-    // Sort existing rules by min to find the total coverage
-    const sortedExisting = [...existingForSameValue].sort((a,b) => Number(a.depreciation_range_min) - Number(b.depreciation_range_min));
-    const currentMax = sortedExisting.length > 0 ? Math.max(...sortedExisting.map(r => Number(r.depreciation_range_max) === 0 ? 999999 : Number(r.depreciation_range_max))) : -1;
-
-    for (const newRange of saleDepRanges) {
-      const nMin = Number(newRange.min);
-      const nMax = Number(newRange.max) || 0;
-
-      // Ensure sequential consistency: new ranges should generally start after existing ones if adding new
-
-
-      for (const existing of existingForSameValue) {
-        if (rangesOverlap(nMin, nMax, Number(existing.depreciation_range_min), Number(existing.depreciation_range_max))) {
-          showToast.warning(`Range ${nMin}–${nMax || '∞'} overlaps existing rule (${existing.depreciation_range_min}–${Number(existing.depreciation_range_max) === 0 ? '∞' : existing.depreciation_range_max})`); return;
-        }
-      }
-    }
-    setModalSaving(true);
-    try {
-      if (editingSaleRule.id && saleDepRanges.length === 1) {
-        const res = await api.post('/superadmin/save-pricing-rule', {
-          id: editingSaleRule.id, filter_type, filter_value,
-          deduction_threshold,
-          depreciation_range_min: saleDepRanges[0].min,
-          depreciation_range_max: saleDepRanges[0].max || '0',
-          depreciation_amount: saleDepRanges[0].amount,
-        });
-        if (!res.success) { showToast.error(res.message || 'Failed to save'); setModalSaving(false); return; }
-      } else {
-        if (editingSaleRule.id) {
-          await api.post(`/superadmin/delete-pricing-rule/${editingSaleRule.id}`, {});
-        }
-        for (const r of saleDepRanges) {
-          const res = await api.post('/superadmin/save-pricing-rule', {
-            filter_type, filter_value, deduction_threshold,
-            depreciation_range_min: r.min,
-            depreciation_range_max: r.max || '0',
-            depreciation_amount: r.amount,
-          });
-          if (!res.success) { showToast.error(res.message || 'Failed to save range'); setModalSaving(false); return; }
-        }
-      }
-      // Sync deduction_threshold to all other rules with the same group (including default blank group)
-      const otherSameType = saleRules.filter(sameGroup);
-      for (const r of otherSameType) {
-        await api.post('/superadmin/save-pricing-rule', {
-          id: r.id,
-          filter_type: r.filter_type,
-          filter_value: r.filter_value,
-          deduction_threshold,
-          depreciation_range_min: r.depreciation_range_min,
-          depreciation_range_max: r.depreciation_range_max,
-          depreciation_amount: r.depreciation_amount,
-        });
-      }
-      showToast.success(editingSaleRule?.id ? 'Pricing rule updated!' : `${saleDepRanges.length} pricing rule(s) created!`);
-      setShowSaleModal(false);
-      loadPricingRules();
-    } catch { showToast.error('Server error — please try again'); }
-    setModalSaving(false);
-  };
-
-  const deleteSaleRule = (id: number) => {
-    confirmToast('Delete this pricing rule? This cannot be undone.', async () => {
-      const res = await api.post(`/superadmin/delete-pricing-rule/${id}`, {});
-      if (res.success) { showToast.success('Pricing rule deleted'); loadPricingRules(); }
-      else showToast.error('Failed to delete rule');
-    }, 'Delete');
-  };
-
-  const toggleSaleRule = async (id: number) => {
-    const res = await api.post(`/superadmin/toggle-pricing-rule/${id}`, {});
-    if (res.success) { showToast.success('Rule status toggled'); loadPricingRules(); }
-    else showToast.error(res.message || 'Failed to toggle rule');
-  };
-
-  const bulkSaleAction = (action: 'delete' | 'deactivate' | 'activate') => {
-    const msg = action === 'delete' ? 'Delete ALL sale pricing rules?' : `${action === 'deactivate' ? 'Deactivate' : 'Activate'} ALL sale rules?`;
-    confirmToast(msg, async () => {
-      const endpoint = action === 'delete' ? '/superadmin/bulk-delete-pricing-rules' : '/superadmin/bulk-toggle-pricing-rules';
-      await api.post(endpoint, { type: 'sale', ...(action !== 'delete' ? { action } : {}) });
-      showToast.success(`All sale rules ${action === 'delete' ? 'deleted' : action + 'd'}`);
-      loadPricingRules();
-    }, action.charAt(0).toUpperCase() + action.slice(1));
-  };
-
-  // ==================== RENTAL PRICING RULES CRUD ====================
-  const openRentalModal = (rule?: RentalPricingRule) => {
-    setEditingRentalRule(rule || { filter_type: '', filter_value: '', deposit_deduction_threshold: '', depreciation_range_min: '', depreciation_range_max: '', depreciation_amount: '', max_cost_cap_per_day: '' });
-    if (rule?.filter_type) {
-      setRentalFilterValues(taxonomy[rule.filter_type as keyof typeof taxonomy] || []);
-    } else {
-      setRentalFilterValues([]);
-    }
-    setShowRentalModal(true);
-  };
-
-  const saveRentalRule = async () => {
-    if (!editingRentalRule) return;
-    const { filter_type, filter_value, deposit_deduction_threshold, max_cost_cap_per_day } = editingRentalRule;
-    if (!deposit_deduction_threshold || !max_cost_cap_per_day) {
-      showToast.warning('Please fill all required fields'); return;
-    }
-    if (filter_type && !filter_value) {
-      showToast.warning('Please select a Filter Value'); return;
-    }
-    const normRFv = (v: any) => (!v || v === '0' || Number(v) === 0) ? '' : String(v);
-    const rft = filter_type || '';
-    const rfv = normRFv(filter_value);
-    const rentalSameGroup = (r: RentalPricingRule) => (r.filter_type || '') === rft && normRFv(r.filter_value) === rfv && r.id !== editingRentalRule.id;
-    // Only 1 record per group can have open-ended Used To (range_max = 0/blank)
-    if (!Number(editingRentalRule.depreciation_range_max)) {
-      const duplicate = rentalRules.find(r => rentalSameGroup(r) && !Number(r.depreciation_range_max));
-      if (duplicate) {
-        showToast.warning(`Only 1 rule per sub-type can have an open-ended "Used To". A rule for this group already has no end range.`); return;
-      }
-    }
-    // Check overlap and sequence against existing rental rules in the same group
-    const existingRentalSameValue = rentalRules.filter(rentalSameGroup);
-    const newMin = Number(editingRentalRule.depreciation_range_min) || 0;
-    const newMax = Number(editingRentalRule.depreciation_range_max) || 0;
-
-    const sortedExistingRental = [...existingRentalSameValue].sort((a,b) => Number(a.depreciation_range_min) - Number(b.depreciation_range_min));
-    const currentRentalMax = sortedExistingRental.length > 0 ? Math.max(...sortedExistingRental.map(r => Number(r.depreciation_range_max) === 0 ? 999999 : Number(r.depreciation_range_max))) : -1;
-
-
-
-    for (const existing of existingRentalSameValue) {
-      if (rangesOverlap(newMin, newMax, Number(existing.depreciation_range_min), Number(existing.depreciation_range_max))) {
-        showToast.warning(`Range ${newMin}–${newMax === 0 ? '∞' : newMax} overlaps existing rule (${existing.depreciation_range_min}–${Number(existing.depreciation_range_max) === 0 ? '∞' : existing.depreciation_range_max})`); return;
-      }
-    }
-    setModalSaving(true);
-    try {
-      const payload: Record<string, any> = { ...editingRentalRule };
-      const res = await api.post('/superadmin/save-rental-pricing-rule', payload);
-      if (res.success) {
-        // Sync deposit_deduction_threshold to all other rules in the same group
-        const otherRentalSameType = rentalRules.filter(rentalSameGroup);
-        for (const r of otherRentalSameType) {
-          await api.post('/superadmin/save-rental-pricing-rule', {
-            ...r,
-            deposit_deduction_threshold,
-          });
-        }
-        showToast.success(editingRentalRule?.id ? 'Rental rule updated!' : 'Rental rule created!');
-        setShowRentalModal(false);
-        loadPricingRules();
-      } else { showToast.error(res.message || 'Failed to save'); }
-    } catch { showToast.error('Server error — please try again'); }
-    setModalSaving(false);
-  };
-
-  const deleteRentalRule = (id: number) => {
-    confirmToast('Delete this rental rule? This cannot be undone.', async () => {
-      const res = await api.post(`/superadmin/delete-rental-pricing-rule/${id}`, {});
-      if (res.success) { showToast.success('Rental rule deleted'); loadPricingRules(); }
-      else showToast.error('Failed to delete rental rule');
-    }, 'Delete');
-  };
-
-  const toggleRentalRule = async (id: number) => {
-    const res = await api.post(`/superadmin/toggle-rental-pricing-rule/${id}`, {});
-    if (res.success) { showToast.success('Rental rule status toggled'); loadPricingRules(); }
-    else showToast.error(res.message || 'Failed to toggle rental rule');
-  };
-
-  const bulkRentalAction = (action: 'delete' | 'deactivate' | 'activate') => {
-    const msg = action === 'delete' ? 'Delete ALL rental pricing rules?' : `${action === 'deactivate' ? 'Deactivate' : 'Activate'} ALL rental rules?`;
-    confirmToast(msg, async () => {
-      const endpoint = action === 'delete' ? '/superadmin/bulk-delete-pricing-rules' : '/superadmin/bulk-toggle-pricing-rules';
-      await api.post(endpoint, { type: 'rental', ...(action !== 'delete' ? { action } : {}) });
-      showToast.success(`All rental rules ${action === 'delete' ? 'deleted' : action + 'd'}`);
-      loadPricingRules();
-    }, action.charAt(0).toUpperCase() + action.slice(1));
-  };
 
   // ==================== REJECTION TEMPLATES CRUD ====================
   const openRejModal = (tpl?: RejectionTemplate) => {
@@ -698,7 +462,11 @@ export default function BusinessSettingsView() {
   );
 
   // ==================== PRICING TAB CONTENT ====================
-  const renderPricingTab = () => null;
+  const renderPricingTab = () => (
+    <div className="d-flex flex-column gap-4">
+      <PricingRulesManager />
+    </div>
+  );
 
   return (
     <DashboardLayout requiredRoles={['super_admin']}>
@@ -1030,9 +798,11 @@ export default function BusinessSettingsView() {
               <h6 style={sectionHeaderStyle}><i className="bi bi-people me-2"></i>Configure Referral Program</h6>
               <div className="row g-3 mb-4">
                 {renderField('referral_enabled')}
-                {renderField('referral_reward_amount')}
-                {renderField('referral_min_purchase')}
+                {renderField('referral_referrer_reward')}
+                {renderField('referral_receiver_reward')}
+                {renderField('referral_max_discount_percent')}
                 {renderField('referral_expiry_days')}
+                {renderField('referral_min_purchase')}
               </div>
               <div className="row">
                 <div className="col-md-6">
