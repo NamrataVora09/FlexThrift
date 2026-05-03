@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
+import PricingRulesManager from '@/components/shared/PricingRulesManager';
 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
@@ -222,7 +223,7 @@ export default function SettingsClient() {
           {/* ── Pricing & Rental Defaults ── */}
           <Section title="Pricing & Rental Defaults" icon="bi-currency-dollar">
             <div className="row g-3">
-              <div className="col-12"><h6 className="fw-bold mb-0 text-muted small uppercase">Sale Defaults</h6></div>
+              <div className="col-12"><h6 className="fw-bold mb-0 text-muted small uppercase">Global Sale Defaults</h6></div>
               <div className="col-md-3">
                 <label className="form-label fw-semibold">Base Discount (%)</label>
                 <input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.sale_base_discount || '0'} onChange={(e) => update('sale_base_discount', e.target.value)} />
@@ -244,7 +245,7 @@ export default function SettingsClient() {
                 <small className="text-muted">Max additional depreciation cap.</small>
               </div>
 
-              <div className="col-12 mt-3"><h6 className="fw-bold mb-0 text-muted small uppercase">Rental Defaults</h6></div>
+              <div className="col-12 mt-3"><h6 className="fw-bold mb-0 text-muted small uppercase">Global Rental Defaults</h6></div>
               <div className="col-md-3">
                 <label className="form-label fw-semibold">Base Deposit Ded. (%)</label>
                 <input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.rental_base_deposit_deduction || '0'} onChange={(e) => update('rental_base_deposit_deduction', e.target.value)} />
@@ -273,6 +274,11 @@ export default function SettingsClient() {
                   When no pricing rules exist: <strong>Deposit = Original Price</strong>, and <strong>Daily Rent = Deposit - {settings.fallback_rental_cost_per_day || '0'}%</strong>.
                 </small>
               </div>
+            </div>
+
+            <div className="mt-5">
+              <h6 className="fw-bold mb-3 text-muted small uppercase"><i className="bi bi-sliders2-vertical me-2"></i>Filter-Based Advanced Rules</h6>
+              <PricingRulesManager />
             </div>
           </Section>
 

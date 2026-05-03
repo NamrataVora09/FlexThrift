@@ -173,6 +173,7 @@ class SharedApi extends ResourceController
             ->join('subscription_plans sp', 'sp.id = us.plan_id')
             ->where('us.user_id', $jwtUser['user_id'])
             ->where('us.is_active', 1)
+            ->where('us.payment_status', 'paid')
             ->where('us.expires_at >=', date('Y-m-d H:i:s'))
             ->orderBy('us.created_at', 'DESC')
             ->get()->getRowArray();
@@ -181,6 +182,7 @@ class SharedApi extends ResourceController
             ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours')
             ->join('subscription_plans sp', 'sp.id = us.plan_id')
             ->where('us.user_id', $jwtUser['user_id'])
+            ->where('us.payment_status', 'paid')
             ->orderBy('us.created_at', 'DESC')
             ->limit(10)
             ->get()->getResultArray();

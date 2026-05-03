@@ -57,7 +57,6 @@ interface SettingsData {
 
 // ==================== CONSTANTS ====================
 const TABS = [
-  { key: 'pricing',   label: 'Pricing Rules',        icon: 'bi-currency-dollar' },
   { key: 'offers',    label: 'Offer Settings',        icon: 'bi-chat-left-quote' },
   { key: 'images',    label: 'Image Settings',        icon: 'bi-images' },
   { key: 'smtp',      label: 'SMTP Settings',         icon: 'bi-envelope-at' },
@@ -117,7 +116,6 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
 };
 
 const TAB_FIELDS: Record<string, string[]> = {
-  pricing: ['sale_base_discount', 'usage_no_dep_max', 'sale_depreciation_per_use', 'sale_max_additional_depreciation', 'rental_base_deposit_deduction', 'rental_suggested_cost_percent', 'rental_max_cost_cap_per_day', 'fallback_rental_cost_per_day', 'min_rental_days'],
   offers: ['offer_acceptance_limit_days', 'seller_rating_period_days', 'seller_rejection_window_hours', 'buyer_rating_period_days'],
   images: ['max_product_images', 'max_image_size_mb', 'image_upload_guidelines'],
   smtp: ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name'],
@@ -219,7 +217,7 @@ export default function BusinessSettingsView() {
   const [config, setConfig] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('pricing');
+  const [activeTab, setActiveTab] = useState('offers');
   const [showPw, setShowPw] = useState<Record<string, boolean>>({});
 
   // PhonePe test connection
