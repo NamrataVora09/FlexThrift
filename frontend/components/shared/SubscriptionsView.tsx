@@ -280,7 +280,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
         )}
 
         {/* Active Subscription */}
-        {data?.active && (() => {
+        {data?.active && new Date(data.active.expires_at) >= new Date() && (() => {
           const active = data.active;
           const used = active.usage_count;
           const limit = active.limit_value;

@@ -142,7 +142,7 @@ function SubscriptionsInner() {
 
   /* Build active subscriptions list (prioritize dedicated active object from backend) */
   let activeSubscriptions: (ActiveSub | HistoryItem)[] = [];
-  if (data?.active) {
+  if (data?.active && new Date(data.active.expires_at) >= new Date()) {
     activeSubscriptions = [data.active];
   } else if (data?.history) {
     activeSubscriptions = data.history.filter(
