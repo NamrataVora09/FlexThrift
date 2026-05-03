@@ -219,13 +219,51 @@ export default function SettingsClient() {
             </div>
           </Section>
 
-          {/* ── Rental Settings ── */}
-          <Section title="Rental Settings" icon="bi-calendar-range">
+          {/* ── Pricing & Rental Defaults ── */}
+          <Section title="Pricing & Rental Defaults" icon="bi-currency-dollar">
             <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">Minimum Rental Days</label>
+              <div className="col-12"><h6 className="fw-bold mb-0 text-muted small uppercase">Sale Defaults</h6></div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Base Discount (%)</label>
+                <input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.sale_base_discount || '0'} onChange={(e) => update('sale_base_discount', e.target.value)} />
+                <small className="text-muted">Min discount from original price for sales.</small>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">No Dep. Limit (Uses)</label>
+                <input type="number" className="form-control" style={inputStyle} value={settings.usage_no_dep_max || '0'} onChange={(e) => update('usage_no_dep_max', e.target.value)} />
+                <small className="text-muted">Usage count up to which 0% extra dep is applied.</small>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Dep. Per Use (%)</label>
+                <input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.sale_depreciation_per_use || '0'} onChange={(e) => update('sale_depreciation_per_use', e.target.value)} />
+                <small className="text-muted">Extra depreciation per additional use.</small>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Max Extra Dep. (%)</label>
+                <input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.sale_max_additional_depreciation || '0'} onChange={(e) => update('sale_max_additional_depreciation', e.target.value)} />
+                <small className="text-muted">Max additional depreciation cap.</small>
+              </div>
+
+              <div className="col-12 mt-3"><h6 className="fw-bold mb-0 text-muted small uppercase">Rental Defaults</h6></div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Base Deposit Ded. (%)</label>
+                <input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.rental_base_deposit_deduction || '0'} onChange={(e) => update('rental_base_deposit_deduction', e.target.value)} />
+                <small className="text-muted">Base deduction for deposit calculation.</small>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Suggested Cost (%)</label>
+                <input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.rental_suggested_cost_percent || '0'} onChange={(e) => update('rental_suggested_cost_percent', e.target.value)} />
+                <small className="text-muted">Suggested rental cost as % of deposit.</small>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Max Cost Cap/Day (%)</label>
+                <input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.rental_max_cost_cap_per_day || '0'} onChange={(e) => update('rental_max_cost_cap_per_day', e.target.value)} />
+                <small className="text-muted">Max rental cost per day as % of deposit.</small>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Min Rental Days</label>
                 <input type="number" min="1" className="form-control" style={inputStyle} value={settings.min_rental_days || '3'} onChange={(e) => update('min_rental_days', e.target.value)} />
-                <small className="text-muted">Minimum number of days a buyer must rent a product</small>
+                <small className="text-muted">Min days a buyer must rent a product.</small>
               </div>
               <div className="col-md-6">
                 <label className="form-label fw-semibold">Fallback Rental Cost Per Day (%)</label>

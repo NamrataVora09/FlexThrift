@@ -724,18 +724,7 @@ export default function BusinessSettingsView() {
   // ==================== PRICING TAB CONTENT ====================
   const renderPricingTab = () => (
     <>
-      {/* Global Defaults Section */}
-      <div className="card border-0 mb-4" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        <div className="card-header bg-white d-flex align-items-center gap-2" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>
-          <i className="bi bi-gear" style={{ color: '#ffc63a' }}></i>
-          <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>Global Pricing & Rental Defaults</h5>
-        </div>
-        <div className="card-body" style={{ padding: '1.25rem' }}>
-          <div className="row">
-            {(TAB_FIELDS['pricing'] || []).map((key) => renderField(key))}
-          </div>
-        </div>
-      </div>
+
 
       {/* ===== Filter-Based Sale Pricing Rules ===== */}
       <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '1rem' }}>
