@@ -161,12 +161,20 @@ class SharedApi extends ResourceController
             ->orderBy('price', 'ASC')
             ->get()->getResultArray();
 
-        // Auto-deactivate expired subscriptions for this user
-        $db->table('user_subscriptions')
-            ->where('user_id', $jwtUser['user_id'])
-            ->where('is_active', 1)
-            ->where('expires_at <', date('Y-m-d H:i:s'))
-            ->update(['is_active' => 0]);
+        // Auto-deactivate expired subscriptions for this user and user_type
+        $expiredIds = $db->table('user_subscriptions us')
+            ->select('us.id')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $jwtUser['user_id'])
+            ->where('us.is_active', 1)
+            ->where('us.expires_at <', date('Y-m-d H:i:s'))
+            ->where('sp.user_type', $userType)
+            ->get()->getResultArray();
+        if (!empty($expiredIds)) {
+            $db->table('user_subscriptions')
+                ->whereIn('id', array_column($expiredIds, 'id'))
+                ->update(['is_active' => 0]);
+        }
 
         $active = $db->table('user_subscriptions us')
             ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours')
@@ -175,6 +183,7 @@ class SharedApi extends ResourceController
             ->where('us.is_active', 1)
             ->where('us.payment_status', 'paid')
             ->where('us.expires_at >=', date('Y-m-d H:i:s'))
+            ->where('sp.user_type', $userType)
             ->orderBy('us.created_at', 'DESC')
             ->get()->getRowArray();
 

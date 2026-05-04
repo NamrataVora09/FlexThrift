@@ -102,7 +102,7 @@ function SellerSubscriptionsInner() {
     if (success) setFlashMsg({ text: decodeURIComponent(success), ok: true });
     if (error) setFlashMsg({ text: decodeURIComponent(error), ok: false });
 
-    api.get<SubData>('/seller/subscriptions/seller').then((r) => {
+    api.get<SubData>('/shared/subscriptions/seller').then((r) => {
       if (r.success && r.data) setData(r.data);
       setLoading(false);
     });

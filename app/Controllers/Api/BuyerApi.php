@@ -666,13 +666,15 @@ class BuyerApi extends ResourceController
 
         // SuperAdmin bypasses subscription check
         if ($jwtUser['role'] !== 'super_admin') {
-            $activeSub = $db->table('user_subscriptions')
-                ->where('user_id', $jwtUser['user_id'])
-                ->where('is_active', 1)
-                ->where('expires_at >=', date('Y-m-d H:i:s'))
+            $activeSub = $db->table('user_subscriptions us')
+                ->join('subscription_plans sp', 'sp.id = us.plan_id')
+                ->where('us.user_id', $jwtUser['user_id'])
+                ->where('us.is_active', 1)
+                ->where('us.expires_at >=', date('Y-m-d H:i:s'))
+                ->where('sp.user_type', 'buyer')
                 ->get()->getRowArray();
             if (!$activeSub) {
-                return $this->respond(['success' => false, 'message' => 'You need an active subscription to make offers. Please subscribe to a plan.'], 403);
+                return $this->respond(['success' => false, 'message' => 'You need an active buyer subscription to make offers. Please subscribe to a buyer plan.'], 403);
             }
         }
 

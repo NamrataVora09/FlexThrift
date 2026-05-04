@@ -275,14 +275,21 @@ class SellerApi extends ResourceController
                 ->where('us.user_id', $userId)
                 ->where('us.is_active', 1)
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
+                ->where('sp.user_type', 'seller')
                 ->get()->getRowArray();
             if (!$activeSub) {
-                // Check if there was an expired subscription
-                $expiredSub = $db->table('user_subscriptions')->where('user_id', $userId)->where('is_active', 1)->where('expires_at <', date('Y-m-d H:i:s'))->get()->getRowArray();
+                // Check if there was an expired seller subscription
+                $expiredSub = $db->table('user_subscriptions us')
+                    ->join('subscription_plans sp', 'sp.id = us.plan_id')
+                    ->where('us.user_id', $userId)
+                    ->where('us.is_active', 1)
+                    ->where('us.expires_at <', date('Y-m-d H:i:s'))
+                    ->where('sp.user_type', 'seller')
+                    ->get()->getRowArray();
                 if ($expiredSub) {
                     return $this->respond(['success' => false, 'message' => 'Your subscription has expired on ' . date('d M Y', strtotime($expiredSub['expires_at'])) . '. Please renew your plan to upload products.'], 403);
                 }
-                return $this->respond(['success' => false, 'message' => 'No active seller subscription found. Please subscribe to a plan to upload products.'], 403);
+                return $this->respond(['success' => false, 'message' => 'No active seller subscription found. Please subscribe to a seller plan to upload products.'], 403);
             }
         }
 
