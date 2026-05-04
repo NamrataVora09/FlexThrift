@@ -1055,9 +1055,9 @@ class SharedApi extends ResourceController
         $range = $this->request->getGet('range') ?? 'all';
 
         $builder = $db->table('user_subscriptions us')
-            ->select('us.*, sp.user_type as plan_user_type, sp.name as plan_name')
-            ->join('subscription_plans sp', 'sp.id = us.plan_id')
-            ->where('us.payment_status', 'paid');
+            ->select('us.*, sp.plan_name, sp.user_type as plan_user_type, u.name as user_name')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
+            ->join('users u', 'u.id = us.user_id', 'left');
 
         // If not admin/superadmin, filter by user_id
         if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
@@ -1112,9 +1112,14 @@ class SharedApi extends ResourceController
                 $end = date('Y-12-31 23:59:59', strtotime('last day of -1 year'));
                 $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
                 break;
+            case 'all_time':
+            default:
+                // No additional where clauses
+                break;
         }
 
         $subs = $builder->get()->getResultArray();
+        $totalPlans = $db->table('subscription_plans')->countAll();
 
         // Calculate Stats
         $totalSubs = count($subs);
@@ -1125,8 +1130,13 @@ class SharedApi extends ResourceController
         $sellerSpent = 0;
         $buyerDiscount = 0;
         $sellerDiscount = 0;
-        $buyerCount = 0;
-        $sellerCount = 0;
+        
+        // Get all plans for breakdown
+        $allPlans = $db->table('subscription_plans')->get()->getResultArray();
+        $planBreakdown = [];
+        foreach ($allPlans as $p) {
+            $planBreakdown[$p['plan_name']] = 0;
+        }
 
         foreach ($subs as $s) {
             $amt = (float)$s['amount_paid'];
@@ -1137,11 +1147,13 @@ class SharedApi extends ResourceController
             if ($s['plan_user_type'] === 'buyer') {
                 $buyerSpent += $amt;
                 $buyerDiscount += $disc;
-                $buyerCount++;
             } else {
                 $sellerSpent += $amt;
                 $sellerDiscount += $disc;
-                $sellerCount++;
+            }
+            
+            if (isset($planBreakdown[$s['plan_name']])) {
+                $planBreakdown[$s['plan_name']]++;
             }
         }
 
@@ -1173,6 +1185,7 @@ class SharedApi extends ResourceController
             case 'current_year': $rangeTxBuilder->where('t.created_at >=', date('Y-01-01 00:00:00')); break;
             case 'last_year': $rangeTxBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-1 year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('-1 year'))); break;
             case 'last_2_years': $rangeTxBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-2 years'))); break;
+            case 'all_time': default: break; // No range filter
         }
         
         $transactions = $rangeTxBuilder->get()->getResultArray();
@@ -1184,20 +1197,55 @@ class SharedApi extends ResourceController
                     'total_subscriptions' => $totalSubs,
                     'total_spent' => $totalSpent,
                     'total_discount' => $totalDiscount,
+                    'total_plans' => $totalPlans,
                 ],
                 'charts' => [
                     'amount_discount' => [
                         'buyer' => ['spent' => $buyerSpent, 'discount' => $buyerDiscount],
                         'seller' => ['spent' => $sellerSpent, 'discount' => $sellerDiscount],
                     ],
-                    'plan_counts' => [
-                        'buyer' => $buyerCount,
-                        'seller' => $sellerCount,
+                    'monthly_stats' => $this->getMonthlyStats($transactions),
+                    'plan_breakdown' => [
+                        'labels' => array_keys($planBreakdown),
+                        'values' => array_values($planBreakdown)
                     ]
                 ],
-                'transactions' => $transactions,
+                'transactions' => array_map(function($s) {
+                    return [
+                        'id' => $s['id'],
+                        'user_name' => $s['user_name'] ?? 'System',
+                        'description' => "Subscription: " . ($s['plan_name'] ?? 'Standard'),
+                        'amount' => $s['amount_paid'],
+                        'payment_status' => $s['payment_status'],
+                        'created_at' => $s['created_at']
+                    ];
+                }, $subs),
                 'user_role' => $jwtUser['role']
             ]
         ]);
+    }
+
+    private function getMonthlyStats($transactions)
+    {
+        $stats = [];
+        
+        // Pre-fill last 12 months with 0
+        for ($i = 11; $i >= 0; $i--) {
+            $monthKey = date('M Y', strtotime("-$i months"));
+            $stats[$monthKey] = 0;
+        }
+
+        // Add actual transactions
+        foreach ($transactions as $tx) {
+            $month = date('M Y', strtotime($tx['created_at']));
+            if (isset($stats[$month])) {
+                $stats[$month] += (float)$tx['amount'];
+            }
+        }
+
+        return [
+            'labels' => array_keys($stats),
+            'values' => array_values($stats)
+        ];
     }
 }

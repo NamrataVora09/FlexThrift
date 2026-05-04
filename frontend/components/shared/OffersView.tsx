@@ -101,6 +101,8 @@ function historyIcon(action: string) {
   }
 }
 
+const REJECTED_STATUSES = ['rejected', 'cancelled', 'missed'];
+
 function fmtShort(d?: string) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
@@ -608,15 +610,13 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
   const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 
-  const REJECTED_STATUSES = ['rejected', 'cancelled', 'missed'];
 
   const sorted = (() => {
     const all = [...offers];
-    return [
-      ...all.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime),
-      ...all.filter(o => REJECTED_STATUSES.includes(o.status)).sort(byTime),
-      ...all.filter(o => o.status === 'accepted').sort(byTime),
-    ];
+    const p = all.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime);
+    const r = all.filter(o => REJECTED_STATUSES.includes(o.status)).sort(byTime);
+    const a = all.filter(o => o.status === 'accepted').sort(byTime);
+    return [...p, ...r, ...a];
   })();
 
   const filtered = (() => {
@@ -1183,11 +1183,22 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
     return m;
   }, [offers]);
 
-  // sort product groups by their newest offer (first item after inner sort)
+  // sort product groups by their most important status first, then newest offer
   const groupEntries = useMemo(() =>
-    Object.entries(grouped).sort(([, a], [, b]) =>
-      new Date(b[0].created_at).getTime() - new Date(a[0].created_at).getTime()
-    ), [grouped]);
+    Object.entries(grouped).sort(([, a], [, b]) => {
+      const getPriority = (status: string) => {
+        if (['pending', 'negotiating'].includes(status)) return 3;
+        if (REJECTED_STATUSES.includes(status)) return 2;
+        if (status === 'accepted') return 1;
+        return 0;
+      };
+      
+      const pA = getPriority(a[0].status);
+      const pB = getPriority(b[0].status);
+      
+      if (pB !== pA) return pB - pA;
+      return new Date(b[0].created_at).getTime() - new Date(a[0].created_at).getTime();
+    }), [grouped]);
 
   return (
     <>

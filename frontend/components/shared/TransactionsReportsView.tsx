@@ -11,15 +11,20 @@ interface ReportData {
     total_subscriptions: number;
     total_spent: number;
     total_discount: number;
+    total_plans: number;
   };
   charts: {
     amount_discount: {
       buyer: { spent: number; discount: number };
       seller: { spent: number; discount: number };
     };
-    plan_counts: {
-      buyer: number;
-      seller: number;
+    plan_breakdown: {
+      labels: string[];
+      values: number[];
+    };
+    monthly_stats: {
+      labels: string[];
+      values: number[];
     };
   };
   transactions: any[];
@@ -27,6 +32,7 @@ interface ReportData {
 }
 
 const RANGES = [
+  { label: 'All Time', value: 'all_time' },
   { label: 'Current Week', value: 'current_week' },
   { label: 'Last Week', value: 'last_week' },
   { label: 'Last 2 Weeks', value: 'last_2_weeks' },
@@ -39,11 +45,10 @@ const RANGES = [
 ];
 
 export default function TransactionsReportsView({ role }: { role: string }) {
-  const [globalRange, setGlobalRange] = useState('current_week');
-  const [barRange, setBarRange] = useState('current_week');
-  const [pieRange, setPieRange] = useState('current_week');
-  const [countRange, setCountRange] = useState('current_week');
-  const [historyRange, setHistoryRange] = useState('current_week');
+  const [barRange, setBarRange] = useState('all_time');
+  const [pieRange, setPieRange] = useState('all_time');
+  const [countRange, setCountRange] = useState('all_time');
+  const [historyRange, setHistoryRange] = useState('all_time');
 
   const [summaryData, setSummaryData] = useState<ReportData | null>(null);
   const [barData, setBarData] = useState<ReportData | null>(null);
@@ -81,27 +86,44 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     loadingSetter(false);
   };
 
-  useEffect(() => { fetchSectionData(globalRange, setSummaryData, setSummaryLoading); }, [globalRange]);
   useEffect(() => { fetchSectionData(barRange, setBarData, setBarLoading); }, [barRange]);
   useEffect(() => { fetchSectionData(pieRange, setPieData, setPieLoading); }, [pieRange]);
   useEffect(() => { fetchSectionData(countRange, setCountData, setCountLoading); }, [countRange]);
   useEffect(() => { fetchSectionData(historyRange, setHistoryData, setHistoryLoading); }, [historyRange]);
+  useEffect(() => { if (barData) setSummaryData(barData); }, [barData]);
 
   useEffect(() => {
     if (!barData) return;
     if (barChartInstance.current) barChartInstance.current.destroy();
     if (barChartRef.current) {
-      const isBoth = barData.user_role === 'super_admin' || barData.user_role === 'admin';
-      const isSeller = barData.user_role === 'seller';
-      const isBuyer = barData.user_role === 'buyer';
-      const labels = []; const values = []; const colors = [];
-      if (isBoth || isBuyer) { labels.push('Buyer Spent'); values.push(barData.charts.amount_discount.buyer.spent); colors.push(themeColors.buyer); }
-      if (isBoth || isSeller) { labels.push('Seller Spent'); values.push(barData.charts.amount_discount.seller.spent); colors.push(themeColors.seller); }
-      labels.push('Discount'); values.push(barData.charts.amount_discount.buyer.discount + barData.charts.amount_discount.seller.discount); colors.push(themeColors.discount);
+      const labels = barData.charts?.monthly_stats?.labels || [];
+      const values = barData.charts?.monthly_stats?.values || [];
       barChartInstance.current = new Chart(barChartRef.current, {
         type: 'bar',
-        data: { labels, datasets: [{ label: 'Amount (₹)', data: values, backgroundColor: colors }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        data: {
+          labels,
+          datasets: [{
+            label: 'Transaction Amount (₹)',
+            data: values,
+            backgroundColor: themeColors.buyer,
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (context) => `Amount: ₹${(context.parsed.y ?? 0).toLocaleString('en-IN')}`
+              }
+            }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: (val) => `₹${val}` } }
+          }
+        }
       });
     }
   }, [barData]);
@@ -114,9 +136,11 @@ export default function TransactionsReportsView({ role }: { role: string }) {
       const isSeller = pieData.user_role === 'seller';
       const isBuyer = pieData.user_role === 'buyer';
       const labels = []; const values = []; const colors = [];
-      if (isBoth || isBuyer) { labels.push('Buyer Spent'); values.push(pieData.charts.amount_discount.buyer.spent); colors.push(themeColors.buyer); }
-      if (isBoth || isSeller) { labels.push('Seller Spent'); values.push(pieData.charts.amount_discount.seller.spent); colors.push(themeColors.seller); }
-      const totalDisc = pieData.charts.amount_discount.buyer.discount + pieData.charts.amount_discount.seller.discount;
+      const ad = pieData.charts?.amount_discount;
+      if (!ad) return;
+      if (isBoth || isBuyer) { labels.push('Buyer Spent'); values.push(ad.buyer?.spent || 0); colors.push(themeColors.buyer); }
+      if (isBoth || isSeller) { labels.push('Seller Spent'); values.push(ad.seller?.spent || 0); colors.push(themeColors.seller); }
+      const totalDisc = (ad.buyer?.discount || 0) + (ad.seller?.discount || 0);
       if (totalDisc > 0) { labels.push('Total Discount'); values.push(totalDisc); colors.push(themeColors.discount); }
       pieChartInstance.current = new Chart(pieChartRef.current, {
         type: 'pie',
@@ -130,16 +154,26 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     if (!countData) return;
     if (countChartInstance.current) countChartInstance.current.destroy();
     if (countChartRef.current) {
-      const isBoth = countData.user_role === 'super_admin' || countData.user_role === 'admin';
-      const isSeller = countData.user_role === 'seller';
-      const isBuyer = countData.user_role === 'buyer';
-      const labels = []; const counts = []; const bgColors = [];
-      if (isBoth || isBuyer) { labels.push('Buyer Plans'); counts.push(countData.charts.plan_counts.buyer); bgColors.push(themeColors.buyer); }
-      if (isBoth || isSeller) { labels.push('Seller Plans'); counts.push(countData.charts.plan_counts.seller); bgColors.push(themeColors.seller); }
+      const labels = countData.charts?.plan_breakdown?.labels || [];
+      const counts = countData.charts?.plan_breakdown?.values || [];
       countChartInstance.current = new Chart(countChartRef.current, {
         type: 'bar',
-        data: { labels, datasets: [{ label: 'No. of Subscriptions', data: counts, backgroundColor: bgColors }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        data: {
+          labels,
+          datasets: [{
+            label: 'No. of Subscriptions',
+            data: counts,
+            backgroundColor: themeColors.seller,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y', // Horizontal bar looks better for many plans
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
       });
     }
   }, [countData]);
@@ -149,11 +183,13 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     { key: 'user_name', label: 'User', render: (r) => <span className="fw-medium">{r.user_name || 'System'}</span> },
     { key: 'description', label: 'Description' },
     { key: 'amount', label: 'Amount', render: (r) => <span className="fw-bold">₹{r.amount}</span> },
-    { key: 'status', label: 'Status', render: (r) => (
-      <span className={`badge rounded-pill ${r.payment_status === 'completed' || r.payment_status === 'paid' ? 'bg-success' : 'bg-warning text-dark'}`} style={{ fontSize: '0.7rem' }}>
-        {r.payment_status || r.status}
-      </span>
-    )},
+    {
+      key: 'status', label: 'Status', render: (r) => (
+        <span className={`badge rounded-pill ${r.payment_status === 'completed' || r.payment_status === 'paid' ? 'bg-success' : 'bg-warning text-dark'}`} style={{ fontSize: '0.7rem' }}>
+          {r.payment_status || r.status}
+        </span>
+      )
+    },
     { key: 'created_at', label: 'Date', render: (r) => <span className="small">{new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span> },
   ];
 
@@ -199,31 +235,28 @@ export default function TransactionsReportsView({ role }: { role: string }) {
         {/* Summary Cards */}
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h6 className="fw-bold mb-0" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#666' }}>Summary Overview</h6>
-          <RangePicker value={globalRange} onChange={setGlobalRange} />
         </div>
         <div className="row g-4 mb-5">
-          <div className="col-md-4">
+
+          <div className="col-md-3">
             <div className="metric-card">
-              {summaryLoading && <LoadingOverlay />}
-              <i className="bi bi-box-seam metric-icon"></i>
-              <p className="metric-label">Total Subscriptions Purchased</p>
+              <i className="bi bi-layers metric-icon"></i>
+              <div className="metric-label">Total Subscriptions Plans</div>
               <div className="metric-value">{summaryData?.summary.total_subscriptions || 0}</div>
             </div>
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <div className="metric-card">
-              {summaryLoading && <LoadingOverlay />}
               <i className="bi bi-currency-rupee metric-icon"></i>
-              <p className="metric-label">Total Amount Spent</p>
-              <div className="metric-value">₹{summaryData?.summary.total_spent.toLocaleString() || 0}</div>
+              <div className="metric-label">Total Volume</div>
+              <div className="metric-value">₹{summaryData?.summary.total_spent.toLocaleString('en-IN') || 0}</div>
             </div>
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <div className="metric-card">
-              {summaryLoading && <LoadingOverlay />}
               <i className="bi bi-percent metric-icon"></i>
-              <p className="metric-label">Total Discount Availed</p>
-              <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString() || 0}</div>
+              <div className="metric-label">Total Discount</div>
+              <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN') || 0}</div>
             </div>
           </div>
         </div>
