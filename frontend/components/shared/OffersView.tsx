@@ -611,13 +611,21 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 
 
-  const sorted = (() => {
-    const all = [...offers];
+  const perspectiveOffers = useMemo(() => {
+    return offers.filter(o => {
+      if (perspective === 'buyer' && o.perspective && o.perspective !== 'sent') return false;
+      if (perspective === 'seller' && o.perspective && o.perspective !== 'received') return false;
+      return true;
+    });
+  }, [offers, perspective]);
+
+  const sorted = useMemo(() => {
+    const all = [...perspectiveOffers];
     const p = all.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime);
     const r = all.filter(o => REJECTED_STATUSES.includes(o.status)).sort(byTime);
     const a = all.filter(o => o.status === 'accepted').sort(byTime);
     return [...p, ...r, ...a];
-  })();
+  }, [perspectiveOffers]);
 
   const filtered = (() => {
     // Step 1: apply perspective + search to get the candidate pool

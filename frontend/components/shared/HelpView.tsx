@@ -107,7 +107,10 @@ export default function HelpView({ role }: Props) {
       `}</style>
 
       <div className="container py-4">
-        <PageHeader title="Help & Support" />
+        <div className="mb-5">
+          <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: 'Poppins' }}>Help & Support</h1>
+          <p style={{ color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>Get answers to your questions and contact our support team.</p>
+        </div>
 
         <div className="row justify-content-center">
           <div className="col-12">
