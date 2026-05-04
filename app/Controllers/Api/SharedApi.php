@@ -208,7 +208,8 @@ class SharedApi extends ResourceController
         $unlockCard = [];
         foreach ($rows as $r) $unlockCard[$r['setting_key']] = $r['setting_value'];
 
-        log_message('info', 'Subscriptions Debug - userType: ' . $userType . ', userId: ' . $jwtUser['user_id']);
+        $uri = service('request')->getUri()->getPath();
+        log_message('info', 'Subscriptions Debug - URI: ' . $uri . ', userType: ' . $userType . ', userId: ' . $jwtUser['user_id']);
         log_message('info', 'Active Sub Found: ' . json_encode($active));
         log_message('info', 'History Found: ' . json_encode($history));
 
