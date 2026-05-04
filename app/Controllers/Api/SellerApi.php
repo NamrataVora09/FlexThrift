@@ -1457,10 +1457,8 @@ class SellerApi extends ResourceController
                     ->get()->getRowArray();
                 $maxPercent = (float) ($settingsRows['setting_value'] ?? 50);
                 
-                // Calculate max discount allowed for this plan
-                $maxAllowed = ($plan['price'] * $maxPercent) / 100;
-                
-                $referralDiscount = min($referralBalance, $maxAllowed);
+                // Max discount = percentage of the wallet balance that can be used
+                $referralDiscount = round(($referralBalance * $maxPercent) / 100, 2);
             }
         }
 
@@ -1600,10 +1598,8 @@ class SellerApi extends ResourceController
                         ->get()->getRowArray();
                     $maxPercent = (float) ($settingsRows['setting_value'] ?? 50);
                     
-                    // Calculate max discount allowed for this plan
-                    $maxAllowed = ($basePrice * $maxPercent) / 100;
-                    
-                    $referralDiscountApplied = min($referralBalance, $maxAllowed);
+                    // Max discount = percentage of the wallet balance that can be used
+                    $referralDiscountApplied = round(($referralBalance * $maxPercent) / 100, 2);
                     $finalAmount -= $referralDiscountApplied;
                 }
             }
