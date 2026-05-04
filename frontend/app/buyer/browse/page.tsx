@@ -964,7 +964,7 @@ export default function BrowsePage() {
         <LandingNavbar showAuth />
 
         {/* ===== MAIN CONTENT ===== */}
-        <main className=' py-4 xl:px-28 lg:px-12 px-4'>
+        <main className=' py-4 xl:px-28! lg:px-12! sm:px-4 px-2'>
 
 
 
@@ -1535,7 +1535,7 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
                 {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : '\u00A0'}
               </p>
             </div>
-            
+
             <div className="flex-shrink-0 flex flex-col items-end gap-1">
               {isRent ? (
                 <div className="flex flex-col items-end">
@@ -1563,22 +1563,6 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
   );
 }
 
-// ── Elite Sidebar Component ────────────────────────────────────────────────────
-
-// ── Attribute filter config ───────────────────────────────────────────────────
-// NEXT_PUBLIC_SIDEBAR_ATTR_TYPES (in .env.local / Vercel) controls which
-// attribute types from field_config are shown in the sidebar filter.
-// Value: comma-separated list of type names to SHOW.
-//
-// Examples:
-//   NEXT_PUBLIC_SIDEBAR_ATTR_TYPES=picklist
-//   NEXT_PUBLIC_SIDEBAR_ATTR_TYPES=picklist,dropdown,text,numeric
-//
-// RENDER_STRATEGY maps every recognised type name → one of the three render
-// modes (picklist | text | numeric).  This handles API aliases so the env var
-// works regardless of whether the backend stores the type as "picklist",
-// "dropdown", "select", etc.  Add new aliases here without touching any other
-// code.
 const RENDER_STRATEGY: Readonly<Record<string, 'picklist' | 'text' | 'numeric'>> = {
   picklist: 'picklist',
   dropdown: 'picklist',   // common alias for picklist
