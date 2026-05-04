@@ -959,15 +959,13 @@ export default function BrowsePage() {
         <LandingNavbar showAuth />
 
         {/* ===== MAIN CONTENT ===== */}
-        <main className=' pt-37.5 px-28'>
-
-
+        <main className=' pt-10   px-4 md:px-12 xl:px-28!'>
 
           {/* Two-column layout */}
-          <div className="em-layout" style={{ display: 'flex', gap: 100 }}>
+          <div className="em-layout flex flex-col lg:flex-row gap-8 lg:gap-16 xl:gap-[100px]">
 
             {/* ===== SIDEBAR (desktop) ===== */}
-            <aside className="em-sidebar-desk" style={{ width: 256, flexShrink: 0 }}>
+            <aside className="em-sidebar-desk hidden lg:block" style={{ width: 256, flexShrink: 0 }}>
               <div style={{ position: 'sticky', top: 132, maxHeight: 'calc(100vh - 150px)', overflowY: 'auto', overflowX: 'hidden', paddingRight: 6 }} className="em-sidebar-scroll">
                 <EliteSidebar
                   filters={filters}
@@ -995,33 +993,33 @@ export default function BrowsePage() {
             <div style={{ flex: 1, minWidth: 0 }}>
 
               {/* Breadcrumb + sort row */}
-              <section style={{ marginBottom: 48 }}>
+              <section style={{ marginBottom: 32 }}>
                 {/* Row 1: mobile filter + breadcrumbs + sort */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  {/* Left: mobile filter btn + breadcrumbs — all on one line */}
-                  <div className="em-type-bar" style={{ display: 'flex', flexWrap: 'nowrap', gap: 12, alignItems: 'center', overflow: 'hidden' }}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                  {/* Left: mobile filter btn + breadcrumbs */}
+                  <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2 md:pb-0">
                     {/* Mobile filter toggle */}
                     <button
-                      className="d-lg-none em-type-pill"
+                      className="lg:hidden em-type-pill flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-sm font-bold whitespace-nowrap"
                       onClick={() => setShowFilters(true)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
                     >
                       <i className="bi bi-sliders"></i> Filters
                       {activeChips.length > 0 && (
-                        <span style={{ background: '#0c0f0f', color: '#FFC107', borderRadius: 9999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>
+                        <span className="bg-black text-gold rounded-full px-2 py-0.5 text-[10px]">
                           {activeChips.length}
                         </span>
                       )}
                     </button>
 
                     {/* Breadcrumbs */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', flexWrap: 'nowrap' }}>
-                      <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none' ,textTransform: 'capitalize'}}>Home</Link>
+                    <nav className="flex items-center gap-2 text-[13px] font-semibold text-gray-900 uppercase tracking-wider whitespace-nowrap">
+                      <Link href="/buyer/browse" className="text-gray-500 hover:text-black transition-colors capitalize">Home</Link>
 
                       {activeType && (
                         <>
-                          <span style={{ color: '#acadad' }}>/</span>
-                          <span style={{ color: filters.productTypeIds.length === 0 && filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
+                          <span className="text-gray-300">/</span>
+                          <span
+                            className={`${filters.productTypeIds.length === 0 && filters.categoryIds.length === 0 ? 'text-black' : 'text-gray-500'} cursor-pointer hover:text-black transition-colors capitalize`}
                             onClick={() => { const nf = { ...filters, productTypeIds: [], categoryIds: [], subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
                             {activeType}
                           </span>
@@ -1032,8 +1030,9 @@ export default function BrowsePage() {
                         const pt = taxonomy?.product_types.find(p => String(p.id) === filters.productTypeIds[0]);
                         return pt ? (
                           <>
-                            <span style={{ color: '#acadad' }}>/</span>
-                            <span  style={{ color: filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' ,textTransform: 'capitalize' }}
+                            <span className="text-gray-300">/</span>
+                            <span
+                              className={`${filters.categoryIds.length === 0 ? 'text-black' : 'text-gray-500'} cursor-pointer hover:text-black transition-colors capitalize`}
                               onClick={() => { const nf = { ...filters, categoryIds: [], subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
                               {pt.name}
                             </span>
@@ -1045,52 +1044,37 @@ export default function BrowsePage() {
                         const cat = taxonomy?.categories.find(c => String(c.id) === filters.categoryIds[0]);
                         return cat ? (
                           <>
-                            <span style={{ color: '#acadad' }}>/</span>
-                            <span style={{ color: filters.subCategoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer' ,textTransform: 'capitalize'}}
+                            <span className="text-gray-300">/</span>
+                            <span
+                              className={`${filters.subCategoryIds.length === 0 ? 'text-black' : 'text-gray-500'} cursor-pointer hover:text-black transition-colors capitalize`}
                               onClick={() => { const nf = { ...filters, subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
                               {cat.name || cat.category_name}
                             </span>
                           </>
                         ) : null;
                       })()}
-
-                      {filters.subCategoryIds.length > 0 && (() => {
-                        const sub = taxonomy?.sub_categories.find(s => String(s.id) === filters.subCategoryIds[0]);
-                        return sub ? (
-                          <>
-                            <span style={{ color: '#acadad' }}>/</span>
-                            <span style={{ color: '#0c0f0f' ,textTransform: 'capitalize'}} >{sub.name}</span>
-                          </>
-                        ) : null;
-                      })()}
-                    </div>
+                    </nav>
                   </div>
 
                   {/* Right: Sort only */}
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <div className="relative flex items-center min-w-[200px]">
                     <select
-                      className="em-sort-sel"
+                      className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-gold transition-colors"
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      style={{ padding: '8px 36px 8px 16px', border: '1px solid #e7e8e8', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600, background: '#fff', color: '#0c0f0f', boxShadow: 'none' }}
                     >
                       <option value="featured">Sort by: Recommended</option>
                       <option value="newest">Sort by: Newest</option>
                       <option value="price_asc">Sort by: Price (Low to High)</option>
                       <option value="price_desc">Sort by: Price (High to Low)</option>
                     </select>
-                    <span
-                      className="material-symbols-outlined"
-                      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#0c0f0f', fontSize: 20 }}
-                    >
-                      expand_more
-                    </span>
+                    <i className="bi bi-chevron-down absolute right-4 pointer-events-none text-gray-500"></i>
                   </div>
                 </div>
 
                 {/* Row 2: result count */}
                 {!loading && data && (
-                  <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#5a5c5c', margin: 0, fontWeight: 500 }}>
+                  <p className="text-center md:text-left text-sm text-gray-500 font-medium">
                     {data.pagination.total > 0
                       ? <>Showing <strong>{(page - 1) * 12 + 1}–{Math.min(page * 12, data.pagination.total)}</strong> of <strong>{data.pagination.total}</strong> results</>
                       : <>Showing <strong>0</strong> results</>}
@@ -1100,7 +1084,7 @@ export default function BrowsePage() {
 
               {/* Active filter chips */}
               {activeChips.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+                <div className="flex flex-wrap gap-2 mb-6">
                   {activeChips.map(chip => (
                     <span key={chip.key + (chip.val || '')} className="em-chip">
                       {chip.label}
@@ -1116,22 +1100,17 @@ export default function BrowsePage() {
 
                   <button
                     onClick={clearAllFilters}
-                    style={{ background: 'none', border: 'none', color: '#5a5c5c', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                    className="text-xs font-bold text-gray-500 hover:text-black transition-colors underline underline-offset-4 ml-1"
                   >
                     Clear all
                   </button>
-
                 </div>
               )}
 
               {/* Product Grid */}
               <section
-                className="em-grid"
+                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-12 lg:gap-x-12 lg:gap-y-16 relative"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '70px 45px',
-                  position: 'relative',
                   minHeight: 200,
                   opacity: loading ? 0.5 : 1,
                   transition: 'opacity 0.3s ease',
@@ -1520,31 +1499,28 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
         </div>
 
         {/* ── Product info ── */}
-        <div className="flex justify-between items-start px-2  ">
-          <div className="flex-1 min-w-0 pr-3">
-            <h3 className="text-lg font-bold! text-[#0c0f0f] text-[1.125rem]! mb-1 truncate" style={{ fontFamily: 'Manrope, sans-serif', letterSpacing: '-0.02em' }}>
+        <div className="flex justify-between items-start px-2 py-1">
+          <div className="flex-1 min-w-0 pr-2">
+            <h3 className="text-base md:text-lg font-bold text-black mb-1 truncate" style={{ fontFamily: 'Manrope, sans-serif' }}>
               {p.title}
             </h3>
 
-            <div className='flex  justify-between'>
-              <p className="text-sm text-[#5a5c5c] m-0! mb-10">
-                {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : ' '}
-              </p>
-
-            </div>
+            <p className="text-xs md:text-sm text-gray-500 m-0 truncate">
+              {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : '\u00A0'}
+            </p>
           </div>
-          <div className="flex-shrink-0 flex flex-col  items-end">
+          <div className="flex-shrink-0 flex flex-col items-end">
             {isRent ? (
-              <span className="font-bold text-[#FFC107]">
-                ₹{rentalPrice.toLocaleString('en-IN')}<span className="text-xs ml-2 text-[#5a5c5c] font-medium">/day</span>
+              <span className="font-bold text-gold text-sm md:text-base whitespace-nowrap">
+                ₹{rentalPrice.toLocaleString('en-IN')}<span className="text-[10px] md:text-xs ml-1 text-gray-500 font-medium">/day</span>
               </span>
             ) : (
               <>
-                <span className="font-bold text-[#FFC107]">₹{sellingPrice.toLocaleString('en-IN')}</span>
-                <p className="text-xs font-semibold text-white px-2  py-1 rounded-2xl bg-[#d6b06b] truncate">
+                <span className="font-bold text-gold text-sm md:text-base whitespace-nowrap">₹{sellingPrice.toLocaleString('en-IN')}</span>
+                <p className="text-[10px] font-semibold text-white px-2 py-0.5 rounded-full bg-[#d6b06b] mt-1 truncate max-w-[100px]">
                   {p.orignal_brand
                     ? p.orignal_brand.charAt(0).toUpperCase() + p.orignal_brand.slice(1)
-                    : 'Premium Listings'}
+                    : 'Premium'}
                 </p>
               </>
             )}
@@ -1572,17 +1548,17 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
 // "dropdown", "select", etc.  Add new aliases here without touching any other
 // code.
 const RENDER_STRATEGY: Readonly<Record<string, 'picklist' | 'text' | 'numeric'>> = {
-  picklist:    'picklist',
-  dropdown:    'picklist',   // common alias for picklist
-  select:      'picklist',
+  picklist: 'picklist',
+  dropdown: 'picklist',   // common alias for picklist
+  select: 'picklist',
   multiselect: 'picklist',
-  text:        'text',
-  string:      'text',
-  textarea:    'text',
-  numeric:     'numeric',
-  number:      'numeric',
-  integer:     'numeric',
-  range:       'numeric',
+  text: 'text',
+  string: 'text',
+  textarea: 'text',
+  numeric: 'numeric',
+  number: 'numeric',
+  integer: 'numeric',
+  range: 'numeric',
 };
 
 // Allowlist: only types in this set are shown in the sidebar.
@@ -1638,17 +1614,16 @@ function EliteSidebar({
 
   const SectionTitle = ({ id, label, count }: { id: string; label: string; count?: number }) => (
     <div
-      className="em-filter-title"
+      className="em-filter-title flex justify-between items-center cursor-pointer mb-2"
       onClick={() => toggle(id)}
-      style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: open[id] ? 10 : 0 }}
     >
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span className="flex items-center gap-2">
         {label}
         {count !== undefined && count > 0 && (
-          <span style={{ background: '#FFC107', color: '#3d2b00', borderRadius: 9999, padding: '1px 7px', fontSize: '0.65rem', fontWeight: 800 }}>{count}</span>
+          <span className="bg-gold text-black rounded-full px-2 py-0.5 text-[10px] font-extrabold">{count}</span>
         )}
       </span>
-      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#5a5c5c', fontVariationSettings: "'FILL' 0, 'wght' 400" }}>
+      <span className="material-symbols-outlined text-gray-400 text-lg">
         {open[id] ? 'expand_less' : 'expand_more'}
       </span>
     </div>
@@ -1684,17 +1659,17 @@ function EliteSidebar({
     const displayItems = items.slice(0, 8);
     const remaining = items.length - 8;
     return (
-      <div>
+      <div className="space-y-1">
         {displayItems.map(item => (
-          <div key={item.value} className="em-checkbox-item" onClick={() => onSelect(item.value)}>
-            <div className={`em-checkbox ${activeVals.includes(item.value) ? 'active' : ''}`}>
+          <div key={item.value} className="em-checkbox-item group" onClick={() => onSelect(item.value)}>
+            <div className={`em-checkbox ${activeVals.includes(item.value) ? 'active ring-1 ring-gold' : ''}`}>
               {activeVals.includes(item.value) && <div className="em-checkbox-inner" />}
             </div>
-            <span className={`em-label-text ${activeVals.includes(item.value) ? 'active' : ''}`}>{item.label}</span>
+            <span className={`em-label-text transition-colors ${activeVals.includes(item.value) ? 'active' : 'group-hover:text-black'}`}>{item.label}</span>
           </div>
         ))}
         {onMore && remaining > 0 && (
-          <button className="em-more-link" onClick={(e) => { e.stopPropagation(); onMore(); }}>
+          <button className="em-more-link hover:underline underline-offset-4" onClick={(e) => { e.stopPropagation(); onMore(); }}>
             + {remaining} more
           </button>
         )}
@@ -1993,8 +1968,8 @@ function EliteSidebar({
           const opts = Array.isArray(attr.options)
             ? attr.options
             : (typeof attr.options === 'string'
-                ? attr.options.split(',').map(s => s.trim()).filter(Boolean)
-                : []);
+              ? attr.options.split(',').map(s => s.trim()).filter(Boolean)
+              : []);
           const section = `dyn_${attr.name}`;
 
           /* ── picklist / dropdown / select: checkbox list ── */

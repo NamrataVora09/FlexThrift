@@ -227,12 +227,12 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
               <div className="relative">
                 <button
                   onClick={() => setShowAuthDropdown(!showAuthDropdown)}
-                  className='flex items-center gap-3 border border-[#008080] rounded-full px-2 py-1.5 pr-4 hover:bg-gray-50 transition-all duration-300 bg-white shadow-sm'
+                  className='flex items-center gap-3 border border-[#008080]! rounded-full! px-2 py-1.5 pr-4 hover:bg-gray-50 transition-all duration-300 bg-white shadow-sm'
                 >
                   <div className='w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center bg-[#008080] text-white rounded-full font-bold text-xs'>
                     <i className="bi bi-person-fill"></i>
                   </div>
-                  <span className="text-sm whitespace-nowrap">{showAuth ? 'Login / Register' : 'Account'}</span>
+                  <span className="text-sm whitespace-nowrap">{showAuth ? 'Login / Register' : 'Register'}</span>
                   <i className={`bi bi-chevron-down text-[0.7rem] transition-transform duration-300 ${showAuthDropdown ? 'rotate-180' : ''}`}></i>
                 </button>
 
@@ -309,8 +309,11 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-gray-400 font-black mb-4">Account</p>
                 <div className="space-y-4">
-                  <Link href="/login" className="block text-lg font-bold hover:text-gold transition-colors" onClick={() => setMobileNavOpen(false)}>Login</Link>
-                  <Link href="/register" className="block text-lg font-bold hover:text-gold transition-colors" onClick={() => setMobileNavOpen(false)}>Register</Link>
+                  <Link href="/register" className=" text-lg font-bold flex items-center gap-3 border border-[#008080]! rounded-full! px-2 py-1.5 pr-4 hover:bg-gray-50 transition-all duration-300 bg-white" onClick={() => setMobileNavOpen(false)}>
+                    <div className='w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center bg-[#008080] text-white rounded-full font-bold text-xs'>
+                      <i className="bi bi-person-fill"></i>
+                    </div>
+                    <span>Register</span></Link>
                 </div>
               </div>
             )}
