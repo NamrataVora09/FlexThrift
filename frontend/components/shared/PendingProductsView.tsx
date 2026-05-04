@@ -37,11 +37,31 @@ const btnReject: React.CSSProperties = { background: '#fef2f2', color: '#dc2626'
 const tagBadge: React.CSSProperties = { background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 500 };
 const BASE = 'http://localhost:8080';
 
+const resolveUrl = (path: string) => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('uploads/')) return `${BASE}/${path}`;
+  return `${BASE}/uploads/products/${path}`;
+};
+
 export default function PendingProductsView({ role, apiPath, showRatings = false }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
   const [editRequests, setEditRequests] = useState<EditRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<RejectionTemplate[]>([]);
+
+function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
+  return (
+    <div className="mb-3">
+      <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">{title}</h6>
+      <div className="ps-2" style={{ borderLeft: '3px solid #e2e8f0' }}>
+        {items.map((item, i) => (
+          <div className="mb-2" key={i}><small className="text-muted d-block">{item.l}</small><div className="fw-bold">{item.v}</div></div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
   // Reject modal
   const [rejectModal, setRejectModal] = useState<{ id: number; title: string; type: 'product' | 'edit' } | null>(null);
@@ -223,7 +243,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         {/* Thumbnail */}
                         <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {p.images && p.images.length > 0 ? (
-                            <img src={p.images[0].image_path.startsWith('uploads/') ? `${BASE}/${p.images[0].image_path}` : `${BASE}/uploads/products/${p.images[0].image_path}`} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={resolveUrl(p.images[0].image_path)} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
                             <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
@@ -517,7 +537,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                   <div className="col-md-6">
                     <div className="rounded-4 overflow-hidden border" style={{ position: 'relative', background: '#f1f5f9', minHeight: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {inspectImages.length > 0 ? (
-                        <img src={inspectImages[imgIdx]?.image_path?.startsWith('uploads/') ? `${BASE}/${inspectImages[imgIdx].image_path}` : `${BASE}/uploads/products/${inspectImages[imgIdx]?.image_path}`} alt="" style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }} />
+                        <img src={resolveUrl(inspectImages[imgIdx]?.image_path)} alt="" style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }} />
                       ) : (
                         <div className="text-muted text-center p-4"><i className="bi bi-image" style={{ fontSize: '3rem', opacity: 0.3 }}></i><p className="small mt-2">No images uploaded</p></div>
                       )}
@@ -561,7 +581,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             }
                             const firstBill = billPaths[0];
                             return (
-                              <a href={firstBill?.startsWith('uploads/') ? `${BASE}/${firstBill}` : `${BASE}/uploads/products/${firstBill}`} target="_blank" rel="noreferrer" className="btn btn-warning btn-sm py-1 px-3 small rounded-pill">
+                              <a href={resolveUrl(firstBill)} target="_blank" rel="noreferrer" className="btn btn-warning btn-sm py-1 px-3 small rounded-pill">
                                 View Bill {billPaths.length > 1 ? `(${billPaths.length})` : ''}
                               </a>
                             );
@@ -617,18 +637,24 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       },
                       comparison.original?.listing_type === 'rent' && { l: 'Security Deposit', v: '₹' + Number(comparison.original?.rental_deposit || 0).toLocaleString() }
                     ].filter((item): item is { l: string; v: any } => !!item))}
-                    <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2 mt-3">Images</h6>
-                    <div className="row g-2">
-                      {(comparison.original_images || []).map((img: any, i: number) => {
+                    {renderCompSection('Details', [
+                      { l: 'Description', v: <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{comparison.original?.description || 'No description'}</div> },
+                      { l: 'Has Bill', v: Number(comparison.original?.has_bill) ? 'Yes' : 'No' }
+                    ])}
+                    <div className="mt-4">
+                      <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Original Images ({(comparison.original_images || []).length})</h6>
+                      <div className="row g-2">
+                        {(comparison.original_images || []).map((img: any, i: number) => {
                         const deletedIds = JSON.parse(comparison.request?.deleted_images_ids || '[]');
                         const isDeleted = deletedIds.includes(String(img.id)) || deletedIds.includes(Number(img.id));
                         return (
                           <div className="col-4" key={i} style={{ position: 'relative' }}>
-                            <img src={img.image_path?.startsWith('uploads/') ? `${BASE}/${img.image_path}` : `${BASE}/uploads/products/${img.image_path}`} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover', opacity: isDeleted ? 0.25 : 1 }} alt="" />
+                            <img src={resolveUrl(img.image_path)} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover', opacity: isDeleted ? 0.25 : 1 }} alt="" />
                             {isDeleted && <span className="badge bg-danger position-absolute top-50 start-50 translate-middle" style={{ fontSize: '0.6rem' }}>DELETING</span>}
                           </div>
                         );
                       })}
+                      </div>
                     </div>
                   </div>
                   {/* Proposed Changes */}
@@ -663,11 +689,29 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             },
                             updated.listing_type === 'rent' && { l: 'Security Deposit', v: diff('₹' + Number(orig.rental_deposit || 0), '₹' + Number(updated.rental_deposit || 0)) }
                           ].filter((item): item is { l: string; v: any } => !!item))}
+                          {renderCompSection('Details', [
+                            { l: 'Description', v: <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{diff(orig.description || 'No description', updated.description || 'No description')}</div> },
+                            { l: 'Has Bill', v: diff(Number(orig.has_bill) ? 'Yes' : 'No', Number(updated.has_bill) ? 'Yes' : 'No') }
+                          ])}
                           {/* New images */}
                           {(() => {
                             const tempImages = JSON.parse(comparison.request?.temp_images || '[]');
                             if (tempImages.length === 0) return null;
-                            return (<><h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2 mt-3">New Images</h6><div className="row g-2">{tempImages.map((path: string, i: number) => <div className="col-4" key={i}><img src={path.startsWith('uploads/') ? `${BASE}/${path}` : `${BASE}/uploads/products/${path}`} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover' }} alt="" /></div>)}</div></>);
+                            return (
+                              <div className="mt-4">
+                                <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Newly Added Images ({tempImages.length})</h6>
+                                <div className="row g-2">
+                                  {tempImages.map((path: string, i: number) => (
+                                    <div className="col-4" key={i}>
+                                      <div style={{ position: 'relative', height: 80, border: '2px solid #10b981', borderRadius: 8, overflow: 'hidden' }}>
+                                        <img src={resolveUrl(path)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" />
+                                        <span className="badge bg-success position-absolute top-0 end-0 m-1" style={{ fontSize: '0.5rem' }}>NEW</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
                           })()}
                         </>
                       );
@@ -687,18 +731,5 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
         </div>
       )}
     </DashboardLayout>
-  );
-}
-
-function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
-  return (
-    <div className="mb-3">
-      <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">{title}</h6>
-      <div className="ps-2" style={{ borderLeft: '3px solid #e2e8f0' }}>
-        {items.map((item, i) => (
-          <div className="mb-2" key={i}><small className="text-muted d-block">{item.l}</small><div className="fw-bold">{item.v}</div></div>
-        ))}
-      </div>
-    </div>
   );
 }

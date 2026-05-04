@@ -71,22 +71,19 @@ class PricingRuleModel extends Model
             ];
         }
 
-        // 1. Pick MAX deduction_threshold among all matching rules (base deduction always applies)
         $maxThreshold = 0;
-        foreach ($rules as $rule) {
-            $maxThreshold = max($maxThreshold, (float) $rule['deduction_threshold']);
-        }
-
-        // 2. Among matching rules where usedTimes falls in the depreciation range, pick MAX depreciation_amount
         $maxDepreciation = 0;
+        $matchedCount = 0;
+
         foreach ($rules as $rule) {
             $rangeMin = (int) $rule['depreciation_range_min'];
             $rangeMax = (int) $rule['depreciation_range_max'];
-            $depAmt = (float) $rule['depreciation_amount'];
 
             // max=0 means no upper limit (>= min)
             if ($usedTimes >= $rangeMin && ($rangeMax <= 0 || $usedTimes <= $rangeMax)) {
-                $maxDepreciation = max($maxDepreciation, $depAmt);
+                $maxThreshold = max($maxThreshold, (float) $rule['deduction_threshold']);
+                $maxDepreciation = max($maxDepreciation, (float) $rule['depreciation_amount']);
+                $matchedCount++;
             }
         }
 
@@ -94,7 +91,7 @@ class PricingRuleModel extends Model
             'base_threshold' => $maxThreshold,
             'depreciation' => $maxDepreciation,
             'total_deduction' => $maxThreshold + $maxDepreciation,
-            'matched_rules' => count($rules),
+            'matched_rules' => $matchedCount,
             'source' => 'filter_rules',
         ];
     }

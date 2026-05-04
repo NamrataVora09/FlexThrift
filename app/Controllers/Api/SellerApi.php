@@ -1834,23 +1834,24 @@ class SellerApi extends ResourceController
         helper('price_calculator');
         
         $originalPrice = (float)($data['original_price'] ?? 0);
+        $usedTimes = (int)($data['used_times'] ?? 0);
         $ltId = $data['listing_type_category'] ?? null;
         $cId = $data['category_id'] ?? null;
         $scId = $data['sub_category_id'] ?? null;
 
         if ($data['listing_type'] === 'sell') {
             $price = (float)($data['price'] ?? 0);
-            if (!validateSalePriceWithRules($originalPrice, $price, $ltId, $cId, $scId)) {
+            if (!validateSalePriceWithRules($originalPrice, $price, $usedTimes, $ltId, $cId, $scId)) {
                 return ['success' => false, 'message' => 'Selling price exceeds the maximum allowed threshold.'];
             }
         } elseif ($data['listing_type'] === 'rent') {
             $deposit = (float)($data['rental_deposit'] ?? 0);
             $rentalCost = (float)($data['rental_cost'] ?? 0);
             
-            if (!validateDepositWithRules($originalPrice, $deposit, $ltId, $cId, $scId)) {
+            if (!validateDepositWithRules($originalPrice, $deposit, $usedTimes, $ltId, $cId, $scId)) {
                 return ['success' => false, 'message' => 'Rental deposit exceeds the maximum allowed threshold.'];
             }
-            if (!validateRentalCostWithRules($deposit, $rentalCost, $ltId, $cId, $scId)) {
+            if (!validateRentalCostWithRules($deposit, $rentalCost, $usedTimes, $ltId, $cId, $scId)) {
                 return ['success' => false, 'message' => 'Daily rental cost exceeds the maximum allowed daily cap.'];
             }
         }

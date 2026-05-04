@@ -70,29 +70,23 @@ class RentalPricingRuleModel extends Model
             ];
         }
 
-        // 1. Pick MAX deposit_deduction_threshold (base deduction always applies)
         $maxThreshold = 0;
-        // 2. Pick MAX deposit_percentage
         $maxDepositPct = 0;
-        // 3. Pick MAX max_cost_cap_per_day
         $maxCostCap = 0;
-
-        foreach ($rules as $rule) {
-            $maxThreshold  = max($maxThreshold, (float) $rule['deposit_deduction_threshold']);
-            $maxDepositPct = max($maxDepositPct, (float) $rule['deposit_percentage']);
-            $maxCostCap    = max($maxCostCap, (float) $rule['max_cost_cap_per_day']);
-        }
-
-        // 4. Among rules where usedTimes falls in depreciation range, pick MAX depreciation_amount
         $maxDepreciation = 0;
+        $matchedCount = 0;
+
         foreach ($rules as $rule) {
             $rangeMin = (int) $rule['depreciation_range_min'];
             $rangeMax = (int) $rule['depreciation_range_max'];
-            $depAmt   = (float) $rule['depreciation_amount'];
 
             // max=0 means no upper limit (>= min)
             if ($usedTimes >= $rangeMin && ($rangeMax <= 0 || $usedTimes <= $rangeMax)) {
-                $maxDepreciation = max($maxDepreciation, $depAmt);
+                $maxThreshold  = max($maxThreshold, (float) $rule['deposit_deduction_threshold']);
+                $maxDepositPct = max($maxDepositPct, (float) $rule['deposit_percentage']);
+                $maxCostCap    = max($maxCostCap, (float) $rule['max_cost_cap_per_day']);
+                $maxDepreciation = max($maxDepreciation, (float) $rule['depreciation_amount']);
+                $matchedCount++;
             }
         }
 
@@ -102,7 +96,7 @@ class RentalPricingRuleModel extends Model
             'total_deduction'      => $maxThreshold + $maxDepreciation,
             'deposit_percentage'   => $maxDepositPct,
             'max_cost_cap_per_day' => $maxCostCap,
-            'matched_rules'        => count($rules),
+            'matched_rules'        => $matchedCount,
             'source'               => 'filter_rules',
         ];
     }

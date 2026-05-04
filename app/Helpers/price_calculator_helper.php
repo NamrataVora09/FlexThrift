@@ -177,9 +177,9 @@ if (!function_exists('calculateRentalPricesWithRules')) {
  * Validate sale price using filter-based rules (with legacy fallback)
  */
 if (!function_exists('validateSalePriceWithRules')) {
-    function validateSalePriceWithRules(float $originalPrice, float $salePrice, $listingTypeId = null, $categoryId = null, $subCategoryId = null): bool
+    function validateSalePriceWithRules(float $originalPrice, float $salePrice, int $usedTimes = 0, $listingTypeId = null, $categoryId = null, $subCategoryId = null): bool
     {
-        $ruleResult = getPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, 0);
+        $ruleResult = getPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, $usedTimes);
 
         if ($ruleResult['matched_rules'] > 0) {
             $baseThreshold = $ruleResult['base_threshold'];
@@ -196,11 +196,11 @@ if (!function_exists('validateSalePriceWithRules')) {
  * Validate deposit using filter-based RENTAL rules (with legacy fallback)
  */
 if (!function_exists('validateDepositWithRules')) {
-    function validateDepositWithRules(float $originalPrice, float $deposit, $listingTypeId = null, $categoryId = null, $subCategoryId = null): bool
+    function validateDepositWithRules(float $originalPrice, float $deposit, int $usedTimes = 0, $listingTypeId = null, $categoryId = null, $subCategoryId = null): bool
     {
         if ($originalPrice <= 0) return true;
 
-        $ruleResult = getRentalPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, 0);
+        $ruleResult = getRentalPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, $usedTimes);
 
         if ($ruleResult['matched_rules'] > 0) {
             $baseThreshold = $ruleResult['base_threshold'];
@@ -208,8 +208,8 @@ if (!function_exists('validateDepositWithRules')) {
             return $deposit <= (round($maxAllowed) + 0.01);
         }
 
-        // No rules configured — no threshold to enforce
-        return true;
+        // Fallback
+        return validateDeposit($originalPrice, $deposit);
     }
 }
 
@@ -218,9 +218,9 @@ if (!function_exists('validateDepositWithRules')) {
  * Uses rule-specific max_cost_cap_per_day if rental rules match
  */
 if (!function_exists('validateRentalCostWithRules')) {
-    function validateRentalCostWithRules(float $deposit, float $rentalCost, $listingTypeId = null, $categoryId = null, $subCategoryId = null): bool
+    function validateRentalCostWithRules(float $deposit, float $rentalCost, int $usedTimes = 0, $listingTypeId = null, $categoryId = null, $subCategoryId = null): bool
     {
-        $ruleResult = getRentalPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, 0);
+        $ruleResult = getRentalPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, $usedTimes);
 
         if ($ruleResult['matched_rules'] > 0) {
             $maxCap = $ruleResult['max_cost_cap_per_day'];
@@ -228,8 +228,8 @@ if (!function_exists('validateRentalCostWithRules')) {
             return $rentalCost <= (round($maxAllowed) + 0.01);
         }
 
-        // No rules configured — no threshold to enforce
-        return true;
+        // Fallback
+        return validateRentalCost($deposit, $rentalCost);
     }
 }
 
