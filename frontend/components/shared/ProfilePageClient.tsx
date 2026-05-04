@@ -142,7 +142,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
         .prof-header {
           background: #fff;
           border-radius: 12px;
-          padding: 2rem;
+          padding: 1.5rem;
           margin-bottom: 1.5rem;
           box-shadow: 0 1px 3px rgba(0,0,0,0.08);
           display: flex;
@@ -151,6 +151,17 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           flex-wrap: wrap;
           gap: 1.5rem;
         }
+        
+        @media (min-width: 768px) {
+          .prof-header { padding: 2rem; }
+        }
+        
+        @media (max-width: 640px) {
+          .prof-header { flex-direction: column; align-items: center; text-align: center; }
+          .prof-header .d-flex { flex-direction: column; align-items: center; }
+          .prof-header .upgrade-btn { width: 100%; justify-content: center; }
+        }
+
         .prof-avatar-wrap {
           position: relative;
           width: 90px; height: 90px;
@@ -214,13 +225,18 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           background: #fff;
           border-radius: 12px;
           border: 1px solid #e5e7eb;
-          padding:  2rem;
+          padding: 1.25rem;
           box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+          height: 100%;
         }
+        
+        @media (min-width: 768px) {
+          .section-card { padding: 2rem; }
+        }
+
         .section-title {
           font-size: 1rem;
           font-weight: 700;
-          text-align: center;
           color: #1f2937;
           margin-bottom: 1.25rem;
           padding-bottom: 0.75rem;
@@ -229,6 +245,10 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           align-items: center;
           gap: 8px;
         }
+        
+        @media (max-width: 576px) {
+          .section-title { justify-content: center; }
+        }
 
         /* ── Info Grid ── */
         .info-grid {
@@ -236,7 +256,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           grid-template-columns: 1fr 1fr;
           gap: 1.25rem;
         }
-        @media (max-width: 576px) { .info-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 576px) { .info-grid { grid-template-columns: 1fr; text-align: center; } }
         .info-item { display: flex; flex-direction: column; gap: 4px; }
         .info-label {
           font-size: 0.72rem;
@@ -260,10 +280,14 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           font-weight: 600;
           font-size: 0.9rem;
           cursor: pointer;
-          margin-top: 1.5rem;
+          margin-top: 0.5rem;
           transition: opacity 0.2s;
         }
         .edit-profile-btn:hover { opacity: 0.88; }
+        
+        @media (max-width: 576px) {
+          .edit-profile-btn { width: 100%; justify-content: center; }
+        }
 
         /* ── Seller stats ── */
         .stat-mini {
@@ -304,10 +328,15 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           padding: 1rem;
         }
         .modal-box {
-          background: #fff; border-radius: 12px; padding: 2rem;
+          background: #fff; border-radius: 12px; padding: 1.5rem;
           width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
           box-shadow: 0 10px 40px rgba(0,0,0,0.18);
         }
+        
+        @media (min-width: 768px) {
+          .modal-box { padding: 2rem; }
+        }
+
         .modal-close {
           width: 30px; height: 30px; border-radius: 50%;
           border: none; background: #f3f4f6; color: #6b7280;
@@ -425,12 +454,12 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
 
 
             {/* ── Main Grid ── */}
-            <div className="flex gap-16">
+            <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
               {/* Left — Profile Details */}
-              <div className='w-full' >
+              <div className="flex-1 min-w-0">
                 <div className="section-card">
-                  <div className="section-title" style={{ fontSize: "20px" }}>
-                    <i className="fa-regular fa-user" style={{ color: '' }} />
+                  <div className="section-title" style={{ fontSize: "1.25rem" }}>
+                    <i className="fa-regular fa-user" />
                     Profile Details
                   </div>
                   <div className="info-grid mb-5">
@@ -452,7 +481,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                       </div>
                     ))}
                   </div>
-                  <div className="text-left mb-5">
+                  <div className="text-left mb-2">
                     <button className="edit-profile-btn" onClick={() => setModalOpen(true)}>
                       <i className="fa-solid fa-pencil" />
                       Edit Profile
@@ -462,13 +491,12 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
               </div>
 
               {/* Right — Ratings + Referral */}
-              <div className="w-25">
-
-                <div className="d-flex flex-column gap-10!">
+              <div className="w-full lg:w-80 flex-shrink-0">
+                <div className="flex flex-col gap-4">
                   {/* Buyer Points */}
                   {isBuyer && (
                     <div className="section-card">
-                      <div className="section-title justify-center">
+                      <div className="section-title justify-content-center">
                         <i className="fa-solid fa-star" />
                         Buyer Points
                       </div>
@@ -485,7 +513,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                   {/* Seller Points */}
                   {isSeller && (
                     <div className="section-card">
-                      <div className="section-title justify-center">
+                      <div className="section-title justify-content-center">
                         <i className="fa-solid fa-star" />
                         Seller Points
                       </div>
@@ -498,35 +526,6 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                       </div>
                     </div>
                   )}
-
-                  {/* Referral
-                  {user.referral_code && (
-                    <div className="section-card">
-                      <div className="section-title">
-                        <i className="fa-solid fa-gift" style={{ color: '#FDB814' }} />
-                        Referral Code
-                      </div>
-                      <div className="referral-box">
-                        <p style={{ color: '#6b7280', fontSize: '0.78rem', marginBottom: 8 }}>
-                          Share your code &amp; earn rewards
-                        </p>
-                        <div className="referral-code">{user.referral_code}</div>
-                        <button
-                          style={{
-                            marginTop: 12, background: '#FDB814', color: '#fff',
-                            border: 'none', borderRadius: 8, padding: '7px 20px',
-                            fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer',
-                          }}
-                          onClick={() => {
-                            navigator.clipboard.writeText(user.referral_code);
-                            toast.success('Referral code copied!');
-                          }}
-                        >
-                          <i className="fa-regular fa-clipboard me-1" />Copy Code
-                        </button>
-                      </div>
-                    </div>
-                  )} */}
                 </div>
               </div>
             </div>
