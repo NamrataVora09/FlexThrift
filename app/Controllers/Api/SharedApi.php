@@ -192,6 +192,7 @@ class SharedApi extends ResourceController
             ->join('subscription_plans sp', 'sp.id = us.plan_id')
             ->where('us.user_id', $jwtUser['user_id'])
             ->where('us.payment_status', 'paid')
+            ->where('sp.user_type', $userType)
             ->orderBy('us.created_at', 'DESC')
             ->limit(10)
             ->get()->getResultArray();
@@ -206,6 +207,10 @@ class SharedApi extends ResourceController
         $rows = $db->table('system_settings')->whereIn('setting_key', $keys)->get()->getResultArray();
         $unlockCard = [];
         foreach ($rows as $r) $unlockCard[$r['setting_key']] = $r['setting_value'];
+
+        log_message('info', 'Subscriptions Debug - userType: ' . $userType . ', userId: ' . $jwtUser['user_id']);
+        log_message('info', 'Active Sub Found: ' . json_encode($active));
+        log_message('info', 'History Found: ' . json_encode($history));
 
         return $this->respond([
             'success' => true,
