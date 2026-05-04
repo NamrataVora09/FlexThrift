@@ -99,48 +99,80 @@ export default function BuyerDashboardPage() {
         /* ── Analytics Cards ── */
         .metric-card {
           background: #fff;
-          border-radius: 32px;
-          padding: 2rem;
+          border-radius: 24px;
+          padding: 1.5rem;
           border: 1px solid #f0f0f0;
           cursor: default;
           height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
         }
 
         .metric-icon {
           color: #ffc63a;
-          font-size: 1.5rem;
-          margin-bottom: 1.5rem;
+          font-size: 1.25rem;
+          margin-bottom: 1rem;
           display: block;
         }
         .metric-label {
-          font-size: 0.62rem;
+          font-size: 0.6rem;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.13em;
+          letter-spacing: 0.1em;
           color: #9ca3af;
-          margin-bottom: 6px;
-          transition: color 0.28s ease;
+          margin-bottom: 4px;
         }
         .metric-value {
-          font-size: 2.4rem;
+          font-size: 1.8rem;
           font-weight: 800;
           color: #1a1a1a;
-          line-height: 1;
-          transition: color 0.28s ease;
+          line-height: 1.1;
+        }
+
+        @media (min-width: 768px) {
+          .metric-card {
+            border-radius: 32px;
+            padding: 2rem;
+          }
+          .metric-icon {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+          }
+          .metric-label {
+            font-size: 0.62rem;
+            letter-spacing: 0.13em;
+            margin-bottom: 6px;
+          }
+          .metric-value {
+            font-size: 2.4rem;
+          }
         }
 
         /* ── Plan bar ── */
         .plan-bar {
           background: #fff;
           border-radius: 16px;
-          padding: 1.25rem 1.75rem;
+          padding: 1.25rem;
           box-shadow: 0 4px 20px rgba(0,0,0,0.05);
           display: flex;
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 1rem;
+          gap: 1.25rem;
         }
+        
+        @media (max-width: 576px) {
+          .plan-bar {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .plan-bar .manage-btn {
+            width: 100%;
+            text-align: center;
+          }
+        }
+
         .manage-btn {
           background: #D7B467 !important;
           color: #fff !important;
@@ -171,32 +203,50 @@ export default function BuyerDashboardPage() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1.5rem 2rem 0.75rem;
+          padding: 1.5rem;
+          gap: 1rem;
         }
+        
+        @media (max-width: 480px) {
+          .offers-head {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+        }
+
         .offers-title {
-          font-size: 1.25rem;
+          font-size: 1.1rem;
           font-weight: 800;
           color: #1a1a1a;
+          display: flex;
+          align-items: center;
+          gap: 10px;
         }
+        
+        @media (min-width: 768px) {
+          .offers-title { font-size: 1.25rem; }
+          .offers-head { padding: 1.5rem 2rem 0.75rem; }
+        }
+
         .view-all {
-          font-size: 0.62rem;
+          font-size: 0.75rem;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.12em;
-          color: #9ca3af;
+          letter-spacing: 0.05em;
+          color: #D7B467;
           text-decoration: none;
           transition: color 0.15s;
         }
-        .view-all:hover { color: #1a1a1a; }
+        .view-all:hover { color: #1a1a1a; text-decoration: underline; }
 
-        .offers-table { width: 100%; border-collapse: collapse; }
+        .offers-table { width: 100%; border-collapse: collapse; min-width: 800px; }
         .offers-table thead tr { border-bottom: 1px solid #f3f4f6; }
         .offers-table thead th {
           padding: 0.9rem 1.5rem;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.14em;
+          letter-spacing: 0.1em;
           color: #9ca3af;
           white-space: nowrap;
         }
@@ -205,30 +255,31 @@ export default function BuyerDashboardPage() {
         .offers-table tbody tr { border-bottom: 1px solid #f9fafb; transition: background 0.12s; }
         .offers-table tbody tr:last-child { border-bottom: none; }
         .offers-table tbody tr:hover { background: #fafafa; }
-        .offers-table tbody td { padding: 1.1rem 1.5rem; vertical-align: middle; }
+        .offers-table tbody td { padding: 1rem 1.5rem; vertical-align: middle; }
         .offers-table tbody td.tr { text-align: right; }
 
         .product-thumb {
-          width: 42px; height: 42px;
+          width: 40px; height: 40px;
           border-radius: 8px;
           background: #f6f6f6;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
-        .product-name { font-weight: 700; font-size: 0.82rem; color: #1a1a1a; }
+        .product-name { font-weight: 700; font-size: 0.8rem; color: #1a1a1a; }
         .product-id   { font-size: 0.6rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
 
         .pill {
           display: inline-block;
-          padding: 3px 11px;
+          padding: 3px 10px;
           border-radius: 9999px;
           font-size: 0.6rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.05em;
+          white-space: nowrap;
         }
-        .price-val { font-weight: 800; font-size: 0.88rem; color: #ffc63a; }
-        .date-val  { font-size: 0.72rem; color: #9ca3af; }
+        .price-val { font-weight: 800; font-size: 0.85rem; color: #D7B467; }
+        .date-val  { font-size: 0.7rem; color: #9ca3af; }
       `}</style>
 
       <div>
@@ -247,16 +298,16 @@ export default function BuyerDashboardPage() {
             </div>
 
             {/* Analytics Cards */}
-            <div className="row g-3 mb-4">
+            <div className="g-3 grid grid-cols-1 sm:grid-cols-2  lg:grid-cols-3! xl:grid-cols-4! mb-4">
               {statCards.map((card, i) => (
-                <div key={i} className="col-6 col-md-3">
+                <div key={i} className="w-full">
                   <div className="metric-card">
                     <i className={`${card.icon} metric-icon`} />
                     <p className="metric-label mb-1">{card.label}</p>
                     {'split' in card ? (
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <div className="d-flex align-items-baseline gap-1 flex-wrap">
                         <span className="metric-value" style={{ color: '#16a34a' }}>{card.approved}</span>
-                        <span style={{ fontSize: '2rem', fontWeight: 800, color: '#d1d5db', lineHeight: 1 }}>/</span>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#d1d5db', lineHeight: 1 }}>/</span>
                         <span className="metric-value" style={{ color: '#dc2626' }}>{card.rejected}</span>
                       </div>
                     ) : (
