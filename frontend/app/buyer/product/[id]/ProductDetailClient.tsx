@@ -396,11 +396,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
       <link href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       {/* Landing Navbar */}
       <LandingNavbar showAuth />
-      <div style={{ height: 70 }} />
 
       {/* Breadcrumb */}
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 1.2rem', paddingTop: '3.5rem', paddingBottom: '2rem' }}>
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', flexWrap: 'wrap' }}>
+      <div className=' xl:px-28 px-8 py-4'>
+        <nav style={{ display: 'flex', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', flexWrap: 'wrap' }}>
           <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none', textTransform: 'capitalize' }}>Home</Link>
           {product.listing_type && (
             <>
@@ -422,22 +421,16 @@ export default function ProductDetailClient({ product, images, similarProducts =
       </div>
 
       {/* Product container */}
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 1rem 3rem' }}>
+      <div className='xl:px-28! sm:px-2! md:py-2! px-2' >
 
         {/* Product layout — 2 columns */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-18 mb-10'>
 
           {/* LEFT: Image gallery */}
-          <div style={{
-            display: 'flex',
-            gap: '3rem', // No gap if only 1 image
-            width: "fit-content",
-            margin: images.length > 1 ? "" : "0 auto",
-            paddingLeft: images.length > 1 ? "" : "5rem"
-          }}>
+          <div className={`flex  xl:flex-row flex-col-reverse gap-10 w-fit h-full ${images.length > 1 ? '' : 'mx-auto px-20'}`}>
             {/* Vertical thumbnail list */}
             {images.length > 1 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flexShrink: 0 }}>
+              <div className='flex flex-row  lg:flex-row! xl:flex-col! gap-3 flex-wrap  flex-shrink-0'>
                 {images.map((img, i) => (
                   <div
                     key={img.id}
@@ -455,6 +448,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                 ))}
               </div>
             )}
+            {/* Main Product image */}
             <div
               style={{
                 width: 'fit-content',
@@ -471,7 +465,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
               <img
                 src={getImageUrl(images[imgIdx]?.image_path)}
                 alt={product.title}
-                className='w-full md:w-[530px] max-h-[600px] aspect-[4/5] object-cover rounded-xl'
+                className='w-full md:w-[530px] h-full md:max-h-[600px] md:aspect-[4/5] object-cover rounded-xl'
                 style={{
                   transform: isHovering ? 'scale(1.05)' : 'scale(1)',
                   transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
@@ -489,12 +483,12 @@ export default function ProductDetailClient({ product, images, similarProducts =
             </div>
 
             {/* Title */}
-            <h1 style={{ fontSize: 32, fontWeight: 700, color: '#111827' , marginBottom:0, lineHeight: 1.3, fontFamily: "'Maven Pro', sans-serif" }}>
+            <h1 className='text-[32px] font-bold! text-[#111827] mb-0 leading-[1.3] font-maven-pro' >
               {product.title}
             </h1>
 
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom:10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               {/* <div style={{ display: 'flex', gap: 3, color: '#FFC63A', fontSize: '0.9rem' }}>
                 {[1, 2, 3, 4, 5].map(i => <span key={i} style={{ opacity: i <= Math.min(ratingCount, 5) ? 1 : 0.25 }}>★</span>)}
               </div> */}
@@ -543,11 +537,11 @@ export default function ProductDetailClient({ product, images, similarProducts =
               {offerSuccess ? (
                 <div>
                   <div style={{ borderRadius: 32, marginBottom: '2rem' }}>
-                
+
 
                     <hr style={{ border: 'none', borderTop: '1px solid #E5E7EB', margin: '0 -2rem 1.5rem', opacity: 0.4 }} />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem',  marginBottom:24}}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: 24 }}>
                       <button
                         onClick={() => setShowContactModal(true)}
                         style={{ width: '100%', padding: '1rem', borderRadius: 10, background: '#ffc63a', color: '#fff', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
@@ -565,7 +559,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                         View Offer
                       </button>
                     </div>
-                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#d6b06b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <i className="bi bi-check-lg" style={{ color: '#ffff', fontSize: '1.4rem' }}></i>
                       </div>
@@ -599,14 +593,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       </span>
                     </div>
                   )}
-                  {rentalExpired && (
-                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <i className="bi bi-calendar-x-fill" style={{ color: '#3b82f6', fontSize: '1rem', flexShrink: 0 }}></i>
-                      <span style={{ color: '#1e40af', fontSize: '0.82rem', fontWeight: 500 }}>
-                        Your previous rental period has ended. You can make a new offer for new dates.
-                      </span>
-                    </div>
-                  )}
+
 
                   <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
                     <button
@@ -658,10 +645,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     </button>
 
                   </div>
-                  {/* <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: '0.78rem', margin: 0 }}>
-                    <i className="bi bi-shield-check me-1" style={{ color: '#22c55e' }}></i>
-                    Active subscription required · Secure platform offer
-                  </p> */}
+               
                 </>
               )}
             </div>
@@ -897,9 +881,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
         {/* Related Products */}
         {similarProducts.length > 0 && (
-          <div style={{ marginTop: 60 }}>
+          <div className=" md:my-0! sm:my-20 my-20" style={{ marginTop: 60 }}>
             <h2 style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 30, fontFamily: "'Maven Pro', sans-serif" }}>You May Also Like</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
+
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3  gap-24 mb-10'>
               {similarProducts.slice(0, 4).map((sp) => {
                 const spPrice = getSimilarPrice(sp);
                 const spImage = sp.image ? (sp.image.startsWith('http') ? sp.image : `${BASE_URL}/${sp.image}`) : '';

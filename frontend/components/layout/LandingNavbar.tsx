@@ -96,7 +96,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
 
         {/* Desktop nav */}
         <div className="hidden lg:flex items-center grow justify-between xl:ml-6!  ml-0">
-          <ul className="flex items-center gap-4 lg:gap-6 pt-1">
+          <ul className="flex items-center  gap-4 lg:gap-6 pt-1">
             {/* Mega menu trigger */}
             <li ref={megaRef} className="relative">
               <a
