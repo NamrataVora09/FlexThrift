@@ -419,7 +419,10 @@ class AuthApi extends ResourceController
             }
         }
 
-        $totalEarned = count(array_filter($referredUsers, fn($u) => $u['reward_used'])) * $rewardAmount;
+        // Total earned = rewards from referring others + own signup bonus (referral balance received)
+        $referrerEarned = count(array_filter($referredUsers, fn($u) => $u['reward_used'])) * $rewardAmount;
+        $ownBonus = (float) ($user['referral_balance'] ?? 0);
+        $totalEarned = $referrerEarned + $ownBonus;
 
         return $this->respond([
             'success' => true,

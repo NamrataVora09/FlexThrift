@@ -357,7 +357,6 @@ export default function BuyerReferralPage() {
                   </div>
                   <div className="stat-value">₹{stats.total_earned}</div>
                   <div className="stat-label">Rewards Earned</div>
-                  <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '4px' }}>after friend buys a plan</div>
                 </div>
               </div>
               <div className="col-6 col-md-4">
@@ -467,42 +466,8 @@ export default function BuyerReferralPage() {
               {/* Right Column */}
               <div className="col-lg-4">
                 {/* Balance Card */}
-                {stats.referral_balance > 0 && (
-                  <div className="balance-card">
-                    <h6><i className="bi bi-wallet2 me-1"></i>Available Balance</h6>
-                    <div className="balance-amount">₹{stats.referral_balance.toFixed(2)}</div>
-                    <p className="expiry-note mb-0">
-                      {stats.referral_expires_at && !isExpired
-                        ? `Valid until ${formatDate(stats.referral_expires_at)}`
-                        : isExpired
-                          ? 'Balance has expired'
-                          : 'Applied automatically at checkout'}
-                    </p>
-                    <div style={{ marginTop: '16px', fontSize: '0.85rem', fontWeight: 600, opacity: 0.75 }}>
-                      <i className="bi bi-info-circle me-1"></i>
-                      Auto-applied on your next subscription purchase
-                    </div>
-                  </div>
-                )}
 
                 {/* Referred By */}
-                {stats.referred_by && (
-                  <div className="info-card">
-                    <h5>
-                      <i className="bi bi-person-check-fill" style={{ color: '#6366f1' }}></i>
-                      You Were Referred
-                    </h5>
-                    <div style={{ background: '#f8f9fa', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Referral Code Used</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '3px', fontFamily: 'monospace' }}>{stats.referred_by}</div>
-                      <div style={{ marginTop: '10px', fontSize: '0.8rem', color: stats.has_used_referral ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
-                        {stats.has_used_referral
-                          ? <><i className="bi bi-check-circle-fill me-1"></i>Reward used</>
-                          : <><i className="bi bi-clock me-1"></i>Reward pending — buy a plan to activate</>}
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Share Your Code */}
                 <div className="info-card">
