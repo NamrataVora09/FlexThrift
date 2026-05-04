@@ -291,8 +291,8 @@ class AuthApi extends ResourceController
                 foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
 
                 if (($cfg['referral_enabled'] ?? '1') === '1') {
-                    $receiverReward = (float) ($cfg['referral_receiver_reward'] ?? 50);
-                    $expiryDays     = (int)   ($cfg['referral_expiry_days']      ?? 30);
+                    $receiverReward = (float) ((isset($cfg['referral_receiver_reward']) && $cfg['referral_receiver_reward'] !== '') ? $cfg['referral_receiver_reward'] : 50);
+                    $expiryDays     = (int)   ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
                     $expiresAt      = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
 
                     // Credit the receiver immediately
@@ -392,7 +392,11 @@ class AuthApi extends ResourceController
             $cfg[$r['setting_key']] = $r['setting_value'];
         }
 
-        $rewardAmount = (float) ($cfg['referral_referrer_reward'] ?? $cfg['referral_reward_amount'] ?? 50);
+        $rewardAmount = (float) (
+            (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '') 
+            ? $cfg['referral_referrer_reward'] 
+            : (isset($cfg['referral_reward_amount']) && $cfg['referral_reward_amount'] !== '' ? $cfg['referral_reward_amount'] : 50)
+        );
         $referralEnabled = ($cfg['referral_enabled'] ?? '1') === '1';
         $howItWorks = json_decode($cfg['referral_how_it_works'] ?? '[]', true);
         $terms = json_decode($cfg['referral_terms'] ?? '[]', true);

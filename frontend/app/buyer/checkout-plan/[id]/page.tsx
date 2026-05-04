@@ -26,6 +26,7 @@ interface CheckoutData {
   charge_breakdown: ChargeItem[];
   total_charges: number;
   referral_discount: number;
+  referral_min_purchase: number;
   total_referral_balance: number;
   total: number;
 }
@@ -291,19 +292,19 @@ export default function CheckoutPlanPage() {
               {/* Referral Balance Toggle */}
               {availableReferral > 0 && (
                 <div className="mt-4" style={{
-                  background: useReferral ? 'rgba(16,185,129,0.06)' : '#f8f9fa',
-                  border: `1.5px solid ${useReferral ? 'rgba(16,185,129,0.3)' : '#e5e7eb'}`,
+                  background: useReferral && referralDiscount > 0 ? 'rgba(16,185,129,0.06)' : '#f8f9fa',
+                  border: `1.5px solid ${useReferral && referralDiscount > 0 ? 'rgba(16,185,129,0.3)' : '#e5e7eb'}`,
                   borderRadius: '10px',
                   padding: '12px 14px',
                   transition: 'all 0.2s',
                 }}>
                   <div className="d-flex align-items-center justify-content-between">
                     <div className="d-flex align-items-center gap-2">
-                      <i className="bi bi-gift-fill" style={{ color: useReferral ? '#10b981' : '#9ca3af', fontSize: '1.1rem' }}></i>
+                      <i className="bi bi-gift-fill" style={{ color: useReferral && referralDiscount > 0 ? '#10b981' : '#9ca3af', fontSize: '1.1rem' }}></i>
                       <div>
                         <div className="fw-bold" style={{ fontSize: '0.85rem' }}>
                           Referral Balance
-                          {useReferral && (
+                          {useReferral && referralDiscount > 0 && (
                             <span className="ms-2 badge" style={{ background: '#10b981', color: '#fff', fontSize: '0.7rem', borderRadius: '50px', padding: '2px 8px' }}>
                               Applied
                             </span>
@@ -311,7 +312,13 @@ export default function CheckoutPlanPage() {
                         </div>
                         <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
                           ₹{availableReferral.toFixed(2)} available
-                          {availableReferral > appliedReferral && useReferral && (
+                          {useReferral && referralDiscount === 0 && basePrice < (checkoutData.referral_min_purchase || 0) && (
+                            <div className="text-danger mt-1" style={{ fontSize: '0.72rem' }}>
+                              <i className="bi bi-info-circle me-1"></i>
+                              Min purchase of ₹{(checkoutData.referral_min_purchase || 0).toFixed(0)} required for referral discount
+                            </div>
+                          )}
+                          {availableReferral > appliedReferral && useReferral && referralDiscount > 0 && (
                             <span className="ms-1 text-primary" style={{ fontSize: '0.7rem' }}>
                               (Max ₹{appliedReferral.toFixed(0)} applicable for this plan)
                             </span>
@@ -319,23 +326,25 @@ export default function CheckoutPlanPage() {
                         </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setUseReferral(prev => !prev)}
-                      style={{
-                        background: useReferral ? 'rgba(239,68,68,0.08)' : '#10b981',
-                        color: useReferral ? '#ef4444' : '#fff',
-                        border: `1px solid ${useReferral ? 'rgba(239,68,68,0.2)' : '#10b981'}`,
-                        borderRadius: '8px',
-                        padding: '5px 14px',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {useReferral ? 'Remove' : 'Apply'}
-                    </button>
+                    {basePrice >= (checkoutData.referral_min_purchase || 0) && (
+                      <button
+                        onClick={() => setUseReferral(prev => !prev)}
+                        style={{
+                          background: useReferral ? 'rgba(239,68,68,0.08)' : '#10b981',
+                          color: useReferral ? '#ef4444' : '#fff',
+                          border: `1px solid ${useReferral ? 'rgba(239,68,68,0.2)' : '#10b981'}`,
+                          borderRadius: '8px',
+                          padding: '5px 14px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {useReferral ? 'Remove' : 'Apply'}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

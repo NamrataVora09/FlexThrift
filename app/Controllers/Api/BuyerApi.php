@@ -1956,13 +1956,17 @@ class BuyerApi extends ResourceController
         $referralBalance = (float) ($user['referral_balance'] ?? 0);
         $expiry = $user['referral_expires_at'] ?? null;
         
-        if ($referralBalance > 0) {
+        $settingsRows = $db->table('system_settings')
+            ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+            ->get()->getResultArray();
+        $cfg = [];
+        foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+        
+        $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+        $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+
+        if ($referralBalance > 0 && (float)$plan['price'] >= $minPurchase) {
             if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
-                $settingsRows = $db->table('system_settings')
-                    ->where('setting_key', 'referral_max_discount_percent')
-                    ->get()->getRowArray();
-                $maxPercent = (float) ($settingsRows['setting_value'] ?? 50);
-                
                 // Max discount = percentage of the wallet balance that can be used
                 $referralDiscount = round(($referralBalance * $maxPercent) / 100, 2);
             }
@@ -1983,6 +1987,7 @@ class BuyerApi extends ResourceController
                 'charge_breakdown' => $chargeBreakdown,
                 'total_charges' => $totalCharges,
                 'referral_discount' => $referralDiscount,
+                'referral_min_purchase' => $minPurchase,
                 'total_referral_balance' => $referralBalance,
                 'total' => $total,
             ],
@@ -2113,13 +2118,19 @@ class BuyerApi extends ResourceController
             if ($referralBalance > 0) {
                 if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
                     $settingsRows = $db->table('system_settings')
-                        ->where('setting_key', 'referral_max_discount_percent')
-                        ->get()->getRowArray();
-                    $maxPercent = (float) ($settingsRows['setting_value'] ?? 50);
+                        ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+                        ->get()->getResultArray();
+                    $cfg = [];
+                    foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+
+                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
                     
-                    // Max discount = percentage of the wallet balance that can be used
-                    $referralDiscountApplied = round(($referralBalance * $maxPercent) / 100, 2);
-                    $finalAmount -= $referralDiscountApplied;
+                    if ($basePrice >= $minPurchase) {
+                        // Max discount = percentage of the wallet balance that can be used
+                        $referralDiscountApplied = round(($referralBalance * $maxPercent) / 100, 2);
+                        $finalAmount -= $referralDiscountApplied;
+                    }
                 }
             }
         }
@@ -2272,14 +2283,20 @@ class BuyerApi extends ResourceController
                     $referrer = $db->table('users')->where('referral_code', $buyer['referred_by'])->get()->getRowArray();
                     if ($referrer) {
                         $settings = $db->table('system_settings')
-                            ->whereIn('setting_key', ['referral_referrer_reward', 'referral_reward_amount', 'referral_expiry_days', 'referral_enabled'])
+                            ->whereIn('setting_key', ['referral_referrer_reward', 'referral_reward_amount', 'referral_expiry_days', 'referral_enabled', 'referral_min_purchase'])
                             ->get()->getResultArray();
                         $cfg = [];
                         foreach ($settings as $s) $cfg[$s['setting_key']] = $s['setting_value'];
 
-                        if (($cfg['referral_enabled'] ?? '1') === '1') {
-                            $rewardAmount = (float) ($cfg['referral_referrer_reward'] ?? $cfg['referral_reward_amount'] ?? 50);
-                            $expiryDays   = (int)   ($cfg['referral_expiry_days']   ?? 30);
+                        $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+
+                        if (($cfg['referral_enabled'] ?? '1') === '1' && (float)$plan['price'] >= $minPurchase) {
+                            $rewardAmount = (float) (
+                                (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '') 
+                                ? $cfg['referral_referrer_reward'] 
+                                : (isset($cfg['referral_reward_amount']) && $cfg['referral_reward_amount'] !== '' ? $cfg['referral_reward_amount'] : 50)
+                            );
+                            $expiryDays   = (int)   ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
                             $newBalance   = (float) ($referrer['referral_balance']   ?? 0) + $rewardAmount;
                             $expiresAt    = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
 

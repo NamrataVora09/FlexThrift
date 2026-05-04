@@ -371,7 +371,22 @@ export default function BusinessSettingsView() {
   useEffect(() => {
     api.get<SettingsData>('/shared/business-settings').then((r) => {
       if (r.success && r.data) {
-        setConfig(r.data.config);
+        const fullConfig = { ...r.data.config };
+        // Ensure referral defaults are in state if missing from DB
+        const referralDefaults: Record<string, string> = {
+          referral_enabled: '1',
+          referral_referrer_reward: fullConfig['referral_reward_amount'] || '50',
+          referral_receiver_reward: '50',
+          referral_max_discount_percent: '50',
+          referral_expiry_days: '7',
+          referral_min_purchase: '0'
+        };
+        Object.keys(referralDefaults).forEach(key => {
+          if (fullConfig[key] === undefined || fullConfig[key] === null) {
+            fullConfig[key] = referralDefaults[key];
+          }
+        });
+        setConfig(fullConfig);
         // Load app messages
         if (r.data.app_messages) setAppMessages(r.data.app_messages);
       }
@@ -397,7 +412,9 @@ export default function BusinessSettingsView() {
     }
   };
 
-  const update = (key: string, val: string) => setConfig((c) => ({ ...c, [key]: val }));
+  const update = (key: string, val: string) => {
+    setConfig((c) => ({ ...c, [key]: val }));
+  };
 
 
 
@@ -445,15 +462,15 @@ export default function BusinessSettingsView() {
   // ==================== FIELD RENDERER (non-pricing tabs) ====================
   const renderField = (key: string) => {
     const field = FIELD_MAP[key] || { label: key };
-    let val = config[key] || '';
+    let val = (config[key] !== undefined && config[key] !== null) ? config[key] : '';
 
     // Fallbacks & Defaults for Referral
-    if (!val) {
+    if (val === '') {
       if (key === 'referral_referrer_reward') val = config['referral_reward_amount'] || '50';
-      if (key === 'referral_receiver_reward') val = '50';
-      if (key === 'referral_max_discount_percent') val = '50';
-      if (key === 'referral_expiry_days') val = '7';
-      if (key === 'referral_enabled') val = '1';
+      else if (key === 'referral_receiver_reward') val = '50';
+      else if (key === 'referral_max_discount_percent') val = '50';
+      else if (key === 'referral_expiry_days') val = '7';
+      else if (key === 'referral_enabled') val = '1';
     }
 
     if (field.type === 'textarea') return (
