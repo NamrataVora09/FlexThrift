@@ -688,9 +688,9 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
         <div className="filter-tabs mb-0">
           {[
             { key: '', label: 'All', count: sorted.length },
-            { key: 'pending', label: 'Pending', count: offers.filter(o => ['pending', 'negotiating'].includes(o.status)).length },
-            { key: 'accepted', label: 'Accepted', count: offers.filter(o => o.status === 'accepted').length },
-            { key: 'rejected', label: 'Rejected', count: offers.filter(o => REJECTED_STATUSES.includes(o.status)).length },
+            { key: 'pending', label: 'Pending', count: perspectiveOffers.filter(o => ['pending', 'negotiating'].includes(o.status)).length },
+            { key: 'accepted', label: 'Accepted', count: perspectiveOffers.filter(o => o.status === 'accepted').length },
+            { key: 'rejected', label: 'Rejected', count: perspectiveOffers.filter(o => REJECTED_STATUSES.includes(o.status)).length },
           ].map(({ key, label, count }) => (
             <button key={key} className={`nav-link ${filter === key ? ' active' : ''}`} onClick={() => setFilter(key)}>
               {label}<span className="count-badge">{count}</span>
