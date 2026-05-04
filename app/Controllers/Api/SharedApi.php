@@ -1055,9 +1055,10 @@ class SharedApi extends ResourceController
         $range = $this->request->getGet('range') ?? 'all';
 
         $builder = $db->table('user_subscriptions us')
-            ->select('us.*, sp.plan_name, sp.user_type as plan_user_type, u.name as user_name')
+            ->select('us.*, sp.name as plan_name, sp.user_type as plan_user_type, u.name as user_name')
             ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
-            ->join('users u', 'u.id = us.user_id', 'left');
+            ->join('users u', 'u.id = us.user_id', 'left')
+            ->orderBy('us.created_at', 'DESC');
 
         // If not admin/superadmin, filter by user_id
         if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
@@ -1131,11 +1132,17 @@ class SharedApi extends ResourceController
         $buyerDiscount = 0;
         $sellerDiscount = 0;
         
-        // Get all plans for breakdown
-        $allPlans = $db->table('subscription_plans')->get()->getResultArray();
+        // Get all plans for breakdown (filter by user type if not admin)
+        $allPlansBuilder = $db->table('subscription_plans');
+        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+            $allPlansBuilder->where('user_type', $jwtUser['role']);
+        }
+        $allPlans = $allPlansBuilder->get()->getResultArray();
         $planBreakdown = [];
+        $planTypes = [];
         foreach ($allPlans as $p) {
-            $planBreakdown[$p['plan_name']] = 0;
+            $planBreakdown[$p['name']] = 0;
+            $planTypes[$p['name']] = $p['user_type'];
         }
 
         foreach ($subs as $s) {
@@ -1204,10 +1211,13 @@ class SharedApi extends ResourceController
                         'buyer' => ['spent' => $buyerSpent, 'discount' => $buyerDiscount],
                         'seller' => ['spent' => $sellerSpent, 'discount' => $sellerDiscount],
                     ],
-                    'monthly_stats' => $this->getMonthlyStats($transactions),
+                    'monthly_stats' => $this->getMonthlyStats($subs),
                     'plan_breakdown' => [
                         'labels' => array_keys($planBreakdown),
-                        'values' => array_values($planBreakdown)
+                        'values' => array_values($planBreakdown),
+                        'colors' => array_map(function($name) use ($planTypes) {
+                            return ($planTypes[$name] === 'buyer') ? '#008080' : '#d96459';
+                        }, array_keys($planBreakdown))
                     ]
                 ],
                 'transactions' => array_map(function($s) {
@@ -1225,27 +1235,31 @@ class SharedApi extends ResourceController
         ]);
     }
 
-    private function getMonthlyStats($transactions)
+    private function getMonthlyStats($subs)
     {
         $stats = [];
+        $discounts = [];
         
         // Pre-fill last 12 months with 0
         for ($i = 11; $i >= 0; $i--) {
             $monthKey = date('M Y', strtotime("-$i months"));
             $stats[$monthKey] = 0;
+            $discounts[$monthKey] = 0;
         }
 
-        // Add actual transactions
-        foreach ($transactions as $tx) {
-            $month = date('M Y', strtotime($tx['created_at']));
+        // Add actual subscription data
+        foreach ($subs as $s) {
+            $month = date('M Y', strtotime($s['created_at']));
             if (isset($stats[$month])) {
-                $stats[$month] += (float)$tx['amount'];
+                $stats[$month] += (float)$s['amount_paid'];
+                $discounts[$month] += (float)$s['referral_discount_applied'];
             }
         }
 
         return [
             'labels' => array_keys($stats),
-            'values' => array_values($stats)
+            'spent' => array_values($stats),
+            'discount' => array_values($discounts)
         ];
     }
 }

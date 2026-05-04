@@ -21,10 +21,12 @@ interface ReportData {
     plan_breakdown: {
       labels: string[];
       values: number[];
+      colors?: string[];
     };
     monthly_stats: {
       labels: string[];
-      values: number[];
+      spent: number[];
+      discount: number[];
     };
   };
   transactions: any[];
@@ -97,28 +99,37 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     if (barChartInstance.current) barChartInstance.current.destroy();
     if (barChartRef.current) {
       const labels = barData.charts?.monthly_stats?.labels || [];
-      const values = barData.charts?.monthly_stats?.values || [];
+      const spent = barData.charts?.monthly_stats?.spent || [];
+      const discount = barData.charts?.monthly_stats?.discount || [];
+      const spentColor = barData.user_role === 'seller' ? themeColors.seller : themeColors.buyer;
+
       barChartInstance.current = new Chart(barChartRef.current, {
         type: 'bar',
         data: {
           labels,
-          datasets: [{
-            label: 'Transaction Amount (₹)',
-            data: values,
-            backgroundColor: themeColors.buyer,
-            borderRadius: 8
-          }]
+          datasets: [
+            {
+              label: 'Amount Spent (₹)',
+              data: spent,
+              backgroundColor: spentColor,
+              hoverBackgroundColor: spentColor,
+              borderRadius: 4
+            },
+            {
+              label: 'Discount (₹)',
+              data: discount,
+              backgroundColor: themeColors.discount,
+              hoverBackgroundColor: themeColors.discount,
+              borderRadius: 4
+            }
+          ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (context) => `Amount: ₹${(context.parsed.y ?? 0).toLocaleString('en-IN')}`
-              }
-            }
+            legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, usePointStyle: true, font: { size: 10 } } },
+            tooltip: { mode: 'index', intersect: false }
           },
           scales: {
             y: { beginAtZero: true, ticks: { callback: (val) => `₹${val}` } }
@@ -144,7 +155,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
       if (totalDisc > 0) { labels.push('Total Discount'); values.push(totalDisc); colors.push(themeColors.discount); }
       pieChartInstance.current = new Chart(pieChartRef.current, {
         type: 'pie',
-        data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
+        data: { labels, datasets: [{ data: values, backgroundColor: colors, hoverBackgroundColor: colors, hoverOffset: 0 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
       });
     }
@@ -156,6 +167,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     if (countChartRef.current) {
       const labels = countData.charts?.plan_breakdown?.labels || [];
       const counts = countData.charts?.plan_breakdown?.values || [];
+      const colors = countData.charts?.plan_breakdown?.colors || themeColors.seller;
       countChartInstance.current = new Chart(countChartRef.current, {
         type: 'bar',
         data: {
@@ -163,16 +175,19 @@ export default function TransactionsReportsView({ role }: { role: string }) {
           datasets: [{
             label: 'No. of Subscriptions',
             data: counts,
-            backgroundColor: themeColors.seller,
+            backgroundColor: colors,
+            hoverBackgroundColor: colors,
             borderRadius: 6
           }]
         },
         options: {
-          indexAxis: 'y', // Horizontal bar looks better for many plans
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { display: false } },
-          scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
+            x: { ticks: { font: { size: 10 } } }
+          }
         }
       });
     }
