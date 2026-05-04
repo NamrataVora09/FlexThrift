@@ -64,23 +64,25 @@ export default function NotificationsView({ role, apiPath }: Props) {
                   }
 
                   return (
-                    <div key={n.id} className={`list-group-item d-flex align-items-start gap-3 py-3 ${n.is_read ? '' : 'bg-light bg-opacity-50'}`}>
+                    <div key={n.id} className={`list-group-item d-flex align-items-start gap-2 gap-sm-3 py-3 ${n.is_read ? '' : 'bg-light bg-opacity-50'}`}>
                       <div
                         className="d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ width: 40, height: 40, borderRadius: 10, background: bg, color: color }}
+                        style={{ width: 36, height: 36, borderRadius: 10, background: bg, color: color }}
                       >
-                        <i className={`${icon}`} style={{ fontSize: 18 }}></i>
+                        <i className={`${icon}`} style={{ fontSize: 16 }}></i>
                       </div>
-                      <div className="flex-grow-1">
-                        <div className="d-flex justify-content-between align-items-center mb-1">
-                          <h6 className="mb-0 fw-bold" style={{ color: '#1f2937' }}>{n.title}</h6>
-                          <small className="text-muted" style={{ fontSize: '0.75rem' }}>{new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</small>
+                      <div className="flex-grow-1 min-w-0">
+                        <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-1 gap-1">
+                          <h6 className="mb-0 fw-bold text-truncate" style={{ color: '#1f2937', fontSize: '0.95rem' }}>{n.title}</h6>
+                          <small className="text-muted flex-shrink-0" style={{ fontSize: '0.7rem' }}>
+                            {new Date(n.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </small>
                         </div>
-                        <p className="mb-0 text-muted" style={{ fontSize: '0.88rem', lineHeight: '1.4' }}>{n.message}</p>
+                        <p className="mb-0 text-muted" style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{n.message}</p>
                       </div>
                       {!n.is_read && (
-                        <div className="ms-2">
-                          <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#fff', fontSize: '0.65rem' }}>NEW</span>
+                        <div className="ms-auto ms-sm-2 flex-shrink-0">
+                          <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#fff', fontSize: '0.6rem' }}>NEW</span>
                         </div>
                       )}
                     </div>
