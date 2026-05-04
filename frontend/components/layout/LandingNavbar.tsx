@@ -76,19 +76,6 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
 
         {/* Mobile toggle & Profile (Mobile) */}
         <div className="flex items-center gap-4 lg:hidden">
-          {isAuthenticated && user ? (
-            <ProfileDropdown
-              user={user}
-              profileHref={
-                user.role === 'super_admin' ? '/superadmin' :
-                  user.role === 'admin' ? '/admin/profile' :
-                    user.role === 'seller' ? '/seller/profile' :
-                      user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile'
-              }
-              profileLabel={user.name}
-              onLogout={() => { logout(); router.push('/'); }}
-            />
-          ) : null}
           <button className='p-2' onClick={() => setMobileNavOpen(true)}>
             <i className="bi bi-list text-2xl"></i>
           </button>
@@ -283,6 +270,33 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
             </button>
           </div>
 
+          {/* User Profile Section (Mobile) */}
+          {isAuthenticated && user && (
+            <div className="p-6 bg-gray-50/50 border-b">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-[#008080] text-white rounded-full flex items-center justify-center font-bold text-xl shadow-md border-2 border-white">
+                  {user.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-black text-gray-900 truncate m-0 text-base">{user.name}</h4>
+                  <p className="text-xs text-gray-500 truncate m-0 font-medium">{user.email}</p>
+                  <Link 
+                    href={
+                      user.role === 'super_admin' ? '/superadmin'       :
+                      user.role === 'admin'       ? '/admin/profile'    :
+                      user.role === 'seller'      ? '/seller/profile'   :
+                      user.role === 'delivery'    ? '/delivery/profile' : '/buyer/profile'
+                    }
+                    className="text-[10px] text-[#008080] font-bold uppercase tracking-wider mt-1 block hover:underline"
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    View Dashboard
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto p-6 space-y-8">
             {/* Primary Links */}
             <div>
@@ -322,11 +336,15 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-gray-400 font-black mb-4">Navigation</p>
                 <div className="space-y-4">
-                  <Link href="/wishlist" className="block text-lg font-bold hover:text-gold transition-colors" onClick={() => setMobileNavOpen(false)}>My Wishlist</Link>
+                  <Link href="/wishlist" className="flex items-center gap-3 text-lg font-bold hover:text-gold transition-colors" onClick={() => setMobileNavOpen(false)}>
+                    <i className="bi bi-heart" />
+                    My Wishlist
+                  </Link>
                   <button
-                    className="block text-lg font-bold text-red-500 hover:text-red-600 transition-colors text-left w-full"
+                    className="flex items-center gap-3 text-lg font-bold text-red-500 hover:text-red-600 transition-colors text-left w-full"
                     onClick={() => { logout(); setMobileNavOpen(false); router.push('/'); }}
                   >
+                    <i className="bi bi-box-arrow-right" />
                     Logout
                   </button>
                 </div>
