@@ -25,12 +25,14 @@ interface ReportData {
     };
     monthly_stats: {
       labels: string[];
-      spent: number[];
+      buyer_spent: number[];
+      seller_spent: number[];
       discount: number[];
     };
   };
   transactions: any[];
   user_role: string;
+  user_type?: string;
 }
 
 const RANGES = [
@@ -99,30 +101,52 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     if (barChartInstance.current) barChartInstance.current.destroy();
     if (barChartRef.current) {
       const labels = barData.charts?.monthly_stats?.labels || [];
-      const spent = barData.charts?.monthly_stats?.spent || [];
+      const buyerSpent = barData.charts?.monthly_stats?.buyer_spent || [];
+      const sellerSpent = barData.charts?.monthly_stats?.seller_spent || [];
       const discount = barData.charts?.monthly_stats?.discount || [];
-      const spentColor = barData.user_role === 'seller' ? themeColors.seller : themeColors.buyer;
+      
+      const isBoth = barData.user_role === 'super_admin' || barData.user_role === 'admin' || barData.user_type === 'both';
+
+      const datasets = [];
+      if (isBoth) {
+        datasets.push({
+          label: 'Buyer Spent (₹)',
+          data: buyerSpent,
+          backgroundColor: themeColors.buyer,
+          hoverBackgroundColor: themeColors.buyer,
+          borderRadius: 4
+        });
+        datasets.push({
+          label: 'Seller Spent (₹)',
+          data: sellerSpent,
+          backgroundColor: themeColors.seller,
+          hoverBackgroundColor: themeColors.seller,
+          borderRadius: 4
+        });
+      } else {
+        const isSeller = barData.user_role === 'seller';
+        datasets.push({
+          label: (isSeller ? 'Seller' : 'Buyer') + ' Spent (₹)',
+          data: isSeller ? sellerSpent : buyerSpent,
+          backgroundColor: isSeller ? themeColors.seller : themeColors.buyer,
+          hoverBackgroundColor: isSeller ? themeColors.seller : themeColors.buyer,
+          borderRadius: 4
+        });
+      }
+
+      datasets.push({
+        label: 'Discount (₹)',
+        data: discount,
+        backgroundColor: themeColors.discount,
+        hoverBackgroundColor: themeColors.discount,
+        borderRadius: 4
+      });
 
       barChartInstance.current = new Chart(barChartRef.current, {
         type: 'bar',
         data: {
           labels,
-          datasets: [
-            {
-              label: 'Amount Spent (₹)',
-              data: spent,
-              backgroundColor: spentColor,
-              hoverBackgroundColor: spentColor,
-              borderRadius: 4
-            },
-            {
-              label: 'Discount (₹)',
-              data: discount,
-              backgroundColor: themeColors.discount,
-              hoverBackgroundColor: themeColors.discount,
-              borderRadius: 4
-            }
-          ]
+          datasets: datasets
         },
         options: {
           responsive: true,
@@ -143,7 +167,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     if (!pieData) return;
     if (pieChartInstance.current) pieChartInstance.current.destroy();
     if (pieChartRef.current) {
-      const isBoth = pieData.user_role === 'super_admin' || pieData.user_role === 'admin';
+      const isBoth = pieData.user_role === 'super_admin' || pieData.user_role === 'admin' || pieData.user_type === 'both';
       const isSeller = pieData.user_role === 'seller';
       const isBuyer = pieData.user_role === 'buyer';
       const labels = []; const values = []; const colors = [];
@@ -278,26 +302,48 @@ export default function TransactionsReportsView({ role }: { role: string }) {
 
         {/* Charts Row */}
         <div className="row g-4 mb-5">
-          <div className="col-md-8">
-            <div className="card-wrap p-4">
-              {barLoading && <LoadingOverlay />}
-              <div className="card-header-flex">
-                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Amount Spent & Discount (Bar)</h6>
-                <RangePicker value={barRange} onChange={setBarRange} />
-              </div>
-              <div style={{ height: '320px' }}><canvas ref={barChartRef}></canvas></div>
-            </div>
-          </div>
-          <div className="col-md-4">
-            <div className="card-wrap p-4">
-              {pieLoading && <LoadingOverlay />}
-              <div className="card-header-flex">
-                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Distribution (Pie)</h6>
-                <RangePicker value={pieRange} onChange={setPieRange} />
-              </div>
-              <div style={{ height: '320px' }}><canvas ref={pieChartRef}></canvas></div>
-            </div>
-          </div>
+          {(() => {
+            const isBothOrAdmin = summaryData?.user_type === 'both' || ['admin', 'super_admin', 'superadmin'].includes(summaryData?.user_role || '');
+            if (isBothOrAdmin) {
+              return (
+                <>
+                  <div className="col-md-8">
+                    <div className="card-wrap p-4">
+                      {barLoading && <LoadingOverlay />}
+                      <div className="card-header-flex">
+                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Amount Spent & Discount (Bar)</h6>
+                        <RangePicker value={barRange} onChange={setBarRange} />
+                      </div>
+                      <div style={{ height: '320px' }}><canvas ref={barChartRef}></canvas></div>
+                    </div>
+                  </div>
+                  <div className="col-md-4">
+                    <div className="card-wrap p-4">
+                      {pieLoading && <LoadingOverlay />}
+                      <div className="card-header-flex">
+                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Distribution (Pie)</h6>
+                        <RangePicker value={pieRange} onChange={setPieRange} />
+                      </div>
+                      <div style={{ height: '320px' }}><canvas ref={pieChartRef}></canvas></div>
+                    </div>
+                  </div>
+                </>
+              );
+            } else {
+              return (
+                <div className="col-md-12">
+                  <div className="card-wrap p-4">
+                    {barLoading && <LoadingOverlay />}
+                    <div className="card-header-flex">
+                      <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Amount Spent & Discount (Bar)</h6>
+                      <RangePicker value={barRange} onChange={setBarRange} />
+                    </div>
+                    <div style={{ height: '320px' }}><canvas ref={barChartRef}></canvas></div>
+                  </div>
+                </div>
+              );
+            }
+          })()}
         </div>
 
         {/* Plan Counts Row */}

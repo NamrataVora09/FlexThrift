@@ -208,11 +208,6 @@ class SharedApi extends ResourceController
         $unlockCard = [];
         foreach ($rows as $r) $unlockCard[$r['setting_key']] = $r['setting_value'];
 
-        $uri = service('request')->getUri()->getPath();
-        log_message('info', 'Subscriptions Debug - URI: ' . $uri . ', userType: ' . $userType . ', userId: ' . $jwtUser['user_id']);
-        log_message('info', 'Active Sub Found: ' . json_encode($active));
-        log_message('info', 'History Found: ' . json_encode($history));
-
         return $this->respond([
             'success' => true,
             'data' => ['plans' => $plans, 'active' => $active, 'history' => $history, 'unlock_card' => $unlockCard],
@@ -1148,9 +1143,15 @@ class SharedApi extends ResourceController
         $sellerDiscount = 0;
         
         // Get all plans for breakdown (filter by user type if not admin)
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        $userType = $user['user_type'] ?? $jwtUser['role'];
+
+        // Get all plans for breakdown
         $allPlansBuilder = $db->table('subscription_plans');
         if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
-            $allPlansBuilder->where('user_type', $jwtUser['role']);
+            if ($userType !== 'both') {
+                $allPlansBuilder->where('user_type', $jwtUser['role']);
+            }
         }
         $allPlans = $allPlansBuilder->get()->getResultArray();
         $planBreakdown = [];
@@ -1245,35 +1246,43 @@ class SharedApi extends ResourceController
                         'created_at' => $s['created_at']
                     ];
                 }, $subs),
-                'user_role' => $jwtUser['role']
+                'user_role' => $jwtUser['role'],
+                'user_type' => $userType
             ]
         ]);
     }
 
     private function getMonthlyStats($subs)
     {
-        $stats = [];
+        $buyerStats = [];
+        $sellerStats = [];
         $discounts = [];
         
         // Pre-fill last 12 months with 0
         for ($i = 11; $i >= 0; $i--) {
             $monthKey = date('M Y', strtotime("-$i months"));
-            $stats[$monthKey] = 0;
+            $buyerStats[$monthKey] = 0;
+            $sellerStats[$monthKey] = 0;
             $discounts[$monthKey] = 0;
         }
 
         // Add actual subscription data
         foreach ($subs as $s) {
             $month = date('M Y', strtotime($s['created_at']));
-            if (isset($stats[$month])) {
-                $stats[$month] += (float)$s['amount_paid'];
+            if (isset($buyerStats[$month])) {
+                if (($s['plan_user_type'] ?? '') === 'seller') {
+                    $sellerStats[$month] += (float)$s['amount_paid'];
+                } else {
+                    $buyerStats[$month] += (float)$s['amount_paid'];
+                }
                 $discounts[$month] += (float)$s['referral_discount_applied'];
             }
         }
 
         return [
-            'labels' => array_keys($stats),
-            'spent' => array_values($stats),
+            'labels' => array_keys($buyerStats),
+            'buyer_spent' => array_values($buyerStats),
+            'seller_spent' => array_values($sellerStats),
             'discount' => array_values($discounts)
         ];
     }

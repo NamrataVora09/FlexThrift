@@ -102,9 +102,7 @@ function SellerSubscriptionsInner() {
     if (success) setFlashMsg({ text: decodeURIComponent(success), ok: true });
     if (error) setFlashMsg({ text: decodeURIComponent(error), ok: false });
 
-    console.log('Fetching subscriptions for seller...');
     api.get<SubData>('/shared/subscriptions/seller').then((r) => {
-      console.log('Subscriptions API Response:', r);
       if (r.success && r.data) {
         setData(r.data);
       }
@@ -155,7 +153,6 @@ function SellerSubscriptionsInner() {
       (h) => Number(h.is_active) === 1 && h.payment_status === 'paid' && new Date(h.expires_at) >= new Date()
     );
   }
-  console.log('Derived activeSubscriptions:', activeSubscriptions);
 
   const hasActiveSub = activeSubscriptions.length > 0;
 
