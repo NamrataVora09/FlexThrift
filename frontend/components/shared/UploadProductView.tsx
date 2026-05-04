@@ -83,6 +83,8 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [billFiles, setBillFiles] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<any[]>([]);
+  const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]);
 
   // Form state
   const [f, setF] = useState({
@@ -105,6 +107,17 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [sbSearch, setSbSearch] = useState('');
   const [sbOpen, setSbOpen] = useState(false);
   const [selectedSb, setSelectedSb] = useState<{ id: number; name: string } | null>(null);
+
+  // Helper to resolve media URLs (handles both old filename-only and new prefixed paths)
+  const resolveUrl = (path: string, type: 'product' | 'bill' = 'product') => {
+    if (!path || path.startsWith('http')) return path;
+    let cleanPath = path;
+    if (!cleanPath.includes('uploads/')) {
+      const prefix = type === 'product' ? 'uploads/products/' : 'uploads/bills/';
+      cleanPath = prefix + cleanPath;
+    }
+    return `http://localhost:8080/${cleanPath}`;
+  };
 
   // Cascading options
   const [productTypes, setProductTypes] = useState<Array<{ id: number; name: string }>>([]);
@@ -164,19 +177,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             status: product.status || 'pending',
           });
 
-          // Helper to resolve media URLs (handles both old filename-only and new prefixed paths)
-          const resolveUrl = (path: string, type: 'product' | 'bill' = 'product') => {
-            if (!path || path.startsWith('http')) return path;
-            let cleanPath = path;
-            if (!cleanPath.includes('uploads/')) {
-              const prefix = type === 'product' ? 'uploads/products/' : 'uploads/bills/';
-              cleanPath = prefix + cleanPath;
-            }
-            return `http://localhost:8080/${cleanPath}`;
-          };
-
           // Load existing images
           if (product.images && Array.isArray(product.images)) {
+            setExistingImages(product.images);
             setPreviews(product.images.map((img: any) => resolveUrl(img.image_path, 'product')));
           }
 
@@ -184,9 +187,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
           if (product.bill_image) {
             try {
               const parsed = JSON.parse(product.bill_image);
-              setExistingBills(Array.isArray(parsed) ? parsed : [product.bill_image]);
+              setExistingBills(Array.isArray(parsed) ? parsed.map((p: any) => resolveUrl(p, 'bill')) : [resolveUrl(product.bill_image, 'bill')]);
             } catch {
-              setExistingBills([product.bill_image]);
+              setExistingBills([resolveUrl(product.bill_image, 'bill')]);
             }
           }
 
@@ -463,16 +466,42 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const handleImages = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
     const max = parseInt(meta?.config?.max_product_images || '7');
-    const combined = [...files, ...selected].slice(0, max);
-    setFiles(combined);
-    setPreviews(combined.map(f => URL.createObjectURL(f)));
+    
+    const currentTotal = existingImages.length + files.length;
+    const remaining = max - currentTotal;
+    
+    if (remaining <= 0) {
+      toast.error(`Maximum ${max} images allowed`);
+      return;
+    }
+
+    const newToSelect = selected.slice(0, remaining);
+    const newFiles = [...files, ...newToSelect];
+    setFiles(newFiles);
+    
+    const existingPreviews = existingImages.map(img => resolveUrl(img.image_path, 'product'));
+    const newPreviews = newFiles.map(f => URL.createObjectURL(f));
+    setPreviews([...existingPreviews, ...newPreviews]);
   };
 
   const removeImage = (idx: number) => {
-    const next = files.filter((_, i) => i !== idx);
-    setFiles(next);
-    setPreviews(next.map(f => URL.createObjectURL(f)));
+    if (idx < existingImages.length) {
+      const removed = existingImages[idx];
+      setExistingImages(prev => prev.filter((_, i) => i !== idx));
+      if (removed.id) setDeletedImageIds(prev => [...prev, removed.id]);
+    } else {
+      const fileIdx = idx - existingImages.length;
+      const nextFiles = files.filter((_, i) => i !== fileIdx);
+      setFiles(nextFiles);
+    }
   };
+
+  // Sync previews whenever files or existingImages change
+  useEffect(() => {
+    const ep = existingImages.map(img => resolveUrl(img.image_path, 'product'));
+    const np = files.map(f => URL.createObjectURL(f));
+    setPreviews([...ep, ...np]);
+  }, [existingImages, files]);
 
   const filterBrandByListingType = (b: { listing_type_ids?: string | null; listing_type_id?: number | string | null }, ltId: number): boolean => {
     let ids: number[] | null = null;
@@ -588,17 +617,19 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
       let res;
       if (isEditMode && editingProductId) {
-        // For admins/super_admins, update directly; for regular sellers, create edit request
+        // Prepare data
+        const fieldMap: Record<string, string> = { used_times: 'times_used', description: 'condition_description' };
+        
+        // Add deleted images if any
+        if (deletedImageIds.length > 0) {
+          fd.append('deleted_images_ids', JSON.stringify(deletedImageIds));
+        }
+
         if (user?.role === 'super_admin' || user?.role === 'admin') {
           res = await api.upload(`${apiBasePath}/update-product/${editingProductId}`, fd);
         } else {
-          // For regular sellers, create edit request
-          const editData: Record<string, string | File> = {};
-          Object.entries(f).forEach(([k, v]) => {
-            const key = fieldMap[k] || k;
-            if (typeof v === 'boolean') { if (v) editData[key] = '1'; } else editData[key] = v;
-          });
-          res = await api.post(`${apiBasePath}/edit-product/${editingProductId}`, editData);
+          // For regular sellers, we now use api.upload (multipart) to support images in edit requests
+          res = await api.upload(`${apiBasePath}/edit-product/${editingProductId}`, fd);
         }
       } else {
         // Create new product

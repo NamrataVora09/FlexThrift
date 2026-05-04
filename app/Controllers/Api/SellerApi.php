@@ -1102,19 +1102,42 @@ class SellerApi extends ResourceController
         $product = $db->table('products')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
-        $data = $this->request->getPost() ?: $this->request->getJSON(true);
+        $data = $this->request->getPost();
         $processedData = $this->cleanProductData($data, $db);
 
         // Pricing Validation
         $v = $this->validatePricing($data);
         if (!$v['success']) return $this->respond($v, 422);
 
+        // Handle new image uploads for edit request
+        $tempImages = [];
+        $files = $this->request->getFiles();
+        $imageFiles = $files['product_images'] ?? $files['images'] ?? null;
+        if ($imageFiles) {
+            $uploadPath = FCPATH . 'uploads/products/temp/';
+            if (!is_dir($uploadPath)) mkdir($uploadPath, 0777, true);
+            foreach ($imageFiles as $img) {
+                if ($img && $img->isValid() && !$img->hasMoved()) {
+                    $newName = $img->getRandomName();
+                    $img->move($uploadPath, $newName);
+                    $tempImages[] = 'uploads/products/temp/' . $newName;
+                }
+            }
+        }
+
+        $deletedIds = $this->request->getPost('deleted_images_ids');
+        if ($deletedIds && is_string($deletedIds)) {
+            $deletedIdsArr = json_decode($deletedIds, true) ?: [];
+        } else {
+            $deletedIdsArr = [];
+        }
+
         $db->table('product_edit_requests')->insert([
             'product_id' => $id,
             'seller_id' => $jwtUser['user_id'],
             'updated_data' => json_encode($processedData),
-            'temp_images' => '[]',
-            'deleted_images_ids' => '[]',
+            'temp_images' => json_encode($tempImages),
+            'deleted_images_ids' => json_encode($deletedIdsArr),
             'status' => 'pending',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
@@ -1172,6 +1195,20 @@ class SellerApi extends ResourceController
                         'created_at' => date('Y-m-d H:i:s'),
                     ]);
                 }
+            }
+        }
+
+        // Handle image deletions
+        $deletedIds = $this->request->getPost('deleted_images_ids');
+        if ($deletedIds && is_string($deletedIds)) {
+            $deletedIdsArr = json_decode($deletedIds, true) ?: [];
+            if (!empty($deletedIdsArr)) {
+                $imagesToDelete = $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->get()->getResultArray();
+                foreach ($imagesToDelete as $img) {
+                    $fullPath = FCPATH . $img['image_path'];
+                    if (is_file($fullPath)) unlink($fullPath);
+                }
+                $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->delete();
             }
         }
 
