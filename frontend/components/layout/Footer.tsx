@@ -202,7 +202,7 @@ export default function Footer() {
           </button>
         )}
 
-        <div className="px-28 py-5 grid grid-cols-1 md:grid-cols-4 gap-10">
+        <div className="  xl:px-28! lg:px-28! md:px-28 sm:px-8 px-4  py-5 grid grid-cols-1 justify-center lg:grid-cols-4  gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
             <h2 className="text-3xl font-bold text-white mb-2.5">Flex Market</h2>
@@ -210,7 +210,7 @@ export default function Footer() {
           </div>
 
           {/* Dynamic sections */}
-          <div className="w-full flex md:col-span-3 gap-10 md:gap-20 lg:gap-32 justify-start  flex-wrap">
+          <div className="w-full flex md:col-span-3 sm:flex-row flex-col gap-10 md:gap-20 lg:gap-32 justify-start  flex-wrap">
             {sections.map(section => (
               <div key={section.id}>
                 <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-[18px]!">{section.title}</h5>

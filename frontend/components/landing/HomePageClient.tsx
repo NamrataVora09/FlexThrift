@@ -78,7 +78,7 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
         </div>
       )}
 
-      <div className="w-full mx-auto  overflow-hidden">
+      <div className="w-full mx-auto px-2 sm:px-0 overflow-hidden">
         {/* Heading */}
         <h2 className="text-3xl font-bold  text-[80px]!  text-black text-center mb-3">{section.headline}</h2>
         <p className="text-gray-500 text-center text-[20px]! mb-[100px]! max-w-xl mx-auto mb-12">{section.subtitle}</p>
@@ -106,7 +106,7 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
                 {guide.label && (
                   <div className="flex items-center justify-center gap-4 mb-8">
                     <div className="w-[50px] h-[2px] bg-[#d6b06b]"></div>
-                    <p className="text-center  font-semibold text-[30px] text-[#d6b06b] uppercase tracking-widest">{guide.label}</p>
+                    <p className="text-center  font-semibold md:text-[30px] text-[18px] text-[#d6b06b] uppercase tracking-widest">{guide.label}</p>
                     <div className="w-[50px] h-[2px] bg-[#d6b06b]"></div>
                   </div>
                 )}
@@ -122,7 +122,7 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
                                 <p className="bg-[#d6b06b] text-[18px]! text-white rounded-full py-2.5 px-3 leading-none m-0!">{idx + 1}</p>
                                 {idx < guide.steps.length - 1 && <div className="w-[2px] flex-1 min-h-[48px] bg-black opacity-40 my-1" />}
                               </div>
-                              <h4 className="text-[16px]! text-black! font-[poppins]! font-light! leading-[1.7] flex-1 break-words" dangerouslySetInnerHTML={{ __html: s.desc }}></h4>
+                              <h4 className="md:text-[16px]! text-[10px]!  text-black! font-[poppins]! font-light! leading-[1.7] flex-1 break-words" dangerouslySetInnerHTML={{ __html: s.desc }}></h4>
                             </div>
                           ))}
                         </div>
@@ -138,7 +138,7 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
                                 <p className="bg-[#d6b06b] text-[18px]! text-white rounded-full py-2.5 px-3 leading-none m-0!">{idx + 1}</p>
                                 {idx < guide.steps.length - 1 && <div className="w-[2px] flex-1 min-h-[48px] bg-black opacity-40 my-1" />}
                               </div>
-                              <h4 className="text-[16px]! font-[poppins]!  text-black! font-light! leading-[1.7] flex-1 break-words" dangerouslySetInnerHTML={{ __html: s.desc }}></h4>
+                              <h4 className=" md:text-[16px]! text-[10px]! font-[poppins]!  text-black! font-light! leading-[1.7] flex-1 break-words" dangerouslySetInnerHTML={{ __html: s.desc }}></h4>
                             </div>
                           ))}
                         </div>
@@ -626,15 +626,15 @@ export default function HomePageClient() {
 
   return (
     <>
-      <main className=' pt-25 px-28'>
+      <main className=' sm:pt-10 sm:px-2  xl:px-28 '>
         <LandingNavbar />
 
         {/* Category Cards + Sidebar */}
-        <div className='flex relative justify-end     py-5 gap-34 items-start'>
+        <div className='flex lg:flex-row flex-col relative justify-end px-2     py-5 xl:gap-34 gap-10 items-start'>
 
           {/* Left: Category Cards */}
 
-          <div className="w-2/3   flex flex-col gap-16 relative">
+          <div className="w-full lg:w-2/3   flex flex-col gap-16 relative">
             {isSuperAdmin && (
               <button
                 onClick={() => setEditingCards(true)}
@@ -647,15 +647,15 @@ export default function HomePageClient() {
               <Link
                 key={cat.name}
                 href={`/buyer/browse?listing_type=${cat.slug}`}
-                className={`flex ${i % 2 == 1 ? 'flex-row-reverse' : ''} h-[390px] rounded-lg overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] group relative`}
+                className={`flex sm:flex-row flex-col  ${i % 2 == 1 ? 'sm:flex-row-reverse flex-col' : ''} h-[390px] rounded-lg overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] group relative`}
               >
                 {/* Left: category name — centered vertically & horizontally */}
-                <div className="w-[30%] shrink-0 flex items-center justify-center bg-[#e7efe5] z-10 px-4">
+                <div className="sm:w-[30%] w-full shrink-0 flex  py-4 sm:py-0  items-center justify-center bg-[#e7efe5] z-10 px-4">
                   <h2 className="text-xl font-[Maven Pro] text-[20px]! font-bold text-black text-center">{cat.name}</h2>
                 </div>
 
                 {/* Right: single auto-scrolling image */}
-                <div className="relative w-full h-full flex-1 overflow-hidden">
+                <div className="relative  w-full h-full flex-1 overflow-hidden">
                   <img
                     src={cat.imgs[catImgIdx[i]]}
                     alt={cat.name}
@@ -692,7 +692,7 @@ export default function HomePageClient() {
           </div>
 
 
-          <div className='w-[419px] h-[4px56] max-w-[419px] max-h-[456px] min-w-[419px] min-h-[456px] sticky top-37.5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-white flex flex-col p-[30px] rounded-[15px] justify-start'>
+          <div className=' xl:w-[419px] lg:w-1/3 w-full xl:max-w-[419px]  sticky top-37.5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-white flex flex-col xl:p-[30px] lg:p-[15px] p-[30px] rounded-[15px] justify-start'>
 
             {/* ── Login form ── */}
             {sidebarView === 'listing' && (
