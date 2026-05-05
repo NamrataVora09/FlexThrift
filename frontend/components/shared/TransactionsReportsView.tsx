@@ -23,12 +23,14 @@ interface ReportData {
       values: number[];
       colors?: string[];
     };
-    monthly_stats: {
-      labels: string[];
-      buyer_spent: number[];
-      seller_spent: number[];
-      discount: number[];
-    };
+      monthly_stats: {
+        labels: string[];
+        buyer_spent: number[];
+        seller_spent: number[];
+        buyer_count: number[];
+        seller_count: number[];
+        discount: number[];
+      };
   };
   transactions: any[];
   user_role: string;
@@ -69,10 +71,12 @@ export default function TransactionsReportsView({ role }: { role: string }) {
   const barChartRef = useRef<HTMLCanvasElement>(null);
   const pieChartRef = useRef<HTMLCanvasElement>(null);
   const countChartRef = useRef<HTMLCanvasElement>(null);
+  const countPieChartRef = useRef<HTMLCanvasElement>(null);
 
   const barChartInstance = useRef<Chart | null>(null);
   const pieChartInstance = useRef<Chart | null>(null);
   const countChartInstance = useRef<Chart | null>(null);
+  const countPieChartInstance = useRef<Chart | null>(null);
 
   const themeColors = {
     buyer: '#008080',
@@ -189,28 +193,82 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     if (!countData) return;
     if (countChartInstance.current) countChartInstance.current.destroy();
     if (countChartRef.current) {
-      const labels = countData.charts?.plan_breakdown?.labels || [];
-      const counts = countData.charts?.plan_breakdown?.values || [];
-      const colors = countData.charts?.plan_breakdown?.colors || themeColors.seller;
+      const labels = countData.charts?.monthly_stats?.labels || [];
+      const buyerCounts = countData.charts?.monthly_stats?.buyer_count || [];
+      const sellerCounts = countData.charts?.monthly_stats?.seller_count || [];
+
+      const isBoth = countData.user_role === 'super_admin' || countData.user_role === 'admin' || countData.user_type === 'both';
+
+      const datasets = [];
+      if (isBoth) {
+        datasets.push({
+          label: 'Buyer Plans',
+          data: buyerCounts,
+          backgroundColor: themeColors.buyer,
+          hoverBackgroundColor: themeColors.buyer,
+          borderRadius: 4
+        });
+        datasets.push({
+          label: 'Seller Plans',
+          data: sellerCounts,
+          backgroundColor: themeColors.seller,
+          hoverBackgroundColor: themeColors.seller,
+          borderRadius: 4
+        });
+      } else {
+        const isSeller = countData.user_role === 'seller';
+        datasets.push({
+          label: (isSeller ? 'Seller' : 'Buyer') + ' Plans',
+          data: isSeller ? sellerCounts : buyerCounts,
+          backgroundColor: isSeller ? themeColors.seller : themeColors.buyer,
+          hoverBackgroundColor: isSeller ? themeColors.seller : themeColors.buyer,
+          borderRadius: 4
+        });
+      }
+
       countChartInstance.current = new Chart(countChartRef.current, {
         type: 'bar',
         data: {
           labels,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'top', align: 'end', labels: { boxWidth: 12, usePointStyle: true, font: { size: 10 } } },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
+            x: { ticks: { font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    if (countPieChartInstance.current) countPieChartInstance.current.destroy();
+    if (countPieChartRef.current) {
+      const buyerCounts = countData.charts?.monthly_stats?.buyer_count || [];
+      const sellerCounts = countData.charts?.monthly_stats?.seller_count || [];
+      const totalBuyer = buyerCounts.reduce((a, b) => a + b, 0);
+      const totalSeller = sellerCounts.reduce((a, b) => a + b, 0);
+
+      countPieChartInstance.current = new Chart(countPieChartRef.current, {
+        type: 'pie',
+        data: {
+          labels: ['Buyer Plans', 'Seller Plans'],
           datasets: [{
-            label: 'No. of Subscriptions',
-            data: counts,
-            backgroundColor: colors,
-            hoverBackgroundColor: colors,
-            borderRadius: 6
+            data: [totalBuyer, totalSeller],
+            backgroundColor: [themeColors.buyer, themeColors.seller],
+            hoverBackgroundColor: [themeColors.buyer, themeColors.seller],
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
-            x: { ticks: { font: { size: 10 } } }
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
           }
         }
       });
@@ -348,16 +406,48 @@ export default function TransactionsReportsView({ role }: { role: string }) {
 
         {/* Plan Counts Row */}
         <div className="row g-4 mb-5">
-          <div className="col-md-12">
-            <div className="card-wrap p-4">
-              {countLoading && <LoadingOverlay />}
-              <div className="card-header-flex">
-                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Total Number of Subscription Plans</h6>
-                <RangePicker value={countRange} onChange={setCountRange} />
-              </div>
-              <div style={{ height: '320px' }}><canvas ref={countChartRef}></canvas></div>
-            </div>
-          </div>
+          {(() => {
+            const isBothOrAdmin = countData?.user_type === 'both' || ['admin', 'super_admin', 'superadmin'].includes(countData?.user_role || '');
+            if (isBothOrAdmin) {
+              return (
+                <>
+                  <div className="col-md-8">
+                    <div className="card-wrap p-4">
+                      {countLoading && <LoadingOverlay />}
+                      <div className="card-header-flex">
+                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Subscription Volume (Monthly Bar)</h6>
+                        <RangePicker value={countRange} onChange={setCountRange} />
+                      </div>
+                      <div style={{ height: '320px' }}><canvas ref={countChartRef}></canvas></div>
+                    </div>
+                  </div>
+                  <div className="col-md-4">
+                    <div className="card-wrap p-4">
+                      {countLoading && <LoadingOverlay />}
+                      <div className="card-header-flex">
+                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Plan Distribution (Pie)</h6>
+                        {/* Synchronized with the bar chart range */}
+                      </div>
+                      <div style={{ height: '320px' }}><canvas ref={countPieChartRef}></canvas></div>
+                    </div>
+                  </div>
+                </>
+              );
+            } else {
+              return (
+                <div className="col-md-12">
+                  <div className="card-wrap p-4">
+                    {countLoading && <LoadingOverlay />}
+                    <div className="card-header-flex">
+                      <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Subscription Volume (Monthly Bar)</h6>
+                      <RangePicker value={countRange} onChange={setCountRange} />
+                    </div>
+                    <div style={{ height: '320px' }}><canvas ref={countChartRef}></canvas></div>
+                  </div>
+                </div>
+              );
+            }
+          })()}
         </div>
 
         {/* History Table */}

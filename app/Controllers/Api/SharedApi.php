@@ -1307,6 +1307,8 @@ class SharedApi extends ResourceController
             $monthKey = date('M Y', strtotime("-$i months"));
             $buyerStats[$monthKey] = 0;
             $sellerStats[$monthKey] = 0;
+            $buyerCounts[$monthKey] = 0;
+            $sellerCounts[$monthKey] = 0;
             $discounts[$monthKey] = 0;
         }
 
@@ -1316,8 +1318,10 @@ class SharedApi extends ResourceController
             if (isset($buyerStats[$month])) {
                 if (($s['plan_user_type'] ?? '') === 'seller') {
                     $sellerStats[$month] += (float)$s['amount_paid'];
+                    $sellerCounts[$month]++;
                 } else {
                     $buyerStats[$month] += (float)$s['amount_paid'];
+                    $buyerCounts[$month]++;
                 }
                 $discounts[$month] += (float)$s['referral_discount_applied'];
             }
@@ -1327,6 +1331,8 @@ class SharedApi extends ResourceController
             'labels' => array_keys($buyerStats),
             'buyer_spent' => array_values($buyerStats),
             'seller_spent' => array_values($sellerStats),
+            'buyer_count' => array_values($buyerCounts),
+            'seller_count' => array_values($sellerCounts),
             'discount' => array_values($discounts)
         ];
     }
