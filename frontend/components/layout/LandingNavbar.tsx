@@ -202,7 +202,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                 extraItems={
                   <Link
                     href="/wishlist"
-                    className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-gold transition-colors"
+                    className="flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-gold transition-colors"
                   >
                     <i className="bi bi-heart-fill text-sm" />
                     <span className="text-xs font-semibold whitespace-nowrap">Wishlist</span>
@@ -280,12 +280,12 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                 <div className="flex-1 min-w-0">
                   <h4 className="font-black text-gray-900 truncate m-0 text-base">{user.name}</h4>
                   <p className="text-xs text-gray-500 truncate m-0 font-medium">{user.email}</p>
-                  <Link 
+                  <Link
                     href={
-                      user.role === 'super_admin' ? '/superadmin'       :
-                      user.role === 'admin'       ? '/admin/profile'    :
-                      user.role === 'seller'      ? '/seller/profile'   :
-                      user.role === 'delivery'    ? '/delivery/profile' : '/buyer/profile'
+                      user.role === 'super_admin' ? '/superadmin' :
+                        user.role === 'admin' ? '/admin/profile' :
+                          user.role === 'seller' ? '/seller/profile' :
+                            user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile'
                     }
                     className="text-[10px] text-[#008080] font-bold uppercase tracking-wider mt-1 block hover:underline"
                     onClick={() => setMobileNavOpen(false)}

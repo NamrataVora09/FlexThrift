@@ -298,7 +298,7 @@ export default function BuyerDashboardPage() {
             </div>
 
             {/* Analytics Cards */}
-            <div className="g-3 grid grid-cols-1 sm:grid-cols-2  lg:grid-cols-3! xl:grid-cols-4! mb-4">
+            <div className="g-3 grid gap-3 grid-cols-1 sm:grid-cols-2  lg:grid-cols-3! xl:grid-cols-4! mb-4">
               {statCards.map((card, i) => (
                 <div key={i} className="w-full">
                   <div className="metric-card">

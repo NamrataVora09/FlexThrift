@@ -47,6 +47,7 @@ export default function PricingRulesManager() {
   const [filterValues, setFilterValues] = useState<TaxonomyItem[]>([]);
   const [rentalFilterValues, setRentalFilterValues] = useState<TaxonomyItem[]>([]);
   const [saleDepRanges, setSaleDepRanges] = useState<Array<{ min: string; max: string; amount: string }>>([{ min: '', max: '', amount: '' }]);
+  const [rentalDepRanges, setRentalDepRanges] = useState<Array<{ min: string; max: string; amount: string }>>([{ min: '', max: '', amount: '' }]);
 
   const loadPricingRules = useCallback(async () => {
     try {
@@ -89,10 +90,38 @@ export default function PricingRulesManager() {
     setShowSaleModal(true);
   };
 
+  const addSaleRange = () => {
+    const lastRange = saleDepRanges[saleDepRanges.length - 1];
+    const lastMax = lastRange?.max ? Number(lastRange.max) : 0;
+    const nextMin = lastMax > 0 ? String(lastMax + 1) : '';
+    setSaleDepRanges([...saleDepRanges, { min: nextMin, max: '', amount: '' }]);
+  };
+
+  const removeSaleRange = (index: number) => {
+    setSaleDepRanges(saleDepRanges.filter((_, i) => i !== index));
+  };
+
+  const updateSaleRange = (index: number, field: 'min' | 'max' | 'amount', value: string) => {
+    const newRanges = [...saleDepRanges];
+    newRanges[index] = { ...newRanges[index], [field]: value };
+    setSaleDepRanges(newRanges);
+  };
+
   const saveSaleRule = async () => {
     if (!editingSaleRule) return;
     const { filter_type, filter_value, deduction_threshold } = editingSaleRule;
     if (!deduction_threshold) { showToast.warning('Deduction Threshold is required'); return; }
+    // Validate no overlapping ranges
+    for (let i = 0; i < saleDepRanges.length - 1; i++) {
+      const cur = saleDepRanges[i];
+      const nxt = saleDepRanges[i + 1];
+      const curMax = Number(cur.max);
+      const nxtMin = Number(nxt.min);
+      if (curMax > 0 && nxtMin <= curMax) {
+        showToast.warning(`Range ${i + 2}: Min must be greater than ${curMax} (end of previous range)`);
+        return;
+      }
+    }
     setModalSaving(true);
     try {
       if (editingSaleRule.id && saleDepRanges.length === 1) {
@@ -129,16 +158,63 @@ export default function PricingRulesManager() {
 
   const openRentalModal = (rule?: RentalPricingRule) => {
     setEditingRentalRule(rule || { filter_type: '', filter_value: '', deposit_deduction_threshold: '', depreciation_range_min: '', depreciation_range_max: '', depreciation_amount: '', max_cost_cap_per_day: '' });
+    setRentalDepRanges(rule ? [{ min: rule.depreciation_range_min || '', max: Number(rule.depreciation_range_max) > 0 ? rule.depreciation_range_max : '', amount: rule.depreciation_amount || '' }] : [{ min: '', max: '', amount: '' }]);
     setRentalFilterValues(rule?.filter_type ? (taxonomy[rule.filter_type as keyof typeof taxonomy] || []) : []);
     setShowRentalModal(true);
   };
 
+  const addRentalRange = () => {
+    const lastRange = rentalDepRanges[rentalDepRanges.length - 1];
+    const lastMax = lastRange?.max ? Number(lastRange.max) : 0;
+    const nextMin = lastMax > 0 ? String(lastMax + 1) : '';
+    setRentalDepRanges([...rentalDepRanges, { min: nextMin, max: '', amount: '' }]);
+  };
+
+  const removeRentalRange = (index: number) => {
+    setRentalDepRanges(rentalDepRanges.filter((_, i) => i !== index));
+  };
+
+  const updateRentalRange = (index: number, field: 'min' | 'max' | 'amount', value: string) => {
+    const newRanges = [...rentalDepRanges];
+    newRanges[index] = { ...newRanges[index], [field]: value };
+    setRentalDepRanges(newRanges);
+  };
+
   const saveRentalRule = async () => {
     if (!editingRentalRule) return;
+    const { filter_type, filter_value, deposit_deduction_threshold, max_cost_cap_per_day } = editingRentalRule;
+    // Validate no overlapping ranges
+    for (let i = 0; i < rentalDepRanges.length - 1; i++) {
+      const cur = rentalDepRanges[i];
+      const nxt = rentalDepRanges[i + 1];
+      const curMax = Number(cur.max);
+      const nxtMin = Number(nxt.min);
+      if (curMax > 0 && nxtMin <= curMax) {
+        showToast.warning(`Range ${i + 2}: Min must be greater than ${curMax} (end of previous range)`);
+        return;
+      }
+    }
     setModalSaving(true);
     try {
-      await api.post('/superadmin/save-rental-pricing-rule', editingRentalRule);
-      showToast.success('Rental rule saved!');
+      if (editingRentalRule.id && rentalDepRanges.length === 1) {
+        await api.post('/superadmin/save-rental-pricing-rule', {
+          ...editingRentalRule,
+          depreciation_range_min: rentalDepRanges[0].min,
+          depreciation_range_max: rentalDepRanges[0].max || '0',
+          depreciation_amount: rentalDepRanges[0].amount,
+        });
+      } else {
+        if (editingRentalRule.id) await api.post(`/superadmin/delete-rental-pricing-rule/${editingRentalRule.id}`, {});
+        for (const r of rentalDepRanges) {
+          await api.post('/superadmin/save-rental-pricing-rule', {
+            filter_type, filter_value, deposit_deduction_threshold, max_cost_cap_per_day,
+            depreciation_range_min: r.min,
+            depreciation_range_max: r.max || '0',
+            depreciation_amount: r.amount,
+          });
+        }
+      }
+      showToast.success('Rental rule(s) saved!');
       setShowRentalModal(false);
       loadPricingRules();
     } catch { showToast.error('Server error'); }
@@ -150,6 +226,39 @@ export default function PricingRulesManager() {
       const res = await api.post(`/superadmin/delete-rental-pricing-rule/${id}`, {});
       if (res.success) { showToast.success('Deleted'); loadPricingRules(); }
     }, 'Delete');
+  };
+
+  const toggleRuleStatus = async (id: number, type: 'sale' | 'rental') => {
+    try {
+      const endpoint = type === 'rental' ? `/superadmin/toggle-rental-pricing-rule/${id}` : `/superadmin/toggle-pricing-rule/${id}`;
+      const res = await api.post(endpoint, {});
+      if (res.success) {
+        showToast.success('Status updated');
+      } else {
+        showToast.error(res.message || 'Failed to update status');
+      }
+    } catch { showToast.error('Failed to update status'); }
+    finally { loadPricingRules(); }
+  };
+
+  const bulkAction = async (type: 'sale' | 'rental', action: 'activate' | 'deactivate' | 'delete') => {
+    const confirmMsg = action === 'delete' ? `Delete all ${type} rules?` : `${action === 'activate' ? 'Activate' : 'Deactivate'} all ${type} rules?`;
+    confirmToast(confirmMsg, async () => {
+      try {
+        const endpoint = action === 'delete' ? '/superadmin/bulk-delete-pricing-rules' : '/superadmin/bulk-toggle-pricing-rules';
+        const res = await api.post(endpoint, { type, action });
+        if (res.success) {
+          showToast.success(res.message || 'Bulk action completed');
+        } else {
+          showToast.error(res.message || 'Action failed — check server logs');
+        }
+      } catch (e: any) {
+        showToast.error('Network error: ' + (e?.message || 'Unknown error'));
+      } finally {
+        // Always reload to show real DB state
+        loadPricingRules();
+      }
+    }, action === 'delete' ? 'Delete All' : action.charAt(0).toUpperCase() + action.slice(1) + ' All');
   };
 
   if (loading) return <div className="text-center p-5"><div className="spinner-border text-warning" /></div>;
@@ -164,16 +273,21 @@ export default function PricingRulesManager() {
 
       {/* Sale Rules */}
       <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
           <h6 className="mb-0 fw-bold"><i className="bi bi-tag-fill me-2 text-primary"></i>Sale Pricing Rules (Filter-Based)</h6>
-          <button className="btn btn-sm btn-primary" onClick={() => openSaleModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
+          <div className="d-flex gap-2">
+            <button className="btn btn-sm btn-outline-success" onClick={() => bulkAction('sale', 'activate')} title="Activate All"><i className="bi bi-check-circle-fill me-1"></i>Active All</button>
+            <button className="btn btn-sm btn-outline-warning" onClick={() => bulkAction('sale', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
+            <button className="btn btn-sm btn-outline-danger" onClick={() => bulkAction('sale', 'delete')} title="Delete All"><i className="bi bi-trash-fill me-1"></i>Delete All</button>
+            <button className="btn btn-sm btn-primary" onClick={() => openSaleModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
+          </div>
         </div>
         <div className="card-body p-0">
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0 rules-table">
               <thead>
                 <tr>
-                  <th>Filter Type</th><th>Value</th><th>Base Threshold (%)</th><th>Usage Range</th><th>Dep. (%)</th><th className="text-end">Actions</th>
+                  <th>Filter Type</th><th>Value</th><th>Base Threshold (%)</th><th>Usage Range</th><th>Dep. (%)</th><th>Status</th><th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -184,6 +298,14 @@ export default function PricingRulesManager() {
                     <td>{r.deduction_threshold}%</td>
                     <td>{r.depreciation_range_min} - {Number(r.depreciation_range_max) > 0 ? r.depreciation_range_max : '∞'}</td>
                     <td>{r.depreciation_amount}%</td>
+                    <td>
+                      <div className="form-check form-switch">
+                        <input className="form-check-input" type="checkbox" checked={Number(r.is_active) === 1} onChange={() => toggleRuleStatus(r.id, 'sale')} />
+                        <span className={`badge ${Number(r.is_active) === 1 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} ms-1`} style={{fontSize: '0.7rem'}}>
+                          {Number(r.is_active) === 1 ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </td>
                     <td className="text-end">
                       <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openSaleModal(r)}><i className="bi bi-pencil"></i></button>
                       <button className="btn btn-sm btn-outline-danger" onClick={() => deleteSaleRule(r.id)}><i className="bi bi-trash"></i></button>
@@ -198,16 +320,21 @@ export default function PricingRulesManager() {
 
       {/* Rental Rules */}
       <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
           <h6 className="mb-0 fw-bold"><i className="bi bi-calendar-event-fill me-2 text-success"></i>Rental Pricing Rules (Filter-Based)</h6>
-          <button className="btn btn-sm btn-success" onClick={() => openRentalModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
+          <div className="d-flex gap-2">
+            <button className="btn btn-sm btn-outline-success" onClick={() => bulkAction('rental', 'activate')} title="Activate All"><i className="bi bi-check-circle-fill me-1"></i>Active All</button>
+            <button className="btn btn-sm btn-outline-warning" onClick={() => bulkAction('rental', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
+            <button className="btn btn-sm btn-outline-danger" onClick={() => bulkAction('rental', 'delete')} title="Delete All"><i className="bi bi-trash-fill me-1"></i>Delete All</button>
+            <button className="btn btn-sm btn-success" onClick={() => openRentalModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
+          </div>
         </div>
         <div className="card-body p-0">
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0 rules-table">
               <thead>
                 <tr>
-                  <th>Filter Type</th><th>Value</th><th>Deposit Ded. (%)</th><th>Usage Range</th><th>Dep. (%)</th><th>Cost Cap (%)</th><th className="text-end">Actions</th>
+                  <th>Filter Type</th><th>Value</th><th>Deposit Ded. (%)</th><th>Usage Range</th><th>Dep. (%)</th><th>Cost Cap (%)</th><th>Status</th><th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -219,6 +346,14 @@ export default function PricingRulesManager() {
                     <td>{r.depreciation_range_min} - {Number(r.depreciation_range_max) > 0 ? r.depreciation_range_max : '∞'}</td>
                     <td>{r.depreciation_amount}%</td>
                     <td>{Number(r.max_cost_cap_per_day) > 0 ? `${r.max_cost_cap_per_day}%` : <span className="text-muted small">Global Fallback</span>}</td>
+                    <td>
+                      <div className="form-check form-switch">
+                        <input className="form-check-input" type="checkbox" checked={Number(r.is_active) === 1} onChange={() => toggleRuleStatus(r.id, 'rental')} />
+                        <span className={`badge ${Number(r.is_active) === 1 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} ms-1`} style={{fontSize: '0.7rem'}}>
+                          {Number(r.is_active) === 1 ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </td>
                     <td className="text-end">
                       <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openRentalModal(r)}><i className="bi bi-pencil"></i></button>
                       <button className="btn btn-sm btn-outline-danger" onClick={() => deleteRentalRule(r.id)}><i className="bi bi-trash"></i></button>
@@ -267,18 +402,38 @@ export default function PricingRulesManager() {
                     <input type="number" className="form-control" value={editingSaleRule.deduction_threshold} onChange={e => setEditingSaleRule({ ...editingSaleRule, deduction_threshold: e.target.value })} />
                   </div>
                   <div className="col-md-12"><hr/></div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-bold">Min Usage</label>
-                    <input type="number" className="form-control" value={saleDepRanges[0].min} onChange={e => setSaleDepRanges([{ ...saleDepRanges[0], min: e.target.value }])} />
+                  <div className="col-md-12 d-flex justify-content-between align-items-center mb-2">
+                    <label className="form-label small fw-bold mb-0">Depreciation Ranges</label>
+                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={addSaleRange}>
+                      <i className="bi bi-plus-lg me-1"></i>Add Range
+                    </button>
                   </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-bold">Max Usage (0 for ∞)</label>
-                    <input type="number" className="form-control" value={saleDepRanges[0].max} onChange={e => setSaleDepRanges([{ ...saleDepRanges[0], max: e.target.value }])} />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-bold">Depreciation (%)</label>
-                    <input type="number" className="form-control" value={saleDepRanges[0].amount} onChange={e => setSaleDepRanges([{ ...saleDepRanges[0], amount: e.target.value }])} />
-                  </div>
+                  
+                  {saleDepRanges.map((range, index) => (
+                    <div key={index} className="col-md-12">
+                      <div className="row g-3 align-items-end mb-3 border-bottom pb-3">
+                        <div className="col-md-3">
+                          <label className="form-label small fw-bold">Min Usage</label>
+                          <input type="number" className="form-control" value={range.min} onChange={e => updateSaleRange(index, 'min', e.target.value)} />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label small fw-bold">Max Usage (0 for ∞)</label>
+                          <input type="number" className="form-control" value={range.max} onChange={e => updateSaleRange(index, 'max', e.target.value)} />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold">Depreciation (%)</label>
+                          <input type="number" className="form-control" value={range.amount} onChange={e => updateSaleRange(index, 'amount', e.target.value)} />
+                        </div>
+                        <div className="col-md-2 text-end">
+                          {saleDepRanges.length > 1 && (
+                            <button type="button" className="btn btn-outline-danger" onClick={() => removeSaleRange(index)}>
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="modal-footer">
@@ -325,23 +480,44 @@ export default function PricingRulesManager() {
                     <label className="form-label small fw-bold">Deposit Ded. Threshold (%)</label>
                     <input type="number" className="form-control" value={editingRentalRule.deposit_deduction_threshold} onChange={e => setEditingRentalRule({ ...editingRentalRule, deposit_deduction_threshold: e.target.value })} />
                   </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-bold">Min Usage</label>
-                    <input type="number" className="form-control" value={editingRentalRule.depreciation_range_min} onChange={e => setEditingRentalRule({ ...editingRentalRule, depreciation_range_min: e.target.value })} />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-bold">Max Usage (0 for ∞)</label>
-                    <input type="number" className="form-control" value={editingRentalRule.depreciation_range_max} onChange={e => setEditingRentalRule({ ...editingRentalRule, depreciation_range_max: e.target.value })} />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label small fw-bold">Depreciation (%)</label>
-                    <input type="number" className="form-control" value={editingRentalRule.depreciation_amount} onChange={e => setEditingRentalRule({ ...editingRentalRule, depreciation_amount: e.target.value })} />
-                  </div>
                   <div className="col-md-12">
                     <label className="form-label small fw-bold">Max Rental Cost Cap (%)</label>
                     <input type="number" step="0.1" className="form-control" placeholder="Leave empty or 0 to use Global Setting" value={editingRentalRule.max_cost_cap_per_day} onChange={e => setEditingRentalRule({ ...editingRentalRule, max_cost_cap_per_day: e.target.value })} />
                     <small className="text-muted">If set to 0 or empty, the global setting (14%) will be used.</small>
                   </div>
+                  <div className="col-md-12"><hr/></div>
+                  <div className="col-md-12 d-flex justify-content-between align-items-center mb-2">
+                    <label className="form-label small fw-bold mb-0">Depreciation Ranges</label>
+                    <button type="button" className="btn btn-sm btn-outline-success" onClick={addRentalRange}>
+                      <i className="bi bi-plus-lg me-1"></i>Add Range
+                    </button>
+                  </div>
+                  
+                  {rentalDepRanges.map((range, index) => (
+                    <div key={index} className="col-md-12">
+                      <div className="row g-3 align-items-end mb-3 border-bottom pb-3">
+                        <div className="col-md-3">
+                          <label className="form-label small fw-bold">Min Usage</label>
+                          <input type="number" className="form-control" value={range.min} onChange={e => updateRentalRange(index, 'min', e.target.value)} />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label small fw-bold">Max Usage (0 for ∞)</label>
+                          <input type="number" className="form-control" value={range.max} onChange={e => updateRentalRange(index, 'max', e.target.value)} />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold">Depreciation (%)</label>
+                          <input type="number" className="form-control" value={range.amount} onChange={e => updateRentalRange(index, 'amount', e.target.value)} />
+                        </div>
+                        <div className="col-md-2 text-end">
+                          {rentalDepRanges.length > 1 && (
+                            <button type="button" className="btn btn-outline-danger" onClick={() => removeRentalRange(index)}>
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="modal-footer">

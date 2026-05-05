@@ -107,11 +107,18 @@ class SuperAdminApi extends ResourceController
             $db->table('pricing_rules')->where('id', $id)->update($row);
             return $this->respond(['success' => true, 'message' => 'Pricing rule updated', 'id' => $id]);
         } else {
-            $newId = $db->table('pricing_rules')->insert($row);
+            // Sync deduction_threshold across all existing rows in the same filter group
+            $db->table('pricing_rules')
+               ->where('filter_type', $filterType)
+               ->where('filter_value', $filterValue)
+               ->update(['deduction_threshold' => $row['deduction_threshold']]);
+
+            $db->table('pricing_rules')->insert($row);
             $row['id'] = $db->insertID();
             return $this->respond(['success' => true, 'message' => 'Pricing rule created', 'id' => $row['id'], 'data' => $row]);
         }
     }
+
 
     public function deletePricingRule($id)
     {
@@ -182,23 +189,27 @@ class SuperAdminApi extends ResourceController
     public function bulkDeletePricingRules()
     {
         $db = \Config\Database::connect();
-        $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
+        $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
         $type = $data['type'] ?? 'sale';
-        $table = $type === 'rental' ? 'rental_pricing_rules' : 'pricing_rules';
-        $db->table($table)->truncate();
-        return $this->respond(['success' => true, 'message' => 'All rules deleted']);
+        $table = ($type === 'rental') ? 'rental_pricing_rules' : 'pricing_rules';
+
+        $db->query("DELETE FROM `{$table}`");
+
+        return $this->respond(['success' => true, 'message' => 'All ' . $type . ' rules deleted']);
     }
 
     public function bulkTogglePricingRules()
     {
         $db = \Config\Database::connect();
-        $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
+        $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
         $type = $data['type'] ?? 'sale';
         $action = $data['action'] ?? 'activate';
-        $newStatus = $action === 'deactivate' ? 0 : 1;
-        $table = $type === 'rental' ? 'rental_pricing_rules' : 'pricing_rules';
-        $db->query("UPDATE `{$table}` SET is_active = ?", [$newStatus]);
-        return $this->respond(['success' => true, 'message' => 'Rules ' . ($newStatus ? 'activated' : 'deactivated')]);
+        $newStatus = ($action === 'deactivate') ? 0 : 1;
+        $table = ($type === 'rental') ? 'rental_pricing_rules' : 'pricing_rules';
+
+        $db->query("UPDATE `{$table}` SET `is_active` = {$newStatus}");
+
+        return $this->respond(['success' => true, 'message' => 'All ' . $type . ' rules ' . ($newStatus ? 'activated' : 'deactivated')]);
     }
 
     // ── Rejection Templates ───────────────────────────
