@@ -360,48 +360,26 @@ export default function TransactionsReportsView({ role }: { role: string }) {
 
         {/* Charts Row */}
         <div className="row g-4 mb-5">
-          {(() => {
-            const isBothOrAdmin = summaryData?.user_type === 'both' || ['admin', 'super_admin', 'superadmin'].includes(summaryData?.user_role || '');
-            if (isBothOrAdmin) {
-              return (
-                <>
-                  <div className="col-md-8">
-                    <div className="card-wrap p-4">
-                      {barLoading && <LoadingOverlay />}
-                      <div className="card-header-flex">
-                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Amount Spent & Discount (Bar)</h6>
-                        <RangePicker value={barRange} onChange={setBarRange} />
-                      </div>
-                      <div style={{ height: '320px' }}><canvas ref={barChartRef}></canvas></div>
-                    </div>
-                  </div>
-                  <div className="col-md-4">
-                    <div className="card-wrap p-4">
-                      {pieLoading && <LoadingOverlay />}
-                      <div className="card-header-flex">
-                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Distribution (Pie)</h6>
-                        <RangePicker value={pieRange} onChange={setPieRange} />
-                      </div>
-                      <div style={{ height: '320px' }}><canvas ref={pieChartRef}></canvas></div>
-                    </div>
-                  </div>
-                </>
-              );
-            } else {
-              return (
-                <div className="col-md-12">
-                  <div className="card-wrap p-4">
-                    {barLoading && <LoadingOverlay />}
-                    <div className="card-header-flex">
-                      <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Amount Spent & Discount (Bar)</h6>
-                      <RangePicker value={barRange} onChange={setBarRange} />
-                    </div>
-                    <div style={{ height: '320px' }}><canvas ref={barChartRef}></canvas></div>
-                  </div>
-                </div>
-              );
-            }
-          })()}
+          <div className="col-md-8">
+            <div className="card-wrap p-4">
+              {barLoading && <LoadingOverlay />}
+              <div className="card-header-flex">
+                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Amount Spent & Discount (Bar)</h6>
+                <RangePicker value={barRange} onChange={setBarRange} />
+              </div>
+              <div style={{ height: '320px' }}><canvas ref={barChartRef}></canvas></div>
+            </div>
+          </div>
+          <div className="col-md-4">
+            <div className="card-wrap p-4">
+              {pieLoading && <LoadingOverlay />}
+              <div className="card-header-flex">
+                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Distribution (Pie)</h6>
+                <RangePicker value={pieRange} onChange={setPieRange} />
+              </div>
+              <div style={{ height: '320px' }}><canvas ref={pieChartRef}></canvas></div>
+            </div>
+          </div>
         </div>
 
         {/* Plan Counts Row */}
