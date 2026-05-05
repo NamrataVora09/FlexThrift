@@ -104,7 +104,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
       const buyerSpent = barData.charts?.monthly_stats?.buyer_spent || [];
       const sellerSpent = barData.charts?.monthly_stats?.seller_spent || [];
       const discount = barData.charts?.monthly_stats?.discount || [];
-      
+
       const isBoth = barData.user_role === 'super_admin' || barData.user_role === 'admin' || barData.user_type === 'both';
 
       const datasets = [];
@@ -280,21 +280,21 @@ export default function TransactionsReportsView({ role }: { role: string }) {
           <div className="col-md-3">
             <div className="metric-card">
               <i className="bi bi-layers metric-icon"></i>
-              <div className="metric-label">Total Subscriptions Plans</div>
+              <div className="metric-label">Total Number of Subscriptions Plans Purchased</div>
               <div className="metric-value">{summaryData?.summary.total_subscriptions || 0}</div>
             </div>
           </div>
           <div className="col-md-3">
             <div className="metric-card">
               <i className="bi bi-currency-rupee metric-icon"></i>
-              <div className="metric-label">Total Volume</div>
+              <div className="metric-label">Total Amount Spent On Subscriptions</div>
               <div className="metric-value">₹{summaryData?.summary.total_spent.toLocaleString('en-IN') || 0}</div>
             </div>
           </div>
           <div className="col-md-3">
             <div className="metric-card">
               <i className="bi bi-percent metric-icon"></i>
-              <div className="metric-label">Total Discount</div>
+              <div className="metric-label">Total Discount Availed</div>
               <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN') || 0}</div>
             </div>
           </div>

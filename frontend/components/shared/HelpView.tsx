@@ -119,14 +119,14 @@ export default function HelpView({ role }: Props) {
               <div className="card-body p-4">
                 <h5 className="fw-bold mb-4" style={{ fontSize: '1.1rem' }}>Frequently Asked Questions</h5>
                 {loading ? (
-                   <div className="text-center py-4">
-                     <div className="spinner-border text-warning" role="status"></div>
-                   </div>
+                  <div className="text-center py-4">
+                    <div className="spinner-border text-warning" role="status"></div>
+                  </div>
                 ) : (
                   <div className="faq-list">
                     {faqs.length > 0 ? faqs.map((item) => (
                       <div className="faq-item" key={item.id}>
-                        <button 
+                        <button
                           className={`faq-question ${activeFaqId === item.id ? 'active' : ''}`}
                           onClick={() => toggleFaq(item.id)}
                         >
@@ -151,7 +151,7 @@ export default function HelpView({ role }: Props) {
             <div className="card">
               <div className="card-body p-4">
                 <h5 className="fw-bold mb-4" style={{ fontSize: '1.1rem' }}>Contact Information</h5>
-                
+
                 <div className="row g-4">
                   <div className="col-md-4">
                     <div className="d-flex align-items-start gap-3">
@@ -160,7 +160,7 @@ export default function HelpView({ role }: Props) {
                       </div>
                       <div>
                         <span className="support-title">Email Address</span>
-                        <div className="support-value">{info?.support_email || (loading ? 'Loading...' : 'info@flexmarket.com')}</div>
+                        <div className="support-value" style={{ fontWeight: "bold" }}>{info?.support_email || (loading ? 'Loading...' : 'info@flexmarket.com')}</div>
                       </div>
                     </div>
                   </div>
@@ -172,7 +172,7 @@ export default function HelpView({ role }: Props) {
                       </div>
                       <div>
                         <span className="support-title">Phone Number</span>
-                        <div className="support-value">{info?.support_phone || (loading ? 'Loading...' : 'Not Available')}</div>
+                        <div className="support-value" style={{ fontWeight: "bold" }}>{info?.support_phone || (loading ? 'Loading...' : 'Not Available')}</div>
                       </div>
                     </div>
                   </div>
@@ -184,7 +184,7 @@ export default function HelpView({ role }: Props) {
                       </div>
                       <div>
                         <span className="support-title">Support Hours</span>
-                        <div className="support-value">{info?.support_hours || (loading ? 'Loading...' : '9:00 AM - 6:00 PM')}</div>
+                        <div className="support-value" style={{ fontWeight: "bold" }}>{info?.support_hours || (loading ? 'Loading...' : '9:00 AM - 6:00 PM')}</div>
                       </div>
                     </div>
                   </div>
