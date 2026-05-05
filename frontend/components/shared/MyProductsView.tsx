@@ -18,13 +18,13 @@ interface Props { role: string; apiPath: string; uploadPath: string; }
 
 const thStyle: React.CSSProperties = { backgroundColor: '#f8f9fa', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, color: '#677788', padding: '1rem' };
 const tdStyle: React.CSSProperties = { padding: '1rem', verticalAlign: 'middle', fontSize: '0.875rem' };
-const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
+const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#ffff', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  pending:  { bg: '#fff3cd', color: '#856404' },
+  pending: { bg: '#fff3cd', color: '#856404' },
   approved: { bg: '#d1e7dd', color: '#0f5132' },
   rejected: { bg: '#f8d7da', color: '#842029' },
-  sold:     { bg: '#e2e3e5', color: '#41464b' },
+  sold: { bg: '#e2e3e5', color: '#41464b' },
   inactive: { bg: '#e9ecef', color: '#6c757d' },
 };
 
@@ -81,10 +81,10 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
         {/* Header */}
         <div className="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
           <div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.5rem' }}>
-              <i className="bi bi-box-seam" style={{ color: '#ffc63a' }}></i> My Products
+            <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: 'Poppins' }}>
+              My Products
             </h1>
-            <p className="text-muted small mb-0">Manage all your uploaded products.</p>
+            <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '0.75rem' }}>Manage all your uploaded products.</p>
           </div>
           <div className="d-flex gap-2">
             <Link href={uploadPath} className="btn sa-filter-btn d-flex align-items-center gap-2" style={btnGold}>
@@ -101,11 +101,11 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                 border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 500,
                 whiteSpace: 'nowrap', fontSize: '0.85rem',
                 background: filter === t ? '#ffc63a' : '#fff',
-                color: filter === t ? '#212529' : '#677788',
+                color: filter === t ? '#fff' : '#677788',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
               }}>
               {t.charAt(0).toUpperCase() + t.slice(1)}
-              <span className="badge rounded-pill ms-2" style={{ background: filter === t ? 'rgba(0,0,0,0.15)' : '#f1f2f4', color: filter === t ? '#212529' : '#677788', fontSize: '0.7rem' }}>
+              <span className="badge rounded-pill ms-2" style={{ background: filter === t ? 'rgba(0,0,0,0.15)' : '#f1f2f4', color: filter === t ? '#fff' : '#677788', fontSize: '0.7rem' }}>
                 {counts[t] || 0}
               </span>
             </button>
@@ -144,14 +144,14 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
 
                           {/* Type */}
                           <td style={tdStyle}>
-                            <span className="badge" style={{ background: p.listing_type === 'sell' ? '#ffc63a' : '#0dcaf0', color: p.listing_type === 'sell' ? '#212529' : '#fff', fontWeight: 600 }}>
+                            <span className="badge" style={{ background: p.listing_type === 'sell' ? '#ffc63a' : '#0dcaf0', color: p.listing_type === 'sell' ? '#ffff' : '#ffff', fontWeight: 600 }}>
                               {p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1)}
                             </span>
                           </td>
 
                           {/* Price */}
                           <td style={tdStyle}>
-                            {p.listing_type === 'rent' 
+                            {p.listing_type === 'rent'
                               ? `₹${Number(p.rental_cost || 0).toFixed(2)} /day`
                               : `₹${Number(p.price || p.selling_price || p.original_price || 0).toFixed(2)}`
                             }
@@ -203,9 +203,9 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                           {/* Actions */}
                           <td style={{ ...tdStyle, textAlign: 'end' }}>
                             <div className="d-flex gap-1 justify-content-end">
-                              <Link 
-                                href={`/buyer/product/${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${p.id}`} 
-                                className="btn btn-sm btn-outline-dark" 
+                              <Link
+                                href={`/buyer/product/${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${p.id}`}
+                                className="btn btn-sm btn-outline-dark"
                                 style={{ borderRadius: 8 }}
                                 target="_blank"
                               >
