@@ -884,6 +884,7 @@ class SharedApi extends ResourceController
             'user_id' => $jwtUser['user_id'],
             'plan_id' => $plan['id'],
             'is_active' => 1,
+            'payment_status' => 'paid',
             'usage_count' => 0,
             'starts_at' => $startsAt,
             'expires_at' => $expiresAt,

@@ -11,24 +11,45 @@ interface Plan { id: number; name: string; user_type?: string; plan_type: string
 interface ActiveSub { plan_name: string; plan_type: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; duration_hours: number; }
 
 const CountdownTimer = ({ expiryDate }: { expiryDate: string }) => {
-  const [timeLeft, setTimeLeft] = useState('00:00:00');
+  const [timeLeft, setTimeLeft] = useState('...');
+  const [isClient, setIsClient] = useState(false);
+
   useEffect(() => {
-    const update = () => {
+    setIsClient(true);
+    if (!expiryDate) return;
+
+    const interval = setInterval(() => {
       const now = new Date().getTime();
-      const distance = new Date(expiryDate).getTime() - now;
-      if (distance < 0) { setTimeLeft('Expired'); return; }
+      // Normalize date string for Safari/Firefox compatibility (YYYY-MM-DD HH:MM:SS -> YYYY-MM-DDTHH:MM:SS)
+      const targetStr = expiryDate.includes('T') ? expiryDate : expiryDate.replace(' ', 'T');
+      const target = new Date(targetStr).getTime();
+      
+      if (isNaN(target)) {
+        setTimeLeft('Invalid Date');
+        clearInterval(interval);
+        return;
+      }
+
+      const distance = target - now;
+
+      if (distance <= 0) {
+        setTimeLeft('EXPIRED');
+        clearInterval(interval);
+        return;
+      }
+
       const h = Math.floor(distance / (1000 * 60 * 60));
       const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((distance % (1000 * 60)) / 1000);
-      if (h > 0) setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-      else if (m > 0) setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-      else setTimeLeft(`${s.toString().padStart(2, '0')}s`);
-    };
-    update();
-    const timer = setInterval(update, 1000);
-    return () => clearInterval(timer);
+
+      setTimeLeft(`${h}:${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`);
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [expiryDate]);
-  return <span>{timeLeft}</span>;
+
+  if (!isClient) return <span>...</span>;
+  return <span style={{ fontFamily: 'monospace', fontWeight: 900 }}>{timeLeft}</span>;
 };
 interface HistoryItem { plan_name: string; plan_type: string; price: string; starts_at: string; expires_at: string; is_active: number; }
 interface SubData { plans: Plan[]; active: ActiveSub | null; history: HistoryItem[]; unlock_card?: Record<string, string>; }

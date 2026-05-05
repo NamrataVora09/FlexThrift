@@ -309,8 +309,8 @@ export default function TransactionsReportsView({ role }: { role: string }) {
         .metric-card { background: #fff; border-radius: 32px; padding: 2rem; border: 1px solid #f0f0f0; cursor: default; height: 100%; transition: transform 0.2s ease; position: relative; }
         .metric-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
         .metric-icon { color: #ffc63a; font-size: 1.5rem; margin-bottom: 1.5rem; display: block; }
-        .metric-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: #ffc63a; margin-bottom: 8px; }
-        .metric-value { font-size: 2.4rem; font-weight: 800; color: rgb(51, 51, 51); line-height: 1; }
+        .metric-label { font-size: 0.75rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+        .metric-value { font-size: 2.4rem; font-weight: 900; color: #000; line-height: 1.1; }
         .container-fluid { font-family: 'Poppins', 'Inter', sans-serif; }
         .card-wrap { background: #fff; border-radius: 24px; border: 1px solid #f0f0f0; box-shadow: 0 4px 24px rgba(0,0,0,0.03); overflow: hidden; height: 100%; position: relative; }
         .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
@@ -334,26 +334,25 @@ export default function TransactionsReportsView({ role }: { role: string }) {
           <h6 className="fw-bold mb-0" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#666' }}>Summary Overview</h6>
         </div>
         <div className="row g-4 mb-5">
-
-          <div className="col-md-3">
+          <div className="col-md-4">
             <div className="metric-card">
               <i className="bi bi-layers metric-icon"></i>
-              <div className="metric-label">Total Number of Subscriptions Plans Purchased</div>
               <div className="metric-value">{summaryData?.summary.total_subscriptions || 0}</div>
+              <div className="metric-label">Total Number of Subscription Plans Purchased</div>
             </div>
           </div>
-          <div className="col-md-3">
+          <div className="col-md-4">
             <div className="metric-card">
               <i className="bi bi-currency-rupee metric-icon"></i>
-              <div className="metric-label">Total Amount Spent On Subscriptions</div>
               <div className="metric-value">₹{summaryData?.summary.total_spent.toLocaleString('en-IN') || 0}</div>
+              <div className="metric-label">Total Amount Spent On Subscriptions</div>
             </div>
           </div>
-          <div className="col-md-3">
+          <div className="col-md-4">
             <div className="metric-card">
               <i className="bi bi-percent metric-icon"></i>
-              <div className="metric-label">Total Discount Availed</div>
               <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN') || 0}</div>
+              <div className="metric-label">Total Discount Availed</div>
             </div>
           </div>
         </div>
