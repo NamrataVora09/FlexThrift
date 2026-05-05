@@ -155,10 +155,14 @@ class SharedApi extends ResourceController
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
 
-        $plans = $db->table('subscription_plans')
-            ->where('user_type', $userType)
-            ->where('is_active', 1)
-            ->orderBy('price', 'ASC')
+        $plansBuilder = $db->table('subscription_plans')
+            ->where('is_active', 1);
+
+        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+            $plansBuilder->where('user_type', $userType);
+        }
+
+        $plans = $plansBuilder->orderBy('price', 'ASC')
             ->get()->getResultArray();
 
         // Auto-deactivate expired subscriptions for this user and user_type
@@ -733,24 +737,48 @@ class SharedApi extends ResourceController
 
     public function financialReports()
     {
+        $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+        
+        $trxTable = $db->table('transactions')->whereIn('payment_status', ['paid', 'completed']);
+        $ordTable = $db->table('orders')->where('payment_status', 'paid');
+
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+            $trxTable->where('user_id', $jwtUser['user_id']);
+            $ordTable->where('buyer_id', $jwtUser['user_id']);
+        }
+
         $summary = [
-            'total_transactions' => $db->table('transactions')->countAllResults(),
-            'total_revenue' => $db->table('transactions')->selectSum('amount')->get()->getRowArray()['amount'] ?? 0,
-            'total_orders' => $db->table('orders')->countAllResults(),
-            'order_revenue' => $db->table('orders')->selectSum('final_price')->get()->getRowArray()['final_price'] ?? 0,
+            'total_transactions' => (clone $trxTable)->countAllResults(),
+            'total_revenue' => (clone $trxTable)->selectSum('amount')->get()->getRowArray()['amount'] ?? 0,
+            'total_orders' => (clone $ordTable)->countAllResults(),
+            'order_revenue' => (clone $ordTable)->selectSum('final_price')->get()->getRowArray()['final_price'] ?? 0,
         ];
+
+        $whereClause = "";
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+            $whereClause = " AND user_id = " . $db->escape($jwtUser['user_id']);
+        }
+
         $monthly = $db->query("
             SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count, SUM(amount) as total
-            FROM transactions WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+            FROM transactions WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH) 
+            AND payment_status IN ('paid', 'completed') {$whereClause}
             GROUP BY DATE_FORMAT(created_at, '%Y-%m') ORDER BY month DESC
         ")->getResultArray();
-        $recent = $db->table('transactions t')
+
+        $recentBuilder = $db->table('transactions t')
             ->select('t.*, u.name as user_name')
             ->join('users u', 'u.id = t.user_id', 'left')
             ->orderBy('t.created_at', 'DESC')
-            ->limit(50)
-            ->get()->getResultArray();
+            ->limit(50);
+
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+            $recentBuilder->where('t.user_id', $jwtUser['user_id']);
+        }
+
+        $recent = $recentBuilder->get()->getResultArray();
+
         return $this->respond(['success' => true, 'data' => ['summary' => $summary, 'monthly' => $monthly, 'recent' => $recent]]);
     }
 
@@ -1084,8 +1112,8 @@ class SharedApi extends ResourceController
             ->join('users u', 'u.id = us.user_id', 'left')
             ->orderBy('us.created_at', 'DESC');
 
-        // If not admin/superadmin, filter by user_id
-        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+        // If not super_admin, filter by user_id
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $builder->where('us.user_id', $jwtUser['user_id']);
         }
 
@@ -1143,7 +1171,9 @@ class SharedApi extends ResourceController
                 break;
         }
 
-        $subs = $builder->get()->getResultArray();
+        $allSubs = (clone $builder)->get()->getResultArray();
+        $subs = $builder->where('us.payment_status', 'paid')->get()->getResultArray();
+        
         $totalPlans = $db->table('subscription_plans')->countAll();
 
         // Calculate Stats
@@ -1156,13 +1186,13 @@ class SharedApi extends ResourceController
         $buyerDiscount = 0;
         $sellerDiscount = 0;
         
-        // Get all plans for breakdown (filter by user type if not admin)
+        // Get all plans for breakdown (filter by user type if not super_admin)
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         $userType = $user['user_type'] ?? $jwtUser['role'];
 
         // Get all plans for breakdown
         $allPlansBuilder = $db->table('subscription_plans');
-        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             if ($userType !== 'both') {
                 $allPlansBuilder->where('user_type', $jwtUser['role']);
             }
@@ -1201,7 +1231,7 @@ class SharedApi extends ResourceController
             ->orderBy('t.created_at', 'DESC')
             ->limit(100);
 
-        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $txBuilder->where('t.user_id', $jwtUser['user_id']);
         }
         
@@ -1259,7 +1289,7 @@ class SharedApi extends ResourceController
                         'payment_status' => $s['payment_status'],
                         'created_at' => $s['created_at']
                     ];
-                }, $subs),
+                }, $allSubs),
                 'user_role' => $jwtUser['role'],
                 'user_type' => $userType
             ]

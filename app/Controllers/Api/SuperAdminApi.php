@@ -1427,6 +1427,7 @@ class SuperAdminApi extends ResourceController
     // ── Financial Reports ──────────────────────────────────
     public function financialReports()
     {
+        $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
         $period = $this->request->getGet('period') ?? '30d';
         $from = null;
@@ -1447,13 +1448,19 @@ class SuperAdminApi extends ResourceController
         }
 
         // Stats - Transactions
-        $trxBuilder = $db->table('transactions');
+        $trxBuilder = $db->table('transactions')->whereIn('payment_status', ['paid', 'completed']);
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+            $trxBuilder->where('user_id', $jwtUser['user_id']);
+        }
         if ($from) $trxBuilder->where('created_at >=', $from . ' 00:00:00');
         if ($from) $trxBuilder->where('created_at <=', $to . ' 23:59:59');
         $totalTrx = (clone $trxBuilder)->countAllResults(false);
         $totalRevenue = (clone $trxBuilder)->selectSum('amount')->get()->getRowArray()['amount'] ?? 0;
 
-        $trxBuilder2 = $db->table('transactions');
+        $trxBuilder2 = $db->table('transactions')->whereIn('payment_status', ['paid', 'completed']);
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+            $trxBuilder2->where('user_id', $jwtUser['user_id']);
+        }
         if ($from) $trxBuilder2->where('created_at >=', $from . ' 00:00:00')->where('created_at <=', $to . ' 23:59:59');
         $subRevenue = (clone $trxBuilder2)->selectSum('amount')->like('description', 'Subscription', 'after')->get()->getRowArray()['amount'] ?? 0;
 
@@ -1464,6 +1471,9 @@ class SuperAdminApi extends ResourceController
 
         // Stats - Orders
         $ordBuilder = $db->table('orders');
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+            $ordBuilder->where('buyer_id', $jwtUser['user_id']);
+        }
         if ($from) $ordBuilder->where('created_at >=', $from . ' 00:00:00')->where('created_at <=', $to . ' 23:59:59');
         $totalOrders = (clone $ordBuilder)->countAllResults(false);
         $orderRevenue = (clone $ordBuilder)->selectSum('final_price')->where('payment_status', 'paid')->get()->getRowArray()['final_price'] ?? 0;
@@ -1474,6 +1484,9 @@ class SuperAdminApi extends ResourceController
             ->join('users u', 'u.id = t.user_id', 'left')
             ->join('orders o', 'o.id = t.order_id', 'left')
             ->join('products p', 'p.id = o.product_id', 'left');
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+            $listBuilder->where('t.user_id', $jwtUser['user_id']);
+        }
         if ($from) $listBuilder->where('t.created_at >=', $from . ' 00:00:00')->where('t.created_at <=', $to . ' 23:59:59');
         $transactions = $listBuilder->orderBy('t.created_at', 'DESC')->limit(200)->get()->getResultArray();
 

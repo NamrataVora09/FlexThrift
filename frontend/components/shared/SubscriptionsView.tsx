@@ -8,7 +8,28 @@ import PageHeader from './PageHeader';
 import { api } from '@/lib/api';
 
 interface Plan { id: number; name: string; user_type?: string; plan_type: string; limit_value: number; duration_hours: number; price: string; features?: string; is_featured?: number | string; is_most_selected?: number | string; }
-interface ActiveSub { plan_name: string; plan_type: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; }
+interface ActiveSub { plan_name: string; plan_type: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; duration_hours: number; }
+
+const CountdownTimer = ({ expiryDate }: { expiryDate: string }) => {
+  const [timeLeft, setTimeLeft] = useState('00:00:00');
+  useEffect(() => {
+    const update = () => {
+      const now = new Date().getTime();
+      const distance = new Date(expiryDate).getTime() - now;
+      if (distance < 0) { setTimeLeft('Expired'); return; }
+      const h = Math.floor(distance / (1000 * 60 * 60));
+      const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((distance % (1000 * 60)) / 1000);
+      if (h > 0) setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      else if (m > 0) setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      else setTimeLeft(`${s.toString().padStart(2, '0')}s`);
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [expiryDate]);
+  return <span>{timeLeft}</span>;
+};
 interface HistoryItem { plan_name: string; plan_type: string; price: string; starts_at: string; expires_at: string; is_active: number; }
 interface SubData { plans: Plan[]; active: ActiveSub | null; history: HistoryItem[]; unlock_card?: Record<string, string>; }
 
@@ -52,13 +73,14 @@ export default function SubscriptionsView({ role, userType }: Props) {
   // Management states
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [togglingMsId, setTogglingMsId] = useState<number | null>(null);
-  const isSuperAdmin = user?.role === 'super_admin';
+  const isSuperAdmin = ['super_admin', 'superadmin', 'admin'].includes(role.toLowerCase()) || ['super_admin', 'superadmin', 'admin'].includes(user?.role?.toLowerCase() || '');
+  const isActuallySuper = ['super_admin', 'superadmin'].includes(role.toLowerCase()) || ['super_admin', 'superadmin'].includes(user?.role?.toLowerCase() || '');
 
-  const sellerPlans = userType === 'seller' ? (data?.plans || []) : [];
-  const buyerPlans = userType === 'buyer' ? (data?.plans || []) : [];
+  const sellerPlans = (data?.plans || []).filter(p => p.user_type === 'seller');
+  const buyerPlans = (data?.plans || []).filter(p => p.user_type === 'buyer');
 
   const loopSeller = sellerPlans.length > VISIBLE ? [...sellerPlans, ...sellerPlans.slice(0, VISIBLE - 1)] : sellerPlans;
-  const loopBuyer  = buyerPlans.length  > VISIBLE ? [...buyerPlans,  ...buyerPlans.slice(0,  VISIBLE - 1)] : buyerPlans;
+  const loopBuyer = buyerPlans.length > VISIBLE ? [...buyerPlans, ...buyerPlans.slice(0, VISIBLE - 1)] : buyerPlans;
 
   const toggleFeatured = async (plan: Plan) => {
     setTogglingId(plan.id);
@@ -81,11 +103,16 @@ export default function SubscriptionsView({ role, userType }: Props) {
   };
 
   useEffect(() => {
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    if (success) setFlashMsg({ text: decodeURIComponent(success), ok: true });
+    if (error) setFlashMsg({ text: decodeURIComponent(error), ok: false });
+
     api.get<SubData>(`/${role}/subscriptions/${userType}`).then((r) => {
       if (r.success && r.data) setData(r.data);
       setLoading(false);
     });
-  }, [role, userType]);
+  }, [role, userType, searchParams]);
 
   useEffect(() => {
     if (sellerPlans.length <= VISIBLE) return;
@@ -175,7 +202,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
   const basePrice = Number(checkoutData?.plan?.price ?? 0);
   const totalCharges = checkoutData?.total_charges ?? 0;
   const referralDiscount = checkoutData?.referral_discount ?? 0;
-  const displayTotal = Math.max(1, basePrice + totalCharges - referralDiscount - couponDiscount);
+  const displayTotal = Math.max(0, basePrice + totalCharges - referralDiscount - couponDiscount);
 
   if (loading) return (
     <DashboardLayout requiredRoles={[role]}>
@@ -228,7 +255,6 @@ export default function SubscriptionsView({ role, userType }: Props) {
           line-height: 1; cursor: pointer; color: #666; padding: .2rem .4rem;
           border-radius: 6px; transition: background .15s;
         }
-        .close-btn:hover { background: #f3f3f3; }
         .gateway-logo {
           display: flex; align-items: center; gap: .5rem;
           font-size: .72rem; color: #888; justify-content: center; margin-top: .75rem;
@@ -247,19 +273,19 @@ export default function SubscriptionsView({ role, userType }: Props) {
           cursor: pointer; z-index: 10; transition: all 0.2s;
           box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
-        .nav-btn:hover { background: #ffc63a; border-color: #ffc63a; color: #fff; box-shadow: 0 8px 20px rgba(255,198,58,0.3); }
-        .nav-btn.left { left: -15px; }
-        .nav-btn.right { right: -15px; }
+        .nav-btn.left { left: 8px; }
+        .nav-btn.right { right: 8px; }
+        .plan-arrow{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;transition:all .2s;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+        .plan-arrow.left{left:8px}
+        .plan-arrow.right{right:8px}
 
         .tier-basic{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;border:1px solid #e5e7eb;box-shadow: 0 10px 30px rgba(0,0,0,0.05);display:flex;flex-direction:column}
-        .tier-standard{background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transform:scale(1.03);z-index:10; border: 2px solid #fdc003; box-shadow: 0 15px 40px rgba(253,192,3,0.15);}
-        .tier-elite{background:#0c0f0f;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);}
-        .tier-badge{position:absolute;top:0;right:0;background:#fdc003;color:#3d2b00;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
-        .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:none;border:2px solid #fdc003;color:#0a0a0a;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-basic:hover{background:#0a0a0a;color:#fff}
-        .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#3d2b00;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
+        .tier-standard{ background:#fff;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transform:scale(1.03);z-index:10; border:1px solid #e5e7eb;box-shadow: 0 10px 30px rgba(0,0,0,0.05);}
+        .tier-elite{background:#e7efe5;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);}
+        .tier-badge{position:absolute;top:0px;right:-5px;background:#d7b467;color:#ffff;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
+        .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto;border:none}
+        .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
         .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#d7b467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-elite:hover{background:#c5a356}
         
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
         @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
@@ -280,38 +306,57 @@ export default function SubscriptionsView({ role, userType }: Props) {
         )}
 
         {/* Active Subscription */}
-        {data?.active && new Date(data.active.expires_at) >= new Date() && (() => {
+        {data?.active && new Date(data.active.expires_at) >= new Date() ? (() => {
           const active = data.active;
           const used = active.usage_count;
           const limit = active.limit_value;
           const isQty = active.plan_type !== 'duration';
           const remaining = isQty ? Math.max(0, limit - used) : null;
-          const pct = isQty && limit > 0 ? Math.round((used / limit) * 100) : 0;
+
+          let pct = 0;
+          if (isQty) {
+            pct = limit > 0 ? (used / limit) * 100 : 0;
+          } else {
+            const now = new Date().getTime();
+            const start = new Date(active.starts_at).getTime();
+            const end = new Date(active.expires_at).getTime();
+            const total = end - start;
+            const elapsed = now - start;
+            pct = total > 0 ? (elapsed / total) * 100 : 0;
+          }
+          pct = Math.min(100, Math.max(0, pct));
+
           const expires = active.expires_at ? new Date(active.expires_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'No Expiry';
           return (
             <div className="bento-grid">
               <div className="bento-col-8">
-                <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 260, border: '1px solid #f0f0f0', height: '100%' }}>
+                <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 280, border: '1px solid #f0f0f0', height: '100%' }}>
                   <div style={{ position: 'relative', zIndex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
                       <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active Plan</span>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Valid until {expires}</span>
+                      <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>
+                        Valid For {active.duration_hours > 0 ? `${active.duration_hours} hour/s` : 'Unlimited hours'}
+                      </span>
                     </div>
                     <h2 style={{ fontSize: 'clamp(2rem,5vw,3.25rem)', fontWeight: 900, letterSpacing: '-0.04em', color: '#111', marginBottom: '0.6rem', lineHeight: 1 }}>{active.plan_name}</h2>
-                    <p style={{ color: '#6b7280', fontSize: '0.88rem', maxWidth: '28rem', marginBottom: '2rem' }}>
-                      {isQty ? `Usage-based plan · ${used} used out of ${limit} listings.` : 'Full duration-based access to all platform features.'}
+                    <p style={{ color: '#6b7280', fontSize: '0.88rem', maxWidth: '28rem', marginBottom: '2rem', textTransform: 'capitalize' }}>
+                      {active.plan_type.toUpperCase()} BASED
                     </p>
                   </div>
                   <div style={{ position: 'relative', zIndex: 1 }}>
                     <div style={{ marginBottom: '0.6rem' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{isQty ? remaining : '∞'}</span>
-                        {isQty && <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {limit}</span>}
-                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{isQty ? 'Listings Left' : 'Full Access'}</span>
+                        <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{isQty ? remaining : <CountdownTimer expiryDate={active.expires_at} />}</span>
+                        {isQty ? (
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {limit}</span>
+                        ) : (
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {active.duration_hours} hrs</span>
+                        )}
+                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{isQty ? 'Listings Left' : 'Time Left'}</span>
                       </div>
                     </div>
                     <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: '#ffc63a', width: isQty ? `${Math.max(2, 100 - pct)}%` : '100%', transition: 'width 0.5s' }} />
+                      <div style={{ height: '100%', background: '#ffc63a', width: `${Math.max(2, 100 - pct)}%`, transition: 'width 0.5s' }} />
                     </div>
                   </div>
                   <div style={{ position: 'absolute', right: '-5rem', top: '-5rem', width: '20rem', height: '20rem', background: '#D7B467', opacity: 0.05, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
@@ -320,17 +365,21 @@ export default function SubscriptionsView({ role, userType }: Props) {
               </div>
               {(() => {
                 const uc = data?.unlock_card || {};
-                const ucLabel = uc[`${userType}_unlock_label`] || 'Unlock More';
-                const ucTitle = uc[`${userType}_unlock_title`] || 'Elevate to a Higher Tier';
-                const ucBtn   = uc[`${userType}_unlock_btn`]   || 'Upgrade Plan';
+                const ucLabel = (uc as any)[`${userType}_unlock_label`] || 'Unlock More';
+                const ucTitle = (uc as any)[`${userType}_unlock_title`] || 'Elevate to a Higher Tier';
+                const ucBtn = (uc as any)[`${userType}_unlock_btn`] || 'Upgrade Plan';
                 const defaultItems = userType === 'seller'
                   ? [{ icon: 'all_inclusive', text: 'Unlimited product listings' }, { icon: 'stars', text: 'Priority placement in search' }, { icon: 'insights', text: 'Advanced seller analytics' }, { icon: 'support_agent', text: 'Dedicated seller support' }]
                   : [{ icon: 'all_inclusive', text: 'Unlimited concierge contacts' }, { icon: 'stars', text: 'Early access to new listings' }, { icon: 'insights', text: 'Custom market reporting' }, { icon: 'support_agent', text: 'Priority support' }];
                 let ucItems: { icon: string; text: string }[] = defaultItems;
-                try { const p = JSON.parse(uc[`${userType}_unlock_items`] || '[]'); if (Array.isArray(p) && p.length) ucItems = p; } catch {}
+                try {
+                  const pJson = (uc as any)[`${userType}_unlock_items`];
+                  const p = JSON.parse(pJson || '[]');
+                  if (Array.isArray(p) && p.length) ucItems = p;
+                } catch { }
                 return (
                   <div className="bento-col-4">
-                    <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 260, border: '1px solid #d1e4cf' }}>
+                    <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
                       <div>
                         <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>{ucLabel}</span>
                         <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>{ucTitle}</h3>
@@ -352,120 +401,73 @@ export default function SubscriptionsView({ role, userType }: Props) {
               })()}
             </div>
           );
-        })()}
+        })() : (
+          <div className="text-center py-5 bg-white rounded-4 border mb-5" style={{ borderRadius: '1.25rem' }}>
+            <i className="bi bi-gem opacity-25" style={{ fontSize: '5rem', color: '#adb5bd' }} />
+            <h3 className="mt-4 fw-bold" style={{ color: '#111' }}>No active plan found</h3>
+            <p className="text-muted">Unlock direct access to {userType === 'buyer' ? 'sellers' : 'buyers'} by subscribing to a plan.</p>
+            <button
+              onClick={() => {
+                const el = document.getElementById('available-plans-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+              }}
+              className="btn px-5 rounded-pill mt-3"
+              style={{ width: 'auto', background: '#ffc63a', color: '#fff', border: 'none', padding: '12px 30px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}
+            >
+              Explore Membership Plans
+            </button>
+          </div>
+        )}
 
         {/* Seller Plans */}
-        <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
+        <h2 id="available-plans-section" style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
         {sellerPlans.length > 0 ? (
-          <div style={{ overflow: 'hidden', width: '100%' }}>
-            <div style={{ display: 'flex', padding: '20px 0', width: `${(loopSeller.length / VISIBLE) * 100}%`, transform: sellerPlans.length > VISIBLE ? `translateX(calc(-${sIdx} * 100% / ${loopSeller.length}))` : 'none', transition: sAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
-              {loopSeller.map((plan, idx) => {
-                const isPopular = Number(plan.is_most_selected) === 1;
-                const isFeatured = Number(plan.is_featured) === 1;
-                const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
-                const btnClass  = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
-                const nameColor  = isFeatured ? '#fff' : '#0a0a0a';
-                const typeColor  = isFeatured ? '#734d26' : '#6b7280';
-                const priceColor = isFeatured ? '#fff' : '#0a0a0a';
-                const iconColor  = '#fdc003';
-                const textColor  = isFeatured ? '#fff' : '#2d2f2f';
-                return (
-                  <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopSeller.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
-                    <div className={cardClass} style={{ width: '100%' }}>
-                      {isPopular && <div className="tier-badge">Most Selected</div>}
-                      <div style={{ marginBottom: '3rem' }}>
-                        <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
-                        <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Listing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
-                      </div>
-                      <div style={{ marginBottom: '3rem' }}>
-                        <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price).toLocaleString('en-IN')}</span>
-                        <p style={{ fontSize: '0.65rem', color: isFeatured ? '#6b7280' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 700, marginTop: '0.5rem', marginBottom: 0 }}>{plan.plan_type === 'duration' ? 'Full Access' : 'Per Plan'}</p>
-                      </div>
-                      <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        {(() => {
-                          const coreFeatures = [
-                            { icon: plan.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} ${plan.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
-                            { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
-                          ];
-                          let customFeatures: { icon: string; text: string }[] = [];
-                          try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) {}
-                          
-                          // Filter out custom features that might be duplicates of core features
-                          const filteredCustom = customFeatures.filter(cf => 
-                            cf.text && 
-                            !cf.text.toLowerCase().includes('listing') && 
-                            !cf.text.toLowerCase().includes('contact') && 
-                            !cf.text.toLowerCase().includes('validity') && 
-                            !cf.text.toLowerCase().includes('hour')
-                          );
-
-                          const allFeatures = [...coreFeatures, ...filteredCustom];
-
-                          return allFeatures.map((f, i) => (
-                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
-                              <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                              <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
-                            </li>
-                          ));
-                        })()}
-                      </ul>
-                      {isSuperAdmin ? (
-                        <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
-                          <button className="btn btn-sm btn-outline-secondary fw-bold rounded-pill" onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>{Number(plan.is_featured) === 1 ? 'Unset Premium' : 'Set Premium'}</button>
-                          <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
-                        </div>
-                      ) : (
-                        <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : <p className="text-center py-4 text-muted">No seller plans available</p>}
-
-        {/* Buyer Plans (for Admins) */}
-        {(user?.role === 'admin' || isSuperAdmin) && buyerPlans.length > 0 && (
-          <>
-            <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem', marginTop: '3rem' }}>Buyer Plans</h2>
+          <div style={{ position: 'relative' }}>
+            {sellerPlans.length > VISIBLE && (
+              <>
+                <button className="plan-arrow left" onClick={() => { if (sIdx === 0) { setSAnim(false); setSIdx(sellerPlans.length - 1); } else setSIdx(i => i - 1); }}><i className="bi bi-chevron-left" /></button>
+                <button className="plan-arrow right" onClick={() => setSIdx(i => i + 1)}><i className="bi bi-chevron-right" /></button>
+              </>
+            )}
             <div style={{ overflow: 'hidden', width: '100%' }}>
-              <div style={{ display: 'flex', padding: '20px 0', width: `${(loopBuyer.length / VISIBLE) * 100}%`, transform: buyerPlans.length > VISIBLE ? `translateX(calc(-${bIdx} * 100% / ${loopBuyer.length}))` : 'none', transition: bAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
-                {loopBuyer.map((plan, idx) => {
+              <div style={{ display: 'flex', padding: '20px 0', width: `${(loopSeller.length / VISIBLE) * 100}%`, transform: sellerPlans.length > VISIBLE ? `translateX(calc(-${sIdx} * 100% / ${loopSeller.length}))` : 'none', transition: sAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
+                {loopSeller.map((plan, idx) => {
                   const isPopular = Number(plan.is_most_selected) === 1;
                   const isFeatured = Number(plan.is_featured) === 1;
                   const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
-                  const btnClass  = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
-                  const nameColor  = isFeatured ? '#fff' : '#0a0a0a';
-                  const typeColor  = isFeatured ? '#734d26' : '#6b7280';
-                  const priceColor = isFeatured ? '#fff' : '#0a0a0a';
-                  const iconColor  = '#fdc003';
-                  const textColor  = isFeatured ? '#fff' : '#2d2f2f';
+                  const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
+                  const nameColor = isFeatured ? '#000000' : '#0a0a0a';
+                  const typeColor = isFeatured ? '#734d26' : '#6b7280';
+                  const priceColor = isFeatured ? '#000000' : '#0a0a0a';
+                  const iconColor = '#fdc003';
+                  const textColor = isFeatured ? '#000000' : '#2d2f2f';
                   return (
-                    <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopBuyer.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
+                    <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopSeller.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
                       <div className={cardClass} style={{ width: '100%' }}>
                         {isPopular && <div className="tier-badge">Most Selected</div>}
                         <div style={{ marginBottom: '3rem' }}>
                           <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
-                          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Sourcing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
+                          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Listing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
                         </div>
                         <div style={{ marginBottom: '3rem' }}>
-                          <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price).toLocaleString('en-IN')}</span>
-                          <p style={{ fontSize: '0.65rem', color: isFeatured ? '#6b7280' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 700, marginTop: '0.5rem', marginBottom: 0 }}>{plan.plan_type === 'duration' ? 'Full Access' : 'Per Plan'}</p>
+                          <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
                         </div>
                         <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                           {(() => {
                             const coreFeatures = [
-                              { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
+                              { icon: plan.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} ${plan.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
                               { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
                             ];
                             let customFeatures: { icon: string; text: string }[] = [];
-                            try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) {}
-                            
-                            const filteredCustom = customFeatures.filter(cf => 
-                              cf.text && 
-                              !cf.text.toLowerCase().includes('contact') && 
-                              !cf.text.toLowerCase().includes('validity') && 
+                            try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
+
+                            // Filter out custom features that might be duplicates of core features
+                            const filteredCustom = customFeatures.filter(cf =>
+                              cf.text &&
+                              !cf.text.toLowerCase().includes('listing') &&
+                              !cf.text.toLowerCase().includes('contact') &&
+                              !cf.text.toLowerCase().includes('validity') &&
                               !cf.text.toLowerCase().includes('hour')
                             );
 
@@ -479,7 +481,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                             ));
                           })()}
                         </ul>
-                        {isSuperAdmin ? (
+                        {isActuallySuper ? (
                           <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
                             <button className="btn btn-sm btn-outline-secondary fw-bold rounded-pill" onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>{Number(plan.is_featured) === 1 ? 'Unset Premium' : 'Set Premium'}</button>
                             <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
@@ -491,6 +493,84 @@ export default function SubscriptionsView({ role, userType }: Props) {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+        ) : <p className="text-center py-4 text-muted">No seller plans available</p>}
+
+        {/* Buyer Plans (Only for Admins or Buyer portal) */}
+        {(isSuperAdmin || userType === 'buyer') && buyerPlans.length > 0 && (
+          <>
+            <h2 id="buyer-plans-section" style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginTop: '4rem', marginBottom: '1.25rem' }}>Buyer Plans</h2>
+            <div style={{ position: 'relative' }}>
+              {buyerPlans.length > VISIBLE && (
+                <>
+                  <button className="plan-arrow left" onClick={() => { if (bIdx === 0) { setBAnim(false); setBIdx(buyerPlans.length - 1); } else setBIdx(i => i - 1); }}><i className="bi bi-chevron-left" /></button>
+                  <button className="plan-arrow right" onClick={() => setBIdx(i => i + 1)}><i className="bi bi-chevron-right" /></button>
+                </>
+              )}
+              <div style={{ overflow: 'hidden', width: '100%' }}>
+                <div style={{ display: 'flex', padding: '20px 0', width: `${(loopBuyer.length / VISIBLE) * 100}%`, transform: buyerPlans.length > VISIBLE ? `translateX(calc(-${bIdx} * 100% / ${loopBuyer.length}))` : 'none', transition: bAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
+                  {loopBuyer.map((plan, idx) => {
+                    const isPopular = Number(plan.is_most_selected) === 1;
+                    const isFeatured = Number(plan.is_featured) === 1;
+                    const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
+                    const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
+                    const nameColor = isFeatured ? '#000000' : '#0a0a0a';
+                    const typeColor = isFeatured ? '#734d26' : '#6b7280';
+                    const priceColor = isFeatured ? '#000000' : '#0a0a0a';
+                    const iconColor = '#fdc003';
+                    const textColor = isFeatured ? '#000000' : '#2d2f2f';
+                    return (
+                      <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopBuyer.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
+                        <div className={cardClass} style={{ width: '100%' }}>
+                          {isPopular && <div className="tier-badge">Most Selected</div>}
+                          <div style={{ marginBottom: '3rem' }}>
+                            <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
+                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Sourcing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
+                          </div>
+                          <div style={{ marginBottom: '3rem' }}>
+                            <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {(() => {
+                              const coreFeatures = [
+                                { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
+                                { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                              ];
+                              let customFeatures: { icon: string; text: string }[] = [];
+                              try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
+
+                              const filteredCustom = customFeatures.filter(cf =>
+                                cf.text &&
+                                !cf.text.toLowerCase().includes('contact') &&
+                                !cf.text.toLowerCase().includes('validity') &&
+                                !cf.text.toLowerCase().includes('hour')
+                              );
+
+                              const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                              return allFeatures.map((f, i) => (
+                                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                                  <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                  <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
+                                </li>
+                              ));
+                            })()}
+                          </ul>
+                          {isActuallySuper ? (
+                            <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
+                              <button className="btn btn-sm btn-outline-secondary fw-bold rounded-pill" onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>{Number(plan.is_featured) === 1 ? 'Unset Premium' : 'Set Premium'}</button>
+                              <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
+                            </div>
+                          ) : (
+                            <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </>
@@ -529,10 +609,10 @@ export default function SubscriptionsView({ role, userType }: Props) {
                         <i className="bi bi-gem fs-5" />
                       </div>
                       <div className="flex-grow-1">
-                        <h6 className="fw-bold mb-0">{checkoutData?.plan.name}</h6>
-                        <span className="plan-chip">{checkoutData?.plan.plan_type}</span>
+                        <h6 className="fw-bold mb-0">{checkoutData?.plan?.name}</h6>
+                        <span className="plan-chip">{checkoutData?.plan?.plan_type}</span>
                       </div>
-                      <div className="fw-bold">₹{Number(checkoutData?.plan.price).toLocaleString('en-IN')}</div>
+                      <div className="fw-bold">₹{Number(checkoutData?.plan?.price || 0).toLocaleString('en-IN')}</div>
                     </div>
 
                     {/* Privileges */}
@@ -540,19 +620,19 @@ export default function SubscriptionsView({ role, userType }: Props) {
                     <ul className="list-unstyled privilege-list">
                       {(() => {
                         let features: { icon: string; text: string }[] = [];
-                        try { if (checkoutData.plan.features) features = JSON.parse(checkoutData.plan.features); } catch (e) {}
+                        try { if (checkoutData?.plan?.features) features = JSON.parse(checkoutData.plan.features); } catch (e) { }
                         if (!features.length) {
                           return (
                             <>
                               <li>
                                 <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
-                                {checkoutData.plan.plan_type === 'quantity'
-                                  ? <span><strong>{checkoutData.plan.limit_value}</strong> {userType === 'buyer' ? 'contact' : 'listing'} slots</span>
+                                {checkoutData?.plan?.plan_type === 'quantity'
+                                  ? <span><strong>{checkoutData?.plan?.limit_value}</strong> {userType === 'buyer' ? 'contact' : 'listing'} slots</span>
                                   : <span><strong>Unlimited</strong> {userType === 'buyer' ? 'contacts' : 'listings'} for the duration</span>}
                               </li>
                               <li>
                                 <i className="bi bi-check-circle-fill text-success mt-1 flex-shrink-0" />
-                                <span>Validity:&nbsp;<strong>{Number(checkoutData.plan.duration_hours) > 0 ? checkoutData.plan.duration_hours + ' Hours' : 'Life-Time'}</strong></span>
+                                <span>Validity:&nbsp;<strong>{Number(checkoutData?.plan?.duration_hours || 0) > 0 ? checkoutData?.plan?.duration_hours + ' Hours' : 'Life-Time'}</strong></span>
                               </li>
                             </>
                           );
