@@ -280,7 +280,7 @@ class AuthApi extends ResourceController
             'user_type'        => $data['user_type'],
             'role'             => ($data['user_type'] === 'both') ? 'buyer' : $data['user_type'],
             'referral_code'    => $referralCode,
-            'reliability_score' => 100,
+            'reliability_score' => 0,
             'is_verified'      => 0,
         ];
 
@@ -503,7 +503,7 @@ class AuthApi extends ResourceController
                 'role' => 'buyer',
                 'referral_code' => $referralCode,
                 'is_verified' => 1,
-                'reliability_score' => 100,
+                'reliability_score' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);

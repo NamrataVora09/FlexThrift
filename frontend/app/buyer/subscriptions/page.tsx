@@ -7,6 +7,37 @@ import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 
 /* ---------- types ---------- */
+const CountdownTimer = ({ expiryDate }: { expiryDate: string }) => {
+  const [timeLeft, setTimeLeft] = useState('00:00:00');
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date().getTime();
+      const distance = new Date(expiryDate).getTime() - now;
+      if (distance < 0) {
+        setTimeLeft('Expired');
+        return;
+      }
+      const h = Math.floor(distance / (1000 * 60 * 60));
+      const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((distance % (1000 * 60)) / 1000);
+      
+      if (h > 0) {
+        setTimeLeft(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      } else if (m > 0) {
+        setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      } else {
+        setTimeLeft(`${s.toString().padStart(2, '0')}s`);
+      }
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [expiryDate]);
+
+  return <span>{timeLeft}</span>;
+};
+
 interface Plan {
   id: number;
   name: string;
@@ -157,18 +188,30 @@ function SubscriptionsInner() {
 
   /* Track which quantity sub is "primary" (first with remaining usage) */
   let primaryFound = false;
-  const subsWithMeta = activeSubscriptions.map((sub) => {
+    const subsWithMeta = activeSubscriptions.map((sub) => {
     const limit = Number(sub.limit_value ?? 0);
     const used = Number(sub.usage_count ?? 0);
     const isQuantity = sub.plan_type === 'quantity';
-    const remaining = sub.plan_type === 'duration' ? 'Unlimited' : Math.max(0, limit - used);
-    const percentUsed = sub.plan_type === 'duration' ? 0 : limit > 0 ? (used / limit) * 100 : 0;
+
+    // Calculate hours for duration plans
+    let hoursRemaining = 0;
+    if (sub.plan_type === 'duration') {
+      const now = new Date();
+      const expiry = new Date(sub.expires_at);
+      const diffMs = expiry.getTime() - now.getTime();
+      hoursRemaining = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
+    }
+
+    const remaining = sub.plan_type === 'duration' ? hoursRemaining : Math.max(0, limit - used);
+    const percentUsed = sub.plan_type === 'duration' 
+      ? (sub.duration_hours > 0 ? ((sub.duration_hours - hoursRemaining) / sub.duration_hours) * 100 : 0)
+      : (limit > 0 ? (used / limit) * 100 : 0);
     let isPrimary = false;
     if (isQuantity && used < limit && !primaryFound) {
       isPrimary = true;
       primaryFound = true;
     }
-    return { ...sub, limit, used, isQuantity, remaining, percentUsed, isPrimary };
+    return { ...sub, limit, used, isQuantity, remaining, percentUsed, isPrimary, hoursRemaining };
   });
 
   return (
@@ -257,18 +300,24 @@ function SubscriptionsInner() {
                       {sub.plan_type.toUpperCase()} BASED
                     </p>
                   </div>
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ marginBottom: '0.6rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{sub.remaining === 'Unlimited' ? " " : sub.remaining}</span>
-                        {sub.plan_type !== 'duration' && <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {sub.limit}</span>}
-                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{sub.remaining === 'Unlimited' ? 'Full Access' : 'Contacts Left'}</span>
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                      <div style={{ marginBottom: '0.6rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
+                          <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>
+                            {sub.plan_type === 'duration' ? <CountdownTimer expiryDate={sub.expires_at} /> : sub.remaining}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            / {sub.plan_type === 'duration' ? (sub.duration_hours + ' hrs') : sub.limit}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>
+                            {sub.plan_type === 'duration' ? 'Time Left' : 'Contacts Left'}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: '#ffc63a', width: `${Math.max(2, 100 - sub.percentUsed)}%`, transition: 'width 0.5s' }} />
                       </div>
                     </div>
-                    <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: '#ffc63a', width: sub.plan_type === 'duration' ? '100%' : `${Math.max(2, 100 - sub.percentUsed)}%`, transition: 'width 0.5s' }} />
-                    </div>
-                  </div>
                   <div style={{ position: 'absolute', right: '-5rem', top: '-5rem', width: '20rem', height: '20rem', background: '#D7B467', opacity: 0.05, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
                   <span className="material-symbols-outlined" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 48" }}>workspace_premium</span>
                 </div>

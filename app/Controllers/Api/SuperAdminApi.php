@@ -545,7 +545,7 @@ class SuperAdminApi extends ResourceController
             'user_type' => 'buyer',
             'role' => 'admin',
             'is_verified' => 1,
-            'reliability_score' => 100,
+            'reliability_score' => 0,
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
