@@ -239,6 +239,22 @@ class SharedApi extends ResourceController
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
         $userId = $jwtUser['user_id'];
+        $range = $this->request->getGet('range') ?? 'all_time';
+
+        // Helper for date filter
+        $dateFilter = "";
+        switch ($range) {
+            case 'current_week': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday this week')) . "'"; break;
+            case 'last_week': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday last week')) . "' AND created_at <= '" . date('Y-m-d 23:59:59', strtotime('sunday last week')) . "'"; break;
+            case 'last_2_weeks': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('-2 weeks')) . "'"; break;
+            case 'current_quarter': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-2 months')) . "'"; break;
+            case 'last_quarter': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-5 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('-3 months')) . "'"; break;
+            case 'last_2_quarters': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-8 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('-3 months')) . "'"; break;
+            case 'current_year': $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00') . "'"; break;
+            case 'last_year': $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00', strtotime('first day of last year')) . "' AND created_at <= '" . date('Y-12-31 23:59:59', strtotime('last day of last year')) . "'"; break;
+            case 'last_2_years': $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00', strtotime('first day of -2 years')) . "' AND created_at <= '" . date('Y-12-31 23:59:59', strtotime('last day of -1 year')) . "'"; break;
+            case 'all_time': default: $dateFilter = ""; break;
+        }
 
         // Product stats by status
         $statusStats = $db->query("SELECT status, COUNT(*) as count FROM products WHERE seller_id = ? GROUP BY status", [$userId])->getResultArray();
@@ -250,22 +266,52 @@ class SharedApi extends ResourceController
             GROUP BY DATE(created_at) ORDER BY date ASC
         ", [$userId])->getResultArray();
 
-        // Revenue by month
-        $revenue = $db->query("
-            SELECT DATE_FORMAT(created_at, '%Y-%m') as month,
-                   SUM(CASE WHEN status='accepted' THEN offer_price ELSE 0 END) as offer_revenue
-            FROM offers WHERE seller_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-            GROUP BY DATE_FORMAT(created_at, '%Y-%m') ORDER BY month ASC
+        // Revenue and Sales count (Bar Chart)
+        $groupBy = (in_array($range, ['current_week', 'last_week', 'last_2_weeks'])) ? 'DATE(created_at)' : "DATE_FORMAT(created_at, '%Y-%m')";
+        $labelAlias = (in_array($range, ['current_week', 'last_week', 'last_2_weeks'])) ? 'date' : 'month';
+        
+        $monthlyStats = $db->query("
+            SELECT $groupBy as $labelAlias,
+                   SUM(CASE WHEN status='accepted' THEN offer_price ELSE 0 END) as revenue,
+                   SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as sales_count
+            FROM offers WHERE seller_id = ? $dateFilter
+            GROUP BY $groupBy ORDER BY $labelAlias ASC
         ", [$userId])->getResultArray();
 
-        // Top products by offers
-        $topProducts = $db->table('offers o')
-            ->select('p.title, p.listing_type, COUNT(o.id) as offer_count, SUM(CASE WHEN o.status="accepted" THEN 1 ELSE 0 END) as accepted_count')
+        // Revenue distribution by listing type category (Pie Chart)
+        $revenueByListingType = $db->query("
+            SELECT p.listing_type_category as listing_type, SUM(o.offer_price) as revenue
+            FROM offers o
+            JOIN products p ON p.id = o.product_id
+            WHERE o.seller_id = ? AND o.status = 'accepted' $dateFilter
+            GROUP BY p.listing_type_category
+        ", [$userId])->getResultArray();
+
+        // Total stats for cards
+        $totalProducts = $db->table('products')->where('seller_id', $userId)->countAllResults();
+        $totalOffers = $db->table('offers')->where('seller_id', $userId)->countAllResults();
+        
+        $user = $db->table('users')->select('reliability_score')->where('id', $userId)->get()->getRowArray();
+        $scorePoints = (int)($user['reliability_score'] ?? 0);
+
+        // Top 10 products by offers
+        $topProductsByOffers = $db->table('offers o')
+            ->select('p.title, p.listing_type_category as listing_type, COUNT(o.id) as offer_count, SUM(CASE WHEN o.status="accepted" THEN 1 ELSE 0 END) as accepted_count, SUM(CASE WHEN o.status="accepted" THEN o.offer_price ELSE 0 END) as total_revenue')
             ->join('products p', 'p.id = o.product_id')
             ->where('o.seller_id', $userId)
             ->groupBy('o.product_id')
             ->orderBy('offer_count', 'DESC')
-            ->limit(5)
+            ->limit(10)
+            ->get()->getResultArray();
+
+        // Top 10 products by revenue
+        $topProductsByRevenue = $db->table('offers o')
+            ->select('p.title, p.listing_type_category as listing_type, COUNT(o.id) as offer_count, SUM(CASE WHEN o.status="accepted" THEN 1 ELSE 0 END) as accepted_count, SUM(CASE WHEN o.status="accepted" THEN o.offer_price ELSE 0 END) as total_revenue')
+            ->join('products p', 'p.id = o.product_id')
+            ->where('o.seller_id', $userId)
+            ->groupBy('o.product_id')
+            ->orderBy('total_revenue', 'DESC')
+            ->limit(10)
             ->get()->getResultArray();
 
         return $this->respond([
@@ -273,8 +319,13 @@ class SharedApi extends ResourceController
             'data' => [
                 'status_stats' => $statusStats,
                 'offer_trend' => $offerTrend,
-                'revenue' => $revenue,
-                'top_products' => $topProducts,
+                'monthly_stats' => $monthlyStats,
+                'revenue_by_listing_type' => $revenueByListingType,
+                'top_products_by_offers' => $topProductsByOffers,
+                'top_products_by_revenue' => $topProductsByRevenue,
+                'total_products' => $totalProducts,
+                'total_offers' => $totalOffers,
+                'score_points' => $scorePoints,
             ],
         ]);
     }
