@@ -499,6 +499,8 @@ class AdminApi extends ResourceController
                 'charge_breakdown' => $breakdown,
                 'total_charges' => $totalCharges,
                 'referral_discount' => $referralDiscount,
+                'total_referral_balance' => (float)($user['referral_balance'] ?? 0),
+                'referral_min_purchase' => 0,
                 'total' => max(0, $basePrice + $totalCharges - $referralDiscount)
             ]
         ]);
@@ -537,6 +539,7 @@ class AdminApi extends ResourceController
         $planId = (int)($data['plan_id'] ?? 0);
         $couponCode = strtoupper(trim($data['coupon_code'] ?? ''));
         $callbackUrl = trim($data['callback_url'] ?? '');
+        $useReferral = (bool)($data['use_referral'] ?? true);
 
         $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
         if (!$plan) return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
@@ -559,7 +562,7 @@ class AdminApi extends ResourceController
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         $referralDiscount = 0;
-        if ((float)($user['referral_balance'] ?? 0) > 0 && (int)($user['has_used_referral'] ?? 0) === 0) {
+        if ($useReferral && (float)($user['referral_balance'] ?? 0) > 0 && (int)($user['has_used_referral'] ?? 0) === 0) {
             $exp = $user['referral_expires_at'] ?? null;
             if (!$exp || $exp === '0000-00-00 00:00:00' || strtotime($exp) > time()) {
                 $referralDiscount = (float)$user['referral_balance'];
@@ -572,25 +575,16 @@ class AdminApi extends ResourceController
 
         $payload = ['merchantOrderId' => $merchantOrderId, 'amount' => (int)($final * 100), 'paymentFlow' => ['type' => 'PG_CHECKOUT', 'merchantUrls' => ['redirectUrl' => $redirectUrl]]];
 
-        // Stacking Logic for pending record prediction
-        $latestActive = $db->table('user_subscriptions us')
-            ->join('subscription_plans sp', 'sp.id = us.plan_id')
-            ->where('us.user_id', $userId)
-            ->where('us.is_active', 1)
-            ->where('sp.user_type', $plan['user_type'])
-            ->where('us.expires_at >', date('Y-m-d H:i:s'))
-            ->orderBy('us.expires_at', 'DESC')
-            ->get()->getRowArray();
-
-        $durationHours = (int) $plan['duration_hours'];
-        $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
-        $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
-        $expiresAt = $durationHours > 0
-            ? date('Y-m-d H:i:s', $baseTime + $durationHours * 3600)
+        // Always insert with starts_at = NOW for the pending record.
+        // verifyPayment will recalculate the correct stacking dates after payment confirms.
+        $nowStr = date('Y-m-d H:i:s');
+        $durationHours = (float) $plan['duration_hours'];
+        $pendingExpiry = $durationHours > 0
+            ? date('Y-m-d H:i:s', time() + (int)round($durationHours * 3600))
             : '2099-12-31 23:59:59';
 
         $db->table('user_subscriptions')->insert([
-            'user_id' => $userId, 'plan_id' => $planId, 'starts_at' => $startsAt, 'expires_at' => $expiresAt,
+            'user_id' => $userId, 'plan_id' => $planId, 'starts_at' => $nowStr, 'expires_at' => $pendingExpiry,
             'usage_count' => 0, 'is_active' => 0, 'payment_status' => 'pending', 'amount_paid' => $final,
             'referral_discount_applied' => $referralDiscount, 'merchant_transaction_id' => $merchantOrderId,
         ]);
@@ -628,11 +622,11 @@ class AdminApi extends ResourceController
                 ->orderBy('us.expires_at', 'DESC')
                 ->get()->getRowArray();
 
-            $durationHours = (int) $plan['duration_hours'];
+            $durationHours = (float) $plan['duration_hours'];
             $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
             $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
             $expiresAt = $durationHours > 0
-                ? date('Y-m-d H:i:s', $baseTime + $durationHours * 3600)
+                ? date('Y-m-d H:i:s', $baseTime + (int)round($durationHours * 3600))
                 : '2099-12-31 23:59:59';
 
             $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([

@@ -110,23 +110,25 @@ export default function SellerDashboardClient() {
           margin-bottom: 1.5rem;
           display: block;
         }
-        .metric-label {
-          font-size: 0.62rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.13em;
-          color: #9ca3af;
-          margin-bottom: 6px;
-          transition: color 0.28s ease;
-        }
         .metric-value {
           font-size: 2.4rem;
-          font-weight: 800;
-          color: #1a1a1a;
+          font-weight: 900;
+          color: #000;
           line-height: 1;
-          transition: color 0.28s ease;
+          margin-bottom: 4px;
         }
         .metric-value.sm { font-size: 1.75rem; }
+        .metric-label {
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #9ca3af;
+          margin: 0;
+        }
+        @media (min-width: 768px) {
+          .metric-label { font-size: 0.75rem; letter-spacing: 1px; }
+        }
 
         /* ── Rating pill ── */
         .rating-pill {
@@ -283,9 +285,8 @@ export default function SellerDashboardClient() {
                 <div key={i} className="col-6 col-md-3">
                   <div className="metric-card">
                     <i className={`${card.icon} metric-icon`} />
-                    <p className="metric-label mb-1">{card.label}</p>
                     {'split' in card ? (
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap', marginBottom: 4 }}>
                         <span className="metric-value" style={{ color: '#16a34a' }}>{card.approved}</span>
                         <span style={{ fontSize: '2rem', fontWeight: 800, color: '#d1d5db', lineHeight: 1 }}>/</span>
                         <span className="metric-value" style={{ color: '#dc2626' }}>{card.rejected}</span>
@@ -293,6 +294,7 @@ export default function SellerDashboardClient() {
                     ) : (
                       <div className={`metric-value${card.icon.includes('rupee') ? ' sm' : ''}`}>{card.value}</div>
                     )}
+                    <p className="metric-label">{card.label}</p>
                   </div>
                 </div>
               ))}

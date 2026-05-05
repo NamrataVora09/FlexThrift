@@ -1688,11 +1688,11 @@ class SellerApi extends ResourceController
             ->orderBy('us.expires_at', 'DESC')
             ->get()->getRowArray();
 
-        $durationHours = (int) $plan['duration_hours'];
+        $durationHours = (float) $plan['duration_hours'];
         $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
         $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
         $expiresAt = $durationHours > 0
-            ? date('Y-m-d H:i:s', $baseTime + $durationHours * 3600)
+            ? date('Y-m-d H:i:s', $baseTime + (int)round($durationHours * 3600))
             : '2099-12-31 23:59:59';
 
         $db->table('user_subscriptions')->insert([
@@ -1766,11 +1766,11 @@ class SellerApi extends ResourceController
                     ->orderBy('us.expires_at', 'DESC')
                     ->get()->getRowArray();
 
-                $durationHours = (int) $plan['duration_hours'];
+                $durationHours = (float) $plan['duration_hours'];
                 $startsAt      = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
                 $baseTime      = $latestActive ? strtotime($latestActive['expires_at']) : time();
                 $expiresAt     = $durationHours > 0
-                    ? date('Y-m-d H:i:s', $baseTime + $durationHours * 3600)
+                    ? date('Y-m-d H:i:s', $baseTime + (int)round($durationHours * 3600))
                     : '2099-12-31 23:59:59';
 
                 $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([

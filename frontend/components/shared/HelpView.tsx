@@ -55,6 +55,8 @@ export default function HelpView({ role }: Props) {
           background: #fff;
           border: none;
           text-align: left;
+          font-family: 'Inter', sans-serif;
+          font-size: 15.6px;
           font-weight: 600;
           color: #333;
           display: flex;
@@ -78,6 +80,8 @@ export default function HelpView({ role }: Props) {
         }
         .faq-answer {
           padding: 1.5rem;
+          font-family: 'Inter', sans-serif;
+          font-size: 13px;
           line-height: 1.6;
           color: #4a4a4a;
           border-top: 1px solid #f0f0f0;

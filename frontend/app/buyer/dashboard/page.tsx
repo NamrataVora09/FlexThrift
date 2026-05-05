@@ -115,19 +115,20 @@ export default function BuyerDashboardPage() {
           margin-bottom: 1rem;
           display: block;
         }
-        .metric-label {
-          font-size: 0.6rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          color: #9ca3af;
-          margin-bottom: 4px;
-        }
         .metric-value {
           font-size: 1.8rem;
-          font-weight: 800;
-          color: #1a1a1a;
+          font-weight: 900;
+          color: #000;
           line-height: 1.1;
+          margin-bottom: 4px;
+        }
+        .metric-label {
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #9ca3af;
+          margin: 0;
         }
 
         @media (min-width: 768px) {
@@ -139,13 +140,12 @@ export default function BuyerDashboardPage() {
             font-size: 1.5rem;
             margin-bottom: 1.5rem;
           }
-          .metric-label {
-            font-size: 0.62rem;
-            letter-spacing: 0.13em;
-            margin-bottom: 6px;
-          }
           .metric-value {
             font-size: 2.4rem;
+          }
+          .metric-label {
+            font-size: 0.75rem;
+            letter-spacing: 1px;
           }
         }
 
@@ -303,9 +303,8 @@ export default function BuyerDashboardPage() {
                 <div key={i} className="w-full">
                   <div className="metric-card">
                     <i className={`${card.icon} metric-icon`} />
-                    <p className="metric-label mb-1">{card.label}</p>
                     {'split' in card ? (
-                      <div className="d-flex align-items-baseline gap-1 flex-wrap">
+                      <div className="d-flex align-items-baseline gap-1 flex-wrap" style={{ marginBottom: 4 }}>
                         <span className="metric-value" style={{ color: '#16a34a' }}>{card.approved}</span>
                         <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#d1d5db', lineHeight: 1 }}>/</span>
                         <span className="metric-value" style={{ color: '#dc2626' }}>{card.rejected}</span>
@@ -313,6 +312,7 @@ export default function BuyerDashboardPage() {
                     ) : (
                       <div className="metric-value">{card.value}</div>
                     )}
+                    <p className="metric-label">{card.label}</p>
                   </div>
                 </div>
               ))}

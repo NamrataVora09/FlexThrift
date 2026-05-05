@@ -23,7 +23,7 @@ const CountdownTimer = ({ expiryDate }: { expiryDate: string }) => {
       // Normalize date string for Safari/Firefox compatibility (YYYY-MM-DD HH:MM:SS -> YYYY-MM-DDTHH:MM:SS)
       const targetStr = expiryDate.includes('T') ? expiryDate : expiryDate.replace(' ', 'T');
       const target = new Date(targetStr).getTime();
-      
+
       if (isNaN(target)) {
         setTimeLeft('Invalid Date');
         clearInterval(interval);
@@ -61,6 +61,8 @@ interface CheckoutData {
   charge_breakdown: ChargeItem[];
   total_charges: number;
   referral_discount: number;
+  referral_min_purchase?: number;
+  total_referral_balance?: number;
   total: number;
 }
 
@@ -90,6 +92,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
   const [appliedCoupon, setAppliedCoupon] = useState('');
   const [paying, setPaying] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [useReferral, setUseReferral] = useState(true);
 
   // Management states
   const [togglingId, setTogglingId] = useState<number | null>(null);
@@ -163,6 +166,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
     setCouponMsg(null);
     setCouponDiscount(0);
     setAppliedCoupon('');
+    setUseReferral(true);
     setModalOpen(true);
 
     const r = await api.get<CheckoutData>(`/${role}/plan-checkout-details/${plan.id}`);
@@ -209,6 +213,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
     const res = await api.post<{ redirect_url: string; merchant_order_id: string }>(`/${role}/initiate-payment`, {
       plan_id: selectedPlan.id,
       coupon_code: appliedCoupon,
+      use_referral: useReferral,
       callback_url: callbackUrl,
     });
     if (res.success && res.data?.redirect_url) {
@@ -222,11 +227,12 @@ export default function SubscriptionsView({ role, userType }: Props) {
 
   const basePrice = Number(checkoutData?.plan?.price ?? 0);
   const totalCharges = checkoutData?.total_charges ?? 0;
-  const referralDiscount = checkoutData?.referral_discount ?? 0;
+  const appliedReferral = checkoutData?.referral_discount ?? 0;
+  const referralDiscount = useReferral ? appliedReferral : 0;
   const displayTotal = Math.max(0, basePrice + totalCharges - referralDiscount - couponDiscount);
 
   if (loading) return (
-    <DashboardLayout requiredRoles={[role]}>
+    <DashboardLayout requiredRoles={[role, 'super_admin', 'admin']}>
       <div className="text-center py-5"><div className="spinner-border" style={{ color: '#ffc63a' }}></div></div>
     </DashboardLayout>
   );
@@ -234,7 +240,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
   const hasActiveSub = !!data?.active;
 
   return (
-    <DashboardLayout requiredRoles={[role]}>
+    <DashboardLayout requiredRoles={[role, 'super_admin', 'admin']}>
       <style>{`
         .pay-modal-backdrop {
           position: fixed; inset: 0; background: rgba(0,0,0,.55);
@@ -327,202 +333,216 @@ export default function SubscriptionsView({ role, userType }: Props) {
         )}
 
         {/* Active Subscription */}
-        {data?.active && new Date(data.active.expires_at) >= new Date() ? (() => {
-          const active = data.active;
-          const used = active.usage_count;
-          const limit = active.limit_value;
-          const isQty = active.plan_type !== 'duration';
-          const remaining = isQty ? Math.max(0, limit - used) : null;
+        {(() => {
+          const active = data?.active;
+          if (!active) return null;
 
-          let pct = 0;
-          if (isQty) {
-            pct = limit > 0 ? (used / limit) * 100 : 0;
-          } else {
-            const now = new Date().getTime();
-            const start = new Date(active.starts_at).getTime();
-            const end = new Date(active.expires_at).getTime();
-            const total = end - start;
-            const elapsed = now - start;
-            pct = total > 0 ? (elapsed / total) * 100 : 0;
-          }
-          pct = Math.min(100, Math.max(0, pct));
+          const targetStr = active.expires_at.replace(' ', 'T');
+          const expiryDate = new Date(targetStr);
+          const isValid = !isNaN(expiryDate.getTime()) && expiryDate >= new Date();
 
-          const expires = active.expires_at ? new Date(active.expires_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'No Expiry';
-          return (
-            <div className="bento-grid">
-              <div className="bento-col-8">
-                <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 280, border: '1px solid #f0f0f0', height: '100%' }}>
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
-                      <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active Plan</span>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>
-                        Valid For {active.duration_hours > 0 ? `${active.duration_hours} hour/s` : 'Unlimited hours'}
-                      </span>
+          if (!isValid) return null;
+
+          return (() => {
+            const used = active.usage_count;
+            const limit = active.limit_value;
+            const isQty = active.plan_type !== 'duration';
+            const remaining = isQty ? Math.max(0, limit - used) : null;
+
+            let pct = 0;
+            if (isQty) {
+              pct = limit > 0 ? (used / limit) * 100 : 0;
+            } else {
+              const now = new Date().getTime();
+              const start = new Date(active.starts_at).getTime();
+              const end = new Date(active.expires_at).getTime();
+              const total = end - start;
+              const elapsed = now - start;
+              pct = total > 0 ? (elapsed / total) * 100 : 0;
+            }
+            pct = Math.min(100, Math.max(0, pct));
+            return (
+              <div className="bento-grid">
+                <div className="bento-col-8">
+                  <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 280, border: '1px solid #f0f0f0', height: '100%' }}>
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
+                        <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active Plan</span>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>
+                          Valid For {active.duration_hours > 0 ? `${active.duration_hours} hour/s` : 'Unlimited hours'}
+                        </span>
+                      </div>
+                      <h2 style={{ fontSize: 'clamp(2rem,5vw,3.25rem)', fontWeight: 900, letterSpacing: '-0.04em', color: '#111', marginBottom: '0.6rem', lineHeight: 1 }}>{active.plan_name}</h2>
+                      <p style={{ color: '#6b7280', fontSize: '0.88rem', maxWidth: '28rem', marginBottom: '2rem', textTransform: 'capitalize' }}>
+                        {active.plan_type.toUpperCase()} BASED
+                      </p>
                     </div>
-                    <h2 style={{ fontSize: 'clamp(2rem,5vw,3.25rem)', fontWeight: 900, letterSpacing: '-0.04em', color: '#111', marginBottom: '0.6rem', lineHeight: 1 }}>{active.plan_name}</h2>
-                    <p style={{ color: '#6b7280', fontSize: '0.88rem', maxWidth: '28rem', marginBottom: '2rem', textTransform: 'capitalize' }}>
-                      {active.plan_type.toUpperCase()} BASED
-                    </p>
-                  </div>
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ marginBottom: '0.6rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{isQty ? remaining : <CountdownTimer expiryDate={active.expires_at} />}</span>
-                        {isQty ? (
-                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {limit}</span>
-                        ) : (
-                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {active.duration_hours} hrs</span>
-                        )}
-                        <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{isQty ? 'Listings Left' : 'Time Left'}</span>
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                      <div style={{ marginBottom: '0.6rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
+                          <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{isQty ? remaining : <CountdownTimer expiryDate={active.expires_at} />}</span>
+                          {isQty ? (
+                            <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {limit}</span>
+                          ) : (
+                            <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {active.duration_hours} hrs</span>
+                          )}
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{isQty ? 'Listings Left' : 'Time Left'}</span>
+                        </div>
+                      </div>
+                      <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: '#ffc63a', width: `${Math.max(2, 100 - pct)}%`, transition: 'width 0.5s' }} />
                       </div>
                     </div>
-                    <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: '#ffc63a', width: `${Math.max(2, 100 - pct)}%`, transition: 'width 0.5s' }} />
-                    </div>
+                    <div style={{ position: 'absolute', right: '-5rem', top: '-5rem', width: '20rem', height: '20rem', background: '#D7B467', opacity: 0.05, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
+                    <span className="material-symbols-outlined" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 48" }}>workspace_premium</span>
                   </div>
-                  <div style={{ position: 'absolute', right: '-5rem', top: '-5rem', width: '20rem', height: '20rem', background: '#D7B467', opacity: 0.05, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
-                  <span className="material-symbols-outlined" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 48" }}>workspace_premium</span>
                 </div>
-              </div>
-              {(() => {
-                const uc = data?.unlock_card || {};
-                const ucLabel = (uc as any)[`${userType}_unlock_label`] || 'Unlock More';
-                const ucTitle = (uc as any)[`${userType}_unlock_title`] || 'Elevate to a Higher Tier';
-                const ucBtn = (uc as any)[`${userType}_unlock_btn`] || 'Upgrade Plan';
-                const defaultItems = userType === 'seller'
-                  ? [{ icon: 'all_inclusive', text: 'Unlimited product listings' }, { icon: 'stars', text: 'Priority placement in search' }, { icon: 'insights', text: 'Advanced seller analytics' }, { icon: 'support_agent', text: 'Dedicated seller support' }]
-                  : [{ icon: 'all_inclusive', text: 'Unlimited concierge contacts' }, { icon: 'stars', text: 'Early access to new listings' }, { icon: 'insights', text: 'Custom market reporting' }, { icon: 'support_agent', text: 'Priority support' }];
-                let ucItems: { icon: string; text: string }[] = defaultItems;
-                try {
-                  const pJson = (uc as any)[`${userType}_unlock_items`];
-                  const p = JSON.parse(pJson || '[]');
-                  if (Array.isArray(p) && p.length) ucItems = p;
-                } catch { }
-                return (
-                  <div className="bento-col-4">
-                    <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
-                      <div>
-                        <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>{ucLabel}</span>
-                        <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>{ucTitle}</h3>
-                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
-                          {ucItems.map((b, i) => (
-                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
-                              <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
-                              {b.text}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', cursor: 'pointer', transition: 'background 0.3s' }}>
-                        {ucBtn}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          );
-        })() : (
-          <div className="text-center py-5 bg-white rounded-4 border mb-5" style={{ borderRadius: '1.25rem' }}>
-            <i className="bi bi-gem opacity-25" style={{ fontSize: '5rem', color: '#adb5bd' }} />
-            <h3 className="mt-4 fw-bold" style={{ color: '#111' }}>No active plan found</h3>
-            <p className="text-muted">Unlock direct access to {userType === 'buyer' ? 'sellers' : 'buyers'} by subscribing to a plan.</p>
-            <button
-              onClick={() => {
-                const el = document.getElementById('available-plans-section');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-                else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-              }}
-              className="btn px-5 rounded-pill mt-3"
-              style={{ width: 'auto', background: '#ffc63a', color: '#fff', border: 'none', padding: '12px 30px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}
-            >
-              Explore Membership Plans
-            </button>
-          </div>
-        )}
-
-        {/* Seller Plans */}
-        <h2 id="available-plans-section" style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>Available Plans</h2>
-        {sellerPlans.length > 0 ? (
-          <div style={{ position: 'relative' }}>
-            {sellerPlans.length > VISIBLE && (
-              <>
-                <button className="plan-arrow left" onClick={() => { if (sIdx === 0) { setSAnim(false); setSIdx(sellerPlans.length - 1); } else setSIdx(i => i - 1); }}><i className="bi bi-chevron-left" /></button>
-                <button className="plan-arrow right" onClick={() => setSIdx(i => i + 1)}><i className="bi bi-chevron-right" /></button>
-              </>
-            )}
-            <div style={{ overflow: 'hidden', width: '100%' }}>
-              <div style={{ display: 'flex', padding: '20px 0', width: `${(loopSeller.length / VISIBLE) * 100}%`, transform: sellerPlans.length > VISIBLE ? `translateX(calc(-${sIdx} * 100% / ${loopSeller.length}))` : 'none', transition: sAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
-                {loopSeller.map((plan, idx) => {
-                  const isPopular = Number(plan.is_most_selected) === 1;
-                  const isFeatured = Number(plan.is_featured) === 1;
-                  const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
-                  const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
-                  const nameColor = isFeatured ? '#000000' : '#0a0a0a';
-                  const typeColor = isFeatured ? '#734d26' : '#6b7280';
-                  const priceColor = isFeatured ? '#000000' : '#0a0a0a';
-                  const iconColor = '#fdc003';
-                  const textColor = isFeatured ? '#000000' : '#2d2f2f';
+                {(() => {
+                  const uc = data?.unlock_card || {};
+                  const ucLabel = (uc as any)[`${userType}_unlock_label`] || 'Unlock More';
+                  const ucTitle = (uc as any)[`${userType}_unlock_title`] || 'Elevate to a Higher Tier';
+                  const ucBtn = (uc as any)[`${userType}_unlock_btn`] || 'Upgrade Plan';
+                  const defaultItems = userType === 'seller'
+                    ? [{ icon: 'all_inclusive', text: 'Unlimited product listings' }, { icon: 'stars', text: 'Priority placement in search' }, { icon: 'insights', text: 'Advanced seller analytics' }, { icon: 'support_agent', text: 'Dedicated seller support' }]
+                    : [{ icon: 'all_inclusive', text: 'Unlimited concierge contacts' }, { icon: 'stars', text: 'Early access to new listings' }, { icon: 'insights', text: 'Custom market reporting' }, { icon: 'support_agent', text: 'Priority support' }];
+                  let ucItems: { icon: string; text: string }[] = defaultItems;
+                  try {
+                    const pJson = (uc as any)[`${userType}_unlock_items`];
+                    const p = JSON.parse(pJson || '[]');
+                    if (Array.isArray(p) && p.length) ucItems = p;
+                  } catch { }
                   return (
-                    <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopSeller.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
-                      <div className={cardClass} style={{ width: '100%' }}>
-                        {isPopular && <div className="tier-badge">Most Selected</div>}
-                        <div style={{ marginBottom: '3rem' }}>
-                          <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
-                          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Listing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
-                        </div>
-                        <div style={{ marginBottom: '3rem' }}>
-                          <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
-                        </div>
-                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                          {(() => {
-                            const coreFeatures = [
-                              { icon: plan.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} ${plan.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
-                              { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
-                            ];
-                            let customFeatures: { icon: string; text: string }[] = [];
-                            try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
-
-                            // Filter out custom features that might be duplicates of core features
-                            const filteredCustom = customFeatures.filter(cf =>
-                              cf.text &&
-                              !cf.text.toLowerCase().includes('listing') &&
-                              !cf.text.toLowerCase().includes('contact') &&
-                              !cf.text.toLowerCase().includes('validity') &&
-                              !cf.text.toLowerCase().includes('hour')
-                            );
-
-                            const allFeatures = [...coreFeatures, ...filteredCustom];
-
-                            return allFeatures.map((f, i) => (
-                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
-                                <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                                <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
+                    <div className="bento-col-4">
+                      <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
+                        <div>
+                          <span style={{ color: '#D7B467', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'block', marginBottom: '1.25rem' }}>{ucLabel}</span>
+                          <h3 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.03em', color: '#1F2937', marginBottom: '1rem', lineHeight: 1.2 }}>{ucTitle}</h3>
+                          <ul style={{ listStyle: 'none', padding: 0, marginBottom: 0 }}>
+                            {ucItems.map((b, i) => (
+                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.9rem', color: '#374151', fontSize: '0.85rem', fontWeight: 400 }}>
+                                <span className="material-symbols-outlined" style={{ color: '#D7B467', fontSize: '1.1rem', flexShrink: 0, fontVariationSettings: "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" }}>{b.icon}</span>
+                                {b.text}
                               </li>
-                            ));
-                          })()}
-                        </ul>
-                        {isActuallySuper ? (
-                          <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
-                            <button className="btn btn-sm btn-outline-secondary fw-bold rounded-pill" onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>{Number(plan.is_featured) === 1 ? 'Unset Premium' : 'Set Premium'}</button>
-                            <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
-                          </div>
-                        ) : (
-                          <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
-                        )}
+                            ))}
+                          </ul>
+                        </div>
+                        <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', cursor: 'pointer', transition: 'background 0.3s' }}>
+                          {ucBtn}
+                        </button>
                       </div>
                     </div>
                   );
-                })}
+                })()}
+              </div>
+            );
+          })()
+        })() || (
+            <div className="text-center py-5 bg-white rounded-4 border mb-5" style={{ borderRadius: '1.25rem' }}>
+              <i className="bi bi-gem opacity-25" style={{ fontSize: '5rem', color: '#adb5bd' }} />
+              <h3 className="mt-4 fw-bold" style={{ color: '#111' }}>No active plan found</h3>
+              <p className="text-muted">Unlock direct access to {userType === 'buyer' ? 'sellers' : 'buyers'} by subscribing to a plan.</p>
+              <button
+                onClick={() => {
+                  const el = document.getElementById('available-plans-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }}
+                className="btn px-5 rounded-pill mt-3"
+                style={{ width: 'auto', background: '#ffc63a', color: '#fff', border: 'none', padding: '12px 30px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}
+              >
+                Explore Membership Plans
+              </button>
+            </div>
+          )}
+
+        {/* Seller Plans */}
+        {(isSuperAdmin || userType === 'seller') && sellerPlans.length > 0 && (
+          <>
+            <h2 id="available-plans-section" style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>
+              {isSuperAdmin ? 'Seller Plans' : 'Available Plans'}
+            </h2>
+            <div style={{ position: 'relative' }}>
+              {sellerPlans.length > VISIBLE && (
+                <>
+                  <button className="plan-arrow left" onClick={() => { if (sIdx === 0) { setSAnim(false); setSIdx(sellerPlans.length - 1); } else setSIdx(i => i - 1); }}><i className="bi bi-chevron-left" /></button>
+                  <button className="plan-arrow right" onClick={() => setSIdx(i => i + 1)}><i className="bi bi-chevron-right" /></button>
+                </>
+              )}
+              <div style={{ overflow: 'hidden', width: '100%' }}>
+                <div style={{ display: 'flex', padding: '20px 0', width: `${(loopSeller.length / VISIBLE) * 100}%`, transform: sellerPlans.length > VISIBLE ? `translateX(calc(-${sIdx} * 100% / ${loopSeller.length}))` : 'none', transition: sAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
+                  {loopSeller.map((plan, idx) => {
+                    const isPopular = Number(plan.is_most_selected) === 1;
+                    const isFeatured = Number(plan.is_featured) === 1;
+                    const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
+                    const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
+                    const nameColor = isFeatured ? '#000000' : '#0a0a0a';
+                    const typeColor = isFeatured ? '#734d26' : '#6b7280';
+                    const priceColor = isFeatured ? '#000000' : '#0a0a0a';
+                    const iconColor = '#fdc003';
+                    const textColor = isFeatured ? '#000000' : '#2d2f2f';
+                    return (
+                      <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopSeller.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
+                        <div className={cardClass} style={{ width: '100%' }}>
+                          {isPopular && <div className="tier-badge">Most Selected</div>}
+                          <div style={{ marginBottom: '3rem' }}>
+                            <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
+                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Listing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
+                          </div>
+                          <div style={{ marginBottom: '3rem' }}>
+                            <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {(() => {
+                              const coreFeatures = [
+                                { icon: plan.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} ${plan.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
+                                { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                              ];
+                              let customFeatures: { icon: string; text: string }[] = [];
+                              try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
+
+                              // Filter out custom features that might be duplicates of core features
+                              const filteredCustom = customFeatures.filter(cf =>
+                                cf.text &&
+                                !cf.text.toLowerCase().includes('listing') &&
+                                !cf.text.toLowerCase().includes('contact') &&
+                                !cf.text.toLowerCase().includes('validity') &&
+                                !cf.text.toLowerCase().includes('hour')
+                              );
+
+                              const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                              return allFeatures.map((f, i) => (
+                                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                                  <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                  <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
+                                </li>
+                              ));
+                            })()}
+                          </ul>
+                          {isActuallySuper ? (
+                            <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
+                              <button className="btn btn-sm btn-outline-secondary fw-bold rounded-pill" onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>{Number(plan.is_featured) === 1 ? 'Unset Premium' : 'Set Premium'}</button>
+                              <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
+                            </div>
+                          ) : (
+                            <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        ) : <p className="text-center py-4 text-muted">No seller plans available</p>}
+          </>
+        )}
 
         {/* Buyer Plans (Only for Admins or Buyer portal) */}
         {(isSuperAdmin || userType === 'buyer') && buyerPlans.length > 0 && (
           <>
-            <h2 id="buyer-plans-section" style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginTop: '4rem', marginBottom: '1.25rem' }}>Buyer Plans</h2>
+            <h2 id="buyer-plans-section" style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginTop: isSuperAdmin && sellerPlans.length > 0 ? '4rem' : '0', marginBottom: '1.25rem' }}>
+              {isSuperAdmin ? 'Buyer Plans' : 'Available Plans'}
+            </h2>
             <div style={{ position: 'relative' }}>
               {buyerPlans.length > VISIBLE && (
                 <>
@@ -709,6 +729,62 @@ export default function SubscriptionsView({ role, userType }: Props) {
                       <span>Total Payable</span>
                       <span style={{ color: '#ffc63a' }}>₹{displayTotal.toFixed(2)}</span>
                     </div>
+
+                    {/* Referral Balance Toggle */}
+                    {(checkoutData.total_referral_balance ?? 0) > 0 && (
+                      <div className="mt-4" style={{
+                        background: useReferral && referralDiscount > 0 ? 'rgba(16,185,129,0.06)' : '#f8f9fa',
+                        border: `1.5px solid ${useReferral && referralDiscount > 0 ? 'rgba(16,185,129,0.3)' : '#e5e7eb'}`,
+                        borderRadius: '10px',
+                        padding: '12px 14px',
+                        transition: 'all 0.2s',
+                        marginBottom: '1rem'
+                      }}>
+                        <div className="d-flex align-items-center justify-content-between">
+                          <div className="d-flex align-items-center gap-2">
+                            <i className="bi bi-gift-fill" style={{ color: useReferral && referralDiscount > 0 ? '#10b981' : '#9ca3af', fontSize: '1.1rem' }}></i>
+                            <div>
+                              <div className="fw-bold" style={{ fontSize: '0.85rem' }}>
+                                Referral Balance
+                                {useReferral && referralDiscount > 0 && (
+                                  <span className="ms-2 badge" style={{ background: '#10b981', color: '#fff', fontSize: '0.7rem', borderRadius: '50px', padding: '2px 8px' }}>
+                                    Applied
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+                                ₹{(checkoutData.total_referral_balance ?? 0).toFixed(2)} available
+                                {useReferral && referralDiscount === 0 && basePrice < (checkoutData.referral_min_purchase || 0) && (
+                                  <div className="text-danger mt-1" style={{ fontSize: '0.72rem' }}>
+                                    <i className="bi bi-info-circle me-1"></i>
+                                    Min purchase of ₹{(checkoutData.referral_min_purchase || 0).toFixed(0)} required
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {basePrice >= (checkoutData.referral_min_purchase || 0) && (
+                            <button
+                              onClick={() => setUseReferral(prev => !prev)}
+                              style={{
+                                background: useReferral ? 'rgba(239,68,68,0.08)' : '#10b981',
+                                color: useReferral ? '#ef4444' : '#fff',
+                                border: `1px solid ${useReferral ? 'rgba(239,68,68,0.2)' : '#10b981'}`,
+                                borderRadius: '8px',
+                                padding: '5px 14px',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {useReferral ? 'Remove' : 'Apply'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Coupon */}
                     <div className="mt-4 mb-3">

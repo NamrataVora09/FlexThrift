@@ -165,14 +165,12 @@ class SharedApi extends ResourceController
         $plans = $plansBuilder->orderBy('price', 'ASC')
             ->get()->getResultArray();
 
-        // Auto-deactivate expired subscriptions for this user and user_type
+        // Auto-deactivate expired subscriptions for this user (globally)
         $expiredIds = $db->table('user_subscriptions us')
             ->select('us.id')
-            ->join('subscription_plans sp', 'sp.id = us.plan_id')
             ->where('us.user_id', $jwtUser['user_id'])
             ->where('us.is_active', 1)
             ->where('us.expires_at <', date('Y-m-d H:i:s'))
-            ->where('sp.user_type', $userType)
             ->get()->getResultArray();
         if (!empty($expiredIds)) {
             $db->table('user_subscriptions')
@@ -180,25 +178,38 @@ class SharedApi extends ResourceController
                 ->update(['is_active' => 0]);
         }
 
-        $active = $db->table('user_subscriptions us')
-            ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours')
+        $activeQuery = $db->table('user_subscriptions us')
+            ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours, sp.user_type as plan_user_type')
             ->join('subscription_plans sp', 'sp.id = us.plan_id')
             ->where('us.user_id', $jwtUser['user_id'])
             ->where('us.is_active', 1)
             ->where('us.payment_status', 'paid')
-            ->where('us.starts_at <=', date('Y-m-d H:i:s'))
-            ->where('us.expires_at >=', date('Y-m-d H:i:s'))
-            ->where('sp.user_type', $userType)
-            ->orderBy('us.expires_at', 'ASC')
+            ->where('us.expires_at >=', date('Y-m-d H:i:s'));
+
+        // For regular users: only show plans that have already started
+        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+            $activeQuery->where('us.starts_at <=', date('Y-m-d H:i:s'));
+        }
+
+        // If not admin, restrict active plan to current portal type
+        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+            $activeQuery->where('sp.user_type', $userType);
+        }
+
+        $active = $activeQuery->orderBy('us.expires_at', 'ASC')
             ->get()->getRowArray();
 
-        $history = $db->table('user_subscriptions us')
-            ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours')
+        $historyQuery = $db->table('user_subscriptions us')
+            ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours, sp.user_type as plan_user_type')
             ->join('subscription_plans sp', 'sp.id = us.plan_id')
             ->where('us.user_id', $jwtUser['user_id'])
-            ->where('us.payment_status', 'paid')
-            ->where('sp.user_type', $userType)
-            ->orderBy('us.created_at', 'DESC')
+            ->where('us.payment_status', 'paid');
+
+        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
+            $historyQuery->where('sp.user_type', $userType);
+        }
+
+        $history = $historyQuery->orderBy('us.created_at', 'DESC')
             ->limit(10)
             ->get()->getResultArray();
 
