@@ -47,7 +47,7 @@ const sectionStyle: React.CSSProperties = { background: '#fff', padding: 25, bor
 const sectionTitle: React.CSSProperties = { fontWeight: 700, borderBottom: '2px solid #ffc63a', paddingBottom: 10, marginBottom: 20, display: 'inline-block', fontSize: '1.1rem' };
 const labelStyle: React.CSSProperties = { fontWeight: 500, fontSize: '0.875rem', marginBottom: 4 };
 const inputStyle: React.CSSProperties = { padding: 12, borderRadius: 8, border: '1px solid #ddd', fontSize: 14 };
-const btnYellow: React.CSSProperties = { background: '#ffc63a', color: '#000', border: 'none', borderRadius: 10, padding: '14px 28px', fontWeight: 700, transition: 'all 0.3s' };
+const btnYellow: React.CSSProperties = { background: '#ffc63a', color: '#000', border: 'none', borderRadius: 10, padding: '14px 28px', fontWeight: 700 };
 const priceSuggestion: React.CSSProperties = { 
   background: '#ffc63a', 
   color: '#000', 

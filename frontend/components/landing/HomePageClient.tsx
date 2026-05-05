@@ -794,8 +794,6 @@ export default function HomePageClient() {
                     transition: 'all 0.3s ease',
                     fontFamily: 'Segoe UI, sans-serif',
                   }}
-                  onMouseEnter={e => { if (!sidebarLoading) { e.currentTarget.style.background = '#000'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(247,199,199,0.4)'; } }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#ffc63a'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
                 >
                   {sidebarLoading ? 'Logging in…' : 'Login'}
                 </button>

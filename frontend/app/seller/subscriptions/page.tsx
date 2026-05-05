@@ -185,15 +185,11 @@ function SellerSubscriptionsInner() {
         .tier-elite{background:#e7efe5;border-radius:1rem;padding:2.5rem;height:100%;width:100%;display:flex;flex-direction:column;position:relative;overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);}
         .tier-badge{position:absolute;top:0px;right:-5px;background:#d7b467;color:#ffff;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
         .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-basic:hover{background:#0a0a0a;color:#fff}
         .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
         .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#d7b467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
-        .tier-btn-elite:hover{background:#c5a356}
         .btn-brand-sub{background:#ffc63a;color:#ffff;border:none;padding:14px;border-radius:12px;font-weight:700;width:100%;transition:.3s;cursor:pointer}
-        .btn-brand-sub:hover{background:#000;color:#ffc63a}
         .feature-icon-sub{color:#ffc63a;font-size:1.2rem;margin-right:12px}
         .plan-arrow{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;color:#374151;transition:all .2s;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.1)}
-        .plan-arrow:hover{background:#D7B467;color:#fff;border-color:#D7B467;}
         .plan-arrow.left{left:8px}
         .plan-arrow.right{right:8px}
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
@@ -218,7 +214,7 @@ function SellerSubscriptionsInner() {
             <i className="bi bi-gem opacity-25" style={{ fontSize: '5rem' }} />
             <h3 className="mt-4 fw-bold">No active plan found</h3>
             <p className="text-muted">Unlock product listing features by subscribing to a plan.</p>
-            <a href="#available-plans" className="btn btn-brand-sub px-5 rounded-pill mt-3" style={{ width: 'auto' }}>
+            <a href="#available-plans" className="btn btn-brand-sub border hover:border-gold! px-5 rounded-pill mt-3" style={{ width: 'auto' }}>
               Explore Membership Plans
             </a>
           </div>
@@ -232,7 +228,7 @@ function SellerSubscriptionsInner() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
                       <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active Plan</span>
                       <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>
-                        Valid For {sub.duration_hours > 0 ? `${sub.duration_hours} hour/s` : 'Unlimited hours'} 
+                        Valid For {sub.duration_hours > 0 ? `${sub.duration_hours} hour/s` : 'Unlimited hours'}
                       </span>
                     </div>
                     <h2 style={{ fontSize: 'clamp(2rem,5vw,3.25rem)', fontWeight: 900, letterSpacing: '-0.04em', color: '#111', marginBottom: '0.6rem', lineHeight: 1 }}>{sub.plan_name}</h2>
@@ -262,14 +258,14 @@ function SellerSubscriptionsInner() {
                 const uc = data?.unlock_card || {};
                 const label = uc['seller_unlock_label'] || 'Unlock More';
                 const title = uc['seller_unlock_title'] || 'Elevate to a Higher Tier';
-                const btn   = uc['seller_unlock_btn']   || 'Upgrade Plan';
+                const btn = uc['seller_unlock_btn'] || 'Upgrade Plan';
                 let items: { icon: string; text: string }[] = [
                   { icon: 'all_inclusive', text: 'Unlimited product listings' },
-                  { icon: 'stars',         text: 'Priority placement in search' },
-                  { icon: 'insights',      text: 'Advanced seller analytics' },
+                  { icon: 'stars', text: 'Priority placement in search' },
+                  { icon: 'insights', text: 'Advanced seller analytics' },
                   { icon: 'support_agent', text: 'Dedicated seller support' },
                 ];
-                try { const p = JSON.parse(uc['seller_unlock_items'] || '[]'); if (Array.isArray(p) && p.length) items = p; } catch {}
+                try { const p = JSON.parse(uc['seller_unlock_items'] || '[]'); if (Array.isArray(p) && p.length) items = p; } catch { }
                 return (
                   <div className="bento-col-4">
                     <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
@@ -308,69 +304,69 @@ function SellerSubscriptionsInner() {
                 </>
               )}
               <div style={{ overflow: 'hidden', width: '100%' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'stretch',
-                padding: '20px 0',
-                width: `${(loopPlans.length / VISIBLE) * 100}%`,
-                transform: plans.length > VISIBLE ? `translateX(calc(-${pIdx} * 100% / ${loopPlans.length}))` : 'none',
-                transition: pAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none',
-              }}>
-                {loopPlans.map((plan, idx) => {
-                  const isPopular = Number(plan.is_most_selected) === 1;
-                  const isFeatured = Number(plan.is_featured) === 1;
-                  const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
-                  const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
-                  const nameColor = '#0a0a0a';
-                  const typeColor = isFeatured ? '#734d26' : '#6b7280';
-                  const priceColor = '#0a0a0a';
-                  const iconColor = '#fdc003';
-                  const textColor = '#2d2f2f';
-                  return (
-                    <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopPlans.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
-                      <div className={cardClass}>
-                        {isPopular && <div className="tier-badge">Most Selected</div>}
-                        <div style={{ marginBottom: '3rem' }}>
-                          <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h2>
-                          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>
-                            {plan.plan_type.toUpperCase()} BASED
-                          </p>
-                        </div>
-                        <div style={{ marginBottom: '3rem' }}>
-                          <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
-                        </div>
-                        <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                          {(() => {
-                            const coreFeatures = [
-                              { icon: 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
-                              { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
-                            ];
-                            let customFeatures: { icon: string; text: string }[] = [];
-                            try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) {}
-                            
-                            const filteredCustom = customFeatures.filter(cf => 
-                              cf.text && 
-                              !cf.text.toLowerCase().includes('listing') && 
-                              !cf.text.toLowerCase().includes('validity') && 
-                              !cf.text.toLowerCase().includes('hour')
-                            );
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'stretch',
+                  padding: '20px 0',
+                  width: `${(loopPlans.length / VISIBLE) * 100}%`,
+                  transform: plans.length > VISIBLE ? `translateX(calc(-${pIdx} * 100% / ${loopPlans.length}))` : 'none',
+                  transition: pAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none',
+                }}>
+                  {loopPlans.map((plan, idx) => {
+                    const isPopular = Number(plan.is_most_selected) === 1;
+                    const isFeatured = Number(plan.is_featured) === 1;
+                    const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
+                    const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
+                    const nameColor = '#0a0a0a';
+                    const typeColor = isFeatured ? '#734d26' : '#6b7280';
+                    const priceColor = '#0a0a0a';
+                    const iconColor = '#fdc003';
+                    const textColor = '#2d2f2f';
+                    return (
+                      <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopPlans.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
+                        <div className={cardClass}>
+                          {isPopular && <div className="tier-badge">Most Selected</div>}
+                          <div style={{ marginBottom: '3rem' }}>
+                            <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h2>
+                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>
+                              {plan.plan_type.toUpperCase()} BASED
+                            </p>
+                          </div>
+                          <div style={{ marginBottom: '3rem' }}>
+                            <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>₹{Number(plan.price).toLocaleString('en-IN')}</span>
+                          </div>
+                          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {(() => {
+                              const coreFeatures = [
+                                { icon: 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
+                                { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                              ];
+                              let customFeatures: { icon: string; text: string }[] = [];
+                              try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
 
-                            const allFeatures = [...coreFeatures, ...filteredCustom];
+                              const filteredCustom = customFeatures.filter(cf =>
+                                cf.text &&
+                                !cf.text.toLowerCase().includes('listing') &&
+                                !cf.text.toLowerCase().includes('validity') &&
+                                !cf.text.toLowerCase().includes('hour')
+                              );
 
-                            return allFeatures.map((f, i) => (
-                              <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
-                                <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                                <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
-                              </li>
-                            ));
-                          })()}
-                        </ul>
-                        <button className={btnClass} onClick={() => handleChoosePlan(plan)}>Buy Plan</button>
+                              const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                              return allFeatures.map((f, i) => (
+                                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                                  <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                  <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
+                                </li>
+                              ));
+                            })()}
+                          </ul>
+                          <button className={btnClass} onClick={() => handleChoosePlan(plan)}>Buy Plan</button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           ) : (

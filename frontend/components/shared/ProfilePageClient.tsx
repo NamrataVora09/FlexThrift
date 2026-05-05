@@ -283,7 +283,6 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           margin-top: 0.5rem;
           transition: opacity 0.2s;
         }
-        .edit-profile-btn:hover { opacity: 0.88; }
         
         @media (max-width: 576px) {
           .edit-profile-btn { width: 100%; justify-content: center; }
@@ -344,7 +343,6 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           display: flex; align-items: center; justify-content: center;
           transition: background 0.15s;
         }
-        .modal-close:hover { background: #e5e7eb; color: #1f2937; }
         .modal-field label {
           display: block; font-size: 0.82rem; font-weight: 700;
           color: #1f2937; margin-bottom: 6px;
@@ -368,12 +366,10 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           padding: 10px 28px; border-radius: 8px; font-weight: 700;
           cursor: pointer; transition: background 0.2s;
         }
-        .btn-save:hover { background: #D97706; }
         .btn-cancel {
           background: #f3f4f6; color: #1f2937; border: none;
           padding: 10px 28px; border-radius: 8px; font-weight: 600; cursor: pointer;
         }
-        .btn-cancel:hover { background: #e5e7eb; }
 
         /* ── Referral ── */
         .referral-box {

@@ -166,9 +166,6 @@ img {
   font-family: Arial, sans-serif;
 }
 
-.hp-footer-links a:hover {
-  color: #ffc63a !important;
-}
 
 .hp-social {
   margin-top: -33px;
@@ -182,9 +179,6 @@ img {
   transition: color 0.3s;
 }
 
-.hp-social a:hover {
-  color: #ffc63a !important;
-}
 
 .hp-copyright {
   text-align: center;
@@ -205,11 +199,6 @@ img {
   transition: all 0.2s;
 }
 
-.yellow_button:hover {
-  background: #e6b035 !important;
-  color: #fff;
-  transform: translateY(-1px);
-}
 
 .white_button {
   padding: 0.4rem 1.2rem;
@@ -223,30 +212,18 @@ img {
   color: #6B7280;
 }
 
-.white_button:hover {
-  background: #f9fafb !important;
-  border-color: #d1d5db;
-}
 
 .brwn_button {
   background: #c7a15a;
   color: white;
 }
 
-.brwn_button:hover {
-  background: #b8924b !important;
-  color: white;
-}
 
 .gray_button {
   background: #e5e7eb;
   color: #374151;
 }
 
-.gray_button:hover {
-  background: #d1d5db !important;
-  color: #374151;
-}
 
 /* ===== Type Badges ===== */
 .rent_typ {
@@ -438,9 +415,6 @@ img {
   font-family: "Maven Pro", sans-serif;
 }
 
-.auth-navbar .nav-link:hover {
-  color: #D7B467 !important;
-}
 
 .login-links {
   font-weight: 700;
@@ -449,9 +423,6 @@ img {
   font-family: Arial, sans-serif;
 }
 
-.login-links:hover {
-  color: #ffbe6e !important;
-}
 
 .auth-section {
   padding: 60px 0;
@@ -557,12 +528,6 @@ img {
   cursor: pointer;
 }
 
-.btn-submit:hover {
-  background-color: #000;
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
 
 .btn-submit:disabled {
   opacity: 0.65;
@@ -582,9 +547,6 @@ img {
   font-weight: 600;
 }
 
-.auth-link-text a:hover {
-  color: #000;
-}
 
 /* ===== Role Selector ===== */
 .role-selector {
@@ -626,9 +588,6 @@ img {
   box-shadow: 0 4px 15px rgba(255, 198, 58, 0.3);
 }
 
-.role-label:hover {
-  border-color: #ffc63a;
-}
 
 /* ===== Footer ===== */
 .site-footer {
@@ -675,9 +634,6 @@ img {
   transition: color 0.25s;
 }
 
-.footer-links a:hover {
-  color: #ffc63a !important;
-}
 
 .copyright {
   text-align: center;
@@ -798,14 +754,6 @@ img {
   flex-shrink: 0;
 }
 
-.topbar-toggle:hover {
-  background: #f0f0f0;
-  color: #374151;
-}
-
-.topbar-toggle:active {
-  transform: scale(0.95);
-}
 
 .topbar-brand {
   display: flex;
@@ -854,11 +802,6 @@ img {
   transition: all 0.18s;
 }
 
-.topbar-user-btn:hover {
-  background: #fafafa;
-  border-color: #d1d5db;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
 
 .topbar-avatar {
   display: flex;
@@ -979,10 +922,6 @@ img {
   font-family: inherit;
 }
 
-.topbar-dropdown-item:hover {
-  background: #f8f9fa;
-  color: #111;
-}
 
 .topbar-dropdown-item i {
   font-size: 1rem;
@@ -991,18 +930,11 @@ img {
   color: #9ca3af;
 }
 
-.topbar-dropdown-item:hover i {
-  color: #ffc63a;
-}
 
 .topbar-dropdown-danger {
   color: #dc3545;
 }
 
-.topbar-dropdown-danger:hover {
-  background: #fff5f5;
-  color: #dc3545;
-}
 
 .topbar-dropdown-danger i {
   color: #dc3545 !important;
@@ -1041,21 +973,11 @@ img {
   transition: all 0.2s ease;
 }
 
-.sa-filter-btn:hover {
-  background: #e6b035 !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 198, 58, 0.35);
-}
 
 .sa-filter-reset-btn {
   transition: all 0.2s ease;
 }
 
-.sa-filter-reset-btn:hover {
-  background: #f3f4f6 !important;
-  color: #111 !important;
-  transform: translateY(-1px);
-}
 
 /* Save footer */
 .save-footer {
@@ -1134,11 +1056,6 @@ img {
   border-color: #e5e7eb;
 }
 
-.page-link:hover {
-  background: #ffc63a;
-  border-color: #ffc63a;
-  color: #fff;
-}
 
 .page-item.active .page-link {
   background: #ffc63a;
