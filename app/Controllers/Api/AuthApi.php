@@ -221,30 +221,42 @@ class AuthApi extends ResourceController
             $requestedType = $data['user_type'] ?? 'buyer';
             $currentType   = $existingUser['user_type'];
 
-            // Allow upgrading a buyer to seller (or vice versa) by switching to 'both'
-            $canUpgrade = (
-                ($requestedType === 'seller' && $currentType === 'buyer') ||
-                ($requestedType === 'buyer'  && $currentType === 'seller')
-            );
-
-            if ($canUpgrade) {
-                $this->userModel->update($existingUser['id'], [
-                    'user_type'  => 'both',
-                    'role'       => $requestedType,
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
-                $otp = $this->userModel->generateOTP($existingUser['id']);
-                if ($otp) $this->sendOTPEmail($existingUser['email'], $existingUser['name'], $otp);
-                return $this->respond([
-                    'success' => true,
-                    'message' => 'Account upgraded successfully. OTP sent to your email.',
-                ], 200);
+            // Logic: Give error only if user already has this role or is 'both'
+            $alreadyHasRole = false;
+            if ($currentType === 'both') {
+                $alreadyHasRole = true;
+            } elseif ($currentType === $requestedType) {
+                $alreadyHasRole = true;
+            } elseif ($requestedType === 'both' && $currentType !== 'both') {
+                $alreadyHasRole = false; // upgrading from one role to both
             }
 
+            if ($alreadyHasRole) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'This email is already registered with the selected role.',
+                ], 409);
+            }
+
+            // Upgrade existing user to 'both'
+            $this->userModel->update($existingUser['id'], [
+                'user_type'  => 'both',
+                'role'       => ($requestedType === 'both') ? 'buyer' : $requestedType,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            // Process referral for existing user if they haven't been referred yet
+            if (empty($existingUser['referred_by']) && !empty($data['referred_by'])) {
+                $this->applyReferral($existingUser['id'], $data['referred_by']);
+            }
+
+            $otp = $this->userModel->generateOTP($existingUser['id']);
+            if ($otp) $this->sendOTPEmail($existingUser['email'], $existingUser['name'], $otp);
+
             return $this->respond([
-                'success' => false,
-                'message' => 'Email already registered',
-            ], 409);
+                'success' => true,
+                'message' => 'Account upgraded successfully. OTP sent to your email.',
+            ], 200);
         }
 
         // Check existing mobile
@@ -279,32 +291,8 @@ class AuthApi extends ResourceController
         }
 
         // Process referral code
-        $referredBy = strtoupper(trim($data['referred_by'] ?? ''));
-        if ($referredBy) {
-            $db = \Config\Database::connect();
-            $referrer = $db->table('users')->where('referral_code', $referredBy)->get()->getRowArray();
-            if ($referrer && $referrer['id'] !== $userId) {
-                $settingsRows = $db->table('system_settings')
-                    ->whereIn('setting_key', ['referral_enabled', 'referral_receiver_reward', 'referral_expiry_days'])
-                    ->get()->getResultArray();
-                $cfg = [];
-                foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
-
-                if (($cfg['referral_enabled'] ?? '1') === '1') {
-                    $receiverReward = (float) ((isset($cfg['referral_receiver_reward']) && $cfg['referral_receiver_reward'] !== '') ? $cfg['referral_receiver_reward'] : 50);
-                    $expiryDays     = (int)   ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
-                    $expiresAt      = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
-
-                    // Credit the receiver immediately
-                    $db->table('users')->where('id', $userId)->update([
-                        'referred_by'         => $referredBy,
-                        'referral_balance'    => $receiverReward,
-                        'referral_expires_at' => $expiresAt,
-                        'has_used_referral'   => 0, // Mark 0 so referrer can still be credited on first purchase
-                        'updated_at'          => date('Y-m-d H:i:s'),
-                    ]);
-                }
-            }
+        if (!empty($data['referred_by'])) {
+            $this->applyReferral($userId, $data['referred_by']);
         }
 
         // Generate and send OTP
@@ -538,6 +526,38 @@ class AuthApi extends ResourceController
                 'token' => $token,
             ],
         ]);
+    }
+
+    private function applyReferral($userId, $referredBy)
+    {
+        $referredBy = strtoupper(trim($referredBy));
+        if (!$referredBy) return;
+
+        $db = \Config\Database::connect();
+        $referrer = $db->table('users')->where('referral_code', $referredBy)->get()->getRowArray();
+
+        if ($referrer && (int)$referrer['id'] !== (int)$userId) {
+            $settingsRows = $db->table('system_settings')
+                ->whereIn('setting_key', ['referral_enabled', 'referral_receiver_reward', 'referral_expiry_days'])
+                ->get()->getResultArray();
+            $cfg = [];
+            foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+
+            if (($cfg['referral_enabled'] ?? '1') === '1') {
+                $receiverReward = (float) ((isset($cfg['referral_receiver_reward']) && $cfg['referral_receiver_reward'] !== '') ? $cfg['referral_receiver_reward'] : 50);
+                $expiryDays     = (int)   ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
+                $expiresAt      = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
+
+                // Credit the receiver immediately
+                $db->table('users')->where('id', $userId)->update([
+                    'referred_by'         => $referredBy,
+                    'referral_balance'    => $receiverReward,
+                    'referral_expires_at' => $expiresAt,
+                    'has_used_referral'   => 0, 
+                    'updated_at'          => date('Y-m-d H:i:s'),
+                ]);
+            }
+        }
     }
 
     private function sanitizeUser(array $user, string $role): array
