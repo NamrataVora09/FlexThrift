@@ -29,7 +29,6 @@ interface RentalPricingRule {
   depreciation_range_min: string;
   depreciation_range_max: string;
   depreciation_amount: string;
-  max_cost_cap_per_day: string;
   is_active: number;
 }
 
@@ -78,8 +77,6 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
   sale_max_additional_depreciation: { label: 'Max Additional Depreciation (%)', hint: 'Maximum additional depreciation cap.' },
   pricing_tiers: { label: 'Usage-Based Pricing Tiers (JSON)', type: 'textarea', hint: 'JSON array of {min, max, dep} objects.' },
   rental_base_deposit_deduction: { label: 'Base Deposit Deduction (%)', hint: 'Base deduction for deposit calculation.' },
-  rental_suggested_cost_percent: { label: 'Suggested Cost (%)', hint: 'Suggested rental cost as % of deposit.' },
-  rental_max_cost_cap_per_day: { label: 'Max Cost Cap/Day (%)', hint: 'Max rental cost per day as % of deposit.' },
   min_rental_days: { label: 'Min Rental Days' },
   rental_pricing_tiers: { label: 'Rental Pricing Tiers (JSON)', type: 'textarea', hint: 'JSON array of rental tier objects.' },
   fallback_rental_cost_per_day: { label: 'Fallback Rental Cost Per Day (%)', hint: 'Default rental cost as % of deposit if no pricing rule matches.' },
@@ -124,7 +121,7 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
 };
 
 const TAB_FIELDS: Record<string, string[]> = {
-  pricing: ['sale_base_discount', 'usage_no_dep_max', 'sale_depreciation_per_use', 'sale_max_additional_depreciation', 'rental_base_deposit_deduction', 'rental_suggested_cost_percent', 'rental_max_cost_cap_per_day', 'min_rental_days', 'fallback_rental_cost_per_day'],
+  pricing: ['sale_base_discount', 'usage_no_dep_max', 'sale_depreciation_per_use', 'sale_max_additional_depreciation', 'rental_base_deposit_deduction', 'min_rental_days', 'fallback_rental_cost_per_day'],
   offers: ['offer_acceptance_limit_days', 'seller_rating_period_days', 'seller_rejection_window_hours', 'buyer_rating_period_days'],
   images: ['max_product_images', 'max_image_size_mb', 'image_upload_guidelines'],
   smtp: ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name'],

@@ -72,8 +72,8 @@ class RentalPricingRuleModel extends Model
 
         $maxThreshold = 0;
         $maxDepositPct = 0;
-        $maxCostCap = 0;
         $maxDepreciation = 0;
+        $maxCostCap = 0;
         $matchedCount = 0;
 
         foreach ($rules as $rule) {
@@ -84,8 +84,8 @@ class RentalPricingRuleModel extends Model
             if ($usedTimes >= $rangeMin && ($rangeMax <= 0 || $usedTimes <= $rangeMax)) {
                 $maxThreshold  = max($maxThreshold, (float) $rule['deposit_deduction_threshold']);
                 $maxDepositPct = max($maxDepositPct, (float) $rule['deposit_percentage']);
-                $maxCostCap    = max($maxCostCap, (float) $rule['max_cost_cap_per_day']);
                 $maxDepreciation = max($maxDepreciation, (float) $rule['depreciation_amount']);
+                $maxCostCap = max($maxCostCap, (float) ($rule['max_cost_cap_per_day'] ?? 0));
                 $matchedCount++;
             }
         }

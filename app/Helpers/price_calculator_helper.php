@@ -83,7 +83,7 @@ if (!function_exists('getPricingRuleDeduction')) {
 
 /**
  * Get matched RENTAL pricing rule deductions based on product's listing type, category, sub-category and usage
- * Returns ['base_threshold' => %, 'depreciation' => %, 'total_deduction' => %, 'deposit_percentage' => %, 'max_cost_cap_per_day' => %, 'matched_rules' => count]
+ * Returns ['base_threshold' => %, 'depreciation' => %, 'total_deduction' => %, 'deposit_percentage' => %, 'matched_rules' => count]
  * Logic: Among all matching active rental rules, pick MAX values (NOT sum).
  */
 if (!function_exists('getRentalPricingRuleDeduction')) {
@@ -98,7 +98,6 @@ if (!function_exists('getRentalPricingRuleDeduction')) {
                 'depreciation' => 0,
                 'total_deduction' => 0,
                 'deposit_percentage' => 0,
-                'max_cost_cap_per_day' => 0,
                 'matched_rules' => 0,
             ];
         }
@@ -154,12 +153,10 @@ if (!function_exists('calculateRentalPricesWithRules')) {
             $depositPercent = $ruleResult['deposit_percentage'];
             $deposit = $depreciatedValue * ($depositPercent / 100);
 
-            $maxRentalCapPerDay = $ruleResult['max_cost_cap_per_day'];
-            $suggestedCostPercent = (float) getSystemSetting('rental_suggested_cost_percent', 10);
+            $globalMaxCapPct = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
+            $maxCapPct = (float) ($ruleResult['max_cost_cap_per_day'] > 0 ? $ruleResult['max_cost_cap_per_day'] : $globalMaxCapPct);
 
-            $suggestedRentalCost = $deposit * ($suggestedCostPercent / 100);
-            $maxRental = $deposit * ($maxRentalCapPerDay / 100);
-            $rentalCost = min($suggestedRentalCost, $maxRental);
+            $rentalCost = $deposit * ($maxCapPct / 100);
 
             return [
                 'deposit' => round($deposit, 2),
@@ -223,7 +220,8 @@ if (!function_exists('validateRentalCostWithRules')) {
         $ruleResult = getRentalPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, $usedTimes);
 
         if ($ruleResult['matched_rules'] > 0) {
-            $maxCap = $ruleResult['max_cost_cap_per_day'];
+            $globalMaxCap = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
+            $maxCap = (float) ($ruleResult['max_cost_cap_per_day'] > 0 ? $ruleResult['max_cost_cap_per_day'] : $globalMaxCap);
             $maxAllowed = $deposit * ($maxCap / 100);
             return $rentalCost <= (round($maxAllowed) + 0.01);
         }
@@ -264,39 +262,19 @@ if (!function_exists('calculateRentalPrices')) {
     {
         // 1. Calculate Depreciated Value (similar to Sale logic)
         // Rent Base Deduction Threshold (default: 10%)
-        $baseDiscountPercent = (float) getSystemSetting('rental_base_deposit_deduction', 10);
-
-        // Tiered Depreciation for Rental
+        $baseDiscountPercent = (float) getSystemSetting('rental_base_deposit_deduction', 0);
         $usageDepPercent = calculateDepreciationPercent($usedTimes, 'rental_pricing_tiers');
 
-        // Formula for Depreciated Value: Original - (Original * Base%) - (Original * Usage%)
-        $depreciatedValue = $originalPrice - ($originalPrice * ($baseDiscountPercent / 100)) - ($originalPrice * ($usageDepPercent / 100));
-
-        // Ensure depreciated value doesn't exceed original minus base discount
-        $maxDepreciatedValue = $originalPrice * (1 - ($baseDiscountPercent / 100));
-        $depreciatedValue = min($depreciatedValue, $maxDepreciatedValue);
-
-        // 2. Deposit = Depreciated Value * (Deposit Percentage)
-        $depositPercent = (float) getSystemSetting('rental_deposit_percentage', 40);
-        $deposit = $depreciatedValue * ($depositPercent / 100);
-
-        // 3. Rental cost calculation
-        $fallbackPct = (float) getSystemSetting('fallback_rental_cost_per_day', 0);
+        // Deposit = Original Price - Base Deduction - Usage Depreciation
+        $suggestedDeposit = $originalPrice * (1 - ($baseDiscountPercent + $usageDepPercent) / 100);
+        $maxDeposit = $originalPrice * (1 - ($baseDiscountPercent / 100));
         
-        if ($fallbackPct > 0) {
-            // New logic: Rental Cost is a percentage of deposit (which defaults to original price in fallback mode)
-            $deposit = $originalPrice;
-            $rentalCost = $deposit * ($fallbackPct / 100);
-            $depreciatedValue = $originalPrice;
-        } else {
-            $maxRentalCapPerDay = (float) getSystemSetting('rental_max_cost_cap_per_day', 14);
-            $suggestedCostPercent = (float) getSystemSetting('rental_suggested_cost_percent', 10);
+        $deposit = min($suggestedDeposit, $maxDeposit);
 
-            // Suggested rental cost
-            $suggestedRentalCost = $deposit * ($suggestedCostPercent / 100);
-            $maxRental = $deposit * ($maxRentalCapPerDay / 100);
-            $rentalCost = min($suggestedRentalCost, $maxRental);
-        }
+        // Rental cost calculation using Global Max Cost Cap
+        $maxCapPct = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
+        $rentalCost = $deposit * ($maxCapPct / 100);
+        $depreciatedValue = $deposit; 
 
         return [
             'deposit' => round($deposit, 2),
@@ -326,7 +304,7 @@ if (!function_exists('validateDeposit')) {
     {
         if ($originalPrice <= 0) return true;
 
-        $baseDeductionPercent = (float) getSystemSetting('rental_base_deposit_deduction', 10);
+        $baseDeductionPercent = (float) getSystemSetting('rental_base_deposit_deduction', 0);
         $maxAllowed = $originalPrice * (1 - ($baseDeductionPercent / 100));
         return $deposit <= (round($maxAllowed) + 0.01);
     }
@@ -338,8 +316,8 @@ if (!function_exists('validateDeposit')) {
 if (!function_exists('validateRentalCost')) {
     function validateRentalCost(float $deposit, float $rentalCost): bool
     {
-        $maxRentalCapPerDay = (float) getSystemSetting('rental_max_cost_cap_per_day', 14);
-        $maxAllowed = $deposit * ($maxRentalCapPerDay / 100);
+        $maxCap = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
+        $maxAllowed = $deposit * ($maxCap / 100);
         return $rentalCost <= (round($maxAllowed) + 0.01);
     }
 }

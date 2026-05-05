@@ -207,7 +207,7 @@ export default function PricingRulesManager() {
             <table className="table table-hover align-middle mb-0 rules-table">
               <thead>
                 <tr>
-                  <th>Filter Type</th><th>Value</th><th>Deposit Ded. (%)</th><th>Usage Range</th><th>Dep. (%)</th><th>Max Cost/Day (%)</th><th className="text-end">Actions</th>
+                  <th>Filter Type</th><th>Value</th><th>Deposit Ded. (%)</th><th>Usage Range</th><th>Dep. (%)</th><th>Cost Cap (%)</th><th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -218,7 +218,7 @@ export default function PricingRulesManager() {
                     <td>{r.deposit_deduction_threshold}%</td>
                     <td>{r.depreciation_range_min} - {Number(r.depreciation_range_max) > 0 ? r.depreciation_range_max : '∞'}</td>
                     <td>{r.depreciation_amount}%</td>
-                    <td>{r.max_cost_cap_per_day}%</td>
+                    <td>{Number(r.max_cost_cap_per_day) > 0 ? `${r.max_cost_cap_per_day}%` : <span className="text-muted small">Global Fallback</span>}</td>
                     <td className="text-end">
                       <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openRentalModal(r)}><i className="bi bi-pencil"></i></button>
                       <button className="btn btn-sm btn-outline-danger" onClick={() => deleteRentalRule(r.id)}><i className="bi bi-trash"></i></button>
@@ -321,13 +321,9 @@ export default function PricingRulesManager() {
                       {rentalFilterValues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                     </select>
                   </div>
-                  <div className="col-md-6">
+                  <div className="col-md-12">
                     <label className="form-label small fw-bold">Deposit Ded. Threshold (%)</label>
                     <input type="number" className="form-control" value={editingRentalRule.deposit_deduction_threshold} onChange={e => setEditingRentalRule({ ...editingRentalRule, deposit_deduction_threshold: e.target.value })} />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label small fw-bold">Max Cost Cap/Day (%)</label>
-                    <input type="number" className="form-control" value={editingRentalRule.max_cost_cap_per_day} onChange={e => setEditingRentalRule({ ...editingRentalRule, max_cost_cap_per_day: e.target.value })} />
                   </div>
                   <div className="col-md-4">
                     <label className="form-label small fw-bold">Min Usage</label>
@@ -340,6 +336,11 @@ export default function PricingRulesManager() {
                   <div className="col-md-4">
                     <label className="form-label small fw-bold">Depreciation (%)</label>
                     <input type="number" className="form-control" value={editingRentalRule.depreciation_amount} onChange={e => setEditingRentalRule({ ...editingRentalRule, depreciation_amount: e.target.value })} />
+                  </div>
+                  <div className="col-md-12">
+                    <label className="form-label small fw-bold">Max Rental Cost Cap (%)</label>
+                    <input type="number" step="0.1" className="form-control" placeholder="Leave empty or 0 to use Global Setting" value={editingRentalRule.max_cost_cap_per_day} onChange={e => setEditingRentalRule({ ...editingRentalRule, max_cost_cap_per_day: e.target.value })} />
+                    <small className="text-muted">If set to 0 or empty, the global setting (14%) will be used.</small>
                   </div>
                 </div>
               </div>
