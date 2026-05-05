@@ -1107,8 +1107,21 @@ class SuperAdminApi extends ResourceController
         $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
         if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found.'], 404);
 
-        $expiresAt = $plan['duration_hours'] > 0
-            ? date('Y-m-d H:i:s', strtotime('+' . $plan['duration_hours'] . ' hours'))
+        // Stacking Logic: Find the latest expiry among active plans for the same user type
+        $latestActive = $db->table('user_subscriptions us')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('sp.user_type', $plan['user_type'])
+            ->where('us.expires_at >', date('Y-m-d H:i:s'))
+            ->orderBy('us.expires_at', 'DESC')
+            ->get()->getRowArray();
+
+        $durationHours = (float)($plan['duration_hours'] ?: 720);
+        $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+        $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $expiresAt = $durationHours > 0
+            ? date('Y-m-d H:i:s', $baseTime + $durationHours * 3600)
             : '2099-12-31 23:59:59';
 
         $db->table('user_subscriptions')->insert([
@@ -1116,7 +1129,7 @@ class SuperAdminApi extends ResourceController
             'plan_id' => $planId,
             'usage_count' => 0,
             'is_active' => 1,
-            'starts_at' => date('Y-m-d H:i:s'),
+            'starts_at' => $startsAt,
             'expires_at' => $expiresAt,
             'created_at' => date('Y-m-d H:i:s'),
         ]);

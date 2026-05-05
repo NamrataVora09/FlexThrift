@@ -1741,8 +1741,9 @@ class BuyerApi extends ResourceController
                         ->join('subscription_plans', 'subscription_plans.id = user_subscriptions.plan_id')
                         ->where('user_subscriptions.user_id', $buyerId)
                         ->where('user_subscriptions.is_active', 1)
+                        ->where('user_subscriptions.starts_at <=', date('Y-m-d H:i:s'))
                         ->where('user_subscriptions.expires_at >=', date('Y-m-d H:i:s'))
-                        ->orderBy('subscription_plans.plan_type', 'DESC')
+                        ->orderBy('user_subscriptions.expires_at', 'ASC')
                         ->get()->getResultArray();
 
                     if (empty($activeSubs)) {
@@ -2153,12 +2154,29 @@ class BuyerApi extends ResourceController
             ],
         ];
 
+        // Stacking Logic for pending record prediction
+        $latestActive = $db->table('user_subscriptions us')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('sp.user_type', 'buyer')
+            ->where('us.expires_at >', date('Y-m-d H:i:s'))
+            ->orderBy('us.expires_at', 'DESC')
+            ->get()->getRowArray();
+
+        $durationHours = (int) $plan['duration_hours'];
+        $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+        $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $expiresAt = $durationHours > 0
+            ? date('Y-m-d H:i:s', $baseTime + $durationHours * 3600)
+            : '2099-12-31 23:59:59';
+
         // Persist pending subscription record
         $db->table('user_subscriptions')->insert([
             'user_id' => $userId,
             'plan_id' => $planId,
-            'starts_at' => date('Y-m-d H:i:s'),
-            'expires_at' => date('Y-m-d H:i:s'),
+            'starts_at' => $startsAt,
+            'expires_at' => $expiresAt,
             'usage_count' => 0,
             'is_active' => 0,
             'payment_status' => 'pending',
@@ -2231,10 +2249,22 @@ class BuyerApi extends ResourceController
         if ($state === 'COMPLETED') {
             if ($dbSub['is_active'] == 0) {
                 $plan = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
+                
+                // Stacking Logic: Find the latest expiry among active buyer plans
+                $latestActive = $db->table('user_subscriptions us')
+                    ->join('subscription_plans sp', 'sp.id = us.plan_id')
+                    ->where('us.user_id', $dbSub['user_id'])
+                    ->where('us.is_active', 1)
+                    ->where('sp.user_type', 'buyer')
+                    ->where('us.expires_at >', date('Y-m-d H:i:s'))
+                    ->orderBy('us.expires_at', 'DESC')
+                    ->get()->getRowArray();
+
                 $durationHours = (int) $plan['duration_hours'];
-                $startsAt  = date('Y-m-d H:i:s');
+                $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+                $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
                 $expiresAt = $durationHours > 0
-                    ? date('Y-m-d H:i:s', time() + $durationHours * 3600)
+                    ? date('Y-m-d H:i:s', $baseTime + $durationHours * 3600)
                     : '2099-12-31 23:59:59';
 
                 $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([

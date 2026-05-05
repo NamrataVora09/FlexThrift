@@ -572,8 +572,25 @@ class AdminApi extends ResourceController
 
         $payload = ['merchantOrderId' => $merchantOrderId, 'amount' => (int)($final * 100), 'paymentFlow' => ['type' => 'PG_CHECKOUT', 'merchantUrls' => ['redirectUrl' => $redirectUrl]]];
 
+        // Stacking Logic for pending record prediction
+        $latestActive = $db->table('user_subscriptions us')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('sp.user_type', $plan['user_type'])
+            ->where('us.expires_at >', date('Y-m-d H:i:s'))
+            ->orderBy('us.expires_at', 'DESC')
+            ->get()->getRowArray();
+
+        $durationHours = (int) $plan['duration_hours'];
+        $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+        $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $expiresAt = $durationHours > 0
+            ? date('Y-m-d H:i:s', $baseTime + $durationHours * 3600)
+            : '2099-12-31 23:59:59';
+
         $db->table('user_subscriptions')->insert([
-            'user_id' => $userId, 'plan_id' => $planId, 'starts_at' => date('Y-m-d H:i:s'), 'expires_at' => date('Y-m-d H:i:s'),
+            'user_id' => $userId, 'plan_id' => $planId, 'starts_at' => $startsAt, 'expires_at' => $expiresAt,
             'usage_count' => 0, 'is_active' => 0, 'payment_status' => 'pending', 'amount_paid' => $final,
             'referral_discount_applied' => $referralDiscount, 'merchant_transaction_id' => $merchantOrderId,
         ]);
@@ -601,12 +618,14 @@ class AdminApi extends ResourceController
         if ($state === 'COMPLETED') {
             $plan = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
             
-            // Stacking/Queueing Logic: Find the latest expiry among active/future plans
-            $latestActive = $db->table('user_subscriptions')
-                ->where('user_id', $dbSub['user_id'])
-                ->where('is_active', 1)
-                ->where('expires_at >', date('Y-m-d H:i:s'))
-                ->orderBy('expires_at', 'DESC')
+            // Stacking Logic: Find the latest expiry among active plans of the SAME user type (buyer/seller)
+            $latestActive = $db->table('user_subscriptions us')
+                ->join('subscription_plans sp', 'sp.id = us.plan_id')
+                ->where('us.user_id', $dbSub['user_id'])
+                ->where('us.is_active', 1)
+                ->where('sp.user_type', $plan['user_type'])
+                ->where('us.expires_at >', date('Y-m-d H:i:s'))
+                ->orderBy('us.expires_at', 'DESC')
                 ->get()->getRowArray();
 
             $durationHours = (int) $plan['duration_hours'];

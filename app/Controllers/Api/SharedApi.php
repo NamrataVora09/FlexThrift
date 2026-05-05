@@ -182,9 +182,10 @@ class SharedApi extends ResourceController
             ->where('us.user_id', $jwtUser['user_id'])
             ->where('us.is_active', 1)
             ->where('us.payment_status', 'paid')
+            ->where('us.starts_at <=', date('Y-m-d H:i:s'))
             ->where('us.expires_at >=', date('Y-m-d H:i:s'))
             ->where('sp.user_type', $userType)
-            ->orderBy('us.created_at', 'DESC')
+            ->orderBy('us.expires_at', 'ASC')
             ->get()->getRowArray();
 
         $history = $db->table('user_subscriptions us')
@@ -836,14 +837,27 @@ class SharedApi extends ResourceController
         if (!$plan)
             return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+' . ($plan['duration_hours'] ?: 720) . ' hours'));
+        // Stacking Logic: Find the latest expiry among active plans for the same user type
+        $latestActive = $db->table('user_subscriptions us')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $jwtUser['user_id'])
+            ->where('us.is_active', 1)
+            ->where('sp.user_type', $plan['user_type'])
+            ->where('us.expires_at >', date('Y-m-d H:i:s'))
+            ->orderBy('us.expires_at', 'DESC')
+            ->get()->getRowArray();
+
+        $durationHours = (float)($plan['duration_hours'] ?: 720);
+        $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+        $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $expiresAt = date('Y-m-d H:i:s', $baseTime + ($durationHours * 3600));
 
         $subId = $db->table('user_subscriptions')->insert([
             'user_id' => $jwtUser['user_id'],
             'plan_id' => $plan['id'],
             'is_active' => 1,
             'usage_count' => 0,
-            'starts_at' => date('Y-m-d H:i:s'),
+            'starts_at' => $startsAt,
             'expires_at' => $expiresAt,
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
