@@ -597,6 +597,14 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     </div>
                   )}
 
+                  {user && Number(user.blocked_buyer) === 1 && (
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 15 }}>
+                      <i className="bi bi-shield-lock-fill" style={{ color: '#f59e0b', marginTop: 2, flexShrink: 0 }}></i>
+                      <span style={{ color: '#92400e', fontSize: '0.85rem', fontWeight: 600 }}>
+                        Your account has been restricted from making offers by the administrator. Please contact support if you believe this is an error.
+                      </span>
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
                     <button
@@ -638,21 +646,26 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       <i className={`bi ${inWishlist ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: '1.3rem', color: '#ef4444' }}></i>
                     </button>
                     <button
-                      onClick={() => { if (!isPreview) { setShowOffer(true); setOfferError(null); } }}
-                      disabled={isPreview}
+                      onClick={() => { 
+                        if (!isPreview && Number(user?.blocked_buyer) !== 1) { 
+                          setShowOffer(true); 
+                          setOfferError(null); 
+                        } 
+                      }}
+                      disabled={isPreview || Number(user?.blocked_buyer) === 1}
                       style={{ 
                         flex: 1, padding: '16px 24px', borderRadius: 8, fontSize: 17, fontWeight: 600, 
-                        fontFamily: "'Maven Pro', sans-serif", cursor: isPreview ? 'not-allowed' : 'pointer', 
+                        fontFamily: "'Maven Pro', sans-serif", cursor: (isPreview || Number(user?.blocked_buyer) === 1) ? 'not-allowed' : 'pointer', 
                         transition: 'all 0.3s', border: 'none', 
-                        background: isPreview ? '#e5e7eb' : '#FFC63A', 
-                        color: isPreview ? '#9ca3af' : '#fff', 
+                        background: (isPreview || Number(user?.blocked_buyer) === 1) ? '#e5e7eb' : '#FFC63A', 
+                        color: (isPreview || Number(user?.blocked_buyer) === 1) ? '#9ca3af' : '#fff', 
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 
                       }}
-                      onMouseEnter={e => { if (!isPreview) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; } }}
-                      onMouseLeave={e => { if (!isPreview) { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; } }}
+                      onMouseEnter={e => { if (!isPreview && Number(user?.blocked_buyer) !== 1) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; } }}
+                      onMouseLeave={e => { if (!isPreview && Number(user?.blocked_buyer) !== 1) { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; } }}
                     >
-                      <i className={`bi ${product.listing_type === 'rent' ? 'bi-calendar-check-fill' : 'bi-tags-fill'}`} style={{ color: isPreview ? '#9ca3af' : '#fff' }}></i>
-                      {isPreview ? 'Offer Disabled' : 'Make an Offer'}
+                      <i className={`bi ${product.listing_type === 'rent' ? 'bi-calendar-check-fill' : 'bi-tags-fill'}`} style={{ color: (isPreview || Number(user?.blocked_buyer) === 1) ? '#9ca3af' : '#fff' }}></i>
+                      {isPreview ? 'Offer Disabled' : (Number(user?.blocked_buyer) === 1 ? 'Action Restricted' : 'Make an Offer')}
                     </button>
 
                   </div>

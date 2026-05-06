@@ -475,6 +475,13 @@ class SellerApi extends ResourceController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        // Check if seller is blocked
+        $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($currentUser && !empty($currentUser['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+        }
+
         $data = $this->request->getJSON(true) ?? [];
 
         $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
@@ -615,6 +622,13 @@ class SellerApi extends ResourceController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        // Check if seller is blocked
+        $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($currentUser && !empty($currentUser['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+        }
+
         $data = $this->request->getJSON(true) ?? [];
 
         $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
@@ -960,6 +974,13 @@ class SellerApi extends ResourceController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        // Check if seller is blocked
+        $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($currentUser && !empty($currentUser['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+        }
+
         $body = $this->request->getJSON(true) ?? [];
 
         $offer = $db->table('offers')->where('id', $offerId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
@@ -1079,6 +1100,12 @@ class SellerApi extends ResourceController
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
 
+        // Check if seller is blocked
+        $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($currentUser && !empty($currentUser['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+        }
+
         $product = $db->table('products')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
@@ -1099,6 +1126,12 @@ class SellerApi extends ResourceController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        // Check if seller is blocked
+        $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($currentUser && !empty($currentUser['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+        }
 
         $product = $db->table('products')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
@@ -1604,6 +1637,12 @@ class SellerApi extends ResourceController
             ->get()->getRowArray();
         if (!$plan)
             return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+
+        // Check if seller is blocked
+        $currentUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        if ($currentUser && !empty($currentUser['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account is restricted from purchasing seller subscriptions.'], 403);
+        }
 
         $basePrice    = (float) $plan['price'];
         $chargeModel  = new \App\Models\PlatformChargeModel();

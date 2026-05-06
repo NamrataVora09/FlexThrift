@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { RentalCalendar } from './RentalCalendar';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
+import { useAuth } from '@/lib/auth-context';
 
 /* ─────────────────────────── types ─────────────────────────── */
 
@@ -285,6 +286,7 @@ const CSS = `
 /* ─────────────────────────── main component ────────────────── */
 
 export default function OffersView({ role, apiPath, perspective, noLayout, noHeader }: Props) {
+  const { user } = useAuth();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -651,6 +653,44 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const content = (
     <div className={noLayout ? '' : 'container-fluid py-4'}>
       <style>{CSS}</style>
+      {perspective === 'seller' && user && Number(user.blocked_seller) === 1 && (
+        <div className="container-fluid p-4 p-md-5 d-flex align-items-center justify-content-center" style={{ minHeight: '70vh' }}>
+          <div className="text-center p-5 shadow-sm" style={{ maxWidth: 500, background: '#fff', borderRadius: 24, border: '1px solid #fee2e2' }}>
+            <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
+            </div>
+            <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Seller Offers Restricted</h3>
+            <p className="text-muted mb-4" style={{ lineHeight: 1.6 }}>
+              Your seller access has been restricted by the administrator. You are currently unable to accept, reject, or manage incoming offers.
+            </p>
+            <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem' }}>
+              <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
+              Please contact platform support for more information regarding your account status.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {perspective === 'buyer' && user && Number(user.blocked_buyer) === 1 && (
+        <div className="container-fluid p-4 p-md-5 d-flex align-items-center justify-content-center" style={{ minHeight: '70vh' }}>
+          <div className="text-center p-5 shadow-sm" style={{ maxWidth: 500, background: '#fff', borderRadius: 24, border: '1px solid #fee2e2' }}>
+            <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
+            </div>
+            <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Buyer Offers Restricted</h3>
+            <p className="text-muted mb-4" style={{ lineHeight: 1.6 }}>
+              Your buyer access has been restricted by the administrator. You are currently unable to make new offers or manage your sent proposals.
+            </p>
+            <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem' }}>
+              <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
+              Please contact platform support for more information regarding your account status.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {((perspective === 'seller' && user && Number(user.blocked_seller) === 1) || (perspective === 'buyer' && user && Number(user.blocked_buyer) === 1)) ? null : (
+        <>
 
       {!noHeader && (
         <div className="d-flex justify-content-between align-items-center mb-4">
@@ -784,6 +824,8 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
           })}
           onAcceptDates={handleAcceptDates}
         />
+      )}
+        </>
       )}
     </div>
   );

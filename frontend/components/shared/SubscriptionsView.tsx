@@ -456,164 +456,192 @@ export default function SubscriptionsView({ role, userType }: Props) {
           )}
 
         {/* Seller Plans */}
-        {(isSuperAdmin || userType === 'seller') && sellerPlans.length > 0 && (
+        {(isSuperAdmin || userType === 'seller') && (
           <>
             <h2 id="available-plans-section" style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.25rem' }}>
               {isSuperAdmin ? 'Seller Plans' : 'Available Plans'}
             </h2>
-            <div style={{ position: 'relative' }}>
-              {sellerPlans.length > VISIBLE && (
-                <>
-                  <button className="plan-arrow left" onClick={() => { if (sIdx === 0) { setSAnim(false); setSIdx(sellerPlans.length - 1); } else setSIdx(i => i - 1); }}><i className="bi bi-chevron-left" /></button>
-                  <button className="plan-arrow right" onClick={() => setSIdx(i => i + 1)}><i className="bi bi-chevron-right" /></button>
-                </>
-              )}
-              <div style={{ overflow: 'hidden', width: '100%' }}>
-                <div style={{ display: 'flex', padding: '20px 0', width: `${(loopSeller.length / VISIBLE) * 100}%`, transform: sellerPlans.length > VISIBLE ? `translateX(calc(-${sIdx} * 100% / ${loopSeller.length}))` : 'none', transition: sAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
-                  {loopSeller.map((plan, idx) => {
-                    const isPopular = Number(plan.is_most_selected) === 1;
-                    const isFeatured = Number(plan.is_featured) === 1;
-                    const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
-                    const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
-                    const nameColor = isFeatured ? '#000000' : '#0a0a0a';
-                    const typeColor = isFeatured ? '#734d26' : '#6b7280';
-                    const priceColor = isFeatured ? '#000000' : '#0a0a0a';
-                    const iconColor = '#fdc003';
-                    const textColor = isFeatured ? '#000000' : '#2d2f2f';
-                    return (
-                      <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopSeller.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
-                        <div className={cardClass} style={{ width: '100%' }}>
-                          {isPopular && <div className="tier-badge">Most Selected</div>}
-                          <div style={{ marginBottom: '3rem' }}>
-                            <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
-                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Listing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
-                          </div>
-                          <div style={{ marginBottom: '3rem' }}>
-                            <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
-                          </div>
-                          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            {(() => {
-                              const coreFeatures = [
-                                { icon: plan.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} ${plan.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
-                                { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
-                              ];
-                              let customFeatures: { icon: string; text: string }[] = [];
-                              try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
-
-                              // Filter out custom features that might be duplicates of core features
-                              const filteredCustom = customFeatures.filter(cf =>
-                                cf.text &&
-                                !cf.text.toLowerCase().includes('listing') &&
-                                !cf.text.toLowerCase().includes('contact') &&
-                                !cf.text.toLowerCase().includes('validity') &&
-                                !cf.text.toLowerCase().includes('hour')
-                              );
-
-                              const allFeatures = [...coreFeatures, ...filteredCustom];
-
-                              return allFeatures.map((f, i) => (
-                                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
-                                  <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                                  <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
-                                </li>
-                              ));
-                            })()}
-                          </ul>
-                          {isActuallySuper ? (
-                            <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
-                              <button className="btn btn-sm btn-outline-secondary fw-bold rounded-pill" onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>{Number(plan.is_featured) === 1 ? 'Unset Premium' : 'Set Premium'}</button>
-                              <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
-                            </div>
-                          ) : (
-                            <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+            {user && Number(user.blocked_seller) === 1 && !isSuperAdmin ? (
+              <div className="text-center p-5 bg-white rounded-4 border mb-5" style={{ borderRadius: '1.25rem', border: '1px solid #fee2e2 !important' }}>
+                <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                  <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
+                </div>
+                <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Seller Privileges Restricted</h3>
+                <p className="text-muted mb-0">Your seller account has been restricted by the administrator. You are currently unable to purchase new seller subscriptions or upgrade your plan.</p>
+                <div className="mt-4 p-3" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem', maxWidth: 500, margin: '20px auto 0' }}>
+                  <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
+                  Please contact platform support for further assistance.
                 </div>
               </div>
-            </div>
+            ) : sellerPlans.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                {sellerPlans.length > VISIBLE && (
+                  <>
+                    <button className="plan-arrow left" onClick={() => { if (sIdx === 0) { setSAnim(false); setSIdx(sellerPlans.length - 1); } else setSIdx(i => i - 1); }}><i className="bi bi-chevron-left" /></button>
+                    <button className="plan-arrow right" onClick={() => setSIdx(i => i + 1)}><i className="bi bi-chevron-right" /></button>
+                  </>
+                )}
+                <div style={{ overflow: 'hidden', width: '100%' }}>
+                  <div style={{ display: 'flex', padding: '20px 0', width: `${(loopSeller.length / VISIBLE) * 100}%`, transform: sellerPlans.length > VISIBLE ? `translateX(calc(-${sIdx} * 100% / ${loopSeller.length}))` : 'none', transition: sAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
+                    {loopSeller.map((plan, idx) => {
+                      const isPopular = Number(plan.is_most_selected) === 1;
+                      const isFeatured = Number(plan.is_featured) === 1;
+                      const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
+                      const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
+                      const nameColor = isFeatured ? '#000000' : '#0a0a0a';
+                      const typeColor = isFeatured ? '#734d26' : '#6b7280';
+                      const priceColor = isFeatured ? '#000000' : '#0a0a0a';
+                      const iconColor = '#fdc003';
+                      const textColor = isFeatured ? '#000000' : '#2d2f2f';
+                      return (
+                        <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopSeller.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
+                          <div className={cardClass} style={{ width: '100%' }}>
+                            {isPopular && <div className="tier-badge">Most Selected</div>}
+                            <div style={{ marginBottom: '3rem' }}>
+                              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
+                              <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Listing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
+                            </div>
+                            <div style={{ marginBottom: '3rem' }}>
+                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                              {(() => {
+                                const coreFeatures = [
+                                  { icon: plan.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} ${plan.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
+                                  { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                                ];
+                                let customFeatures: { icon: string; text: string }[] = [];
+                                try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
+
+                                // Filter out custom features that might be duplicates of core features
+                                const filteredCustom = customFeatures.filter(cf =>
+                                  cf.text &&
+                                  !cf.text.toLowerCase().includes('listing') &&
+                                  !cf.text.toLowerCase().includes('contact') &&
+                                  !cf.text.toLowerCase().includes('validity') &&
+                                  !cf.text.toLowerCase().includes('hour')
+                                );
+
+                                const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                                return allFeatures.map((f, i) => (
+                                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                                    <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
+                                  </li>
+                                ));
+                              })()}
+                            </ul>
+                            {isActuallySuper ? (
+                              <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
+                                <button className="btn btn-sm btn-outline-secondary fw-bold rounded-pill" onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>{Number(plan.is_featured) === 1 ? 'Unset Premium' : 'Set Premium'}</button>
+                                <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
+                              </div>
+                            ) : (
+                              <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
 
         {/* Buyer Plans (Only for Admins or Buyer portal) */}
-        {(isSuperAdmin || userType === 'buyer') && buyerPlans.length > 0 && (
+        {(isSuperAdmin || userType === 'buyer') && (
           <>
             <h2 id="buyer-plans-section" style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginTop: isSuperAdmin && sellerPlans.length > 0 ? '4rem' : '0', marginBottom: '1.25rem' }}>
               {isSuperAdmin ? 'Buyer Plans' : 'Available Plans'}
             </h2>
-            <div style={{ position: 'relative' }}>
-              {buyerPlans.length > VISIBLE && (
-                <>
-                  <button className="plan-arrow left" onClick={() => { if (bIdx === 0) { setBAnim(false); setBIdx(buyerPlans.length - 1); } else setBIdx(i => i - 1); }}><i className="bi bi-chevron-left" /></button>
-                  <button className="plan-arrow right" onClick={() => setBIdx(i => i + 1)}><i className="bi bi-chevron-right" /></button>
-                </>
-              )}
-              <div style={{ overflow: 'hidden', width: '100%' }}>
-                <div style={{ display: 'flex', padding: '20px 0', width: `${(loopBuyer.length / VISIBLE) * 100}%`, transform: buyerPlans.length > VISIBLE ? `translateX(calc(-${bIdx} * 100% / ${loopBuyer.length}))` : 'none', transition: bAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
-                  {loopBuyer.map((plan, idx) => {
-                    const isPopular = Number(plan.is_most_selected) === 1;
-                    const isFeatured = Number(plan.is_featured) === 1;
-                    const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
-                    const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
-                    const nameColor = isFeatured ? '#000000' : '#0a0a0a';
-                    const typeColor = isFeatured ? '#734d26' : '#6b7280';
-                    const priceColor = isFeatured ? '#000000' : '#0a0a0a';
-                    const iconColor = '#fdc003';
-                    const textColor = isFeatured ? '#000000' : '#2d2f2f';
-                    return (
-                      <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopBuyer.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
-                        <div className={cardClass} style={{ width: '100%' }}>
-                          {isPopular && <div className="tier-badge">Most Selected</div>}
-                          <div style={{ marginBottom: '3rem' }}>
-                            <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
-                            <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Sourcing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
-                          </div>
-                          <div style={{ marginBottom: '3rem' }}>
-                            <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
-                          </div>
-                          <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            {(() => {
-                              const coreFeatures = [
-                                { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
-                                { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
-                              ];
-                              let customFeatures: { icon: string; text: string }[] = [];
-                              try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
-
-                              const filteredCustom = customFeatures.filter(cf =>
-                                cf.text &&
-                                !cf.text.toLowerCase().includes('contact') &&
-                                !cf.text.toLowerCase().includes('validity') &&
-                                !cf.text.toLowerCase().includes('hour')
-                              );
-
-                              const allFeatures = [...coreFeatures, ...filteredCustom];
-
-                              return allFeatures.map((f, i) => (
-                                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
-                                  <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
-                                  <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
-                                </li>
-                              ));
-                            })()}
-                          </ul>
-                          {isActuallySuper ? (
-                            <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
-                              <button className="btn btn-sm btn-outline-secondary fw-bold rounded-pill" onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>{Number(plan.is_featured) === 1 ? 'Unset Premium' : 'Set Premium'}</button>
-                              <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
-                            </div>
-                          ) : (
-                            <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+            {user && Number(user.blocked_buyer) === 1 && !isSuperAdmin ? (
+              <div className="text-center p-5 bg-white rounded-4 border mb-5" style={{ borderRadius: '1.25rem', border: '1px solid #fee2e2 !important' }}>
+                <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                  <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
+                </div>
+                <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Buyer Privileges Restricted</h3>
+                <p className="text-muted mb-0">Your buyer account has been restricted by the administrator. You are currently unable to purchase new buyer subscriptions or upgrade your plan.</p>
+                <div className="mt-4 p-3" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem', maxWidth: 500, margin: '20px auto 0' }}>
+                  <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
+                  Please contact platform support for further assistance.
                 </div>
               </div>
-            </div>
+            ) : buyerPlans.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                {buyerPlans.length > VISIBLE && (
+                  <>
+                    <button className="plan-arrow left" onClick={() => { if (bIdx === 0) { setBAnim(false); setBIdx(buyerPlans.length - 1); } else setBIdx(i => i - 1); }}><i className="bi bi-chevron-left" /></button>
+                    <button className="plan-arrow right" onClick={() => setBIdx(i => i + 1)}><i className="bi bi-chevron-right" /></button>
+                  </>
+                )}
+                <div style={{ overflow: 'hidden', width: '100%' }}>
+                  <div style={{ display: 'flex', padding: '20px 0', width: `${(loopBuyer.length / VISIBLE) * 100}%`, transform: buyerPlans.length > VISIBLE ? `translateX(calc(-${bIdx} * 100% / ${loopBuyer.length}))` : 'none', transition: bAnim ? 'transform 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
+                    {loopBuyer.map((plan, idx) => {
+                      const isPopular = Number(plan.is_most_selected) === 1;
+                      const isFeatured = Number(plan.is_featured) === 1;
+                      const cardClass = isFeatured ? 'tier-elite' : isPopular ? 'tier-standard' : 'tier-basic';
+                      const btnClass = isFeatured ? 'tier-btn-elite' : isPopular ? 'tier-btn-standard' : 'tier-btn-basic';
+                      const nameColor = isFeatured ? '#000000' : '#0a0a0a';
+                      const typeColor = isFeatured ? '#734d26' : '#6b7280';
+                      const priceColor = isFeatured ? '#000000' : '#0a0a0a';
+                      const iconColor = '#fdc003';
+                      const textColor = isFeatured ? '#000000' : '#2d2f2f';
+                      return (
+                        <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopBuyer.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
+                          <div className={cardClass} style={{ width: '100%' }}>
+                            {isPopular && <div className="tier-badge">Most Selected</div>}
+                            <div style={{ marginBottom: '3rem' }}>
+                              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
+                              <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Sourcing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
+                            </div>
+                            <div style={{ marginBottom: '3rem' }}>
+                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                              {(() => {
+                                const coreFeatures = [
+                                  { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
+                                  { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                                ];
+                                let customFeatures: { icon: string; text: string }[] = [];
+                                try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
+
+                                const filteredCustom = customFeatures.filter(cf =>
+                                  cf.text &&
+                                  !cf.text.toLowerCase().includes('contact') &&
+                                  !cf.text.toLowerCase().includes('validity') &&
+                                  !cf.text.toLowerCase().includes('hour')
+                                );
+
+                                const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                                return allFeatures.map((f, i) => (
+                                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                                    <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
+                                  </li>
+                                ));
+                              })()}
+                            </ul>
+                            {isActuallySuper ? (
+                              <div className="d-flex flex-column gap-2" style={{ marginTop: 'auto' }}>
+                                <button className="btn btn-sm btn-outline-secondary fw-bold rounded-pill" onClick={() => toggleFeatured(plan)} disabled={togglingId === plan.id}>{Number(plan.is_featured) === 1 ? 'Unset Premium' : 'Set Premium'}</button>
+                                <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
+                              </div>
+                            ) : (
+                              <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

@@ -100,7 +100,17 @@ class AdminApi extends ResourceController
 
     public function users()
     {
+        $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        // Check if admin is blocked from user management
+        if ($jwtUser['role'] === 'admin') {
+            $adminUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            if ($adminUser && ($adminUser['blocked_from_user_management'] ?? 0)) {
+                return $this->respond(['success' => false, 'message' => 'Your access to user management is restricted.'], 403);
+            }
+        }
+
         $users = $db->table('users')
             ->select('id, name, email, mobile, user_type, role, is_blocked, is_verified, reliability_score, created_at, blocked_seller, blocked_buyer')
             ->whereNotIn('role', ['admin', 'super_admin'])
@@ -417,7 +427,16 @@ class AdminApi extends ResourceController
     }
     public function toggleUserStatus($userId)
     {
+        $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        if ($jwtUser['role'] === 'admin') {
+            $adminUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            if ($adminUser && ($adminUser['blocked_from_user_management'] ?? 0)) {
+                return $this->respond(['success' => false, 'message' => 'Your access to user management is restricted.'], 403);
+            }
+        }
+
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         if (!$user) return $this->respond(['success' => false, 'message' => 'User not found'], 404);
 
@@ -435,7 +454,16 @@ class AdminApi extends ResourceController
 
     public function toggleRoleBlock($userId, $role)
     {
+        $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        if ($jwtUser['role'] === 'admin') {
+            $adminUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            if ($adminUser && ($adminUser['blocked_from_user_management'] ?? 0)) {
+                return $this->respond(['success' => false, 'message' => 'Your access to user management is restricted.'], 403);
+            }
+        }
+
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         if (!$user) return $this->respond(['success' => false, 'message' => 'User not found'], 404);
 
@@ -675,7 +703,16 @@ class AdminApi extends ResourceController
 
     public function userAuditLogs($userId)
     {
+        $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        if ($jwtUser['role'] === 'admin') {
+            $adminUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            if ($adminUser && ($adminUser['blocked_from_user_management'] ?? 0)) {
+                return $this->respond(['success' => false, 'message' => 'Your access to user management is restricted.'], 403);
+            }
+        }
+
         $logs = $db->table('user_audit_trails a')
             ->select('a.*, u.name as admin_name')
             ->join('users u', 'u.id = a.admin_id', 'left')

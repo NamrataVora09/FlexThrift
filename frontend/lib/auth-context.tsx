@@ -14,6 +14,8 @@ interface User {
   referral_code?: string;
   blocked_buyer?: number;
   blocked_seller?: number;
+  blocked_from_user_management?: number;
+  blocked_from_approvals?: number;
 }
 
 interface AuthContextType {

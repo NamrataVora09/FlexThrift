@@ -63,16 +63,19 @@ class ApiClient {
             window.location.href = '/login';
           }
         }
-      } else if (response.status === 403 && data.message?.toLowerCase().includes('blocked')) {
+      } else if (response.status === 403 && data.message?.toLowerCase().includes('account has been blocked')) {
         // Update user status in localStorage if blocked
         if (typeof window !== 'undefined') {
           const savedUser = localStorage.getItem('flex_user');
           if (savedUser) {
             const user = JSON.parse(savedUser);
-            user.is_blocked = 1;
-            localStorage.setItem('flex_user', JSON.stringify(user));
-            // Trigger a page reload to show the block overlay from GeolocationBlocker
-            window.location.reload();
+            // Only reload if the user wasn't already marked as blocked
+            if (Number(user.is_blocked) !== 1) {
+              user.is_blocked = 1;
+              localStorage.setItem('flex_user', JSON.stringify(user));
+              // Trigger a page reload to show the block overlay from GeolocationBlocker
+              window.location.reload();
+            }
           }
         }
       }

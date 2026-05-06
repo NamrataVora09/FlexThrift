@@ -56,8 +56,14 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
         {navigation.map((section, si) => {
           // Filter items based on block status
           const filteredItems = section.items.filter(item => {
-            if (user.role === 'admin' && item.href === '/buyer/dashboard' && Number(user.blocked_buyer) === 1) {
-              return false;
+            // Role specific blocks
+            if (item.href === '/buyer/dashboard' && Number(user.blocked_buyer) === 1) return false;
+            if (item.href === '/seller' && Number(user.blocked_seller) === 1) return false;
+            
+            // Admin specific blocks
+            if (user.role === 'admin') {
+              if (item.href === '/admin/users' && Number(user.blocked_from_user_management) === 1) return false;
+              if (item.href === '/admin/pending-products' && Number(user.blocked_from_approvals) === 1) return false;
             }
             return true;
           });

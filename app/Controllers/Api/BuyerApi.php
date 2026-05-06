@@ -635,6 +635,12 @@ class BuyerApi extends ResourceController
         if (!$product)
             return $this->respond(['success' => false, 'message' => 'Product not found or currently unavailable'], 404);
 
+        // Check if buyer is blocked
+        $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($currentUser && !empty($currentUser['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account is currently blocked from making offers as a buyer.'], 403);
+        }
+
         // Check if seller is blocked
         $seller = $db->table('users')->where('id', $product['seller_id'])->get()->getRowArray();
         if ($seller && !empty($seller['blocked_seller'])) {
@@ -1538,6 +1544,13 @@ class BuyerApi extends ResourceController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        // Check if buyer is blocked
+        $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($currentUser && !empty($currentUser['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role has been restricted by the administrator.'], 403);
+        }
+
         $body = $this->request->getJSON(true) ?? [];
 
         $offer = $db->table('offers')->where('id', $offerId)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
@@ -2073,6 +2086,12 @@ class BuyerApi extends ResourceController
             ->get()->getRowArray();
         if (!$plan)
             return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+
+        // Check if buyer is blocked
+        $currentUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        if ($currentUser && !empty($currentUser['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account is restricted from purchasing buyer subscriptions.'], 403);
+        }
 
         // Note: Allowing users to buy multiple subscriptions/stack them.
         // The reveal logic will automatically pick the first valid active subscription.

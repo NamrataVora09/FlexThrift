@@ -758,6 +758,35 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     }
   })();
 
+  if (user && Number(user.blocked_seller) === 1) {
+    return (
+      <DashboardLayout requiredRoles={[role]}>
+        <div className="container-fluid p-4 p-md-5 d-flex align-items-center justify-content-center" style={{ minHeight: '70vh' }}>
+          <div className="text-center p-5 shadow-sm" style={{ maxWidth: 500, background: '#fff', borderRadius: 24, border: '1px solid #fee2e2' }}>
+            <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
+            </div>
+            <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Seller Access Restricted</h3>
+            <p className="text-muted mb-4" style={{ lineHeight: 1.6 }}>
+              Your seller privileges have been restricted by the administrator. You are currently unable to upload new products or manage existing listings.
+            </p>
+            <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem' }}>
+              <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
+              Please contact platform support for more information or to request a review of your account status.
+            </div>
+            <button 
+              onClick={() => router.push(redirectPath.includes('superadmin') ? '/superadmin' : '/seller')}
+              className="btn btn-dark px-4 py-2" 
+              style={{ borderRadius: 10, fontWeight: 600 }}
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout requiredRoles={[role]}>
       <div className="container-fluid p-4 p-md-5">

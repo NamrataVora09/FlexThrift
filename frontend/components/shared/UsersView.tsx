@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
+import { useAuth } from '@/lib/auth-context';
 
 interface User {
   id: number;
@@ -42,11 +43,15 @@ interface Props {
 const AVATAR_COLORS = ['#377dff', '#ffc63a', '#7000ff', '#ed4c78', '#ff9d00'];
 
 export default function UsersView({ role, apiPath, searchable = false }: Props) {
+  const { user: authUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Check permissions for admin
+  const isBlockedFromMgmt = authUser?.role === 'admin' && Number(authUser?.blocked_from_user_management) === 1;
 
   // Audit modal state
   const [auditOpen, setAuditOpen] = useState(false);
@@ -68,7 +73,11 @@ export default function UsersView({ role, apiPath, searchable = false }: Props) 
     });
   };
 
-  useEffect(() => { load(); }, [apiPath]);
+  useEffect(() => { 
+    if (!isBlockedFromMgmt) {
+      load(); 
+    }
+  }, [apiPath, isBlockedFromMgmt]);
 
   const handleFilter = (e: React.FormEvent) => { e.preventDefault(); load(); };
   const handleReset = () => { setSearch(''); setTypeFilter(''); setStatusFilter(''); setTimeout(load, 0); };
@@ -140,6 +149,32 @@ export default function UsersView({ role, apiPath, searchable = false }: Props) 
       return d.details || d.summary || raw;
     } catch { return raw; }
   };
+
+  if (isBlockedFromMgmt) {
+    return (
+      <DashboardLayout requiredRoles={[role]}>
+        <div className="container-fluid d-flex flex-column align-items-center justify-content-center" style={{ minHeight: '60vh' }}>
+          <div className="text-center p-5 bg-white shadow-sm" style={{ borderRadius: 20, maxWidth: 500 }}>
+            <div className="mb-4">
+              <i className="bi bi-shield-lock-fill" style={{ fontSize: '4rem', color: '#ed4c78' }}></i>
+            </div>
+            <h2 className="fw-bold mb-3" style={{ color: '#1a202c' }}>Access Restricted</h2>
+            <p className="text-muted mb-4">
+              Your administrative account has been restricted from accessing User Management by the Super Admin.
+            </p>
+            <div className="d-flex gap-3 justify-content-center">
+              <button onClick={() => window.history.back()} className="btn px-4 py-2" style={{ background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: 10, fontWeight: 600 }}>
+                Go Back
+              </button>
+              <button onClick={() => window.location.href = '/admin'} className="btn px-4 py-2" style={{ background: '#ffc63a', color: '#212529', borderRadius: 10, fontWeight: 600 }}>
+                Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout requiredRoles={[role]}>
