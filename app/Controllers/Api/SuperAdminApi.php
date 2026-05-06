@@ -104,9 +104,18 @@ class SuperAdminApi extends ResourceController
         ];
 
         if ($id) {
+            $existing = $this->checkOverlappingRules('pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max'], $id);
+            if ($existing) {
+                return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
+            }
             $db->table('pricing_rules')->where('id', $id)->update($row);
             return $this->respond(['success' => true, 'message' => 'Pricing rule updated', 'id' => $id]);
         } else {
+            $existing = $this->checkOverlappingRules('pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max']);
+            if ($existing) {
+                return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
+            }
+
             // Sync deduction_threshold across all existing rows in the same filter group
             $db->table('pricing_rules')
                ->where('filter_type', $filterType)
@@ -117,6 +126,35 @@ class SuperAdminApi extends ResourceController
             $row['id'] = $db->insertID();
             return $this->respond(['success' => true, 'message' => 'Pricing rule created', 'id' => $row['id'], 'data' => $row]);
         }
+    }
+
+    private function checkOverlappingRules($table, $filterType, $filterValue, $min, $max, $excludeId = null)
+    {
+        $db = \Config\Database::connect();
+        $builder = $db->table($table)
+            ->where('filter_type', $filterType)
+            ->where('filter_value', $filterValue);
+
+        if ($excludeId) {
+            $builder->where('id !=', $excludeId);
+        }
+
+        $maxVal = (int) $max;
+        $minVal = (int) $min;
+
+        // Overlap if: (new_min <= existing_max OR existing_max == 0) AND (existing_min <= new_max OR new_max == 0)
+        $builder->groupStart();
+            $builder->groupStart()
+                ->where('depreciation_range_max >=', $minVal)
+                ->orWhere('depreciation_range_max', 0)
+            ->groupEnd();
+
+            if ($maxVal > 0) {
+                $builder->where('depreciation_range_min <=', $maxVal);
+            }
+        $builder->groupEnd();
+
+        return $builder->get()->getRowArray();
     }
 
 
@@ -160,9 +198,17 @@ class SuperAdminApi extends ResourceController
         ];
 
         if ($id) {
+            $existing = $this->checkOverlappingRules('rental_pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max'], $id);
+            if ($existing) {
+                return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
+            }
             $db->table('rental_pricing_rules')->where('id', $id)->update($row);
             return $this->respond(['success' => true, 'message' => 'Rental rule updated', 'id' => $id]);
         } else {
+            $existing = $this->checkOverlappingRules('rental_pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max']);
+            if ($existing) {
+                return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
+            }
             $db->table('rental_pricing_rules')->insert($row);
             $row['id'] = $db->insertID();
             return $this->respond(['success' => true, 'message' => 'Rental rule created', 'id' => $row['id'], 'data' => $row]);

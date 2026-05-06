@@ -122,30 +122,62 @@ export default function PricingRulesManager() {
         return;
       }
     }
-    setModalSaving(true);
     try {
+      // Check against existing rules (excluding the one being edited if applicable)
+      for (let i = 0; i < saleDepRanges.length; i++) {
+        const r = saleDepRanges[i];
+        const min = Number(r.min);
+        const max = Number(r.max) || 0;
+        const endA = max === 0 ? 999999 : max;
+
+        const overlap = saleRules.find(ex => {
+          if (editingSaleRule.id && ex.id === editingSaleRule.id && saleDepRanges.length === 1) return false;
+          // If we are doing bulk add (length > 1) and editingSaleRule.id exists, 
+          // the old rule will be deleted first, but we still need to avoid overlapping with OTHER rules.
+          if (editingSaleRule.id && ex.id === editingSaleRule.id) return false;
+
+          if (ex.filter_type !== filter_type || String(ex.filter_value) !== String(filter_value)) return false;
+          const minB = Number(ex.depreciation_range_min);
+          const maxB = Number(ex.depreciation_range_max);
+          const endB = maxB === 0 ? 999999 : maxB;
+          return min <= endB && minB <= endA;
+        });
+
+        if (overlap) {
+          showToast.warning(`Range ${i + 1} overlaps with existing rule (ID: ${overlap.id}, Range: ${overlap.depreciation_range_min}-${Number(overlap.depreciation_range_max) > 0 ? overlap.depreciation_range_max : '∞'})`);
+          return;
+        }
+      }
+
       if (editingSaleRule.id && saleDepRanges.length === 1) {
-        await api.post('/superadmin/save-pricing-rule', {
+        const res = await api.post('/superadmin/save-pricing-rule', {
           id: editingSaleRule.id, filter_type, filter_value, deduction_threshold,
           depreciation_range_min: saleDepRanges[0].min,
           depreciation_range_max: saleDepRanges[0].max || '0',
           depreciation_amount: saleDepRanges[0].amount,
         });
+        if (!res.success) { showToast.error(res.message || 'Failed to save rule'); setModalSaving(false); return; }
       } else {
         if (editingSaleRule.id) await api.post(`/superadmin/delete-pricing-rule/${editingSaleRule.id}`, {});
         for (const r of saleDepRanges) {
-          await api.post('/superadmin/save-pricing-rule', {
+          const res = await api.post('/superadmin/save-pricing-rule', {
             filter_type, filter_value, deduction_threshold,
             depreciation_range_min: r.min,
             depreciation_range_max: r.max || '0',
             depreciation_amount: r.amount,
           });
+          if (!res.success) { 
+            showToast.error(res.message || 'Failed to save one or more ranges'); 
+            setModalSaving(false);
+            loadPricingRules();
+            return; 
+          }
         }
       }
       showToast.success('Pricing rule(s) saved!');
       setShowSaleModal(false);
       loadPricingRules();
-    } catch { showToast.error('Server error'); }
+    } catch (e: any) { showToast.error(e?.message || 'Server error'); }
     setModalSaving(false);
   };
 
@@ -194,30 +226,60 @@ export default function PricingRulesManager() {
         return;
       }
     }
-    setModalSaving(true);
     try {
+      // Check against existing rules
+      for (let i = 0; i < rentalDepRanges.length; i++) {
+        const r = rentalDepRanges[i];
+        const min = Number(r.min);
+        const max = Number(r.max) || 0;
+        const endA = max === 0 ? 999999 : max;
+
+        const overlap = rentalRules.find(ex => {
+          if (editingRentalRule.id && ex.id === editingRentalRule.id && rentalDepRanges.length === 1) return false;
+          if (editingRentalRule.id && ex.id === editingRentalRule.id) return false;
+          
+          if (ex.filter_type !== filter_type || String(ex.filter_value) !== String(filter_value)) return false;
+          const minB = Number(ex.depreciation_range_min);
+          const maxB = Number(ex.depreciation_range_max);
+          const endB = maxB === 0 ? 999999 : maxB;
+          return min <= endB && minB <= endA;
+        });
+
+        if (overlap) {
+          showToast.warning(`Range ${i + 1} overlaps with existing rule (ID: ${overlap.id}, Range: ${overlap.depreciation_range_min}-${Number(overlap.depreciation_range_max) > 0 ? overlap.depreciation_range_max : '∞'})`);
+          return;
+        }
+      }
+
       if (editingRentalRule.id && rentalDepRanges.length === 1) {
-        await api.post('/superadmin/save-rental-pricing-rule', {
+        const res = await api.post('/superadmin/save-rental-pricing-rule', {
           ...editingRentalRule,
           depreciation_range_min: rentalDepRanges[0].min,
           depreciation_range_max: rentalDepRanges[0].max || '0',
           depreciation_amount: rentalDepRanges[0].amount,
         });
+        if (!res.success) { showToast.error(res.message || 'Failed to save rule'); setModalSaving(false); return; }
       } else {
         if (editingRentalRule.id) await api.post(`/superadmin/delete-rental-pricing-rule/${editingRentalRule.id}`, {});
         for (const r of rentalDepRanges) {
-          await api.post('/superadmin/save-rental-pricing-rule', {
+          const res = await api.post('/superadmin/save-rental-pricing-rule', {
             filter_type, filter_value, deposit_deduction_threshold, max_cost_cap_per_day,
             depreciation_range_min: r.min,
             depreciation_range_max: r.max || '0',
             depreciation_amount: r.amount,
           });
+          if (!res.success) { 
+            showToast.error(res.message || 'Failed to save one or more ranges'); 
+            setModalSaving(false);
+            loadPricingRules();
+            return; 
+          }
         }
       }
       showToast.success('Rental rule(s) saved!');
       setShowRentalModal(false);
       loadPricingRules();
-    } catch { showToast.error('Server error'); }
+    } catch (e: any) { showToast.error(e?.message || 'Server error'); }
     setModalSaving(false);
   };
 
