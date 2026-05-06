@@ -30,7 +30,7 @@ ChartJS.register(
 interface AnalyticsData {
   status_stats: Array<{ status: string; count: number }>;
   offer_trend: Array<{ date: string; count: number; accepted: number }>;
-  monthly_stats: Array<{ month: string; revenue: string; sales_count: string }>;
+  monthly_stats: Array<{ month?: string; date?: string; revenue: string; sales_count: string; offer_count: string }>;
   revenue_by_listing_type: Array<{ listing_type: string; revenue: string }>;
   top_products_by_offers: Array<{ title: string; listing_type: string; offer_count: number; accepted_count: number; total_revenue: string }>;
   top_products_by_revenue: Array<{ title: string; listing_type: string; offer_count: number; accepted_count: number; total_revenue: string }>;
@@ -154,12 +154,20 @@ export default function AnalyticsView({ role }: Props) {
 
   const barChartData: ChartData<'bar'> = {
     labels: data?.monthly_stats.map(s => formatLabel((s as any).month || (s as any).date)) || [],
-    datasets: [{
-      label: 'Number of Sales',
-      data: data?.monthly_stats.map(s => parseInt(s.sales_count)) || [],
-      backgroundColor: '#ffc63a',
-      borderRadius: 6,
-    }]
+    datasets: [
+      {
+        label: 'Total Offers',
+        data: data?.monthly_stats.map(s => parseInt(s.offer_count || '0')) || [],
+        backgroundColor: '#cbd5e1',
+        borderRadius: 6,
+      },
+      {
+        label: 'Successful Sales',
+        data: data?.monthly_stats.map(s => parseInt(s.sales_count || '0')) || [],
+        backgroundColor: '#ffc63a',
+        borderRadius: 6,
+      }
+    ]
   };
 
   // Pie Chart Data: Revenue Distribution by Listing Type

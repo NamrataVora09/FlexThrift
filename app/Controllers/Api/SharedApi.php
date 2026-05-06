@@ -277,7 +277,8 @@ class SharedApi extends ResourceController
         $monthlyStats = $db->query("
             SELECT $groupBy as $labelAlias,
                    SUM(CASE WHEN status='accepted' THEN offer_price ELSE 0 END) as revenue,
-                   SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as sales_count
+                   SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as sales_count,
+                   COUNT(id) as offer_count
             FROM offers WHERE seller_id = ? $dateFilter
             GROUP BY $groupBy ORDER BY $labelAlias ASC
         ", [$userId])->getResultArray();
@@ -305,14 +306,10 @@ class SharedApi extends ResourceController
         $scorePoints = (int)($user['reliability_score'] ?? 0);
 
         // Top 10 products by offers (with date filter)
-        $topProductsQuery = $db->table('offers o')
+        $topProductsQuery = $db->table('products p')
             ->select('p.title, p.listing_type_category as listing_type, COUNT(o.id) as offer_count, SUM(CASE WHEN o.status="accepted" THEN 1 ELSE 0 END) as accepted_count, SUM(CASE WHEN o.status="accepted" THEN o.offer_price ELSE 0 END) as total_revenue')
-            ->join('products p', 'p.id = o.product_id')
-            ->where('o.seller_id', $userId);
-        
-        if ($dateFilter) {
-            $topProductsQuery->where("o." . ltrim($dateFilter, 'AND '));
-        }
+            ->join('offers o', "o.product_id = p.id " . ($dateFilter ? "AND o." . ltrim($dateFilter, 'AND ') : ""), 'left')
+            ->where('p.seller_id', $userId);
 
         $topProductsByOffers = (clone $topProductsQuery)
             ->groupBy('o.product_id')
