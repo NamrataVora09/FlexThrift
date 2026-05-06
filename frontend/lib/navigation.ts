@@ -71,7 +71,7 @@ export function getNavigation(role: string): NavSection[] {
           items: [
             { label: 'Upload Product', href: '/admin/upload-product', icon: 'bi bi-cloud-upload' },
             { label: 'My Products', href: '/admin/my-products', icon: 'bi bi-box-seam' },
-            { label: 'Analytics', href: '/admin/analytics', icon: 'bi bi-chart-line' },
+            { label: 'Analytics', href: '/admin/analytics', icon: 'bi bi-bar-chart' },
             { label: 'Offers', href: '/admin/offers', icon: 'bi bi-tags' },
             { label: 'All Offers On Platform', href: '/admin/all-platform-offers', icon: 'bi bi-globe' },
           ],
