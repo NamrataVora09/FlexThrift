@@ -131,7 +131,7 @@ export default function HelpView({ role }: Props) {
                     {faqs.length > 0 ? faqs.map((item) => (
                       <div className="faq-item" key={item.id}>
                         <button
-                          className={`faq-question ${activeFaqId === item.id ? 'active' : ''}`}
+                          className={`faq-question`}
                           onClick={() => toggleFaq(item.id)}
                         >
                           {item.question}

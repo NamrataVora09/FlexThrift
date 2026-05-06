@@ -71,6 +71,7 @@ export function getNavigation(role: string): NavSection[] {
           items: [
             { label: 'Upload Product', href: '/admin/upload-product', icon: 'bi bi-cloud-upload' },
             { label: 'My Products', href: '/admin/my-products', icon: 'bi bi-box-seam' },
+            { label: 'Analytics', href: '/admin/analytics', icon: 'bi bi-chart-line' },
             { label: 'Offers', href: '/admin/offers', icon: 'bi bi-tags' },
             { label: 'All Offers On Platform', href: '/admin/all-platform-offers', icon: 'bi bi-globe' },
           ],
@@ -127,6 +128,7 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'Moderation History', href: '/superadmin/moderation-history', icon: 'bi bi-journal-text' },
             { label: 'Upload Product', href: '/superadmin/upload-product', icon: 'bi bi-cloud-upload' },
             { label: 'My Products', href: '/superadmin/my-products', icon: 'bi bi-box-seam' },
+            { label: 'Analytics', href: '/superadmin/analytics', icon: 'bi bi-bar-chart' },
             { label: 'All Offers On Platform', href: '/superadmin/offers', icon: 'bi bi-tags-fill' },
           ],
         },

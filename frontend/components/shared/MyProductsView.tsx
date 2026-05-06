@@ -30,7 +30,7 @@ const tdStyle: React.CSSProperties = { padding: '1.1rem 1.5rem', verticalAlign: 
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#ffff', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 const productNameStyle: React.CSSProperties = { fontWeight: 700, fontSize: '0.82rem', color: '#1a1a1a' };
 const productIdStyle: React.CSSProperties = { fontSize: '0.6rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' };
-const priceValStyle: React.CSSProperties = { fontWeight: 800, fontSize: '0.88rem', color: '#ffc63a' };
+const priceValStyle: React.CSSProperties = { fontWeight: 800, fontSize: '0.88rem' };
 const dateValStyle: React.CSSProperties = { fontSize: '0.72rem', color: '#9ca3af' };
 
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
