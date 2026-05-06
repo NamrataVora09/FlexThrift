@@ -134,8 +134,24 @@ export default function AnalyticsView({ role }: Props) {
   ];
 
   // Bar Chart Data: Sales per Month/Date
+  const formatLabel = (label: string) => {
+    if (!label) return '';
+    // YYYY-MM format
+    if (/^\d{4}-\d{2}$/.test(label)) {
+      const [year, month] = label.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1);
+      return date.toLocaleString('default', { month: 'short', year: '2-digit' });
+    }
+    // YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(label)) {
+      const date = new Date(label);
+      return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+    }
+    return label;
+  };
+
   const barChartData: ChartData<'bar'> = {
-    labels: data?.monthly_stats.map(s => (s as any).month || (s as any).date) || [],
+    labels: data?.monthly_stats.map(s => formatLabel((s as any).month || (s as any).date)) || [],
     datasets: [{
       label: 'Number of Sales',
       data: data?.monthly_stats.map(s => parseInt(s.sales_count)) || [],
@@ -278,7 +294,7 @@ export default function AnalyticsView({ role }: Props) {
       `}</style>
 
       <div className="container">
-        <PageHeader title="Analytics" />
+        <PageHeader title="Analytics" className="px-3" />
 
         <div className="stats-slider-container">
           <button className="nav-btn left" onClick={() => scroll('left')}><i className="bi bi-chevron-left"></i></button>
@@ -334,8 +350,8 @@ export default function AnalyticsView({ role }: Props) {
               <h5 className="subsection_label_font mb-1" style={{ fontWeight: 800 }}>Top Performing Products</h5>
               <p className="text-muted small mb-0">Analysis of your best-selling items.</p>
             </div>
-            <select 
-              className="form-select form-select-sm" 
+            <select
+              className="form-select form-select-sm"
               style={{ width: '160px', borderRadius: '10px', border: '1px solid #ddd', padding: '0.4rem', fontSize: '0.75rem' }}
               value={sortType}
               onChange={(e) => setSortType(e.target.value as any)}
@@ -345,12 +361,12 @@ export default function AnalyticsView({ role }: Props) {
             </select>
           </div>
           <div className="table-responsive">
-            <DataTable 
-              columns={topProductCols} 
-              data={sortType === 'offers' ? (data?.top_products_by_offers ?? []) : (data?.top_products_by_revenue ?? [])} 
-              emptyIcon="bi bi-box" 
-              emptyText="No product data yet" 
-              keyField="title" 
+            <DataTable
+              columns={topProductCols}
+              data={sortType === 'offers' ? (data?.top_products_by_offers ?? []) : (data?.top_products_by_revenue ?? [])}
+              emptyIcon="bi bi-box"
+              emptyText="No product data yet"
+              keyField="title"
             />
           </div>
         </div>

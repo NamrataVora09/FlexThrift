@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { addToCart, isInCart } from '@/lib/cart';
@@ -85,6 +85,8 @@ const BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080'
 
 export default function ProductDetailClient({ product, images, similarProducts = [], minRentalDays = 3 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isPreview = searchParams.get('preview') === 'true';
   const [activeProductTab, setActiveProductTab] = useState<'description' | 'specifications'>('description');
   const [imgIdx, setImgIdx] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
@@ -128,14 +130,15 @@ export default function ProductDetailClient({ product, images, similarProducts =
         try {
           const u = JSON.parse(stored);
           setUser(u);
-          // 1. Blocked admin check
-          if (u.role === 'admin' && Number(u.blocked_buyer) === 1) {
-            router.replace('/admin');
-            return;
-          }
+
           // 2. Strictly seller check (not 'both' and not 'admin/super_admin')
           // Allow if they are the owner of THIS product
-          if (u.user_type === 'seller' && !['admin', 'super_admin'].includes(u.role) && Number(u.id) !== Number(product.seller_id)) {
+          if (u.user_type === 'seller' && Number(u.id) !== Number(product.seller_id)) {
+            router.replace('/seller');
+            return;
+          }
+          // 3. Owner must use preview mode
+          if (Number(u.id) === Number(product.seller_id) && !isPreview) {
             router.replace('/seller');
             return;
           }
@@ -144,7 +147,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
       setInCart(isInCart(Number(product.id)));
       setInWishlist(isInWishlist(Number(product.id)));
     }
-  }, [product.id, router, product.seller_id]);
+  }, [product.id, router, product.seller_id, isPreview]);
 
   // Check if buyer already has an active offer on this product (persists across refreshes)
   useEffect(() => {
@@ -192,10 +195,9 @@ export default function ProductDetailClient({ product, images, similarProducts =
       .catch(() => { });
   }, [product.id]);
 
-  // Prevent rendering if blocked (MUST BE AFTER HOOKS)
+  // Prevent rendering if blocked
   if (user) {
-    if (user.role === 'admin' && Number((user as any).blocked_buyer) === 1) return null;
-    if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role || '') && Number(user.id) !== Number(product.seller_id)) return null;
+    if (user.user_type === 'seller' && Number(user.id) !== Number(product.seller_id)) return null;
   }
 
   // Recalculate rental price when dates change
@@ -341,6 +343,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
     return `${BASE_URL}/uploads/products/${path}`;
   };
 
+
   const usedTimes = product.used_times || product.times_used || '0';
   const brandName = product.orignal_brand || product.brand_name || product.brand || 'Premium Listing';
   const price =
@@ -395,7 +398,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
     <div style={{ fontFamily: "'Maven Pro', sans-serif", backgroundColor: '#fff', color: '#111827', minHeight: '100vh' }}>
       <link href="https://fonts.googleapis.com/css2?family=Maven+Pro:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       {/* Landing Navbar */}
-      <LandingNavbar showAuth />
+      {!isPreview && <LandingNavbar showAuth />}
 
       {/* Breadcrumb */}
       <div className=' xl:px-28 px-8 py-4'>
@@ -635,13 +638,21 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       <i className={`bi ${inWishlist ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: '1.3rem', color: '#ef4444' }}></i>
                     </button>
                     <button
-                      onClick={() => { setShowOffer(true); setOfferError(null); }}
-                      style={{ flex: 1, padding: '16px 24px', borderRadius: 8, fontSize: 17, fontWeight: 600, fontFamily: "'Maven Pro', sans-serif", cursor: 'pointer', transition: 'all 0.3s', border: 'none', background: '#FFC63A', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
+                      onClick={() => { if (!isPreview) { setShowOffer(true); setOfferError(null); } }}
+                      disabled={isPreview}
+                      style={{ 
+                        flex: 1, padding: '16px 24px', borderRadius: 8, fontSize: 17, fontWeight: 600, 
+                        fontFamily: "'Maven Pro', sans-serif", cursor: isPreview ? 'not-allowed' : 'pointer', 
+                        transition: 'all 0.3s', border: 'none', 
+                        background: isPreview ? '#e5e7eb' : '#FFC63A', 
+                        color: isPreview ? '#9ca3af' : '#fff', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 
+                      }}
+                      onMouseEnter={e => { if (!isPreview) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; } }}
+                      onMouseLeave={e => { if (!isPreview) { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; } }}
                     >
-                      <i className={`bi ${product.listing_type === 'rent' ? 'bi-calendar-check-fill' : 'bi-tags-fill'}`} style={{ color: '#fff' }}></i>
-                      Make an Offer
+                      <i className={`bi ${product.listing_type === 'rent' ? 'bi-calendar-check-fill' : 'bi-tags-fill'}`} style={{ color: isPreview ? '#9ca3af' : '#fff' }}></i>
+                      {isPreview ? 'Offer Disabled' : 'Make an Offer'}
                     </button>
 
                   </div>
@@ -1180,7 +1191,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
         </div>
       )}
 
-      <Footer />
+      {!isPreview && <Footer />}
     </div>
   );
 }

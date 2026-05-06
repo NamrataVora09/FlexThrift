@@ -6,11 +6,12 @@ interface Props {
   actionLabel?: string;
   actionHref?: string;
   actionIcon?: string;
+  className?: string;
 }
 
-export default function PageHeader({ title, badge, actionLabel, actionHref, actionIcon = 'fa fa-plus' }: Props) {
+export default function PageHeader({ title, badge, actionLabel, actionHref, actionIcon = 'fa fa-plus', className = "" }: Props) {
   return (
-    <div className="d-flex justify-content-between align-items-center mb-4">
+    <div className={`d-flex justify-content-between align-items-center mb-4 ${className}`}>
       <h1 className="header_label_font mb-0" style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: 'Poppins' }}>
         {title}
         {badge !== undefined && (

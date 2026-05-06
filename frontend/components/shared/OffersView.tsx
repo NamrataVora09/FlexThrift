@@ -198,7 +198,7 @@ const CSS = `
     text-decoration: none !important;
   }
   .filter-tabs .nav-link:hover { color: #666 !important; background: #fff; border-color: #eee; }
-  .filter-tabs .nav-link.active { background: #ffc63a; color: #fff !important; border-color: #ffc63a; }
+  .filter-tabs .nav-link.active { background: rgb(215, 180, 103); color: #fff !important; border-color: rgb(215, 180, 103); }
   .filter-tabs .nav-link .count-badge { background: rgba(0,0,0,0.08); padding: 2px 8px; border-radius: 20px; font-size: 11px; margin-left: 6px; }
   .filter-tabs .nav-link.active .count-badge { background: rgba(255,255,255,0.25); }
 
@@ -218,39 +218,25 @@ const CSS = `
   /* ── buyer contact item ── */
   .buyer-contact-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #555; margin-bottom: 3px; }
 
+  /* ── price ── */
+  .price-tag { font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 800; color: #ffc63a; }
+  .original-price-strikethrough { font-size: 0.72rem; color: #aaa; text-decoration: line-through; }
+
   /* ── seller status pill ── */
-  .status-pill { font-size: 0.7rem; padding: 5px 12px; border-radius: 50px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
-  .status-pending   { background: #FFF9E6; color: #D7B467; }
-  .status-accepted  { background: #E7F9ED; color: #15BD66; }
-  .status-rejected  { background: #FDEEEE; color: #EB5757; }
+  .status-pill { font-size: 0.6rem; padding: 3px 11px; border-radius: 9999px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block; }
+  .status-pending   { background: #f3f4f6; color: #6b7280; }
+  .status-accepted  { background: #dcfce7; color: #15803d; }
+  .status-rejected  { background: #fee2e2; color: #dc2626; }
   .status-negotiating { background: #E1F5FE; color: #01579B; }
   .status-cancelled { background: #f1f3f5; color: #868e96; }
 
-  /* ── price ── */
-  .price-tag { font-family: 'Maven Pro', sans-serif; font-size: 1.25rem; font-weight: 800; color: #000; }
-  .original-price-strikethrough { font-size: 0.82rem; color: #aaa; text-decoration: line-through; }
-
-  /* ── rental info box ── */
-  .rental-info-box { background: #fffdf8 !important; border: 1px solid #f9e6b3; border-radius: 12px; padding: 10px 14px; }
-
-  /* ── conflict warning (seller) ── */
-  .conflict-warning { background: #fff1f2; color: #e11d48; border: 1px solid #fda4af; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; gap: 8px; }
-
-  /* ── delivery box ── */
-  .delivery-box { background: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 8px 12px; }
-
-  /* ── buttons ── */
-  .btn-yellow { background-color: #ffc63a; color: #000; border: none; border-radius: 10px; font-weight: 700; padding: 8px 16px; transition: all 0.3s ease; cursor: pointer; }
-  .btn-yellow:hover { background-color: #000; color: #fff; }
-  .btn-outline-dark-custom { border: 1px solid #ddd; color: #666; border-radius: 10px; font-weight: 600; padding: 8px 16px; transition: all 0.3s ease; background: transparent; cursor: pointer; }
-  .btn-outline-dark-custom:hover { background: #f8f9fa; border-color: #000; color: #000; }
-
-  /* ── product meta badge ── */
-  .product-meta-badge { font-size: 0.75rem; background: #f8f9fa; padding: 5px 12px; border-radius: 8px; color: #666; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
-
   /* ── badge colors ── */
-  .badge-rent  { background: #e0f2f1; color: #00897b; }
-  .badge-sell  { background: #e8eaf6; color: #3949ab; }
+  .badge-rent  { background: #fce7f3; color: #be185d; border-radius: 9999px; font-weight: 700; padding: 3px 11px; }
+  .badge-sell  { background: #d1fae5; color: #065f46; border-radius: 9999px; font-weight: 700; padding: 3px 11px; }
+
+  .date-val { font-size: 0.72rem; color: #9ca3af; }
+  .product-name-style { font-weight: 700; font-size: 0.82rem; color: #1a1a1a; }
+  .product-id-style { font-size: 0.6rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.06em; }
 
   /* ───────────────────────────────────────────────────────────
      BUYER my_offers.php styles
