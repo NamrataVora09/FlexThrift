@@ -109,7 +109,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
       const sellerSpent = barData.charts?.monthly_stats?.seller_spent || [];
       const discount = barData.charts?.monthly_stats?.discount || [];
 
-      const isBoth = barData.user_role === 'super_admin' || barData.user_role === 'admin' || barData.user_type === 'both';
+      const isBoth = ['super_admin', 'superadmin', 'admin'].includes(barData.user_role) || barData.user_type === 'both';
 
       const datasets = [];
       if (isBoth) {
@@ -171,7 +171,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     if (!pieData) return;
     if (pieChartInstance.current) pieChartInstance.current.destroy();
     if (pieChartRef.current) {
-      const isBoth = pieData.user_role === 'super_admin' || pieData.user_role === 'admin' || pieData.user_type === 'both';
+      const isBoth = ['super_admin', 'superadmin', 'admin'].includes(pieData.user_role) || pieData.user_type === 'both';
       const isSeller = pieData.user_role === 'seller';
       const isBuyer = pieData.user_role === 'buyer';
       const labels = []; const values = []; const colors = [];
@@ -197,7 +197,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
       const buyerCounts = countData.charts?.monthly_stats?.buyer_count || [];
       const sellerCounts = countData.charts?.monthly_stats?.seller_count || [];
 
-      const isBoth = countData.user_role === 'super_admin' || countData.user_role === 'admin' || countData.user_type === 'both';
+      const isBoth = ['super_admin', 'superadmin', 'admin'].includes(countData.user_role) || countData.user_type === 'both';
 
       const datasets = [];
       if (isBoth) {

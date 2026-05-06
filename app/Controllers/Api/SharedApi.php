@@ -1187,8 +1187,8 @@ class SharedApi extends ResourceController
             ->join('users u', 'u.id = us.user_id', 'left')
             ->orderBy('us.created_at', 'DESC');
 
-        // If not super_admin, filter by user_id
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+        // If not super_admin/admin, filter by user_id
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin', 'admin'])) {
             $builder->where('us.user_id', $jwtUser['user_id']);
         }
 
@@ -1267,7 +1267,7 @@ class SharedApi extends ResourceController
 
         // Get all plans for breakdown
         $allPlansBuilder = $db->table('subscription_plans');
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin', 'admin'])) {
             if ($userType !== 'both') {
                 $allPlansBuilder->where('user_type', $jwtUser['role']);
             }
@@ -1306,7 +1306,7 @@ class SharedApi extends ResourceController
             ->orderBy('t.created_at', 'DESC')
             ->limit(100);
 
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin', 'admin'])) {
             $txBuilder->where('t.user_id', $jwtUser['user_id']);
         }
         
