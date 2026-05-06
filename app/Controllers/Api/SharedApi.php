@@ -247,6 +247,8 @@ class SharedApi extends ResourceController
             case 'current_week': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday this week')) . "'"; break;
             case 'last_week': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday last week')) . "' AND created_at <= '" . date('Y-m-d 23:59:59', strtotime('sunday last week')) . "'"; break;
             case 'last_2_weeks': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('-2 weeks')) . "'"; break;
+            case 'current_month': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00') . "'"; break;
+            case 'last_month': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of last month')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; break;
             case 'current_quarter': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-2 months')) . "'"; break;
             case 'last_quarter': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-5 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('-3 months')) . "'"; break;
             case 'last_2_quarters': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-8 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('-3 months')) . "'"; break;
@@ -256,10 +258,10 @@ class SharedApi extends ResourceController
             case 'all_time': default: $dateFilter = ""; break;
         }
 
-        // Product stats by status
+        // Product stats by status (always all-time as it's inventory status)
         $statusStats = $db->query("SELECT status, COUNT(*) as count FROM products WHERE seller_id = ? GROUP BY status", [$userId])->getResultArray();
 
-        // Offers over last 30 days
+        // Offers over last 30 days (Trend chart)
         $offerTrend = $db->query("
             SELECT DATE(created_at) as date, COUNT(*) as count, SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as accepted
             FROM offers WHERE seller_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -267,8 +269,10 @@ class SharedApi extends ResourceController
         ", [$userId])->getResultArray();
 
         // Revenue and Sales count (Bar Chart)
-        $groupBy = (in_array($range, ['current_week', 'last_week', 'last_2_weeks'])) ? 'DATE(created_at)' : "DATE_FORMAT(created_at, '%Y-%m')";
-        $labelAlias = (in_array($range, ['current_week', 'last_week', 'last_2_weeks'])) ? 'date' : 'month';
+        // Group by day for shorter ranges, by month for longer ranges
+        $dailyRanges = ['current_week', 'last_week', 'last_2_weeks', 'current_month', 'last_month'];
+        $groupBy = (in_array($range, $dailyRanges)) ? 'DATE(created_at)' : "DATE_FORMAT(created_at, '%Y-%m')";
+        $labelAlias = (in_array($range, $dailyRanges)) ? 'date' : 'month';
         
         $monthlyStats = $db->query("
             SELECT $groupBy as $labelAlias,
@@ -289,26 +293,34 @@ class SharedApi extends ResourceController
 
         // Total stats for cards
         $totalProducts = $db->table('products')->where('seller_id', $userId)->countAllResults();
-        $totalOffers = $db->table('offers')->where('seller_id', $userId)->countAllResults();
+        
+        // Filter total offers by date range
+        $totalOffersQuery = $db->table('offers')->where('seller_id', $userId);
+        if ($dateFilter) {
+            $totalOffersQuery->where(ltrim($dateFilter, 'AND '));
+        }
+        $totalOffers = $totalOffersQuery->countAllResults();
         
         $user = $db->table('users')->select('reliability_score')->where('id', $userId)->get()->getRowArray();
         $scorePoints = (int)($user['reliability_score'] ?? 0);
 
-        // Top 10 products by offers
-        $topProductsByOffers = $db->table('offers o')
+        // Top 10 products by offers (with date filter)
+        $topProductsQuery = $db->table('offers o')
             ->select('p.title, p.listing_type_category as listing_type, COUNT(o.id) as offer_count, SUM(CASE WHEN o.status="accepted" THEN 1 ELSE 0 END) as accepted_count, SUM(CASE WHEN o.status="accepted" THEN o.offer_price ELSE 0 END) as total_revenue')
             ->join('products p', 'p.id = o.product_id')
-            ->where('o.seller_id', $userId)
+            ->where('o.seller_id', $userId);
+        
+        if ($dateFilter) {
+            $topProductsQuery->where("o." . ltrim($dateFilter, 'AND '));
+        }
+
+        $topProductsByOffers = (clone $topProductsQuery)
             ->groupBy('o.product_id')
             ->orderBy('offer_count', 'DESC')
             ->limit(10)
             ->get()->getResultArray();
 
-        // Top 10 products by revenue
-        $topProductsByRevenue = $db->table('offers o')
-            ->select('p.title, p.listing_type_category as listing_type, COUNT(o.id) as offer_count, SUM(CASE WHEN o.status="accepted" THEN 1 ELSE 0 END) as accepted_count, SUM(CASE WHEN o.status="accepted" THEN o.offer_price ELSE 0 END) as total_revenue')
-            ->join('products p', 'p.id = o.product_id')
-            ->where('o.seller_id', $userId)
+        $topProductsByRevenue = (clone $topProductsQuery)
             ->groupBy('o.product_id')
             ->orderBy('total_revenue', 'DESC')
             ->limit(10)

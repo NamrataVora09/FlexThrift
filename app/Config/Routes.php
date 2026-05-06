@@ -90,6 +90,7 @@ function register_api_routes($routes)
         $routes->post('unblock-seller/(:num)', 'Api\BuyerApi::unblockSeller/$1');
         $routes->get('blocked-sellers', 'Api\BuyerApi::blockedSellers');
         // Subscription / Payment
+        $routes->get('subscriptions/(:any)', 'Api\SharedApi::subscriptions/$1');
         $routes->get('plan-checkout-details/(:num)', 'Api\BuyerApi::planCheckoutDetails/$1');
         $routes->post('apply-coupon', 'Api\BuyerApi::applyCoupon');
         $routes->post('initiate-payment', 'Api\BuyerApi::initiatePayment');
@@ -212,6 +213,7 @@ function register_api_routes($routes)
 
     // SuperAdmin API (protected)
     $routes->group('superadmin', ['filter' => 'jwt'], function ($routes) {
+        $routes->get('subscriptions/(:any)', 'Api\SharedApi::subscriptions/$1');
         $routes->get('dashboard', 'Api\SuperAdminApi::dashboard');
         $routes->get('all-offers', 'Api\SuperAdminApi::allOffers');
         $routes->get('personal-offers', 'Api\SuperAdminApi::personalOffers');

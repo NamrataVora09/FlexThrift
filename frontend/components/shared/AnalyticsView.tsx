@@ -54,6 +54,8 @@ const RANGES = [
   { label: 'Current Week', value: 'current_week' },
   { label: 'Last Week', value: 'last_week' },
   { label: 'Last 2 Weeks', value: 'last_2_weeks' },
+  { label: 'Current Month', value: 'current_month' },
+  { label: 'Last Month', value: 'last_month' },
   { label: 'Current Quarter', value: 'current_quarter' },
   { label: 'Last Quarter', value: 'last_quarter' },
   { label: 'Last 2 Quarters', value: 'last_2_quarters' },
@@ -80,25 +82,25 @@ export default function AnalyticsView({ role }: Props) {
     });
   }, []);
 
-  // Update Bar Chart data
+  // Update Bar Chart and other metrics
   useEffect(() => {
     if (loading) return;
     setBarLoading(true);
     api.get<AnalyticsData>(`/shared/analytics?range=${barRange}`).then((r) => {
-      if (r.success && r.data && data) {
-        setData({ ...data, monthly_stats: r.data.monthly_stats });
+      if (r.success && r.data) {
+        setData(r.data);
       }
       setBarLoading(false);
     });
   }, [barRange]);
 
-  // Update Pie Chart data
+  // Update Pie Chart and other metrics
   useEffect(() => {
     if (loading) return;
     setPieLoading(true);
     api.get<AnalyticsData>(`/shared/analytics?range=${pieRange}`).then((r) => {
-      if (r.success && r.data && data) {
-        setData({ ...data, revenue_by_listing_type: r.data.revenue_by_listing_type });
+      if (r.success && r.data) {
+        setData(r.data);
       }
       setPieLoading(false);
     });
@@ -318,7 +320,9 @@ export default function AnalyticsView({ role }: Props) {
               {barLoading && <LoadingOverlay />}
               <div className="card-body">
                 <div className="d-flex justify-content-between align-items-center mb-4">
-                  <h5 className="subsection_label_font mb-0" style={{ fontWeight: 800 }}>Total Sales per Month</h5>
+                  <h5 className="subsection_label_font mb-0" style={{ fontWeight: 800 }}>
+                    Total Sales {['current_week', 'last_week', 'last_2_weeks', 'current_month', 'last_month'].includes(barRange) ? 'per Day' : 'per Month'}
+                  </h5>
                   <RangePicker value={barRange} onChange={setBarRange} />
                 </div>
                 <div className="chart-container">
