@@ -1184,8 +1184,8 @@ class SharedApi extends ResourceController
             ->join('users u', 'u.id = us.user_id', 'left')
             ->orderBy('us.created_at', 'DESC');
 
-        // If not super_admin/admin, filter by user_id
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin', 'admin'])) {
+        // If not super_admin, filter by user_id (Admins now see only their own data)
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $builder->where('us.user_id', $jwtUser['user_id']);
         }
 
@@ -1262,9 +1262,9 @@ class SharedApi extends ResourceController
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         $userType = $user['user_type'] ?? $jwtUser['role'];
 
-        // Get all plans for breakdown
+        // Get all plans for breakdown (only super_admin sees global plans breakdown)
         $allPlansBuilder = $db->table('subscription_plans');
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin', 'admin'])) {
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             if ($userType !== 'both') {
                 $allPlansBuilder->where('user_type', $jwtUser['role']);
             }
@@ -1303,7 +1303,7 @@ class SharedApi extends ResourceController
             ->orderBy('t.created_at', 'DESC')
             ->limit(100);
 
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin', 'admin'])) {
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $txBuilder->where('t.user_id', $jwtUser['user_id']);
         }
         
@@ -1327,7 +1327,7 @@ class SharedApi extends ResourceController
             case 'all_time': default: break; // No range filter
         }
         
-        $transactions = $rangeTxBuilder->get()->getResultArray();
+        $transactionLogs = $rangeTxBuilder->get()->getResultArray();
 
         return $this->respond([
             'success' => true,
@@ -1352,7 +1352,8 @@ class SharedApi extends ResourceController
                         }, array_keys($planBreakdown))
                     ]
                 ],
-                'transactions' => array_map(function($s) {
+                'transactions' => $transactionLogs,
+                'subscription_transactions' => array_map(function($s) {
                     return [
                         'id' => $s['id'],
                         'user_name' => $s['user_name'] ?? 'System',
@@ -1370,42 +1371,45 @@ class SharedApi extends ResourceController
 
     private function getMonthlyStats($subs)
     {
-        $buyerStats = [];
-        $sellerStats = [];
-        $discounts = [];
+        $stats = [];
         
-        // Pre-fill last 12 months with 0
-        for ($i = 11; $i >= 0; $i--) {
-            $monthKey = date('M Y', strtotime("-$i months"));
-            $buyerStats[$monthKey] = 0;
-            $sellerStats[$monthKey] = 0;
-            $buyerCounts[$monthKey] = 0;
-            $sellerCounts[$monthKey] = 0;
-            $discounts[$monthKey] = 0;
-        }
+        // Sort subscriptions by date to ensure chronological order
+        usort($subs, function($a, $b) {
+            return strtotime($a['created_at']) - strtotime($b['created_at']);
+        });
 
-        // Add actual subscription data
         foreach ($subs as $s) {
             $month = date('M Y', strtotime($s['created_at']));
-            if (isset($buyerStats[$month])) {
-                if (($s['plan_user_type'] ?? '') === 'seller') {
-                    $sellerStats[$month] += (float)$s['amount_paid'];
-                    $sellerCounts[$month]++;
-                } else {
-                    $buyerStats[$month] += (float)$s['amount_paid'];
-                    $buyerCounts[$month]++;
-                }
-                $discounts[$month] += (float)$s['referral_discount_applied'];
+            if (!isset($stats[$month])) {
+                $stats[$month] = [
+                    'buyer_spent' => 0,
+                    'seller_spent' => 0,
+                    'buyer_count' => 0,
+                    'seller_count' => 0,
+                    'discount' => 0
+                ];
             }
+            
+            $amt = (float)$s['amount_paid'];
+            $disc = (float)$s['referral_discount_applied'];
+            
+            if (($s['plan_user_type'] ?? '') === 'seller') {
+                $stats[$month]['seller_spent'] += $amt;
+                $stats[$month]['seller_count']++;
+            } else {
+                $stats[$month]['buyer_spent'] += $amt;
+                $stats[$month]['buyer_count']++;
+            }
+            $stats[$month]['discount'] += $disc;
         }
 
         return [
-            'labels' => array_keys($buyerStats),
-            'buyer_spent' => array_values($buyerStats),
-            'seller_spent' => array_values($sellerStats),
-            'buyer_count' => array_values($buyerCounts),
-            'seller_count' => array_values($sellerCounts),
-            'discount' => array_values($discounts)
+            'labels' => array_values(array_keys($stats)),
+            'buyer_spent' => array_values(array_map(fn($m) => $m['buyer_spent'], $stats)),
+            'seller_spent' => array_values(array_map(fn($m) => $m['seller_spent'], $stats)),
+            'buyer_count' => array_values(array_map(fn($m) => $m['buyer_count'], $stats)),
+            'seller_count' => array_values(array_map(fn($m) => $m['seller_count'], $stats)),
+            'discount' => array_values(array_map(fn($m) => $m['discount'], $stats))
         ];
     }
 }

@@ -156,14 +156,8 @@ export default function AnalyticsView({ role }: Props) {
     labels: data?.monthly_stats.map(s => formatLabel((s as any).month || (s as any).date)) || [],
     datasets: [
       {
-        label: 'Total Offers',
-        data: data?.monthly_stats.map(s => parseInt(s.offer_count || '0')) || [],
-        backgroundColor: '#cbd5e1',
-        borderRadius: 6,
-      },
-      {
-        label: 'Successful Sales',
-        data: data?.monthly_stats.map(s => parseInt(s.sales_count || '0')) || [],
+        label: 'Total Revenue',
+        data: data?.monthly_stats.map(s => parseFloat(s.revenue || '0')) || [],
         backgroundColor: '#ffc63a',
         borderRadius: 6,
       }
@@ -175,7 +169,7 @@ export default function AnalyticsView({ role }: Props) {
     labels: data?.revenue_by_listing_type.map(r => r.listing_type.toUpperCase()) || [],
     datasets: [{
       data: data?.revenue_by_listing_type.map(r => parseFloat(r.revenue)) || [],
-      backgroundColor: ['#ffc63a', '#10b981', '#6366f1', '#ef4444'],
+      backgroundColor: ['#d96459', '#008080', '#ef4444', '#d7b467', 'rgb(255, 198, 58)', 'rgb(231, 239, 229)', '#ffffff'],
       borderWidth: 0,
     }]
   };
@@ -187,6 +181,28 @@ export default function AnalyticsView({ role }: Props) {
       legend: {
         position: 'bottom',
         labels: { font: { weight: 'bold' } }
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            let label = context.dataset.label || '';
+            if (label) label += ': ';
+            if (context.parsed.y !== null) {
+              label += new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(context.parsed.y);
+            }
+            return label;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: (value: any) => {
+            return '₹' + value.toLocaleString('en-IN');
+          }
+        }
       }
     }
   };
@@ -311,8 +327,8 @@ export default function AnalyticsView({ role }: Props) {
           <div className="stats-slider" ref={sliderRef}>
             {stats.map((s, i) => (
               <div key={i} className="stat-card">
-                <div className="stat-icon" style={{ background: s.bg }}>
-                  <i className={s.icon} style={{ color: s.color }}></i>
+                <div className="stat-icon" >
+                  <i className={s.icon} style={{ color: '#ffc63a' }}></i>
                 </div>
                 <div className="stat-value">{s.value}</div>
                 <div className="stat-label">{s.label}</div>
@@ -329,7 +345,7 @@ export default function AnalyticsView({ role }: Props) {
               <div className="card-body">
                 <div className="d-flex justify-content-between align-items-center mb-4">
                   <h5 className="subsection_label_font mb-0" style={{ fontWeight: 800 }}>
-                    Total Sales {['current_week', 'last_week', 'last_2_weeks', 'current_month', 'last_month'].includes(barRange) ? 'per Day' : 'per Month'}
+                    Total Revenue
                   </h5>
                   <RangePicker value={barRange} onChange={setBarRange} />
                 </div>

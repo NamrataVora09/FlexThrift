@@ -177,8 +177,8 @@ export default function TransactionsReportsView({ role }: { role: string }) {
       const labels = []; const values = []; const colors = [];
       const ad = pieData.charts?.amount_discount;
       if (!ad) return;
-      if (isBoth || isBuyer) { labels.push('Buyer Spent'); values.push(ad.buyer?.spent || 0); colors.push(themeColors.buyer); }
       if (isBoth || isSeller) { labels.push('Seller Spent'); values.push(ad.seller?.spent || 0); colors.push(themeColors.seller); }
+      if (isBoth || isBuyer) { labels.push('Buyer Spent'); values.push(ad.buyer?.spent || 0); colors.push(themeColors.buyer); }
       const totalDisc = (ad.buyer?.discount || 0) + (ad.seller?.discount || 0);
       if (totalDisc > 0) { labels.push('Total Discount'); values.push(totalDisc); colors.push(themeColors.discount); }
       pieChartInstance.current = new Chart(pieChartRef.current, {
@@ -251,17 +251,17 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     if (countPieChartRef.current) {
       const buyerCounts = countData.charts?.monthly_stats?.buyer_count || [];
       const sellerCounts = countData.charts?.monthly_stats?.seller_count || [];
-      const totalBuyer = buyerCounts.reduce((a, b) => a + b, 0);
-      const totalSeller = sellerCounts.reduce((a, b) => a + b, 0);
+      const totalBuyer = Array.isArray(buyerCounts) ? buyerCounts.reduce((a, b) => a + (Number(b) || 0), 0) : 0;
+      const totalSeller = Array.isArray(sellerCounts) ? sellerCounts.reduce((a, b) => a + (Number(b) || 0), 0) : 0;
 
       countPieChartInstance.current = new Chart(countPieChartRef.current, {
         type: 'pie',
         data: {
-          labels: ['Buyer Plans', 'Seller Plans'],
+          labels: ['Seller Plans', 'Buyer Plans'],
           datasets: [{
-            data: [totalBuyer, totalSeller],
-            backgroundColor: [themeColors.buyer, themeColors.seller],
-            hoverBackgroundColor: [themeColors.buyer, themeColors.seller],
+            data: [totalSeller, totalBuyer],
+            backgroundColor: [themeColors.seller, themeColors.buyer],
+            hoverBackgroundColor: [themeColors.seller, themeColors.buyer],
           }]
         },
         options: {
@@ -363,7 +363,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
             <div className="card-wrap p-4">
               {barLoading && <LoadingOverlay />}
               <div className="card-header-flex">
-                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Amount Spent & Discount (Bar)</h6>
+                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a', fontFamily:"inter" }}>Total Amount Spent On Subscriptions</h6>
                 <RangePicker value={barRange} onChange={setBarRange} />
               </div>
               <div style={{ height: '320px' }}><canvas ref={barChartRef}></canvas></div>
@@ -373,7 +373,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
             <div className="card-wrap p-4">
               {pieLoading && <LoadingOverlay />}
               <div className="card-header-flex">
-                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Distribution (Pie)</h6>
+                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' , fontFamily:"inter"}}>Bifurkcation</h6>
                 <RangePicker value={pieRange} onChange={setPieRange} />
               </div>
               <div style={{ height: '320px' }}><canvas ref={pieChartRef}></canvas></div>
@@ -392,7 +392,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
                     <div className="card-wrap p-4">
                       {countLoading && <LoadingOverlay />}
                       <div className="card-header-flex">
-                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Subscription Volume (Monthly Bar)</h6>
+                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' , fontFamily:"inter"}}>Total Number of Subscription Plans Purchased</h6>
                         <RangePicker value={countRange} onChange={setCountRange} />
                       </div>
                       <div style={{ height: '320px' }}><canvas ref={countChartRef}></canvas></div>
@@ -402,7 +402,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
                     <div className="card-wrap p-4">
                       {countLoading && <LoadingOverlay />}
                       <div className="card-header-flex">
-                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Plan Distribution (Pie)</h6>
+                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' , fontFamily:"inter"}}>Bifurkcation</h6>
                         {/* Synchronized with the bar chart range */}
                       </div>
                       <div style={{ height: '320px' }}><canvas ref={countPieChartRef}></canvas></div>
@@ -416,7 +416,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
                   <div className="card-wrap p-4">
                     {countLoading && <LoadingOverlay />}
                     <div className="card-header-flex">
-                      <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Subscription Volume (Monthly Bar)</h6>
+                      <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' }}>Total Number of Subscription Plans Purchased</h6>
                       <RangePicker value={countRange} onChange={setCountRange} />
                     </div>
                     <div style={{ height: '320px' }}><canvas ref={countChartRef}></canvas></div>
