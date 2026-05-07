@@ -213,7 +213,7 @@ export default function Footer() {
           <div className="w-full flex md:col-span-3 sm:flex-row flex-col gap-10 md:gap-20 lg:gap-32 justify-start  flex-wrap">
             {sections.map(section => (
               <div key={section.id}>
-                <h5 className="text-gold font-bold uppercase tracking-widest text-xs mb-[18px]!">{section.title}</h5>
+                <h5 className="text-white font-bold uppercase tracking-widest text-xs mb-[18px]!">{section.title}</h5>
                 {section.type === 'social' ? (
                   <div className="flex flex-wrap gap-3">
                     {resolveLinks(section).map((l, i) => (

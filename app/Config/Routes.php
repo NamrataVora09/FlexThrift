@@ -52,6 +52,9 @@ function register_api_routes($routes)
     $routes->get('business-settings', 'Api\SharedApi::businessSettings');
     $routes->get('coupons', 'Api\SharedApi::coupons');
 
+    $routes->get('cms-page/(:any)', 'Api\SharedApi::cmsPage/$1');
+    $routes->get('cms-pages', 'Api\SharedApi::cmsPages');
+
     // Auth (protected)
     $routes->group('auth', ['filter' => 'jwt'], function ($routes) {
         $routes->get('me', 'Api\AuthApi::me');

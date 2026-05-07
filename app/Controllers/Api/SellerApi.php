@@ -350,6 +350,10 @@ class SellerApi extends ResourceController
         $v = $this->validatePricing($data);
         if (!$v['success']) return $this->respond($v, 422);
 
+        // Check if admin review is required
+        $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
+        $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
+
         $productData = [
             'seller_id' => $userId,
             'title' => $data['title'],
@@ -376,7 +380,7 @@ class SellerApi extends ResourceController
             'dispatch_state' => $data['dispatch_state'] ?? null,
             'dispatch_city' => $data['dispatch_city'] ?? null,
             'specifications' => $data['specifications'] ?? null,
-            'status' => $jwtUser['role'] === 'super_admin' ? 'approved' : 'pending',
+            'status' => (in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) || !$reviewRequired) ? 'approved' : 'pending',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ];
@@ -724,6 +728,12 @@ class SellerApi extends ResourceController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+        
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_seller'] ?? 0) === 1) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role is currently blocked. Access restricted.'], 403);
+        }
+
         $data = $this->request->getJSON(true) ?? [];
 
         $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
@@ -1196,8 +1206,12 @@ class SellerApi extends ResourceController
             return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        // For regular sellers, create edit request instead of direct update
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin'])) {
+        // Check if admin review is required
+        $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
+        $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
+
+        // For regular sellers, create edit request instead of direct update ONLY if review is required
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $reviewRequired) {
             return $this->editProduct($id);
         }
 
@@ -1379,6 +1393,11 @@ class SellerApi extends ResourceController
         $jwtUser = $this->request->jwt_user;
         $userId = $jwtUser['user_id'];
         $db = \Config\Database::connect();
+
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_seller'] ?? 0) === 1) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role is currently blocked. Access restricted.'], 403);
+        }
 
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
         $offerId = $data['offer_id'] ?? null;

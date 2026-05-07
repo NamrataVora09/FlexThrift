@@ -17,7 +17,7 @@ export function getNavigation(role: string): NavSection[] {
       return [
         {
           items: [
-            { label: 'Dashboard', href: '/buyer/dashboard', icon: 'fa fa-chart-pie' },
+            { label: 'Dashboard', href: '/buyer', icon: 'fa fa-chart-pie' },
             { label: 'Profile', href: '/buyer/profile', icon: 'fa fa-user' },
             { label: 'Subscription', href: '/buyer/subscriptions', icon: 'fa fa-credit-card' },
             { label: 'Browse Market', href: '/buyer/browse', icon: 'fa-solid fa-magnifying-glass', target: '_blank' },

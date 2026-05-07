@@ -634,10 +634,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
           fd.append('deleted_images_ids', JSON.stringify(deletedImageIds));
         }
 
-        if (user?.role === 'super_admin' || user?.role === 'admin') {
+        // For sellers, use update-product directly if review is not required
+        if (['super_admin', 'admin', 'superadmin'].includes(user?.role || '') || meta?.config.product_approval_required !== '1') {
           res = await api.upload(`${apiBasePath}/update-product/${editingProductId}`, fd);
         } else {
-          // For regular sellers, we now use api.upload (multipart) to support images in edit requests
+          // Otherwise, create an edit request
           res = await api.upload(`${apiBasePath}/edit-product/${editingProductId}`, fd);
         }
       } else {
@@ -646,9 +647,10 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       }
 
       if (res.success) {
+        const isAutoApproved = ['super_admin', 'admin', 'superadmin'].includes(user?.role || '') || meta?.config.product_approval_required !== '1';
         const successMessage = isEditMode
-          ? (['super_admin', 'admin'].includes(user?.role || '') ? 'Product updated successfully!' : 'Edit request submitted for admin approval!')
-          : 'Product uploaded!';
+          ? (isAutoApproved ? 'Product updated successfully!' : 'Edit request submitted for admin approval!')
+          : (isAutoApproved ? 'Product uploaded!' : 'Product uploaded and pending admin approval!');
         setSuccess(res.message || successMessage);
         setTimeout(() => router.push(redirectPath), 1500);
       }

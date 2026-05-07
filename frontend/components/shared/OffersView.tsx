@@ -281,6 +281,82 @@ const CSS = `
   .admin-table td { padding: 18px 20px; border-bottom: 1px solid #f1f1f1; }
   .admin-table tr:last-child td { border-bottom: none; }
   .admin-table .product-img { width: 45px; height: 45px; border-radius: 8px; object-fit: cover; }
+
+  .btn-yellow {
+    background: #ffc63a;
+    color: #ffffff;
+    border: none;
+    padding: 8px 24px;
+    border-radius: 50px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-yellow:hover {
+    background: #e6b233;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 198, 58, 0.3);
+  }
+  .btn-yellow:disabled {
+    background: #eee;
+    color: rgba(255,255,255,0.7);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-outline-dark-custom {
+    background: transparent;
+    color: #333;
+    border: 1.5px solid #333;
+    padding: 8px 24px;
+    border-radius: 50px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-outline-dark-custom:hover {
+    background: #333;
+    color: #fff;
+  }
+  .btn-outline-dark-custom:disabled {
+    border-color: #eee;
+    color: #999;
+    cursor: not-allowed;
+  }
+
+  .btn-red {
+    background: #ef4444;
+    color: #ffffff;
+    border: none;
+    padding: 8px 24px;
+    border-radius: 50px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-red:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+  .btn-red:disabled {
+    background: #eee;
+    color: #999;
+    cursor: not-allowed;
+  }
 `;
 
 /* ─────────────────────────── main component ────────────────── */
@@ -653,7 +729,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const content = (
     <div className={noLayout ? '' : 'container-fluid py-4'}>
       <style>{CSS}</style>
-      {perspective === 'seller' && user && Number(user.blocked_seller) === 1 && (
+      {perspective === 'seller' && user && Number(user.blocked_seller) === 1 && user.role !== 'admin' && user.role !== 'super_admin' && (
         <div className="container-fluid p-4 p-md-5 d-flex align-items-center justify-content-center" style={{ minHeight: '70vh' }}>
           <div className="text-center p-5 shadow-sm" style={{ maxWidth: 500, background: '#fff', borderRadius: 24, border: '1px solid #fee2e2' }}>
             <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -671,7 +747,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
         </div>
       )}
 
-      {perspective === 'buyer' && user && Number(user.blocked_buyer) === 1 && (
+      {perspective === 'buyer' && user && Number(user.blocked_buyer) === 1 && user.role !== 'admin' && user.role !== 'super_admin' && (
         <div className="container-fluid p-4 p-md-5 d-flex align-items-center justify-content-center" style={{ minHeight: '70vh' }}>
           <div className="text-center p-5 shadow-sm" style={{ maxWidth: 500, background: '#fff', borderRadius: 24, border: '1px solid #fee2e2' }}>
             <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -689,142 +765,142 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
         </div>
       )}
 
-      {((perspective === 'seller' && user && Number(user.blocked_seller) === 1) || (perspective === 'buyer' && user && Number(user.blocked_buyer) === 1)) ? null : (
+      {((perspective === 'seller' && user && Number(user.blocked_seller) === 1 && user.role !== 'admin' && user.role !== 'super_admin') || (perspective === 'buyer' && user && Number(user.blocked_buyer) === 1 && user.role !== 'admin' && user.role !== 'super_admin')) ? null : (
         <>
 
-      {!noHeader && (
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4 }}>
-              {perspective === 'buyer'
-                ? 'Sent Proposals'
-                : 'Offers Received'}
-            </h2>
-            <p className="text-muted mb-0">
-              {perspective === 'buyer'
-                ? 'Track offers and negotiation status with sellers.'
-                : 'Manage buying requests and rental bookings on Flex Market'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Status Filter + Search */}
-      <div className="d-flex flex-wrap align-items-center gap-3 mb-4">
-        <div className="filter-tabs mb-0">
-          {[
-            { key: '', label: 'All', count: sorted.length },
-            { key: 'pending', label: 'Pending', count: perspectiveOffers.filter(o => ['pending', 'negotiating'].includes(o.status)).length },
-            { key: 'accepted', label: 'Accepted', count: perspectiveOffers.filter(o => o.status === 'accepted').length },
-            { key: 'rejected', label: 'Rejected', count: perspectiveOffers.filter(o => REJECTED_STATUSES.includes(o.status)).length },
-          ].map(({ key, label, count }) => (
-            <button key={key} className={`nav-link ${filter === key ? ' active' : ''}`} onClick={() => setFilter(key)}>
-              {label}<span className="count-badge">{count}</span>
-            </button>
-          ))}
-        </div>
-        <div className="input-group" style={{ maxWidth: 280 }}>
-          <span className="input-group-text bg-white border-end-0" style={{ borderRadius: '12px 0 0 12px', border: '1px solid #eee' }}>
-            <i className="bi bi-search text-muted" style={{ fontSize: '0.85rem' }}></i>
-          </span>
-          <input
-            type="text"
-            className="form-control border-start-0"
-            placeholder="Search offers…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ borderRadius: '0 12px 12px 0', border: '1px solid #eee', borderLeft: 'none', fontSize: '0.88rem' }}
-          />
-          {search && (
-            <button className="btn btn-link position-absolute end-0 top-50 translate-middle-y pe-2 text-muted" style={{ zIndex: 5, fontSize: '0.8rem' }} onClick={() => setSearch('')}>
-              <i className="bi bi-x-lg"></i>
-            </button>
+          {!noHeader && (
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <div>
+                <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4 }}>
+                  {perspective === 'buyer'
+                    ? 'Sent Proposals'
+                    : 'Offers Received'}
+                </h2>
+                <p className="text-muted mb-0">
+                  {perspective === 'buyer'
+                    ? 'Track offers and negotiation status with sellers.'
+                    : 'Manage buying requests and rental bookings on Flex Market'}
+                </p>
+              </div>
+            </div>
           )}
-        </div>
-      </div>
 
-      {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner-border" style={{ color: '#ffc63a' }}></div>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="no-data shadow-sm">
-          <i className="bi bi-inbox" style={{ fontSize: 64, color: '#ccc' }}></i>
-          <h5 className="mt-3 text-muted">No offers found</h5>
-        </div>
-      ) : perspective === 'seller' ? (
-        <SellerView
-          offers={filtered}
-          settings={settings}
-          isRentalBlocked={isRentalBlocked}
-          getRentalConflict={getRentalConflict}
-          onAccept={o => {
-            if ((o.offer_type ?? o.listing_type) === 'rent') {
-              setAcceptChoiceModal({ offer: o });
-            } else {
-              setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o });
-              setRemarks('');
-            }
-          }}
-          onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
-          onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'buyer' }); setRatingValue(5); }}
-        />
-      ) : perspective === 'buyer' ? (
-        <BuyerView
-          offers={filtered}
-          settings={settings}
-          isRentalConflict={isRentalConflict}
-          getRentalConflict={getRentalConflict}
-          isSoldOut={isSoldOut}
-          onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
-          onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({
-            id: o.id,
-            title: o.product_title,
-            start: o.rental_start_date || '',
-            end: o.rental_end_date || '',
-            price: o.offered_price ?? o.offer_price,
-            type: o.offer_type ?? o.listing_type,
-            status: o.status,
-            rentalCostPerDay: Number(o.product_rental_cost ?? o.rental_cost ?? 0),
-            depositAmount: Number(o.product_rental_deposit ?? o.deposit_amount ?? 0),
-            delivery_address: o.delivery_address || '',
-            delivery_city: o.delivery_city || '',
-            delivery_state: o.delivery_state || '',
-            delivery_pin_code: o.delivery_pin_code || ''
-          })}
-          onAcceptDates={handleAcceptDates}
-        />
-      ) : (
-        <BuyerView
-          offers={filtered}
-          settings={settings}
-          role={role}
-          isRentalConflict={isRentalConflict}
-          getRentalConflict={getRentalConflict}
-          isSoldOut={isSoldOut}
-          onAccept={o => (o.offer_type ?? o.listing_type) === 'rent' ? setAcceptChoiceModal({ offer: o }) : setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o })}
-          onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
-          onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
-          onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
-          onUpdateDates={o => setDateModal({
-            id: o.id,
-            title: o.product_title,
-            start: o.rental_start_date || '',
-            end: o.rental_end_date || '',
-            price: o.offered_price ?? o.offer_price,
-            type: o.offer_type ?? o.listing_type,
-            status: o.status,
-            rentalCostPerDay: Number(o.product_rental_cost ?? o.rental_cost ?? 0),
-            depositAmount: Number(o.product_rental_deposit ?? o.deposit_amount ?? 0),
-            delivery_address: o.delivery_address || '',
-            delivery_city: o.delivery_city || '',
-            delivery_state: o.delivery_state || '',
-            delivery_pin_code: o.delivery_pin_code || ''
-          })}
-          onAcceptDates={handleAcceptDates}
-        />
-      )}
+          {/* Status Filter + Search */}
+          <div className="d-flex flex-wrap align-items-center gap-3 mb-4">
+            <div className="filter-tabs mb-0">
+              {[
+                { key: '', label: 'All', count: sorted.length },
+                { key: 'pending', label: 'Pending', count: perspectiveOffers.filter(o => ['pending', 'negotiating'].includes(o.status)).length },
+                { key: 'accepted', label: 'Accepted', count: perspectiveOffers.filter(o => o.status === 'accepted').length },
+                { key: 'rejected', label: 'Rejected', count: perspectiveOffers.filter(o => REJECTED_STATUSES.includes(o.status)).length },
+              ].map(({ key, label, count }) => (
+                <button key={key} className={`nav-link ${filter === key ? ' active' : ''}`} onClick={() => setFilter(key)}>
+                  {label}<span className="count-badge">{count}</span>
+                </button>
+              ))}
+            </div>
+            <div className="input-group" style={{ maxWidth: 280 }}>
+              <span className="input-group-text bg-white border-end-0" style={{ borderRadius: '12px 0 0 12px', border: '1px solid #eee' }}>
+                <i className="bi bi-search text-muted" style={{ fontSize: '0.85rem' }}></i>
+              </span>
+              <input
+                type="text"
+                className="form-control border-start-0"
+                placeholder="Search offers…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ borderRadius: '0 12px 12px 0', border: '1px solid #eee', borderLeft: 'none', fontSize: '0.88rem' }}
+              />
+              {search && (
+                <button className="btn btn-link position-absolute end-0 top-50 translate-middle-y pe-2 text-muted" style={{ zIndex: 5, fontSize: '0.8rem' }} onClick={() => setSearch('')}>
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border" style={{ color: '#ffc63a' }}></div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="no-data shadow-sm">
+              <i className="bi bi-inbox" style={{ fontSize: 64, color: '#ccc' }}></i>
+              <h5 className="mt-3 text-muted">No offers found</h5>
+            </div>
+          ) : perspective === 'seller' ? (
+            <SellerView
+              offers={filtered}
+              settings={settings}
+              isRentalBlocked={isRentalBlocked}
+              getRentalConflict={getRentalConflict}
+              onAccept={o => {
+                if ((o.offer_type ?? o.listing_type) === 'rent') {
+                  setAcceptChoiceModal({ offer: o });
+                } else {
+                  setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o });
+                  setRemarks('');
+                }
+              }}
+              onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
+              onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'buyer' }); setRatingValue(5); }}
+            />
+          ) : perspective === 'buyer' ? (
+            <BuyerView
+              offers={filtered}
+              settings={settings}
+              isRentalConflict={isRentalConflict}
+              getRentalConflict={getRentalConflict}
+              isSoldOut={isSoldOut}
+              onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
+              onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
+              onUpdateDates={o => setDateModal({
+                id: o.id,
+                title: o.product_title,
+                start: o.rental_start_date || '',
+                end: o.rental_end_date || '',
+                price: o.offered_price ?? o.offer_price,
+                type: o.offer_type ?? o.listing_type,
+                status: o.status,
+                rentalCostPerDay: Number(o.product_rental_cost ?? o.rental_cost ?? 0),
+                depositAmount: Number(o.product_rental_deposit ?? o.deposit_amount ?? 0),
+                delivery_address: o.delivery_address || '',
+                delivery_city: o.delivery_city || '',
+                delivery_state: o.delivery_state || '',
+                delivery_pin_code: o.delivery_pin_code || ''
+              })}
+              onAcceptDates={handleAcceptDates}
+            />
+          ) : (
+            <BuyerView
+              offers={filtered}
+              settings={settings}
+              role={role}
+              isRentalConflict={isRentalConflict}
+              getRentalConflict={getRentalConflict}
+              isSoldOut={isSoldOut}
+              onAccept={o => (o.offer_type ?? o.listing_type) === 'rent' ? setAcceptChoiceModal({ offer: o }) : setActionModal({ id: o.id, action: 'accept', title: o.product_title, offer: o })}
+              onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
+              onCancel={o => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
+              onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
+              onUpdateDates={o => setDateModal({
+                id: o.id,
+                title: o.product_title,
+                start: o.rental_start_date || '',
+                end: o.rental_end_date || '',
+                price: o.offered_price ?? o.offer_price,
+                type: o.offer_type ?? o.listing_type,
+                status: o.status,
+                rentalCostPerDay: Number(o.product_rental_cost ?? o.rental_cost ?? 0),
+                depositAmount: Number(o.product_rental_deposit ?? o.deposit_amount ?? 0),
+                delivery_address: o.delivery_address || '',
+                delivery_city: o.delivery_city || '',
+                delivery_state: o.delivery_state || '',
+                delivery_pin_code: o.delivery_pin_code || ''
+              })}
+              onAcceptDates={handleAcceptDates}
+            />
+          )}
         </>
       )}
     </div>
@@ -871,7 +947,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                   {actionModal.action === 'cancel' ? 'No, keep it' : 'Close'}
                 </button>
                 <button
-                  className={`btn rounded-pill px-4 fw-bold ${actionModal.action === 'accept' ? 'btn-warning' : 'btn-danger'}`}
+                  className={`btn rounded-pill px-4 fw-bold ${actionModal.action === 'accept' ? 'btn-yellow' : 'btn-red'}`}
                   onClick={handleAction}
                   disabled={actionLoading}
                 >
@@ -1041,7 +1117,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                 <p className="text-muted small mb-4">Choose how you want to accept this offer for <strong>{acceptChoiceModal.offer.product_title}</strong>.</p>
                 <div className="d-grid gap-3">
                   <button
-                    className="btn btn-warning fw-bold rounded-3 py-3"
+                    className="btn-yellow fw-bold rounded-3 py-3"
                     onClick={() => {
                       const o = acceptChoiceModal.offer;
                       setAcceptChoiceModal(null);
@@ -1228,10 +1304,10 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
         if (status === 'accepted') return 1;
         return 0;
       };
-      
+
       const pA = getPriority(a[0].status);
       const pB = getPriority(b[0].status);
-      
+
       if (pB !== pA) return pB - pA;
       return new Date(b[0].created_at).getTime() - new Date(a[0].created_at).getTime();
     }), [grouped]);
@@ -1431,21 +1507,21 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                         ];
                         return (
                           <div style={{ background: '', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '0.75rem' }}>
-                             <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
-                               <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Date/Time Logs
-                             </div>
-                             {steps.map((step, idx) => (
-                               <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
-                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                                   <div style={{ width: 28, height: 28, background: '#D7B467', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>
-                                     {idx + 1}
-                                   </div>
-                                   {idx < steps.length - 1 && <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />}
-                                 </div>
-                                 <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
-                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                     <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
-                                   </div>
+                            <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                              <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Date/Time Logs
+                            </div>
+                            {steps.map((step, idx) => (
+                              <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                                  <div style={{ width: 28, height: 28, background: '#D7B467', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>
+                                    {idx + 1}
+                                  </div>
+                                  {idx < steps.length - 1 && <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />}
+                                </div>
+                                <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
+                                  </div>
                                   <div style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: 2 }}>{step.date}</div>
                                 </div>
                               </div>
@@ -1480,7 +1556,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                               )}
                               <div className="btn-group btn-group-sm">
                                 <button className="btn-yellow" onClick={() => onAccept(offer)}>Accept</button>
-                                <button className="btn-outline-dark-custom" onClick={() => onReject(offer)}>Reject</button>
+                                <button className="btn-red" onClick={() => onReject(offer)}>Reject</button>
                               </div>
                             </div>
                           )}
@@ -1696,10 +1772,10 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                 <div className="d-grid gap-2">
                   {isAdmin && o.status === 'pending' && (
                     <div className="d-grid gap-2 mb-2">
-                      <button className="btn btn-warning fw-bold rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onAccept?.(o)}>
+                      <button className="btn-yellow" style={{ fontSize: '0.875rem' }} onClick={() => onAccept?.(o)}>
                         <i className="bi bi-check-circle-fill me-1"></i>Accept
                       </button>
-                      <button className="btn btn-outline-danger rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onReject?.(o)}>
+                      <button className="btn-red" style={{ fontSize: '0.875rem' }} onClick={() => onReject?.(o)}>
                         <i className="bi bi-x-circle me-1"></i>Reject
                       </button>
                     </div>
@@ -1719,7 +1795,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                   {(o.status === 'pending' || o.status === 'rejected' || o.status === 'negotiating') && (
                     <>
                       {o.status === 'rejected' ? (
-                        <button className="btn btn-warning mb-1 fw-bold rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates?.(o)}>
+                        <button className="btn-yellow mb-1 fw-bold rounded-pill" style={{ fontSize: '0.875rem' }} onClick={() => onUpdateDates?.(o)}>
                           <i className="bi bi-arrow-repeat me-1"></i>Make Offer
                         </button>
                       ) : (o.offer_type ?? o.listing_type) === 'rent' && (
@@ -1731,7 +1807,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                     </>
                   )}
                   {canRate && !isAdmin && (
-                    <button className="btn btn-warning rounded-pill fw-bold" onClick={() => onRate?.(o)}>
+                    <button className="btn-yellow rounded-pill fw-bold" onClick={() => onRate?.(o)}>
                       <i className="bi bi-star-fill me-1"></i>Rate Seller
                     </button>
                   )}

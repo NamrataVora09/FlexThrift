@@ -141,10 +141,12 @@ export default function AdminsClient() {
   const createAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    const fd = new FormData();
-    fd.append('name', form.name); fd.append('email', form.email);
-    fd.append('mobile', form.mobile); fd.append('password', form.password);
-    const res = await api.post('/superadmin/create-admin', fd);
+    const res = await api.post('/superadmin/create-admin', {
+      name: form.name,
+      email: form.email,
+      mobile: form.mobile,
+      password: form.password
+    });
     setSubmitting(false);
     if (res.success) {
       toast.success('Administrator created!');

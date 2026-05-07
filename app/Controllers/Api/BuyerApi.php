@@ -751,6 +751,12 @@ class BuyerApi extends ResourceController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+        
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_buyer'] ?? 0) === 1) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role is currently blocked. Access restricted.'], 403);
+        }
+
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
 
         $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
@@ -1189,6 +1195,11 @@ class BuyerApi extends ResourceController
         $userId = $jwtUser['user_id'];
         $db = \Config\Database::connect();
 
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_buyer'] ?? 0) === 1) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role is currently blocked. Access restricted.'], 403);
+        }
+
         $offer = $db->table('offers')->where('id', $offerId)->get()->getRowArray();
         if (!$offer || $offer['buyer_id'] != $userId) {
             return $this->respond(['success' => false, 'message' => 'Invalid offer'], 404);
@@ -1318,6 +1329,11 @@ class BuyerApi extends ResourceController
         $userId = $jwtUser['user_id'];
         $db = \Config\Database::connect();
 
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_buyer'] ?? 0) === 1) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role is currently blocked. Access restricted.'], 403);
+        }
+
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
         $offerId = $data['offer_id'] ?? null;
         $rating = (float) ($data['rating'] ?? 5.0);
@@ -1382,6 +1398,11 @@ class BuyerApi extends ResourceController
         $jwtUser = $this->request->jwt_user;
         $buyerId = $jwtUser['user_id'];
         $db = \Config\Database::connect();
+
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_buyer'] ?? 0) === 1) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role is currently blocked. Access restricted.'], 403);
+        }
 
         $sellerId = $this->request->getPost('seller_id');
         $productId = $this->request->getPost('product_id');

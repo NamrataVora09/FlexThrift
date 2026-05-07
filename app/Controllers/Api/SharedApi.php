@@ -871,8 +871,16 @@ class SharedApi extends ResourceController
     public function cmsPages()
     {
         $db = \Config\Database::connect();
-        $pages = $db->table('cms_pages')->orderBy('created_at', 'DESC')->get()->getResultArray();
+        $pages = $db->table('cms_pages')->where('status', 'active')->orderBy('created_at', 'DESC')->get()->getResultArray();
         return $this->respond(['success' => true, 'data' => $pages]);
+    }
+
+    public function cmsPage($slug)
+    {
+        $db = \Config\Database::connect();
+        $page = $db->table('cms_pages')->where('slug', $slug)->where('status', 'active')->get()->getRowArray();
+        if (!$page) return $this->respond(['success' => false, 'message' => 'Page not found.'], 404);
+        return $this->respond(['success' => true, 'data' => $page]);
     }
 
     public function saveCmsPage()
@@ -891,8 +899,8 @@ class SharedApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $listingTypes = $db->table('listing_types')->get()->getResultArray();
-        $categories = $db->table('categories')->select('id, category_name as name, field_config, product_type_id, product_type_ids, applies_to')->get()->getResultArray();
-        $subCategories = $db->table('sub_categories')->select('id, name, field_config, category_id, category_ids, applies_to')->get()->getResultArray();
+        $categories = $db->table('categories')->select('id, category_name as name, field_config, product_type_id, product_type_ids, applies_to, created_at')->get()->getResultArray();
+        $subCategories = $db->table('sub_categories')->select('id, name, field_config, category_id, category_ids, applies_to, created_at')->get()->getResultArray();
         $productTypes = $db->table('product_types')->get()->getResultArray();
         $genders = $db->table('genders')->get()->getResultArray();
         $colors = $db->table('colors')->get()->getResultArray();

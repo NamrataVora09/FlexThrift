@@ -580,10 +580,13 @@ class SuperAdminApi extends ResourceController
     public function createAdmin()
     {
         $db = \Config\Database::connect();
-        $name = $this->request->getPost('name');
-        $email = $this->request->getPost('email');
-        $mobile = $this->request->getPost('mobile');
-        $password = $this->request->getPost('password');
+        
+        // Support both JSON and Post data
+        $json = $this->request->getJSON(true);
+        $name = $json['name'] ?? $this->request->getPost('name');
+        $email = $json['email'] ?? $this->request->getPost('email');
+        $mobile = $json['mobile'] ?? $this->request->getPost('mobile');
+        $password = $json['password'] ?? $this->request->getPost('password');
 
         if (!$name || !$email || !$password) {
             return $this->respond(['success' => false, 'message' => 'Name, email and password are required.'], 400);
