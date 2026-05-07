@@ -57,17 +57,17 @@ interface SettingsData {
 
 // ==================== CONSTANTS ====================
 const TABS = [
-  { key: 'pricing',   label: 'Pricing Rules',         icon: 'bi-tag' },
-  { key: 'offers',    label: 'Offer Settings',        icon: 'bi-chat-left-quote' },
-  { key: 'images',    label: 'Image Settings',        icon: 'bi-images' },
-  { key: 'smtp',      label: 'SMTP Settings',         icon: 'bi-envelope-at' },
-  { key: 'messages',  label: 'App Messages',          icon: 'bi-chat-dots' },
-  { key: 'payment',   label: 'Payment Integration',   icon: 'bi-phone' },
-  { key: 'charges',   label: 'Fee Management',        icon: 'bi-receipt' },
-  { key: 'referral',  label: 'Referral Program',    icon: 'bi-person-plus' },
-  { key: 'upgrades',  label: 'Subscription Upgrade',  icon: 'bi-rocket-takeoff' },
-  { key: 'rejection', label: 'Rejection Templates',   icon: 'bi-x-circle' },
-  { key: 'faqs',      label: 'FAQ Management',        icon: 'bi-question-circle' },
+  { key: 'pricing', label: 'Pricing Rules', icon: 'bi-tag' },
+  { key: 'offers', label: 'Offer Settings', icon: 'bi-chat-left-quote' },
+  { key: 'images', label: 'Image Settings', icon: 'bi-images' },
+  { key: 'smtp', label: 'SMTP Settings', icon: 'bi-envelope-at' },
+  { key: 'messages', label: 'App Messages', icon: 'bi-chat-dots' },
+  { key: 'payment', label: 'Payment Integration', icon: 'bi-phone' },
+  { key: 'charges', label: 'Fee Management', icon: 'bi-receipt' },
+  { key: 'referral', label: 'Referral Program', icon: 'bi-person-plus' },
+  { key: 'upgrades', label: 'Subscription Upgrade', icon: 'bi-rocket-takeoff' },
+  { key: 'rejection', label: 'Rejection Templates', icon: 'bi-x-circle' },
+  { key: 'faqs', label: 'FAQ Management', icon: 'bi-question-circle' },
 ];
 
 const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }> = {
@@ -149,7 +149,7 @@ function ListEditor({ label, value, onChange, placeholder }: { label: string; va
     <div className="mb-3">
       <label className="form-label fw-semibold d-flex justify-content-between align-items-center" style={{ fontSize: '0.875rem' }}>
         {label}
-        <button type="button" className="btn btn-sm btn-outline-warning" onClick={addItem}><i className="bi bi-plus-lg me-1"></i>Add Item</button>
+        <button type="button" className="btn btn-sm btn-outline-warning" onClick={addItem} style={{ background: '#ffc63a', color: '#ffff' }}><i className="bi bi-plus-lg me-1"></i>Add Item</button>
       </label>
       <div className="d-flex flex-column gap-2">
         {items.map((item, i) => (
@@ -175,7 +175,7 @@ function StepsEditor({ label, value, onChange }: { label: string; value: string;
     <div className="mb-4">
       <label className="form-label fw-semibold d-flex justify-content-between align-items-center" style={{ fontSize: '0.875rem' }}>
         {label}
-        <button type="button" className="btn btn-sm btn-outline-warning" onClick={addStep}><i className="bi bi-plus-lg me-1"></i>Add Step</button>
+        <button type="button" className="btn btn-sm btn-outline-warning" onClick={addStep} style={{ background: '#ffc63a', color: '#ffff' }}><i className="bi bi-plus-lg me-1"></i>Add Step</button>
       </label>
       <div className="d-flex flex-column gap-3">
         {steps.map((step, i) => (
@@ -200,7 +200,7 @@ function StepsEditor({ label, value, onChange }: { label: string; value: string;
 function UnlockItemsEditor({ settingKey, settings, update }: { settingKey: string; settings: Record<string, string>; update: (k: string, v: string) => void }) {
   const defaultItems = [{ icon: '', text: '' }];
   let items: { icon: string; text: string }[] = defaultItems;
-  try { const p = JSON.parse(settings[settingKey] || '[]'); if (Array.isArray(p) && p.length) items = p; } catch {}
+  try { const p = JSON.parse(settings[settingKey] || '[]'); if (Array.isArray(p) && p.length) items = p; } catch { }
   const save = (next: { icon: string; text: string }[]) => update(settingKey, JSON.stringify(next));
   const add = () => save([...items, { icon: '', text: '' }]);
   const remove = (i: number) => save(items.filter((_, idx) => idx !== i));
@@ -214,7 +214,7 @@ function UnlockItemsEditor({ settingKey, settings, update }: { settingKey: strin
           <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => remove(i)}><i className="bi bi-trash" /></button>
         </div>
       ))}
-      <button type="button" className="btn btn-sm btn-outline-warning mt-1" style={{ width: 'fit-content' }} onClick={add}><i className="bi bi-plus-lg me-1" />Add Item</button>
+      <button type="button" className="btn btn-sm btn-outline-warning mt-1" onClick={add} style={{ background: '#ffc63a', color: '#ffff', width: 'fit-content' }}><i className="bi bi-plus-lg me-1" />Add Item</button>
     </div>
   );
 }
@@ -345,7 +345,7 @@ export default function BusinessSettingsView() {
     // Moved to Settings page
   }, []);
 
-    const loadRejectionTemplates = useCallback(async () => {
+  const loadRejectionTemplates = useCallback(async () => {
     setRejLoading(true);
     const res = await api.get<RejectionTemplate[]>('/superadmin/rejection-templates');
     if (res.success) setRejTemplates(res.data || []);
@@ -551,8 +551,8 @@ export default function BusinessSettingsView() {
               style={{
                 border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 500,
                 whiteSpace: 'nowrap', fontSize: '0.85rem',
-                background: activeTab === t.key ? '#ffc63a' : '#fff',
-                color: activeTab === t.key ? '#212529' : '#677788',
+                background: activeTab === t.key ? '#D7b467' : '#fff',
+                color: activeTab === t.key ? '#ffff' : '#677788',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
               }}>
               <i className={`bi ${t.icon} me-1`}></i>{t.label}
@@ -569,7 +569,7 @@ export default function BusinessSettingsView() {
                 <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>Platform Charges</h5>
                 <span className="badge bg-dark rounded-pill" style={{ fontSize: '0.7rem' }}>{charges.length}</span>
               </div>
-              <button className="btn btn-sm btn-warning fw-bold" onClick={() => openChargeModal()}>
+              <button className="btn btn-sm  fw-bold" onClick={() => openChargeModal()} style={{ background: '#ffc63a', color: '#ffff' }}>
                 <i className="bi bi-plus-lg me-1"></i>Add New Charge
               </button>
             </div>
@@ -709,34 +709,34 @@ export default function BusinessSettingsView() {
                   <p className="mt-2 mb-0">No rejection templates yet. Click <strong>Add Template</strong> to create one.</p>
                 </div>
               ) : (
-                  <div className="row g-3">
-                    {rejTemplates.map((tpl) => (
-                      <div key={tpl.id} className="col-12">
-                        <div className="d-flex align-items-start gap-3 p-3 rounded border" style={{ background: '#fff8f8', borderColor: '#f5c6cb !important' }}>
-                          <div className="flex-shrink-0 mt-1">
-                            <i className="bi bi-chat-left-text text-danger" style={{ fontSize: '1.1rem' }}></i>
+                <div className="row g-3">
+                  {rejTemplates.map((tpl) => (
+                    <div key={tpl.id} className="col-12">
+                      <div className="d-flex align-items-start gap-3 p-3 rounded border" style={{ background: '#fff8f8', borderColor: '#f5c6cb !important' }}>
+                        <div className="flex-shrink-0 mt-1">
+                          <i className="bi bi-chat-left-text text-danger" style={{ fontSize: '1.1rem' }}></i>
+                        </div>
+                        <div className="flex-grow-1">
+                          <div className="d-flex align-items-center gap-2 mb-1">
+                            <span className={`badge rounded-pill ${tpl.type === 'Brands' ? 'bg-info' : 'bg-primary'}`} style={{ fontSize: '0.65rem' }}>
+                              {tpl.type || 'Products'}
+                            </span>
+                            <p className="mb-0 fw-semibold" style={{ fontSize: '0.9rem', color: '#1e2022' }}>{tpl.template_text}</p>
                           </div>
-                          <div className="flex-grow-1">
-                            <div className="d-flex align-items-center gap-2 mb-1">
-                              <span className={`badge rounded-pill ${tpl.type === 'Brands' ? 'bg-info' : 'bg-primary'}`} style={{ fontSize: '0.65rem' }}>
-                                {tpl.type || 'Products'}
-                              </span>
-                              <p className="mb-0 fw-semibold" style={{ fontSize: '0.9rem', color: '#1e2022' }}>{tpl.template_text}</p>
-                            </div>
-                            <small className="text-muted">Created: {new Date(tpl.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</small>
-                          </div>
-                          <div className="d-flex gap-2 flex-shrink-0">
-                            <button className="btn btn-sm btn-outline-secondary" onClick={() => openRejModal(tpl)} title="Edit">
-                              <i className="bi bi-pencil"></i>
-                            </button>
-                            <button className="btn btn-sm btn-outline-danger" onClick={() => deleteRejTemplate(tpl.id)} title="Delete">
-                              <i className="bi bi-trash"></i>
-                            </button>
-                          </div>
+                          <small className="text-muted">Created: {new Date(tpl.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</small>
+                        </div>
+                        <div className="d-flex gap-2 flex-shrink-0">
+                          <button className="btn btn-sm btn-outline-secondary" onClick={() => openRejModal(tpl)} title="Edit">
+                            <i className="bi bi-pencil"></i>
+                          </button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => deleteRejTemplate(tpl.id)} title="Delete">
+                            <i className="bi bi-trash"></i>
+                          </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -748,7 +748,7 @@ export default function BusinessSettingsView() {
                 <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>Application Messages</h5>
                 <span className="badge bg-dark rounded-pill" style={{ fontSize: '0.7rem' }}>{appMessages.length}</span>
               </div>
-              <button className="btn btn-sm btn-primary" onClick={() => { setShowAddMsg(true); setNewMsg({ message_key: '', message_value: '', category: 'general' }); }}>
+              <button className="btn btn-sm " onClick={() => { setShowAddMsg(true); setNewMsg({ message_key: '', message_value: '', category: 'general' }); }} style={{ background: '#ffc63a', color: '#ffff' }}>
                 <i className="bi bi-plus-lg me-1"></i>Add Message
               </button>
             </div>
@@ -1055,7 +1055,7 @@ export default function BusinessSettingsView() {
                 <i className="bi bi-question-circle" style={{ color: '#ffc63a' }}></i>
                 <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>FAQ Management</h5>
               </div>
-              <button className="btn btn-sm btn-warning fw-bold" onClick={() => openFaqModal()}>
+              <button className="btn btn-sm btn-warning fw-bold" onClick={() => openFaqModal()} style={{ background: '#ffc63a', color: '#ffff' }}>
                 <i className="bi bi-plus-lg me-1"></i>Add FAQ
               </button>
             </div>
@@ -1119,7 +1119,7 @@ export default function BusinessSettingsView() {
           left: 260, transition: 'left 0.3s ease',
         }}>
           <button className="btn px-4 px-md-5 py-2" onClick={handleSave} disabled={saving}
-            style={{ background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', width: '100%', maxWidth: 280 }}>
+            style={{ background: '#ffc63a', color: '#ffff', fontWeight: 600, border: 'none', borderRadius: '0.5rem', width: '100%', maxWidth: 280 }}>
             {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : <><i className="bi bi-check-circle me-2"></i>Save All Settings</>}
           </button>
         </div>
@@ -1140,7 +1140,7 @@ export default function BusinessSettingsView() {
                 <button type="button" className="btn-close" onClick={() => setShowRejModal(false)}></button>
               </div>
               <div className="modal-body p-4">
-                 <div className="mb-3">
+                <div className="mb-3">
                   <label className="form-label fw-semibold">Template Type <span className="text-danger">*</span></label>
                   <select className="form-select" style={inputStyle} value={rejType} onChange={e => setRejType(e.target.value)}>
                     <option value="Products">Products</option>

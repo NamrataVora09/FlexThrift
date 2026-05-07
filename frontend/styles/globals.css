@@ -968,14 +968,27 @@ img {
   display: block;
 }
 
-/* ===== Filter Buttons ===== */
+/* ===== Filter Buttons (Gold/Primary action buttons) ===== */
 .sa-filter-btn {
+  background: #ffc63a !important;
+  color: #fff !important;
+  border: none;
+  font-weight: 600;
   transition: all 0.2s ease;
 }
 
+.sa-filter-btn:hover,
+.sa-filter-btn:focus,
+.sa-filter-btn:active {
+  background: #e6b030 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(255, 198, 58, 0.4);
+}
 
-.sa-filter-reset-btn {
-  transition: all 0.2s ease;
+.sa-filter-btn:disabled {
+  background: #ffc63a !important;
+  color: #fff !important;
+  opacity: 0.6;
 }
 
 

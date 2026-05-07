@@ -166,11 +166,11 @@ export default function PricingRulesManager() {
             depreciation_range_max: r.max || '0',
             depreciation_amount: r.amount,
           });
-          if (!res.success) { 
-            showToast.error(res.message || 'Failed to save one or more ranges'); 
+          if (!res.success) {
+            showToast.error(res.message || 'Failed to save one or more ranges');
             setModalSaving(false);
             loadPricingRules();
-            return; 
+            return;
           }
         }
       }
@@ -237,7 +237,7 @@ export default function PricingRulesManager() {
         const overlap = rentalRules.find(ex => {
           if (editingRentalRule.id && ex.id === editingRentalRule.id && rentalDepRanges.length === 1) return false;
           if (editingRentalRule.id && ex.id === editingRentalRule.id) return false;
-          
+
           if (ex.filter_type !== filter_type || String(ex.filter_value) !== String(filter_value)) return false;
           const minB = Number(ex.depreciation_range_min);
           const maxB = Number(ex.depreciation_range_max);
@@ -268,11 +268,11 @@ export default function PricingRulesManager() {
             depreciation_range_max: r.max || '0',
             depreciation_amount: r.amount,
           });
-          if (!res.success) { 
-            showToast.error(res.message || 'Failed to save one or more ranges'); 
+          if (!res.success) {
+            showToast.error(res.message || 'Failed to save one or more ranges');
             setModalSaving(false);
             loadPricingRules();
-            return; 
+            return;
           }
         }
       }
@@ -339,7 +339,7 @@ export default function PricingRulesManager() {
           <h6 className="mb-0 fw-bold"><i className="bi bi-tag-fill me-2 text-primary"></i>Sale Pricing Rules (Filter-Based)</h6>
           <div className="d-flex gap-2">
             <button className="btn btn-sm btn-outline-success" onClick={() => bulkAction('sale', 'activate')} title="Activate All"><i className="bi bi-check-circle-fill me-1"></i>Active All</button>
-            <button className="btn btn-sm btn-outline-warning" onClick={() => bulkAction('sale', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
+            <button className="btn btn-sm btn-outline-warning hover:text-white!" onClick={() => bulkAction('sale', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
             <button className="btn btn-sm btn-outline-danger" onClick={() => bulkAction('sale', 'delete')} title="Delete All"><i className="bi bi-trash-fill me-1"></i>Delete All</button>
             <button className="btn btn-sm btn-primary" onClick={() => openSaleModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
           </div>
@@ -363,7 +363,7 @@ export default function PricingRulesManager() {
                     <td>
                       <div className="form-check form-switch">
                         <input className="form-check-input" type="checkbox" checked={Number(r.is_active) === 1} onChange={() => toggleRuleStatus(r.id, 'sale')} />
-                        <span className={`badge ${Number(r.is_active) === 1 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} ms-1`} style={{fontSize: '0.7rem'}}>
+                        <span className={`badge ${Number(r.is_active) === 1 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} ms-1`} style={{ fontSize: '0.7rem' }}>
                           {Number(r.is_active) === 1 ? 'Active' : 'Inactive'}
                         </span>
                       </div>
@@ -386,7 +386,7 @@ export default function PricingRulesManager() {
           <h6 className="mb-0 fw-bold"><i className="bi bi-calendar-event-fill me-2 text-success"></i>Rental Pricing Rules (Filter-Based)</h6>
           <div className="d-flex gap-2">
             <button className="btn btn-sm btn-outline-success" onClick={() => bulkAction('rental', 'activate')} title="Activate All"><i className="bi bi-check-circle-fill me-1"></i>Active All</button>
-            <button className="btn btn-sm btn-outline-warning" onClick={() => bulkAction('rental', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
+            <button className="btn btn-sm btn-outline-warning hover:text-white!" onClick={() => bulkAction('rental', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
             <button className="btn btn-sm btn-outline-danger" onClick={() => bulkAction('rental', 'delete')} title="Delete All"><i className="bi bi-trash-fill me-1"></i>Delete All</button>
             <button className="btn btn-sm btn-success" onClick={() => openRentalModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
           </div>
@@ -411,7 +411,7 @@ export default function PricingRulesManager() {
                     <td>
                       <div className="form-check form-switch">
                         <input className="form-check-input" type="checkbox" checked={Number(r.is_active) === 1} onChange={() => toggleRuleStatus(r.id, 'rental')} />
-                        <span className={`badge ${Number(r.is_active) === 1 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} ms-1`} style={{fontSize: '0.7rem'}}>
+                        <span className={`badge ${Number(r.is_active) === 1 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} ms-1`} style={{ fontSize: '0.7rem' }}>
                           {Number(r.is_active) === 1 ? 'Active' : 'Inactive'}
                         </span>
                       </div>
@@ -463,14 +463,14 @@ export default function PricingRulesManager() {
                     <label className="form-label small fw-bold">Base Deduction Threshold (%)</label>
                     <input type="number" className="form-control" value={editingSaleRule.deduction_threshold} onChange={e => setEditingSaleRule({ ...editingSaleRule, deduction_threshold: e.target.value })} />
                   </div>
-                  <div className="col-md-12"><hr/></div>
+                  <div className="col-md-12"><hr /></div>
                   <div className="col-md-12 d-flex justify-content-between align-items-center mb-2">
                     <label className="form-label small fw-bold mb-0">Depreciation Ranges</label>
                     <button type="button" className="btn btn-sm btn-outline-primary" onClick={addSaleRange}>
                       <i className="bi bi-plus-lg me-1"></i>Add Range
                     </button>
                   </div>
-                  
+
                   {saleDepRanges.map((range, index) => (
                     <div key={index} className="col-md-12">
                       <div className="row g-3 align-items-end mb-3 border-bottom pb-3">
@@ -547,14 +547,14 @@ export default function PricingRulesManager() {
                     <input type="number" step="0.1" className="form-control" placeholder="Leave empty or 0 to use Global Setting" value={editingRentalRule.max_cost_cap_per_day} onChange={e => setEditingRentalRule({ ...editingRentalRule, max_cost_cap_per_day: e.target.value })} />
                     <small className="text-muted">If set to 0 or empty, the global setting (14%) will be used.</small>
                   </div>
-                  <div className="col-md-12"><hr/></div>
+                  <div className="col-md-12"><hr /></div>
                   <div className="col-md-12 d-flex justify-content-between align-items-center mb-2">
                     <label className="form-label small fw-bold mb-0">Depreciation Ranges</label>
                     <button type="button" className="btn btn-sm btn-outline-success" onClick={addRentalRange}>
                       <i className="bi bi-plus-lg me-1"></i>Add Range
                     </button>
                   </div>
-                  
+
                   {rentalDepRanges.map((range, index) => (
                     <div key={index} className="col-md-12">
                       <div className="row g-3 align-items-end mb-3 border-bottom pb-3">

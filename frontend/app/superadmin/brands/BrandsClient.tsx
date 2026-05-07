@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
@@ -17,7 +18,7 @@ const thStyle: React.CSSProperties = { backgroundColor: '#f8f9fa', fontWeight: 6
 const tdStyle: React.CSSProperties = { padding: '1rem', verticalAlign: 'middle', fontSize: '0.875rem' };
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 const labelStyle: React.CSSProperties = { fontWeight: 500, fontSize: '0.875rem', color: '#4b566b', marginBottom: 6, display: 'block' };
-const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
+const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#fff', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 const avatarStyle: React.CSSProperties = { width: 40, height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffc63a', color: '#fff', fontWeight: 600, fontSize: '1rem' };
 
 export default function BrandsClient() {
@@ -49,6 +50,22 @@ export default function BrandsClient() {
   const [tagSelected, setTagSelected] = useState<Set<number>>(new Set());
   const [tagLoading, setTagLoading] = useState(false);
 
+  // Fixed-position dropdown state
+  const [openDropdown, setOpenDropdown] = useState<{ brandId: number; x: number; y: number } | null>(null);
+  const dropdownOpenedAt = useRef(0);
+
+  const toggleDropdown = (e: React.MouseEvent<HTMLButtonElement>, brandId: number) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (openDropdown?.brandId === brandId) {
+      setOpenDropdown(null);
+    } else {
+      dropdownOpenedAt.current = Date.now();
+      // position: fixed is viewport-relative, no scrollY needed
+      setOpenDropdown({ brandId, x: rect.right, y: rect.bottom });
+    }
+  };
+
   const load = () => {
     setLoading(true);
     Promise.all([
@@ -66,6 +83,17 @@ export default function BrandsClient() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Close dropdown on outside click — use mousedown + 50ms guard
+  useEffect(() => {
+    const handler = () => {
+      if (Date.now() - dropdownOpenedAt.current > 50) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const openBlockModal = (b: Brand) => { setBlockTarget(b); setBlockReason(''); };
 
@@ -317,31 +345,13 @@ export default function BrandsClient() {
                           )}
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'end', paddingRight: '1.5rem' }}>
-                          <div className="dropdown">
-                            <button className="btn btn-light btn-sm border" data-bs-toggle="dropdown" style={{ borderRadius: 8 }}>
-                              <i className="bi bi-three-dots-vertical"></i>
-                            </button>
-                            <ul className="dropdown-menu dropdown-menu-end shadow-lg border-0" style={{ borderRadius: '0.75rem', padding: '0.5rem' }}>
-                              <li><button className="dropdown-item rounded-2 py-2" onClick={() => openEditBrand(b)}><i className="bi bi-pencil me-2 text-warning"></i>Edit Brand</button></li>
-                              <li><button className="dropdown-item rounded-2 py-2" style={{ color: '#ffc63a' }} onClick={() => openTagModal(b.id, b.seller_id)}><i className="bi bi-tag-fill me-2"></i>Tag Products</button></li>
-                              <li><hr className="dropdown-divider opacity-50" /></li>
-                              <li>
-                                <button className="dropdown-item rounded-2 py-2" style={{ color: '#6c757d' }} onClick={() => toggleDeactivate(b.id, !Number(b.is_blocked) && Number(b.is_active ?? 1) === 1)}>
-                                  <i className={`bi ${Number(b.is_active ?? 1) ? 'bi-pause-circle' : 'bi-play-circle'} me-2`}></i>
-                                  {Number(b.is_active ?? 1) ? 'Deactivate' : 'Activate'}
-                                </button>
-                              </li>
-                              <li>
-                                {Number(b.is_blocked) ? (
-                                  <button className="dropdown-item rounded-2 py-2 text-success" onClick={() => handleUnblock(b.id)}><i className="bi bi-check-circle me-2"></i>Unblock</button>
-                                ) : (
-                                  <button className="dropdown-item rounded-2 py-2 text-danger" onClick={() => openBlockModal(b)}><i className="bi bi-slash-circle me-2"></i>Block (Reject Products)</button>
-                                )}
-                              </li>
-                              <li><hr className="dropdown-divider opacity-50" /></li>
-                              <li><button className="dropdown-item rounded-2 py-2 text-danger" onClick={() => handleDeleteBrand(b.id)}><i className="bi bi-trash me-2"></i>Delete Brand</button></li>
-                            </ul>
-                          </div>
+                          <button
+                            className="btn btn-light btn-sm border"
+                            style={{ borderRadius: 8 }}
+                            onClick={(e) => toggleDropdown(e, b.id)}
+                          >
+                            <i className="bi bi-three-dots-vertical"></i>
+                          </button>
                         </td>
                       </tr>
                     )) : (
@@ -642,6 +652,77 @@ export default function BrandsClient() {
           </div>
         </div>
       )}
+      {/* Fixed-position action dropdown — renders outside table to avoid overflow clipping */}
+      {openDropdown && (() => {
+        const b = brands.find(br => br.id === openDropdown.brandId);
+        if (!b) return null;
+        return (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: openDropdown.y + 6,
+              left: openDropdown.x - 230,
+              zIndex: 99999,
+              background: '#fff',
+              border: '1px solid #e7eaf3',
+              borderRadius: '0.75rem',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+              padding: '0.5rem',
+              minWidth: 230,
+            }}
+          >
+            {[
+              { label: 'Edit Brand', icon: 'bi-pencil', color: '#f59e0b', onClick: () => { setOpenDropdown(null); openEditBrand(b); } },
+              { label: 'Tag Products', icon: 'bi-tag-fill', color: '#ffc63a', onClick: () => { setOpenDropdown(null); openTagModal(b.id, b.seller_id); } },
+            ].map((item) => (
+              <button key={item.label} onClick={item.onClick}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#374151', textAlign: 'left', transition: 'background 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#f8f9fa')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <i className={`bi ${item.icon}`} style={{ color: item.color, fontSize: '0.95rem', width: 18, textAlign: 'center' }}></i>
+                {item.label}
+              </button>
+            ))}
+            <div style={{ height: 1, background: '#f0f0f0', margin: '0.3rem 0.5rem' }} />
+            <button onClick={() => { setOpenDropdown(null); toggleDeactivate(b.id, !Number(b.is_blocked) && Number(b.is_active ?? 1) === 1); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#6c757d', textAlign: 'left', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#f8f9fa')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <i className={`bi ${Number(b.is_active ?? 1) ? 'bi-pause-circle' : 'bi-play-circle'}`} style={{ fontSize: '0.95rem', width: 18, textAlign: 'center' }}></i>
+              {Number(b.is_active ?? 1) ? 'Deactivate' : 'Activate'}
+            </button>
+            {Number(b.is_blocked) ? (
+              <button onClick={() => { setOpenDropdown(null); handleUnblock(b.id); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#198754', textAlign: 'left', transition: 'background 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#f0fdf4')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <i className="bi bi-check-circle" style={{ fontSize: '0.95rem', width: 18, textAlign: 'center' }}></i>Unblock
+              </button>
+            ) : (
+              <button onClick={() => { setOpenDropdown(null); openBlockModal(b); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#dc3545', textAlign: 'left', transition: 'background 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#fff5f5')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <i className="bi bi-slash-circle" style={{ fontSize: '0.95rem', width: 18, textAlign: 'center' }}></i>Block (Reject Products)
+              </button>
+            )}
+            <div style={{ height: 1, background: '#f0f0f0', margin: '0.3rem 0.5rem' }} />
+            <button onClick={() => { setOpenDropdown(null); handleDeleteBrand(b.id); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#dc3545', textAlign: 'left', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#fff5f5')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <i className="bi bi-trash" style={{ fontSize: '0.95rem', width: 18, textAlign: 'center' }}></i>Delete Brand
+            </button>
+          </div>
+        );
+      })()}
     </DashboardLayout>
   );
 }
