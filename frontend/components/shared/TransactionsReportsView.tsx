@@ -23,14 +23,14 @@ interface ReportData {
       values: number[];
       colors?: string[];
     };
-      monthly_stats: {
-        labels: string[];
-        buyer_spent: number[];
-        seller_spent: number[];
-        buyer_count: number[];
-        seller_count: number[];
-        discount: number[];
-      };
+    monthly_stats: {
+      labels: string[];
+      buyer_spent: number[];
+      seller_spent: number[];
+      buyer_count: number[];
+      seller_count: number[];
+      discount: number[];
+    };
   };
   transactions: any[];
   user_role: string;
@@ -338,21 +338,21 @@ export default function TransactionsReportsView({ role }: { role: string }) {
             <div className="metric-card">
               <i className="bi bi-layers metric-icon"></i>
               <div className="metric-value">{summaryData?.summary.total_subscriptions || 0}</div>
-              <div className="metric-label">Total Completed Transactions</div>
+              <div className="metric-label">Total Number of Subscription Plans Purchased</div>
             </div>
           </div>
           <div className="col-md-4">
             <div className="metric-card">
               <i className="bi bi-currency-rupee metric-icon"></i>
               <div className="metric-value">₹{summaryData?.summary.total_spent.toLocaleString('en-IN') || 0}</div>
-              <div className="metric-label">Total Revenue / Amount Processed</div>
+              <div className="metric-label">Total Amount Spend on Subscription Plans </div>
             </div>
           </div>
           <div className="col-md-4">
             <div className="metric-card">
               <i className="bi bi-percent metric-icon"></i>
               <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN') || 0}</div>
-              <div className="metric-label">Total Discounts Applied</div>
+              <div className="metric-label">Total Discounts Availed</div>
             </div>
           </div>
         </div>
@@ -363,7 +363,8 @@ export default function TransactionsReportsView({ role }: { role: string }) {
             <div className="card-wrap p-4">
               {barLoading && <LoadingOverlay />}
               <div className="card-header-flex">
-                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a', fontFamily:"inter" }}>Revenue / Payment Trends</h6>
+                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a', fontFamily: "inter" }}>Total Amount Spend on Subscription Plans
+                </h6>
                 <RangePicker value={barRange} onChange={setBarRange} />
               </div>
               <div style={{ height: '320px' }}><canvas ref={barChartRef}></canvas></div>
@@ -373,7 +374,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
             <div className="card-wrap p-4">
               {pieLoading && <LoadingOverlay />}
               <div className="card-header-flex">
-                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' , fontFamily:"inter"}}>Revenue Bifurcation</h6>
+                <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a', fontFamily: "inter" }}>Bifurcation</h6>
                 <RangePicker value={pieRange} onChange={setPieRange} />
               </div>
               <div style={{ height: '320px' }}><canvas ref={pieChartRef}></canvas></div>
@@ -392,7 +393,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
                     <div className="card-wrap p-4">
                       {countLoading && <LoadingOverlay />}
                       <div className="card-header-flex">
-                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' , fontFamily:"inter"}}>Transaction Frequency Trends</h6>
+                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a', fontFamily: "inter" }}>Total Number of Subscription Plans Purchased</h6>
                         <RangePicker value={countRange} onChange={setCountRange} />
                       </div>
                       <div style={{ height: '320px' }}><canvas ref={countChartRef}></canvas></div>
@@ -402,7 +403,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
                     <div className="card-wrap p-4">
                       {countLoading && <LoadingOverlay />}
                       <div className="card-header-flex">
-                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a' , fontFamily:"inter"}}>Plan Usage Bifurcation</h6>
+                        <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a', fontFamily: "inter" }}>Bifurcation</h6>
                         {/* Synchronized with the bar chart range */}
                       </div>
                       <div style={{ height: '320px' }}><canvas ref={countPieChartRef}></canvas></div>
