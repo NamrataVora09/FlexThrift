@@ -315,6 +315,7 @@ function register_api_routes($routes)
         $routes->post('toggle-zone/(:num)', 'Api\SuperAdminApi::toggleZone/$1');
         $routes->post('delete-zone/(:num)', 'Api\SuperAdminApi::deleteZone/$1');
         $routes->get('registration-attempts', 'Api\SuperAdminApi::registrationAttempts');
+        $routes->get('user-state-heatmap', 'Api\SuperAdminApi::userStateHeatmap');
         // Settings, CMS, Financial
         $routes->get('system-settings', 'Api\SuperAdminApi::systemSettings');
         $routes->post('update-settings', 'Api\SuperAdminApi::updateSettings');

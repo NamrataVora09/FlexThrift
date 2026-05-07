@@ -134,6 +134,45 @@ if (!function_exists('isLocationAllowed')) {
     }
 }
 
+if (!function_exists('isStateAllowed')) {
+    /**
+     * Check if a state name is present in any active allowed zone.
+     * Used during registration to gate users by state.
+     *
+     * @param string $state State name from IP lookup (e.g. "Maharashtra")
+     * @return array|false Zone data if state is allowed, false otherwise
+     */
+    function isStateAllowed($state)
+    {
+        if (empty($state)) {
+            return false;
+        }
+
+        $db = \Config\Database::connect();
+
+        $zones = $db->table('allowed_zones')
+            ->where('is_active', 1)
+            ->whereNotNull('state')
+            ->get()
+            ->getResultArray();
+
+        $stateNorm = strtolower(trim($state));
+
+        foreach ($zones as $zone) {
+            $zoneState = strtolower(trim($zone['state'] ?? ''));
+            if ($zoneState && (
+                $zoneState === $stateNorm ||
+                str_contains($stateNorm, $zoneState) ||
+                str_contains($zoneState, $stateNorm)
+            )) {
+                return $zone;
+            }
+        }
+
+        return false;
+    }
+}
+
 if (!function_exists('logRegistrationAttempt')) {
     /**
      * Log a registration attempt to the database

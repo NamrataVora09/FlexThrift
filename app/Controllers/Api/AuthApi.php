@@ -175,42 +175,53 @@ class AuthApi extends ResourceController
             ], 422);
         }
 
-        // Zone restriction check
+        // Zone restriction check — state-based
         helper(['geolocation', 'utilityClass']);
         $enableZones = getSystemSetting('enable_zone_restriction', '0');
-        
+
         if ($enableZones === '1') {
-            $lat = $data['user_latitude'] ?? null;
-            $lng = $data['user_longitude'] ?? null;
-            
-            // If coordinates not provided, try to get from IP
-            if (empty($lat) || empty($lng)) {
-                $loc = getLocationFromIP(getUserIP());
-                if ($loc) {
-                    $lat = $loc['latitude'];
-                    $lng = $loc['longitude'];
-                }
+            $ip = getUserIP();
+            $loc = null;
+
+            // Try to get state from request body first (client-provided)
+            $clientState = $data['user_state'] ?? null;
+
+            // Fall back to IP geolocation
+            if (empty($clientState)) {
+                $loc = getLocationFromIP($ip);
+                $clientState = $loc['state'] ?? null;
             }
 
-            $zone = isLocationAllowed($lat, $lng);
-            if (!$zone) {
-                // Log the attempt
+            $zoneMatch = false;
+            $detectedZone = null;
+
+            if (!empty($clientState)) {
+                $detectedZone = isStateAllowed($clientState);
+                $zoneMatch = (bool) $detectedZone;
+            }
+
+            if (!$zoneMatch) {
+                // Log the blocked attempt
                 logRegistrationAttempt([
-                    'name' => $data['name'],
-                    'email' => $data['email'],
-                    'mobile' => $data['mobile'],
-                    'address' => $data['address'],
-                    'pin_code' => $data['pin_code'],
-                    'user_type' => $data['user_type'],
-                    'ip' => getUserIP(),
-                    'latitude' => $lat,
-                    'longitude' => $lng,
-                    'is_allowed' => 0
+                    'name'       => $data['name'],
+                    'email'      => $data['email'],
+                    'mobile'     => $data['mobile'],
+                    'address'    => $data['address'],
+                    'pin_code'   => $data['pin_code'],
+                    'user_type'  => $data['user_type'],
+                    'ip'         => $ip,
+                    'country'    => $loc['country'] ?? null,
+                    'state'      => $clientState,
+                    'city'       => $loc['city'] ?? null,
+                    'latitude'   => $loc['latitude'] ?? null,
+                    'longitude'  => $loc['longitude'] ?? null,
+                    'is_allowed' => 0,
                 ]);
 
                 return $this->respond([
                     'success' => false,
-                    'message' => 'Sorry, our services are not available in your current location yet.',
+                    'message' => 'Sorry, our services are not yet available in ' . ($clientState ? "\"{$clientState}\"" : 'your state') . '. Registration is restricted to authorised zones only.',
+                    'state_detected' => $clientState,
                 ], 403);
             }
         }

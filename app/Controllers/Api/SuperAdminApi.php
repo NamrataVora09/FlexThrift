@@ -1284,10 +1284,21 @@ class SuperAdminApi extends ResourceController
     public function addZone()
     {
         $db = \Config\Database::connect();
-        $name = $this->request->getPost('zone_name');
-        $polygon = $this->request->getPost('zone_polygon');
-        if (!$name || !$polygon) return $this->respond(['success' => false, 'message' => 'Zone name and polygon are required.'], 400);
-        $db->table('allowed_zones')->insert(['zone_name' => $name, 'zone_polygon' => $polygon, 'is_active' => 1, 'created_at' => date('Y-m-d H:i:s')]);
+        $data = $this->request->getJSON(true) ?: $this->request->getPost();
+        $name    = $data['zone_name'] ?? null;
+        $polygon = $data['zone_polygon'] ?? null;
+        $state   = $data['state'] ?? null;
+        $stateCode = $data['state_code'] ?? null;
+        if (!$name) return $this->respond(['success' => false, 'message' => 'Zone name is required.'], 400);
+        if (!$state) return $this->respond(['success' => false, 'message' => 'State is required for zone restriction.'], 400);
+        $db->table('allowed_zones')->insert([
+            'zone_name'   => $name,
+            'state'       => $state,
+            'state_code'  => $stateCode,
+            'zone_polygon'=> $polygon,
+            'is_active'   => 1,
+            'created_at'  => date('Y-m-d H:i:s'),
+        ]);
         return $this->respond(['success' => true, 'message' => 'Zone saved successfully.']);
     }
 
@@ -1327,6 +1338,64 @@ class SuperAdminApi extends ResourceController
                 ->get()->getResultArray();
         }
         return $this->respond(['success' => true, 'data' => $data]);
+    }
+
+    public function userStateHeatmap()
+    {
+        $db = \Config\Database::connect();
+
+        // Get user counts grouped by state and user_type from users table
+        $rows = $db->query("
+            SELECT
+                TRIM(state) as state,
+                user_type,
+                COUNT(*) as total,
+                SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified,
+                MIN(created_at) as first_reg,
+                MAX(created_at) as last_reg
+            FROM users
+            WHERE role NOT IN ('admin', 'super_admin', 'superadmin')
+              AND state IS NOT NULL AND TRIM(state) != ''
+            GROUP BY TRIM(state), user_type
+            ORDER BY total DESC
+        ")->getResultArray();
+
+        // Also get total unique users per state (any type)
+        $stateTotals = $db->query("
+            SELECT
+                TRIM(state) as state,
+                COUNT(*) as total,
+                SUM(CASE WHEN user_type = 'seller' THEN 1 ELSE 0 END) as sellers,
+                SUM(CASE WHEN user_type = 'buyer' THEN 1 ELSE 0 END) as buyers,
+                SUM(CASE WHEN user_type = 'both' THEN 1 ELSE 0 END) as both_users
+            FROM users
+            WHERE role NOT IN ('admin', 'super_admin', 'superadmin')
+              AND state IS NOT NULL AND TRIM(state) != ''
+            GROUP BY TRIM(state)
+            ORDER BY total DESC
+        ")->getResultArray();
+
+        // Summary stats
+        $totalUsers    = $db->table('users')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults();
+        $totalSellers  = $db->table('users')->where('user_type', 'seller')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults();
+        $totalBuyers   = $db->table('users')->where('user_type', 'buyer')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults();
+        $totalBoth     = $db->table('users')->where('user_type', 'both')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults();
+        $totalStates   = count($stateTotals);
+
+        return $this->respond([
+            'success' => true,
+            'data' => [
+                'by_state_type' => $rows,
+                'state_totals'  => $stateTotals,
+                'summary' => [
+                    'total_users'   => $totalUsers,
+                    'total_sellers' => $totalSellers,
+                    'total_buyers'  => $totalBuyers,
+                    'total_both'    => $totalBoth,
+                    'total_states'  => $totalStates,
+                ],
+            ]
+        ]);
     }
 
     // ── Reports ──────────────────────────────────
