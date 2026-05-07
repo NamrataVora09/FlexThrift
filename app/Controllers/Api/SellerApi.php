@@ -385,6 +385,8 @@ class SellerApi extends ResourceController
             'updated_at' => date('Y-m-d H:i:s'),
         ];
 
+        $isAutoApproved = (in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) || !$reviewRequired);
+
         $db->table('products')->insert($productData);
         $productId = $db->insertID();
 
@@ -467,7 +469,7 @@ class SellerApi extends ResourceController
 
         return $this->respond([
             'success' => true,
-            'message' => 'Product uploaded successfully. Pending admin approval.',
+            'message' => $isAutoApproved ? 'Product uploaded successfully!' : 'Product uploaded successfully. Pending admin approval.',
             'data' => ['product_id' => $productId],
         ], 201);
     }
@@ -1187,7 +1189,14 @@ class SellerApi extends ResourceController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Edit request submitted for admin approval']);
+        // Check if admin review is required
+        $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
+        $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
+
+        return $this->respond([
+            'success' => true, 
+            'message' => $reviewRequired ? 'Edit request submitted for admin approval' : 'Product updated successfully'
+        ]);
     }
 
     /**
@@ -1258,6 +1267,11 @@ class SellerApi extends ResourceController
                 }
                 $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->delete();
             }
+        }
+
+        // If review is not required, ensure the product is approved
+        if (!$reviewRequired || in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin'])) {
+            $updateData['status'] = 'approved';
         }
 
         // Update product
