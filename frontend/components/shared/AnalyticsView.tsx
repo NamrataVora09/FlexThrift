@@ -46,7 +46,7 @@ const topProductCols: Column<any>[] = [
   { key: 'listing_type', label: 'Type', render: (r) => <span className="badge rounded-pill bg-light text-muted border" style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>{r.listing_type}</span> },
   { key: 'offer_count', label: 'Offers', render: (r) => <span className="fw-bold">{r.offer_count}</span> },
   { key: 'accepted_count', label: 'Accepted', render: (r) => <span className="badge bg-success-subtle text-success border-0 px-2" style={{ fontSize: '0.7rem' }}>{r.accepted_count}</span> },
-  { key: 'total_revenue', label: 'Revenue', render: (r) => <span className="fw-bold" style={{ color: '#ffc63a' }}>₹{parseFloat(r.total_revenue || '0').toLocaleString()}</span> },
+  { key: 'total_revenue', label: 'Revenue', render: (r) => <span className="fw-bold" style={{ color: '' }}>₹{parseFloat(r.total_revenue || '0').toLocaleString()}</span> },
 ];
 
 const RANGES = [
@@ -158,8 +158,9 @@ export default function AnalyticsView({ role }: Props) {
       {
         label: 'Total Revenue',
         data: data?.monthly_stats.map(s => parseFloat(s.revenue || '0')) || [],
-        backgroundColor: '#ffc63a',
+        backgroundColor: '#d96459',
         borderRadius: 6,
+        hoverBackgroundColor: '#d96459',
       }
     ]
   };
@@ -171,11 +172,13 @@ export default function AnalyticsView({ role }: Props) {
       data: data?.revenue_by_listing_type.map(r => parseFloat(r.revenue)) || [],
       backgroundColor: ['#d96459', '#008080', '#ef4444', '#d7b467', 'rgb(255, 198, 58)', 'rgb(231, 239, 229)', '#ffffff'],
       borderWidth: 0,
+      hoverBackgroundColor: '#d96459',
     }]
   };
 
   const commonOptions: any = {
     responsive: true,
+
     maintainAspectRatio: false,
     plugins: {
       legend: {
