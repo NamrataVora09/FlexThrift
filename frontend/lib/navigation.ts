@@ -137,7 +137,6 @@ export function getNavigation(role: string): NavSection[] {
           items: [
             { label: 'Zone Management', href: '/superadmin/zones', icon: 'bi bi-geo-alt-fill' },
             { label: 'Registration Heatmap', href: '/superadmin/heatmap', icon: 'bi bi-map-fill' },
-            { label: 'Reports', href: '/superadmin/reports', icon: 'bi bi-bar-chart-fill' },
             { label: 'System Settings', href: '/superadmin/settings', icon: 'bi bi-gear-fill' },
             { label: 'Error Messages', href: '/superadmin/error-messages', icon: 'bi bi-chat-square-text' },
             { label: 'CMS Pages', href: '/superadmin/cms', icon: 'bi bi-file-earmark-richtext-fill' },

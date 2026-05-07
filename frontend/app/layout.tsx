@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 import GeolocationBlocker from '@/components/shared/GeolocationBlocker';
+import SystemLockBlocker from '@/components/shared/SystemLockBlocker';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -37,9 +38,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <AuthProvider>
-          <GeolocationBlocker>
-            {children}
-          </GeolocationBlocker>
+          <SystemLockBlocker>
+            <GeolocationBlocker>
+              {children}
+            </GeolocationBlocker>
+          </SystemLockBlocker>
         </AuthProvider>
         <ToastProvider />
         <BootstrapClient />

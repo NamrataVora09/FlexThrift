@@ -1141,7 +1141,8 @@ class SharedApi extends ResourceController
                 'aot_sections',
                 'category_cards',
                 'buyer_dashboard_subtitle',
-                'seller_dashboard_subtitle'
+                'seller_dashboard_subtitle',
+                'global_system_lock'
             ])
             ->get()->getResultArray();
         $content = [];

@@ -37,6 +37,7 @@ class Filters extends BaseFilters
         'auth'          => \App\Filters\AuthFilter::class,
         'jwt'           => \App\Filters\JwtFilter::class,
         'api_cors'      => \App\Filters\CorsFilter::class,
+        'system_lock'   => \App\Filters\SystemLockFilter::class,
     ];
 
     /**
@@ -76,6 +77,7 @@ class Filters extends BaseFilters
     public array $globals = [
         'before' => [
             'api_cors',
+            'system_lock',
             // 'honeypot',
             // 'csrf',
             // 'invalidchars',
