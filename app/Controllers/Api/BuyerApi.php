@@ -1158,7 +1158,7 @@ class BuyerApi extends ResourceController
                 'description' => 'Order Payment: #' . ($order['order_number'] ?: $orderId),
                 'payment_method' => 'phonepe',
                 'payment_status' => 'completed',
-                'transaction_id' => $status['data']['transactionId'] ?? ($status['paymentDetails'][0]['transactionId'] ?? 'PNP-' . time()),
+                'transaction_id' => $merchantOrderId,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
 
@@ -2330,7 +2330,7 @@ class BuyerApi extends ResourceController
                     'description' => 'Subscription Purchase: ' . $plan['name'],
                     'payment_method' => 'online',
                     'payment_status' => 'completed',
-                    'transaction_id' => $status['data']['transactionId'] ?? ($status['paymentDetails'][0]['transactionId'] ?? 'PNP-' . time()),
+                    'transaction_id' => $merchantOrderId,
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
 

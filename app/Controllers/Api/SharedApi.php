@@ -1187,233 +1187,181 @@ class SharedApi extends ResourceController
         $db = \Config\Database::connect();
         $range = $this->request->getGet('range') ?? 'all';
 
-        $builder = $db->table('user_subscriptions us')
-            ->select('us.*, sp.name as plan_name, sp.user_type as plan_user_type, u.name as user_name')
-            ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
-            ->join('users u', 'u.id = us.user_id', 'left')
-            ->orderBy('us.created_at', 'DESC');
-
-        // If not super_admin, filter by user_id (Admins now see only their own data)
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
-            $builder->where('us.user_id', $jwtUser['user_id']);
-        }
-
-        // Apply Range Filter
-        $now = date('Y-m-d H:i:s');
-        $thisMonday = date('Y-m-d 00:00:00', strtotime('monday this week'));
-        $lastMonday = date('Y-m-d 00:00:00', strtotime('monday last week'));
-        $lastSunday = date('Y-m-d 23:59:59', strtotime('sunday last week'));
-
-        switch ($range) {
-            case 'current_week':
-                $builder->where('us.created_at >=', $thisMonday);
-                break;
-            case 'last_week':
-                $builder->where('us.created_at >=', $lastMonday)->where('us.created_at <=', $lastSunday);
-                break;
-            case 'last_2_weeks':
-                // 2 weeks before this week
-                $start = date('Y-m-d 00:00:00', strtotime($thisMonday . ' -2 weeks'));
-                $end = date('Y-m-d 23:59:59', strtotime($thisMonday . ' -1 second'));
-                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
-                break;
-            case 'current_quarter':
-                // Current month + last 2 months (Rolling 3 months)
-                $builder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months')));
-                break;
-            case 'last_quarter':
-                // The 3 months before the current quarter
-                $start = date('Y-m-01 00:00:00', strtotime('-5 months'));
-                $end = date('Y-m-t 23:59:59', strtotime('-3 months'));
-                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
-                break;
-            case 'last_2_quarters':
-                // The 6 months before the current quarter
-                $start = date('Y-m-01 00:00:00', strtotime('-8 months'));
-                $end = date('Y-m-t 23:59:59', strtotime('-3 months'));
-                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
-                break;
-            case 'current_year':
-                $builder->where('us.created_at >=', date('Y-01-01 00:00:00'));
-                break;
-            case 'last_year':
-                $start = date('Y-01-01 00:00:00', strtotime('first day of last year'));
-                $end = date('Y-12-31 23:59:59', strtotime('last day of last year'));
-                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
-                break;
-            case 'last_2_years':
-                $start = date('Y-01-01 00:00:00', strtotime('first day of -2 years'));
-                $end = date('Y-12-31 23:59:59', strtotime('last day of -1 year'));
-                $builder->where('us.created_at >=', $start)->where('us.created_at <=', $end);
-                break;
-            case 'all_time':
-            default:
-                // No additional where clauses
-                break;
-        }
-
-        $allSubs = (clone $builder)->get()->getResultArray();
-        $subs = $builder->where('us.payment_status', 'paid')->get()->getResultArray();
-        
-        $totalPlans = $db->table('subscription_plans')->countAll();
-
-        // Calculate Stats
-        $totalSubs = count($subs);
-        $totalSpent = 0;
-        $totalDiscount = 0;
-
-        $buyerSpent = 0;
-        $sellerSpent = 0;
-        $buyerDiscount = 0;
-        $sellerDiscount = 0;
-        
-        // Get all plans for breakdown (filter by user type if not super_admin)
-        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        $userType = $user['user_type'] ?? $jwtUser['role'];
-
-        // Get all plans for breakdown (only super_admin sees global plans breakdown)
-        $allPlansBuilder = $db->table('subscription_plans');
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
-            if ($userType !== 'both') {
-                $allPlansBuilder->where('user_type', $jwtUser['role']);
-            }
-        }
-        $allPlans = $allPlansBuilder->get()->getResultArray();
-        $planBreakdown = [];
-        $planTypes = [];
-        foreach ($allPlans as $p) {
-            $planBreakdown[$p['name']] = 0;
-            $planTypes[$p['name']] = $p['user_type'];
-        }
-
-        foreach ($subs as $s) {
-            $amt = (float)$s['amount_paid'];
-            $disc = (float)$s['referral_discount_applied'];
-            $totalSpent += $amt;
-            $totalDiscount += $disc;
-
-            if ($s['plan_user_type'] === 'buyer') {
-                $buyerSpent += $amt;
-                $buyerDiscount += $disc;
-            } else {
-                $sellerSpent += $amt;
-                $sellerDiscount += $disc;
-            }
-            
-            if (isset($planBreakdown[$s['plan_name']])) {
-                $planBreakdown[$s['plan_name']]++;
-            }
-        }
-
-        // Recent Transactions (merged)
+        // 1. Base query for transactions (for Table and overall Stats)
         $txBuilder = $db->table('transactions t')
             ->select('t.*, u.name as user_name')
             ->join('users u', 'u.id = t.user_id', 'left')
-            ->orderBy('t.created_at', 'DESC')
-            ->limit(100);
+            ->orderBy('t.created_at', 'DESC');
 
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $txBuilder->where('t.user_id', $jwtUser['user_id']);
         }
-        
-        // Apply the same range filter to transactions table if needed, 
-        // but user requested "Payment History of All time" in some part?
-        // Actually, "Payment History of All time with a latest at the top" for the scrollable box.
-        // But also says "same above plicklist for Date range".
-        // I'll apply the range filter to the transaction list too.
-        
-        $rangeTxBuilder = clone $txBuilder;
+
+        // Apply Range Filter to transactions
         switch ($range) {
-            case 'current_week': $rangeTxBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
-            case 'last_week': $rangeTxBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'last_2_weeks': $rangeTxBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks'))); break;
-            case 'current_quarter': $rangeTxBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
-            case 'last_quarter': $rangeTxBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('-1 month'))); break;
-            case 'last_2_quarters': $rangeTxBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months'))); break;
-            case 'current_year': $rangeTxBuilder->where('t.created_at >=', date('Y-01-01 00:00:00')); break;
-            case 'last_year': $rangeTxBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-1 year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('-1 year'))); break;
-            case 'last_2_years': $rangeTxBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-2 years'))); break;
-            case 'all_time': default: break; // No range filter
+            case 'current_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
+            case 'last_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
+            case 'last_2_weeks': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks'))); break;
+            case 'current_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
+            case 'last_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('-1 month'))); break;
+            case 'last_2_quarters': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months'))); break;
+            case 'current_year': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00')); break;
+            case 'last_year': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-1 year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('-1 year'))); break;
+            case 'last_2_years': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-2 years'))); break;
+            case 'all_time': default: break;
+        }
+
+        $allTransactions = $txBuilder->get()->getResultArray();
+        $successfulTxs = array_filter($allTransactions, fn($t) => in_array($t['payment_status'], ['paid', 'completed', 'success']));
+
+        // 2. Fetch Subscription specific data (for Plan Breakdown)
+        $subBuilder = $db->table('user_subscriptions us')
+            ->select('us.*, sp.name as plan_name, sp.user_type as plan_user_type')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left');
+
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+            $subBuilder->where('us.user_id', $jwtUser['user_id']);
         }
         
-        $transactionLogs = $rangeTxBuilder->get()->getResultArray();
+        // Apply same range filter to subscriptions
+        switch ($range) {
+            case 'current_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
+            case 'last_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
+            case 'last_2_weeks': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks'))); break;
+            case 'current_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
+            case 'last_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('-1 month'))); break;
+            case 'last_2_quarters': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months'))); break;
+            case 'current_year': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00')); break;
+            case 'last_year': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('-1 year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('-1 year'))); break;
+            case 'last_2_years': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('-2 years'))); break;
+            case 'all_time': default: break;
+        }
+
+        $subs = $subBuilder->where('us.payment_status', 'paid')->get()->getResultArray();
+        
+        // 3. Calculate Summary Stats from successful transactions
+        $totalTxs = count($successfulTxs);
+        $totalRevenue = array_reduce($successfulTxs, fn($carry, $item) => $carry + (float)$item['amount'], 0);
+        
+        // Bifurcation (Buyer vs Seller)
+        $buyerSpent = 0; $sellerSpent = 0;
+        foreach ($successfulTxs as $tx) {
+            // Orders are always buyer revenue. Subscriptions depend on plan type.
+            if ($tx['type'] === 'subscription') {
+                // Find corresponding sub to get plan_user_type
+                $txId = $tx['transaction_id'] ?? '';
+                $sId = $tx['subscription_id'] ?? 0;
+                $s = array_values(array_filter($subs, fn($sb) => ($txId && $sb['merchant_transaction_id'] === $txId) || $sb['id'] == $sId))[0] ?? null;
+                
+                // Fallback: Link by plan name in description
+                if (!$s && !empty($tx['description'])) {
+                    // Extract name from "Subscription Stacking: [Name]" or "Subscription Purchase: [Name]"
+                    $parts = explode(':', $tx['description']);
+                    $planNameFromDesc = trim($parts[1] ?? '');
+                    if ($planNameFromDesc) {
+                        $s = array_values(array_filter($subs, fn($sb) => $sb['plan_name'] === $planNameFromDesc))[0] ?? null;
+                    }
+                }
+
+                if ($s && $s['plan_user_type'] === 'seller') {
+                    $sellerSpent += (float)$tx['amount'];
+                } else {
+                    $buyerSpent += (float)$tx['amount'];
+                }
+            } else {
+                // Orders/other
+                $buyerSpent += (float)$tx['amount'];
+            }
+        }
+
+        // 4. Plan Breakdown (remain subscription based)
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        $userType = $user['user_type'] ?? $jwtUser['role'];
+        $allPlansBuilder = $db->table('subscription_plans');
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin']) && $userType !== 'both') {
+            $allPlansBuilder->where('user_type', $jwtUser['role']);
+        }
+        $allPlans = $allPlansBuilder->get()->getResultArray();
+        $planBreakdown = []; $planTypes = [];
+        foreach ($allPlans as $p) {
+            $planBreakdown[$p['name']] = 0;
+            $planTypes[$p['name']] = $p['user_type'];
+        }
+        foreach ($subs as $s) {
+            if (isset($planBreakdown[$s['plan_name']])) $planBreakdown[$s['plan_name']]++;
+        }
 
         return $this->respond([
             'success' => true,
             'data' => [
                 'summary' => [
-                    'total_subscriptions' => $totalSubs,
-                    'total_spent' => $totalSpent,
-                    'total_discount' => $totalDiscount,
-                    'total_plans' => $totalPlans,
+                    'total_subscriptions' => $totalTxs, // Renaming semantically in frontend if needed, but keeping key for compat
+                    'total_spent' => $totalRevenue,
+                    'total_discount' => array_reduce($subs, fn($carry, $item) => $carry + (float)$item['referral_discount_applied'], 0),
+                    'total_plans' => $db->table('subscription_plans')->countAll(),
                 ],
                 'charts' => [
                     'amount_discount' => [
-                        'buyer' => ['spent' => $buyerSpent, 'discount' => $buyerDiscount],
-                        'seller' => ['spent' => $sellerSpent, 'discount' => $sellerDiscount],
+                        'buyer' => ['spent' => $buyerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'buyer') ? (float)$i['referral_discount_applied'] : 0), 0)],
+                        'seller' => ['spent' => $sellerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'seller') ? (float)$i['referral_discount_applied'] : 0), 0)],
                     ],
-                    'monthly_stats' => $this->getMonthlyStats($subs),
+                    'monthly_stats' => $this->getMonthlyStats($successfulTxs, $subs),
                     'plan_breakdown' => [
                         'labels' => array_keys($planBreakdown),
                         'values' => array_values($planBreakdown),
-                        'colors' => array_map(function($name) use ($planTypes) {
-                            return ($planTypes[$name] === 'buyer') ? '#008080' : '#d96459';
-                        }, array_keys($planBreakdown))
+                        'colors' => array_map(fn($name) => ($planTypes[$name] === 'buyer' ? '#008080' : '#d96459'), array_keys($planBreakdown))
                     ]
                 ],
-                'transactions' => $transactionLogs,
-                'subscription_transactions' => array_map(function($s) {
-                    return [
-                        'id' => $s['id'],
-                        'user_name' => $s['user_name'] ?? 'System',
-                        'description' => "Subscription: " . ($s['plan_name'] ?? 'Standard'),
-                        'amount' => $s['amount_paid'],
-                        'payment_status' => $s['payment_status'],
-                        'created_at' => $s['created_at']
-                    ];
-                }, $allSubs),
+                'transactions' => $allTransactions,
                 'user_role' => $jwtUser['role'],
                 'user_type' => $userType
             ]
         ]);
     }
 
-    private function getMonthlyStats($subs)
+    private function getMonthlyStats($transactions, $subs)
     {
         $stats = [];
-        
-        // Sort subscriptions by date to ensure chronological order
-        usort($subs, function($a, $b) {
-            return strtotime($a['created_at']) - strtotime($b['created_at']);
-        });
+        usort($transactions, fn($a, $b) => strtotime($a['created_at']) - strtotime($b['created_at']));
 
-        foreach ($subs as $s) {
-            $month = date('M Y', strtotime($s['created_at']));
+        foreach ($transactions as $tx) {
+            $month = date('M Y', strtotime($tx['created_at']));
             if (!isset($stats[$month])) {
-                $stats[$month] = [
-                    'buyer_spent' => 0,
-                    'seller_spent' => 0,
-                    'buyer_count' => 0,
-                    'seller_count' => 0,
-                    'discount' => 0
-                ];
+                $stats[$month] = ['buyer_spent' => 0, 'seller_spent' => 0, 'buyer_count' => 0, 'seller_count' => 0, 'discount' => 0];
             }
             
-            $amt = (float)$s['amount_paid'];
-            $disc = (float)$s['referral_discount_applied'];
-            
-            if (($s['plan_user_type'] ?? '') === 'seller') {
-                $stats[$month]['seller_spent'] += $amt;
-                $stats[$month]['seller_count']++;
+            $amt = (float)$tx['amount'];
+            if ($tx['type'] === 'subscription') {
+                $txId = $tx['transaction_id'] ?? '';
+                $sId = $tx['subscription_id'] ?? 0;
+                $s = array_values(array_filter($subs, fn($sb) => ($txId && $sb['merchant_transaction_id'] === $txId) || $sb['id'] == $sId))[0] ?? null;
+                
+                // Fallback: Link by plan name in description
+                if (!$s && !empty($tx['description'])) {
+                    $parts = explode(':', $tx['description']);
+                    $planNameFromDesc = trim($parts[1] ?? '');
+                    if ($planNameFromDesc) {
+                        $s = array_values(array_filter($subs, fn($sb) => $sb['plan_name'] === $planNameFromDesc))[0] ?? null;
+                    }
+                }
+
+                if ($s && $s['plan_user_type'] === 'seller') {
+                    $stats[$month]['seller_spent'] += $amt;
+                    $stats[$month]['seller_count']++;
+                    $stats[$month]['discount'] += (float)$s['referral_discount_applied'];
+                } else {
+                    $stats[$month]['buyer_spent'] += $amt;
+                    $stats[$month]['buyer_count']++;
+                    if ($s) $stats[$month]['discount'] += (float)$s['referral_discount_applied'];
+                }
             } else {
                 $stats[$month]['buyer_spent'] += $amt;
                 $stats[$month]['buyer_count']++;
             }
-            $stats[$month]['discount'] += $disc;
         }
 
         return [
-            'labels' => array_values(array_keys($stats)),
+            'labels' => array_keys($stats),
             'buyer_spent' => array_values(array_map(fn($m) => $m['buyer_spent'], $stats)),
             'seller_spent' => array_values(array_map(fn($m) => $m['seller_spent'], $stats)),
             'buyer_count' => array_values(array_map(fn($m) => $m['buyer_count'], $stats)),

@@ -1864,7 +1864,7 @@ class SellerApi extends ResourceController
                     'description'      => 'Seller Subscription: ' . $plan['name'],
                     'payment_method'   => 'online',
                     'payment_status'   => 'completed',
-                    'transaction_id'   => $status['data']['transactionId'] ?? ('SLR-' . time()),
+                    'transaction_id'   => $merchantOrderId,
                     'created_at'       => date('Y-m-d H:i:s'),
                 ]);
                 // Deduct used referral balance

@@ -684,7 +684,7 @@ class AdminApi extends ResourceController
                 'description' => 'Subscription Stacking: ' . $plan['name'], 
                 'payment_method' => 'online', 
                 'payment_status' => 'completed', 
-                'transaction_id'   => $status['data']['transactionId'] ?? ('ADM-' . time()),
+                'transaction_id' => $id, 
                 'created_at' => date('Y-m-d H:i:s')
             ]);
             return $this->respond(['status' => 'success', 'message' => 'Payment verified and plans stacked!']);
