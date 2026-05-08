@@ -95,15 +95,14 @@ export default function LoginPage() {
         .auth-logo span { color: #ffc63a; }
         .auth-heading { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.5rem; color: #000; margin-bottom: 4px; }
         .auth-sub { font-family: 'Inter', sans-serif; color: #999; font-size: 0.88rem; margin-bottom: 28px; }
-        .auth-tabs { display: flex; gap: 8px; margin-bottom: 22px; background: #f5f5f5; padding: 4px; border-radius: 12px; }
+        .auth-tabs { display: flex; gap: 8px; margin-bottom: 22px; background: #f5f5f5; padding: 4px; border-radius: 12px;  }
         .auth-tab { flex: 1; padding: 10px; background: transparent; border: none; border-radius: 8px; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.82rem; color: #999; cursor: pointer; transition: all 0.3s; }
-        .auth-tab.active { background: #ffc63a; color: #000; box-shadow: 0 4px 12px rgba(255,198,58,0.25); }
+        .auth-tab.active { background: #ffc63a; color: #ffff; box-shadow: 0 4px 12px rgba(255,198,58,0.25); }
         .auth-input-group { margin-bottom: 16px; }
         .auth-input-group label { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.75rem; color: #444; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
         .auth-input { width: 100%; padding: 12px 16px; border: 2px solid #eee; border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 0.9rem; transition: all 0.3s; outline: none; background: #fafafa; box-sizing: border-box; }
         .auth-input:focus { border-color: #ffc63a; background: #fff; box-shadow: 0 0 0 4px rgba(255,198,58,0.08); }
-        .auth-btn { width: 100%; padding: 13px; background: #ffc63a; color: #000; border: none; border-radius: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.3s; margin-top: 6px; }
-        .auth-btn:hover { background: #000; color: #ffc63a; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .auth-btn { width: 100%; padding: 13px; background: #ffc63a; color: #ffff; border: none; border-radius: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.3s; margin-top: 6px; }
         .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .auth-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; color: #ccc; font-size: 0.78rem; font-family: 'Inter', sans-serif; }
         .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: #eee; }

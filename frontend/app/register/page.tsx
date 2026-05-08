@@ -42,7 +42,7 @@ export default function RegisterPage() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setCoords({ lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) }),
-        () => {}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        () => { }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
   }, []);
@@ -114,8 +114,8 @@ export default function RegisterPage() {
         .stepper::before { content: ''; position: absolute; top: 18px; left: 25%; right: 25%; height: 2px; background: #eee; z-index: 0; }
         .step-dot { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 1; flex: 1; }
         .step-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.85rem; transition: all 0.3s; border: 2px solid #eee; background: #fff; color: #bbb; }
-        .step-dot.active .step-circle { background: #ffc63a; color: #000; border-color: #ffc63a; box-shadow: 0 4px 14px rgba(255,198,58,0.35); }
-        .step-dot.done .step-circle { background: #000; color: #ffc63a; border-color: #000; }
+        .step-dot.active .step-circle { background: #ffc63a; color: #ffff; border-color: #ffc63a; box-shadow: 0 4px 14px rgba(255,198,58,0.35); }
+        .step-dot.done .step-circle { background: #ffc63a; color: #ffff; border-color: #ffc63a; }
         .step-label { font-family: 'Inter', sans-serif; font-size: 0.7rem; font-weight: 600; color: #bbb; text-transform: uppercase; letter-spacing: 0.5px; }
         .step-dot.active .step-label, .step-dot.done .step-label { color: #000; }
 
@@ -143,8 +143,7 @@ export default function RegisterPage() {
 
         /* Buttons */
         .btn-row { display: flex; gap: 10px; margin-top: 12px; }
-        .auth-btn { flex: 1; padding: 13px; background: #ffc63a; color: #000; border: none; border-radius: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.3s; }
-        .auth-btn:hover { background: #000; color: #ffc63a; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .auth-btn { flex: 1; padding: 13px; background: #ffc63a; color: #ffff; border: none; border-radius: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.3s; }
         .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .auth-btn-outline { flex: 1; padding: 13px; background: #fff; color: #333; border: 2px solid #eee; border-radius: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.3s; }
         .auth-btn-outline:hover { border-color: #333; }
@@ -196,7 +195,7 @@ export default function RegisterPage() {
                   google.accounts.id.prompt();
                 }
               }}>
-                <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>
                 Quick sign up with Google
               </button>
               <div className="auth-divider">or choose a role</div>
