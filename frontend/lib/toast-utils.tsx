@@ -51,7 +51,7 @@ export const confirmToast = (
             onConfirm();
           }}
           className="btn btn-dark btn-sm px-4 rounded-pill fw-bold"
-          style={{ background: '#ffc63a', color: '#ffff' }}
+          style={{ background: '#ffc63a', color: '#ffff', borderColor: '#ffc63a' }}
         >
           {confirmLabel}
         </button>
