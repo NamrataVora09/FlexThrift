@@ -350,8 +350,8 @@ export default function AnalyticsView({ role }: Props) {
           <div className="stats-slider" ref={sliderRef}>
             {stats.map((s, i) => (
               <div key={i} className="stat-card">
-                <div className="stat-icon" >
-                  <i className={s.icon} style={{ color: '#ffc63a' }}></i>
+                <div className="stat-icon" style={{ backgroundColor: s.bg }}>
+                  <i className={s.icon} style={{ color: s.color }}></i>
                 </div>
                 <div className="stat-value">{s.value}</div>
                 <div className="stat-label">{s.label}</div>

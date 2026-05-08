@@ -48,12 +48,12 @@ const sectionTitle: React.CSSProperties = { fontWeight: 700, borderBottom: '2px 
 const labelStyle: React.CSSProperties = { fontWeight: 500, fontSize: '0.875rem', marginBottom: 4 };
 const inputStyle: React.CSSProperties = { padding: 12, borderRadius: 8, border: '1px solid #ddd', fontSize: 14 };
 const btnYellow: React.CSSProperties = { background: '#ffc63a', color: '#000', border: 'none', borderRadius: 10, padding: '14px 28px', fontWeight: 700 };
-const priceSuggestion: React.CSSProperties = { 
-  background: '#ffc63a', 
-  color: '#000', 
-  padding: '24px 28px', 
-  borderRadius: 16, 
-  marginBottom: 20, 
+const priceSuggestion: React.CSSProperties = {
+  background: '#ffc63a',
+  color: '#000',
+  padding: '24px 28px',
+  borderRadius: 16,
+  marginBottom: 20,
   boxShadow: '0 8px 30px rgba(255,198,58,0.15)',
   border: '1px solid rgba(0,0,0,0.05)'
 };
@@ -70,17 +70,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Summary box
-  const brandSummary = (
-    <div style={{ background: '#f8f9fa', padding: '15px 20px', borderRadius: 10, marginBottom: 25, borderLeft: '4px solid #ffc63a', fontSize: '0.9rem', color: '#555' }}>
-      <p style={{ margin: 0, fontWeight: 600, color: '#333', marginBottom: 5 }}>Brand Classification Summary</p>
-      <ul style={{ margin: 0, paddingLeft: 20 }}>
-        <li><strong>Original Brands:</strong> Global industry giants (e.g. Nike, Apple, Zara).</li>
-        <li><strong>Brands:</strong> Your own shop or seller-specific brands.</li>
-        <li><em>Note: Changes to original brands will not affect your seller-specific brands.</em></li>
-      </ul>
-    </div>
-  );
 
   // Edit mode
   const [isEditMode, setIsEditMode] = useState(false);
@@ -91,6 +80,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [billFiles, setBillFiles] = useState<File[]>([]);
+  const [billPreviews, setBillPreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<any[]>([]);
   const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]);
 
@@ -512,6 +502,40 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     setPreviews([...ep, ...np]);
   }, [existingImages, files]);
 
+  const handleBills = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || []);
+    const max = 2; // Fixed limit for bills
+    const currentTotal = existingBills.length + billFiles.length;
+    const remaining = max - currentTotal;
+
+    if (remaining <= 0) {
+      toast.error(`Maximum ${max} bills allowed`);
+      return;
+    }
+
+    const newToSelect = selected.slice(0, remaining);
+    setBillFiles(prev => [...prev, ...newToSelect]);
+  };
+
+  const removeBill = (idx: number) => {
+    if (idx < existingBills.length) {
+      setExistingBills(prev => prev.filter((_, i) => i !== idx));
+    } else {
+      const fileIdx = idx - existingBills.length;
+      setBillFiles(prev => prev.filter((_, i) => i !== fileIdx));
+    }
+  };
+
+  // Sync bill previews
+  useEffect(() => {
+    const eb = existingBills.map(b => b.startsWith('http') ? b : `http://localhost:8080/${b}`);
+    const nb = billFiles.map(f => {
+      if (f.type.startsWith('image/')) return URL.createObjectURL(f);
+      return ''; // For PDF/Word we might show an icon
+    });
+    setBillPreviews([...eb, ...nb]);
+  }, [existingBills, billFiles]);
+
   const filterBrandByListingType = (b: { listing_type_ids?: string | null; listing_type_id?: number | string | null }, ltId: number): boolean => {
     let ids: number[] | null = null;
     if (b.listing_type_ids) {
@@ -776,9 +800,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
               Please contact platform support for more information or to request a review of your account status.
             </div>
-            <button 
+            <button
               onClick={() => router.push(redirectPath.includes('superadmin') ? '/superadmin' : '/seller')}
-              className="btn btn-dark px-4 py-2" 
+              className="btn btn-dark px-4 py-2"
               style={{ borderRadius: 10, fontWeight: 600 }}
             >
               Return to Dashboard
@@ -791,8 +815,8 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   return (
     <DashboardLayout requiredRoles={[role]}>
-      <div className="container-fluid p-4 p-md-5">
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div className="container-fluid px-2 py-4 px-md-3 py-md-5">
+        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
               <h2 style={{ fontWeight: 800, margin: 0, color: '#1a1a1a' }}>
@@ -803,12 +827,8 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 {isEditMode ? 'Update your product details' : 'List your item on Flex Market'}
               </p>
             </div>
-            <button className="btn btn-outline-secondary btn-sm" onClick={() => router.back()} style={{ borderRadius: 8, padding: '8px 16px' }}>
-              <i className="bi bi-arrow-left me-1"></i> Back
-            </button>
           </div>
 
-          {brandSummary}
 
 
           {role === 'super_admin' && (
@@ -816,17 +836,17 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               endpoint="/superadmin/bulk-upload-products"
               templateCsv="title,seller_id,listing_type,original_price,selling_price,rental_cost,rental_deposit,description,brand,color,size,gender,category,times_used,condition_description,status\nBlue Denim Jacket,5,sell,2500,1800,,,Stylish denim jacket,Levi's,Blue,L,Male,Jackets,3,Good condition,pending"
               templateFilename="products_template.csv"
-formatGuide="title (required), seller_id (required), listing_type (sell/rent), original_price (required), selling_price, rental_cost, rental_deposit, description, brand, color, size, gender, category, times_used, condition_description, status"
+              formatGuide="title (required), seller_id (required), listing_type (sell/rent), original_price (required), selling_price, rental_cost, rental_deposit, description, brand, color, size, gender, category, times_used, condition_description, status"
               title="Bulk Upload Products from CSV"
             />
           )}
 
           {error && (
-          <div className="alert alert-danger mb-4 shadow-sm border-0 d-flex align-items-center" style={{ borderRadius: 12, background: '#fee2e2', color: '#991b1b', padding: '12px 20px' }}>
-            <i className="bi bi-exclamation-circle-fill me-2" style={{ fontSize: '1.1rem' }}></i>
-            <span className="fw-medium">{error}</span>
-          </div>
-        )}
+            <div className="alert alert-danger mb-4 shadow-sm border-0 d-flex align-items-center" style={{ borderRadius: 12, background: '#fee2e2', color: '#991b1b', padding: '12px 20px' }}>
+              <i className="bi bi-exclamation-circle-fill me-2" style={{ fontSize: '1.1rem' }}></i>
+              <span className="fw-medium">{error}</span>
+            </div>
+          )}
           {success && <div className="alert alert-success border-0 shadow-sm" style={{ borderRadius: 12 }}><i className="bi bi-check-circle-fill me-2"></i>{success}</div>}
 
           {isEditMode && f.status === 'rejected' && f.admin_remarks && (
@@ -843,24 +863,23 @@ formatGuide="title (required), seller_id (required), listing_type (sell/rent), o
 
           <form onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 15, boxShadow: '0 4px 15px rgba(0,0,0,0.08)', border: 'none', overflow: 'hidden', padding: 30 }}>
 
-            {/* ── Listing Type ── */}
-            <div style={sectionStyle}>
-              <h5 style={sectionTitle}><i className="bi bi-tag me-2"></i>Listing Type</h5>
-              <div className="btn-group w-100" role="group">
-                <input type="radio" className="btn-check" name="listing_type_radio" id="sell" value="sell" checked={isSell} onChange={() => setF(p => ({ ...p, listing_type: 'sell' }))} />
-                <label className="btn" htmlFor="sell" style={{ border: '1px solid #ddd', color: isSell ? '#000' : '#666', background: isSell ? '#ffc63a' : '#fff', borderColor: isSell ? '#ffc63a' : '#ddd', fontWeight: 600 }}>
-                  <i className="bi bi-currency-rupee me-1"></i> Sell
-                </label>
-                <input type="radio" className="btn-check" name="listing_type_radio" id="rent" value="rent" checked={!isSell} onChange={() => setF(p => ({ ...p, listing_type: 'rent' }))} />
-                <label className="btn" htmlFor="rent" style={{ border: '1px solid #ddd', color: !isSell ? '#000' : '#666', background: !isSell ? '#0dcaf0' : '#fff', borderColor: !isSell ? '#0dcaf0' : '#ddd', fontWeight: 600 }}>
-                  <i className="bi bi-clock-history me-1"></i> Rent
-                </label>
-              </div>
-            </div>
-
             {/* ── Basic Details ── */}
             <div style={sectionStyle}>
               <h5 style={sectionTitle}><i className="bi bi-info-circle me-2"></i>Basic Details</h5>
+
+              <div className="mb-4">
+                <div className="btn-group w-100" role="group">
+                  <input type="radio" className="btn-check" name="listing_type_radio" id="sell" value="sell" checked={isSell} onChange={() => setF(p => ({ ...p, listing_type: 'sell' }))} />
+                  <label className="btn" htmlFor="sell" style={{ border: '1px solid #ddd', color: isSell ? '#fff' : '#666', background: isSell ? '#d96459' : '#fff', borderColor: isSell ? '#d96459' : '#ddd', fontWeight: 600 }}>
+                    <i className="bi bi-currency-rupee me-1"></i> Sell This Product
+                  </label>
+                  <input type="radio" className="btn-check" name="listing_type_radio" id="rent" value="rent" checked={!isSell} onChange={() => setF(p => ({ ...p, listing_type: 'rent' }))} />
+                  <label className="btn" htmlFor="rent" style={{ border: '1px solid #ddd', color: !isSell ? '#fff' : '#666', background: !isSell ? '#008080' : '#fff', borderColor: !isSell ? '#008080' : '#ddd', fontWeight: 600 }}>
+                    <i className="bi bi-clock-history me-1"></i> Rent This Product
+                  </label>
+                </div>
+              </div>
+
               <div className="row g-3">
                 <div className="col-md-6"><label className="form-label" style={labelStyle}>Product Title <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="title" value={f.title} onChange={handleChange} required /></div>
                 <div className="col-md-6"><label className="form-label" style={labelStyle}>Listing Type <span className="text-danger">*</span></label>
@@ -901,11 +920,11 @@ formatGuide="title (required), seller_id (required), listing_type (sell/rent), o
                   </div>
                 )}
                 <div className="col-md-3">
-                  <label className="form-label" style={labelStyle}>Original Brand <small>(Industry Giants)</small></label>
+                  <label className="form-label" style={labelStyle}>Brand</label>
                   <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                     <div className="input-group">
                       <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
-                      <input className="form-control border-start-0 border-end-0" style={inputStyle} placeholder="Search original brands..." value={obSearch} onChange={(e) => { setObSearch(e.target.value); setObOpen(true); }} onFocus={() => setObOpen(true)} />
+                      <input className="form-control border-start-0 border-end-0" style={inputStyle} placeholder="Search brands..." value={obSearch} onChange={(e) => { setObSearch(e.target.value); setObOpen(true); }} onFocus={() => setObOpen(true)} />
                       <span className="input-group-text bg-white border-start-0 text-muted"><i className="bi bi-chevron-down small"></i></span>
                     </div>
                     {obOpen && (
@@ -916,7 +935,7 @@ formatGuide="title (required), seller_id (required), listing_type (sell/rent), o
                             <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#333' }}>{b.brand_name}</span>
                           </div>
                         ))}
-                        {filteredOriginalBrands.length === 0 && <div className="text-center text-muted py-3 small">No original brands found</div>}
+                        {filteredOriginalBrands.length === 0 && <div className="text-center text-muted py-3 small">No brands found</div>}
                       </div>
                     )}
                     {selectedOb && (
@@ -928,33 +947,6 @@ formatGuide="title (required), seller_id (required), listing_type (sell/rent), o
                   </div>
                 </div>
 
-                <div className="col-md-3">
-                  <label className="form-label" style={labelStyle}>Brand <small>(Your/Seller Shop)</small></label>
-                  <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                    <div className="input-group">
-                      <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>
-                      <input className="form-control border-start-0 border-end-0" style={inputStyle} placeholder="Search your brands..." value={sbSearch} onChange={(e) => { setSbSearch(e.target.value); setSbOpen(true); }} onFocus={() => setSbOpen(true)} />
-                      <span className="input-group-text bg-white border-start-0 text-muted"><i className="bi bi-chevron-down small"></i></span>
-                    </div>
-                    {sbOpen && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ced4da', borderTop: 'none', borderRadius: '0 0 8px 8px', zIndex: 1050, maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                        {filteredSellerBrands.map(b => (
-                          <div key={b.id} onClick={() => selectSb(b)} style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: '1px solid #f1f3f5', transition: 'background 0.15s' }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'} onMouseLeave={e => e.currentTarget.style.background = ''}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#333' }}>{b.brand_name}</span>
-                          </div>
-                        ))}
-                        {filteredSellerBrands.length === 0 && <div className="text-center text-muted py-3 small">No brands found</div>}
-                      </div>
-                    )}
-                    {selectedSb && (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: '#e7f5ff', border: '1px solid #a5d8ff', borderRadius: 6, marginTop: 6, fontSize: '0.85rem', color: '#1971c2' }}>
-                        <span>{selectedSb.name}</span>
-                        <button type="button" onClick={clearSb} style={{ background: 'none', border: 'none', color: '#74c0fc', padding: 0, lineHeight: 1, fontSize: '1.1rem', cursor: 'pointer' }}><i className="bi bi-x"></i></button>
-                      </div>
-                    )}
-                  </div>
-                </div>
                 <div className="col-md-12"><label className="form-label" style={labelStyle}>Description <span className="text-danger">*</span></label><textarea className="form-control" style={inputStyle} name="description" rows={4} value={f.description} onChange={handleChange} required /></div>
               </div>
             </div>
@@ -1070,8 +1062,8 @@ formatGuide="title (required), seller_id (required), listing_type (sell/rent), o
                           <div className="col-12 mt-3 pt-3 border-top border-dark border-opacity-10 d-flex align-items-center gap-2 small">
                             <i className="bi bi-info-circle"></i>
                             <span className="fw-medium">
-                              {rentalPriceSuggestion.source === 'System Fallback' 
-                                ? 'Global Default (System Fallback Rule)' 
+                              {rentalPriceSuggestion.source === 'System Fallback'
+                                ? 'Global Default (System Fallback Rule)'
                                 : `${rentalPriceSuggestion.ruleLabel || 'Specific Match'} (${rentalPriceSuggestion.source} Rule)`}
                             </span>
                           </div>
@@ -1112,12 +1104,17 @@ formatGuide="title (required), seller_id (required), listing_type (sell/rent), o
               </div>
             </div>
 
+            {cfg.image_upload_guidelines && (
+              <div className="alert alert-info small mb-3 shadow-sm border-0" style={{ borderRadius: 12, background: '#e0f2fe', color: '#0369a1' }}>
+                <i className="bi bi-info-circle-fill me-2" style={{ fontSize: '1.1rem' }}></i>
+                <strong>Image Guidelines:</strong>
+                <div className="mt-2 ms-4" style={{ whiteSpace: 'pre-line' }}>{cfg.image_upload_guidelines}</div>
+              </div>
+            )}
+
             {/* ── Product Images ── */}
             <div style={sectionStyle}>
               <h5 style={sectionTitle}><i className="bi bi-images me-2"></i>Product Images <span className="text-danger">*</span></h5>
-              {cfg.image_upload_guidelines && (
-                <div className="alert alert-info small mb-3" style={{ borderRadius: 12 }}><i className="bi bi-info-circle me-2"></i><strong>Image Guidelines:</strong><div className="mt-2" style={{ whiteSpace: 'pre-line' }}>{cfg.image_upload_guidelines}</div></div>
-              )}
               <input ref={imgRef} type="file" accept="image/*" multiple onChange={handleImages} style={{ display: 'none' }} />
               <button type="button" className="btn" style={{ border: '2px dashed #ffc63a', background: 'rgba(255,198,58,0.05)', borderRadius: 12, padding: '20px', width: '100%', textAlign: 'center', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }} onClick={() => !submitting && imgRef.current?.click()} disabled={submitting}>
                 <i className="bi bi-cloud-arrow-up" style={{ fontSize: '2rem', color: '#ffc63a' }}></i>
@@ -1145,22 +1142,30 @@ formatGuide="title (required), seller_id (required), listing_type (sell/rent), o
               </div>
               {f.has_bill && (
                 <>
-                  {existingBills.length > 0 && (
-                    <div className="mb-3">
-                      <p className="small fw-bold mb-2">Current Bill(s):</p>
-                      <div className="d-flex flex-wrap gap-2">
-                        {existingBills.map((path, idx) => (
-                          <a key={idx} href={path.startsWith('http') ? path : `http://localhost:8080/${path}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-info">
-                            <i className="bi bi-file-earmark-text me-1"></i> Bill {idx + 1}
-                          </a>
-                        ))}
-                      </div>
+                  <input ref={billRef} type="file" accept="image/*,application/pdf,.doc,.docx" multiple onChange={handleBills} style={{ display: 'none' }} />
+                  <button type="button" className="btn" style={{ border: '2px dashed #ffc63a', borderRadius: 12, padding: '20px', width: '100%', textAlign: 'center', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }} onClick={() => !submitting && billRef.current?.click()} disabled={submitting}>
+                    <i className="bi bi-paperclip" style={{ fontSize: '2rem', color: '#ffc63a' }}></i>
+                    <p className="mb-0 mt-1 fw-bold small">Click to upload bill</p>
+                    <p className="text-muted mb-0" style={{ fontSize: '0.75rem' }}>Up to 2 files (Images, PDF, Word)</p>
+                  </button>
+
+                  {billPreviews.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 15, marginTop: 20 }}>
+                      {billPreviews.map((src, i) => (
+                        <div key={i} style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '1px solid #eee', background: '#f8f9fa' }}>
+                          {src ? (
+                            <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <div className="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+                              <i className="bi bi-file-earmark-text" style={{ fontSize: '1.5rem' }}></i>
+                              <span style={{ fontSize: '0.65rem' }}>DOC/PDF</span>
+                            </div>
+                          )}
+                          <button type="button" onClick={() => removeBill(i)} style={{ position: 'absolute', top: 5, right: 5, background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: '50%', width: 24, height: 24, fontSize: 14, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  <input ref={billRef} type="file" accept="image/*,application/pdf,.doc,.docx" multiple onChange={(e) => setBillFiles(Array.from(e.target.files || []).slice(0, 2))} style={{ display: 'none' }} />
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => !submitting && billRef.current?.click()} disabled={submitting}><i className="bi bi-paperclip me-1"></i>Upload New Bill</button>
-                  {billFiles.length > 0 && <small className="ms-2 text-muted">{billFiles.map(f => f.name).join(', ')}</small>}
-                  <small className="text-muted d-block mt-1">Upload up to 2 files to replace current bill (Images, PDF, Word)</small>
                 </>
               )}
             </div>

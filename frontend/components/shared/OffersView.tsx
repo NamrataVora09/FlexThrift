@@ -199,7 +199,7 @@ const CSS = `
     text-decoration: none !important;
   }
   .filter-tabs .nav-link:hover { color: #666 !important; background: #fff; border-color: #eee; }
-  .filter-tabs .nav-link.active { background: rgb(215, 180, 103); color: #fff !important; border-color: rgb(215, 180, 103); }
+  .filter-tabs .nav-link.active { background: #ffc63a; color: #ffff !important; border-color: #ffc63a; }
   .filter-tabs .nav-link .count-badge { background: rgba(0,0,0,0.08); padding: 2px 8px; border-radius: 20px; font-size: 11px; margin-left: 6px; }
   .filter-tabs .nav-link.active .count-badge { background: rgba(255,255,255,0.25); }
 
@@ -214,7 +214,7 @@ const CSS = `
   .offer-row:hover { background-color: #fffef5; }
 
   /* ── buyer avatar ── */
-  .buyer-avatar { width: 45px; height: 45px; background: #000; color: #ffc63a; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; margin-right: 15px; font-family: 'Maven Pro', sans-serif; flex-shrink: 0; }
+  .buyer-avatar { width: 45px; height: 45px; background: #fff; color: #ffc63a; border: 1.5px solid #ffc63a; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.2rem; margin-right: 15px; font-family: 'Maven Pro', sans-serif; flex-shrink: 0; }
 
   /* ── buyer contact item ── */
   .buyer-contact-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #555; margin-bottom: 3px; }
@@ -1412,7 +1412,13 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                       <div className="buyer-contact-info border-top pt-2 w-100">
                         <div className="buyer-contact-item"><i className="bi bi-telephone text-primary"></i><span>{offer.buyer_mobile || 'N/A'}</span></div>
                         <div className="buyer-contact-item"><i className="bi bi-envelope text-primary"></i><span className="text-truncate" style={{ maxWidth: 180, display: 'block' }}>{offer.buyer_email || 'N/A'}</span></div>
-                        <div className="buyer-contact-item"><i className="bi bi-geo-alt text-danger"></i><span>{offer.delivery_state || ''},{offer.delivery_city || 'N/A'}, {offer.delivery_pin_code || 'No Pin'} </span></div>
+                        <div className="buyer-contact-item mt-2">
+                          <i className="bi bi-geo-alt text-danger"></i>
+                          <span style={{ fontSize: '0.78rem', lineHeight: '1.2', display: 'block' }}>
+                            {offer.delivery_address && <>{offer.delivery_address}<br /></>}
+                            {offer.delivery_city || 'N/A'}, {offer.delivery_state || ''} {offer.delivery_pin_code}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -1420,20 +1426,17 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                     <div className="offer-details flex-grow-1">
 
                       {/* price + status */}
-                      <div className="price-container d-flex align-items-end gap-2 mb-2">
-                        {(offer.original_price ?? 0) > 0 && (
-                          <span className="original-price-strikethrough">₹{Number(offer.original_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        )}
-                        <div className="d-flex flex-column">
-                          <small className="text-muted" style={{ fontSize: '0.7rem' }}>OFFERED PRICE</small>
-                          <span className="price-tag">₹{Number(offeredPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <div className="price-container mb-3">
+                        <div className="d-flex align-items-center gap-2 mb-1">
+                          <small className="text-muted fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>OFFERED PRICE</small>
+                          <span className={`status-pill status-${displayStatus}`}>{statusLabel}</span>
                         </div>
-                        <span className={`status-pill status-${displayStatus}`}>{statusLabel}</span>
+                        <span className="price-tag fs-5">₹{Number(offeredPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
 
                       {/* rental info box */}
                       {(offer.offer_type ?? offer.listing_type) === 'rent' && offer.rental_start_date && (
-                        <div className="rental-info-box bg-light p-2 rounded mb-3">
+                        <div className="rental-info-box bg-light p-3 rounded-3 mb-3 border">
                           <div className="d-flex justify-content-between small mb-1">
                             <span className="text-muted">Product Rental:</span>
                             <span className="fw-bold text-dark">₹{Number(offer.product_rental_cost ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}/day</span>
@@ -1457,18 +1460,6 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                                 <i className="bi bi-exclamation-triangle-fill"></i> Booking Overlap Detected!
                                 <div style={{ fontSize: '0.7rem', fontWeight: 'normal', marginTop: '2px' }}>
                                   Conflicts with: {fmtShort(conflict.start)} - {fmtShort(conflict.end)} ({conflict.source === 'order' ? 'Confirmed Booking' : `Accepted Offer #${conflict.id}`})
-                                  {conflict.source === 'offer' && (
-                                    <button
-                                      className="btn btn-link p-0 ms-2 text-danger fw-bold"
-                                      style={{ fontSize: '0.7rem', textDecoration: 'none' }}
-                                      onClick={() => {
-                                        const other = offers.find(x => Number(x.id) === Number(conflict.id));
-                                        if (other) onReject(other);
-                                      }}
-                                    >
-                                      [Retract & Resolve]
-                                    </button>
-                                  )}
                                 </div>
                               </div>
                             );
@@ -1478,19 +1469,8 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
 
                       {/* message */}
                       {offer.message && (
-                        <div className="alert alert-light border-0 py-2 px-3 small fst-italic mb-3">
+                        <div className="alert alert-light border py-2 px-3 small fst-italic mb-3" style={{ background: '#fcfcfc' }}>
                           <i className="bi bi-chat-quote me-1 text-muted"></i>"{offer.message}"
-                        </div>
-                      )}
-
-                      {/* delivery box */}
-                      {offer.delivery_address && (
-                        <div className="delivery-box bg-white border rounded p-2 mb-3">
-                          <div className="d-flex align-items-center gap-2 small">
-                            <i className="bi bi-truck text-primary"></i>
-                            <span className="fw-bold">DELIVERY:</span>
-                            <span className="text-dark">{offer.delivery_city ?? 'N/A'}, {offer.delivery_pin_code ?? 'No Pin'} {offer.delivery_state ?? ''}</span>
-                          </div>
                         </div>
                       )}
 
@@ -1506,8 +1486,8 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                           { label: 'Offer Initiated', date: fmtDateTime(offer.created_at), icon: 'fa-solid fa-tag' },
                         ];
                         return (
-                          <div style={{ background: '', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '0.75rem' }}>
-                            <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                          <div style={{ borderRadius: 12, marginTop: '1rem', }}>
+                            <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
                               <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Date/Time Logs
                             </div>
                             {steps.map((step, idx) => (
@@ -1516,9 +1496,9 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                                   <div style={{ width: 28, height: 28, background: '#D7B467', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>
                                     {idx + 1}
                                   </div>
-                                  {idx < steps.length - 1 && <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />}
+                                  {idx < steps.length - 1 && <div style={{ width: 2, flex: 1, background: '#e5e7eb', minHeight: 22, marginTop: 4, marginBottom: 4 }} />}
                                 </div>
-                                <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
+                                <div style={{ paddingBottom: idx < steps.length - 1 ? '1rem' : 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
                                   </div>
