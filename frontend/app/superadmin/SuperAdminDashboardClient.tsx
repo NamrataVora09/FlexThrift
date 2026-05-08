@@ -21,6 +21,8 @@ interface RecentUser {
   created_at: string;
 }
 
+import { useAuth } from '@/lib/auth-context';
+
 interface SAData {
   user: { name: string };
   stats: Record<string, number>;
@@ -33,6 +35,7 @@ interface SAData {
 const AVATAR_COLORS = ['#377dff', '#ffc63a', '#8b5cf6', '#ed4c78', '#ff9d00', '#10b981'];
 
 export default function SuperAdminDashboardClient() {
+  const { refreshKey } = useAuth();
   const [data, setData] = useState<SAData | null>(null);
   const lineChartRef = useRef<HTMLCanvasElement>(null);
   const doughnutChartRef = useRef<HTMLCanvasElement>(null);
@@ -42,7 +45,7 @@ export default function SuperAdminDashboardClient() {
     api.get<SAData>('/superadmin/dashboard').then((r) => {
       if (r.success && r.data) setData(r.data);
     });
-  }, []);
+  }, [refreshKey]);
 
   // Draw charts when data loads
   useEffect(() => {

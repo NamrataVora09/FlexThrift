@@ -23,6 +23,8 @@ interface Subscription {
   is_active: string;
 }
 
+import { useAuth } from '@/lib/auth-context';
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8080');
 
 function getImageUrl(path?: string) {
@@ -39,6 +41,7 @@ export default function BuyerDashboardPage() {
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [subtitle, setSubtitle] = useState(BUYER_DEFAULT_SUBTITLE);
+  const { refreshKey } = useAuth();
 
   useEffect(() => {
     api.get<DashboardData>('/buyer/dashboard').then((res) => {
@@ -60,7 +63,7 @@ export default function BuyerDashboardPage() {
         setSubtitle(res.data.buyer_dashboard_subtitle);
       }
     });
-  }, []);
+  }, [refreshKey]);
 
   const activeSub = subs.length > 0 ? subs[0] : null;
   const formatDate = (d: string) => {

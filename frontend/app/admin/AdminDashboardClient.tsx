@@ -5,6 +5,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatsCard from '@/components/ui/StatsCard';
 import { api } from '@/lib/api';
 
+import { useAuth } from '@/lib/auth-context';
+
 interface AdminData {
   user: { name: string };
   stats: { 
@@ -22,10 +24,11 @@ interface AdminData {
 
 export default function AdminDashboardClient() {
   const [data, setData] = useState<AdminData | null>(null);
+  const { refreshKey } = useAuth();
 
   useEffect(() => {
     api.get<AdminData>('/admin/dashboard').then((r) => { if (r.success && r.data) setData(r.data); });
-  }, []);
+  }, [refreshKey]);
 
   const formatDate = (d: string) => {
     if (!d) return '--';

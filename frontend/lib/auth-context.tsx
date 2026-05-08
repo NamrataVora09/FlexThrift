@@ -29,6 +29,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   switchRole: (role: string) => Promise<{ success: boolean; message?: string }>;
+  refreshKey: number;
 }
 
 interface RegisterData {
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     try {
@@ -76,6 +78,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  // Focus revalidation: Increment refreshKey when window gains focus
+  useEffect(() => {
+    let lastRefresh = 0;
+    const handleFocus = () => {
+      const now = Date.now();
+      // Only trigger if at least 10 seconds have passed since last refresh to avoid spam
+      if (now - lastRefresh > 10000) {
+        setRefreshKey(prev => prev + 1);
+        lastRefresh = now;
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   const setAuth = useCallback((userData: User, authToken: string) => {
@@ -143,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         switchRole,
+        refreshKey,
       }}
     >
       {children}

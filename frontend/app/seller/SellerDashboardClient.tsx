@@ -40,7 +40,7 @@ function getImageUrl(path?: string) {
 const SELLER_DEFAULT_SUBTITLE = 'Manage your listings, track offers, and grow your business.';
 
 export default function SellerDashboardClient() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, refreshKey } = useAuth();
   const [data, setData] = useState<SellerData | null>(null);
   const [activeSub, setActiveSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +70,7 @@ export default function SellerDashboardClient() {
         setSubtitle(res.data.seller_dashboard_subtitle);
       }
     });
-  }, []);
+  }, [refreshKey]);
 
   const uploadsLeft = activeSub
     ? (Number(activeSub.limit_value) === 0 ? '∞' : String(Math.max(0, Number(activeSub.limit_value) - Number(activeSub.usage_count))))
