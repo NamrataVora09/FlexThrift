@@ -146,6 +146,9 @@ class PhonePe
         $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
         log_message('error', 'PhonePe API (' . $method . ') URL: ' . $url . ' Response Code: ' . $httpCode);
+        if ($err) {
+            log_message('error', 'PhonePe API cURL Error: ' . $err);
+        }
         log_message('error', 'PhonePe API Response: ' . $response);
 
         curl_close($curl);

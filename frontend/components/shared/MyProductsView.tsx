@@ -122,7 +122,7 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
               style={{
                 border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 500,
                 whiteSpace: 'nowrap', fontSize: '0.85rem',
-                background: filter === t ? 'rgb(215, 180, 103)' : '#fff',
+                background: filter === t ? '#ffc63a' : '#fff',
                 color: filter === t ? '#fff' : '#677788',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
               }}>
