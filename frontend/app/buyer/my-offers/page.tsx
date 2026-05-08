@@ -263,7 +263,7 @@ export default function Page() {
     setCdStart(o.rental_start_date || '');
     setCdEnd(o.rental_end_date || '');
     setCdPrice(o.offered_price || o.offer_price || '0');
-    setCdDailyRate(o.rental_cost || '0');
+    setCdDailyRate((o as any).product_rental_cost ?? o.rental_cost ?? '0');
     setCdError(null);
     setCdBookedRanges([]);
     setChangeDatesModal({ id: o.id, title: o.product_title, productId: o.product_id });

@@ -786,6 +786,12 @@ class BuyerApi extends ResourceController
                 return $this->respond(['success' => false, 'message' => 'Start and end dates are required for rental products.'], 400);
             }
 
+            // Fetch product to get its rental rates
+            $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+            if (!$product) {
+                return $this->respond(['success' => false, 'message' => 'Product not found.'], 404);
+            }
+
             // Enforce minimum rental days from system settings
             helper('price_calculator');
             $minDays = (int) getSystemSetting('min_rental_days', 3);
@@ -793,6 +799,10 @@ class BuyerApi extends ResourceController
             if ($days < $minDays) {
                 return $this->respond(['success' => false, 'message' => "Minimum rental period is {$minDays} days. You selected {$days} day(s)."], 400);
             }
+
+            // Recalculate price based on new duration
+            $rentalCostPerDay = (float)($product['rental_cost'] ?? 0);
+            $newPrice = $rentalCostPerDay * $days;
 
             // Check for conflicts with already accepted offers
             $overlapping = $db->table('offers')
@@ -815,9 +825,9 @@ class BuyerApi extends ResourceController
         if ($isRent) {
             $updateData['rental_start_date'] = $startDate;
             $updateData['rental_end_date'] = $endDate;
-        }
-
-        if ($newPrice !== null && $offer['status'] !== 'rejected') {
+            $updateData['offer_price'] = $newPrice;
+            $updateData['deposit_amount'] = $product['rental_deposit'] ?? $offer['deposit_amount'];
+        } else if ($newPrice !== null && $offer['status'] !== 'rejected') {
             $updateData['offer_price'] = $newPrice;
         }
 
@@ -826,7 +836,7 @@ class BuyerApi extends ResourceController
             if ($offer['status'] === 'rejected') {
                 $updateData['message'] = 'Buyer has re-submitted the offer.';
             } else if ($isRent) {
-                $updateData['message'] = 'Buyer has proposed new dates: ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '.';
+                $updateData['message'] = 'Buyer has proposed new dates: ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. New total: ₹' . $newPrice;
             }
         }
 
@@ -1231,7 +1241,7 @@ class BuyerApi extends ResourceController
         ]);
 
         // Create order from the now-finalised dates
-        $orderId = $db->table('orders')->insert([
+        $db->table('orders')->insert([
             'order_number'      => 'FLX' . strtoupper(uniqid()),
             'product_id'        => $offer['product_id'],
             'buyer_id'          => $offer['buyer_id'],
@@ -1247,7 +1257,8 @@ class BuyerApi extends ResourceController
             'status'            => 'pending',
             'created_at'        => date('Y-m-d H:i:s'),
             'updated_at'        => date('Y-m-d H:i:s'),
-        ], true);
+        ]);
+        $orderId = $db->insertID();
 
         $db->table('order_status_history')->insert([
             'order_id'   => $orderId,

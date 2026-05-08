@@ -80,6 +80,14 @@ interface Props {
   noHeader?: boolean;
 }
 
+const pillStyles: Record<string, React.CSSProperties> = {
+  pending: { background: '#f8f9fa', color: '#666', border: '1px solid #eee' },
+  negotiating: { background: '#fff8e1', color: '#d97706', border: '1px solid #fde68a' },
+  accepted: { background: '#eaffea', color: '#1a8a1a', border: '1px solid #c9f9c9' },
+  rejected: { background: '#fff5f5', color: '#d63031', border: '1px solid #ffeaea' },
+  cancelled: { background: '#f8f9fa', color: '#999', border: '1px solid #eee' },
+};
+
 /* ─────────────────────────── helpers ───────────────────────── */
 
 function historyLabel(action: string) {
@@ -533,7 +541,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       rental_end_date: cdEnd,
       delivery_address: cdAddress,
       delivery_pin_code: cdPin,
-      offered_price: Math.round(days * Number(offer.rental_cost ?? 0)),
+      offer_price: Math.round(days * Number(offer.rental_cost ?? offer.product_rental_cost ?? 0)),
     });
     setCdLoading(false);
     if (res?.success) {
@@ -1181,7 +1189,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                 <div className="mb-4">
                   <label className="form-label small fw-bold">Estimated Price (₹)</label>
                   {(() => {
-                    const daily = Number(suggestModal.offer.product_rental_cost ?? 0);
+                    const daily = Number(suggestModal.offer.product_rental_cost ?? suggestModal.offer.rental_cost ?? 0);
                     const days = daysBetween(sdStart, sdEnd);
                     const computed = (daily > 0 && days > 0) ? Math.round(days * daily) : 0;
                     return (
@@ -1196,7 +1204,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                   })()}
                   {sdStart && sdEnd && (
                     <small className="text-muted mt-1 d-block">
-                      Recalculated: ₹{Number(suggestModal.offer.product_rental_cost ?? 0).toLocaleString('en-IN')} × {daysBetween(sdStart, sdEnd)} days
+                      Recalculated: ₹{Number(suggestModal.offer.product_rental_cost ?? suggestModal.offer.rental_cost ?? 0).toLocaleString('en-IN')} × {daysBetween(sdStart, sdEnd)} days
                     </small>
                   )}
                 </div>
@@ -1443,7 +1451,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                           </div>
                           <div className="d-flex justify-content-between small mb-2">
                             <span className="text-muted">Security Deposit:</span>
-                            <span className="fw-bold text-dark">₹{Number(offer.product_rental_deposit ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            <span className="fw-bold text-dark">₹{Number(offer.deposit_amount ?? offer.product_rental_deposit ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                           </div>
                           <div className="rental-dates border-top pt-2 small">
                             <i className="bi bi-calendar-range text-primary me-1"></i>
@@ -1669,7 +1677,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                       )}
                     </div>
                   </div>
-                  <span className={pillClass}>{pillLabel}</span>
+                  <span className="status-pill" style={pillStyles[o.status] || pillStyles.pending}>{pillLabel}</span>
                 </div>
 
                 {/* price + rental info block */}
@@ -1700,6 +1708,12 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                           <i className="bi bi-chat-left-dots me-1"></i>{o.message || 'No message attached.'}
                         </p>
                       )}
+                      {o.seller_remarks && (
+                        <div className="mt-2 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
+                          <i className="bi bi-reply-fill me-1"></i>
+                          Seller: {o.seller_remarks}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1708,7 +1722,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                     const c = getRentalConflict?.(o);
                     if (!c) return null;
                     return (
-                      <div className="conflict-alert mb-3">
+                      <div className="conflict-alert mt-3">
                         <i className="bi bi-exclamation-triangle-fill fs-5"></i>
                         <div>
                           Rental Conflict: These dates overlap with an existing booking ({fmtShort(c.start)} - {fmtShort(c.end)} {c.source === 'offer' ? `#${c.id}` : ''}).
@@ -1718,32 +1732,57 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                     );
                   })()}
                   {soldOut && o.status === 'pending' && (
-                    <div className="conflict-alert mb-3">
+                    <div className="conflict-alert mt-3">
                       <i className="bi bi-slash-circle-fill fs-5"></i>
                       <div>This product has been sold to another buyer.</div>
                     </div>
                   )}
 
                   {/* negotiation logs */}
-                  {o.history && o.history.length > 0 && (
-                    <div className="mt-3 pt-3 border-top">
-                      <h6 className="small fw-bold text-muted mb-2"><i className="fa-solid fa-clock-rotate-left me-1"></i>Date/Time Logs</h6>
-                      <div className="history-list small">
-                        {o.history.map(h => (
-                          <div key={h.id} className="history-item d-flex gap-2 mb-2">
-                            <div className="text-primary"><i className="bi bi-dot"></i></div>
-                            <div>
-                              <span className="text-dark fw-semibold">{historyLabel(h.action)}</span>
-                              <div className="text-muted opacity-75" style={{ fontSize: '0.75rem' }}>
-                                {fmtDateTime(h.created_at)}
-                                {h.new_start_date && <> • {fmtShort(h.new_start_date)} - {fmtShort(h.new_end_date)}</>}
+                  {(() => {
+                    const sortedHistory = [...(o.history || [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                    const steps = [
+                      ...sortedHistory.map(h => ({
+                        label: historyLabel(h.action),
+                        date: fmtDateTime(h.created_at) + (h.new_start_date && h.new_end_date ? ` • ${fmtShort(h.new_start_date)} – ${fmtShort(h.new_end_date)}` : ''),
+                        icon: historyIcon(h.action),
+                      })),
+                      {
+                        label: 'Offer Initiated',
+                        date: fmtDateTime(o.created_at),
+                        icon: 'fa-solid fa-tag',
+                      },
+                    ];
+                    return (
+                      <div style={{ background: '', borderRadius: 10, padding: '1rem 0', marginTop: '0.75rem' }}>
+                        <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                          <i className="fa-solid fa-clock-rotate-left" style={{ color: '#D7B467' }}></i> Date/Time Logs
+                        </div>
+                        {steps.map((step, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                              <div style={{
+                                width: 28, height: 28, background: '#D7B467', color: '#fff',
+                                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontWeight: 700, fontSize: 13,
+                              }}>
+                                {idx + 1}
                               </div>
+                              {idx < steps.length - 1 && (
+                                <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />
+                              )}
+                            </div>
+                            <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: 2 }}>{step.date}</div>
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
 
