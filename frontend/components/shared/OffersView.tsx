@@ -990,13 +990,13 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                     <i className="bi bi-star-fill" style={{ fontSize: '3rem', color: '#ffc63a' }}></i>
                   </div>
                 </div>
-                <div className="h5 fw-bold text-dark">
+                <div className="h5 fw-bold text-gold">
                   Give +1 Point!
                 </div>
               </div>
               <div className="modal-footer border-0 px-4 pb-4">
                 <button className="btn btn-light rounded-pill px-4" onClick={() => setRatingModal(null)}>Cancel</button>
-                <button className="btn btn-dark rounded-pill px-4 fw-bold" onClick={handleRateSubmit} disabled={ratingLoading}>
+                <button className="bg-gold text-white py-2 rounded-pill px-4 fw-bold" onClick={handleRateSubmit} disabled={ratingLoading}>
                   {ratingLoading ? 'Submitting…' : 'Yes, Give Point'}
                 </button>
               </div>
@@ -1826,7 +1826,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                     </>
                   )}
                   {canRate && !isAdmin && (
-                    <button className="btn-yellow rounded-pill fw-bold" onClick={() => onRate?.(o)}>
+                    <button className="btn-yellow text-white rounded-pill fw-bold" onClick={() => onRate?.(o)}>
                       <i className="bi bi-star-fill me-1"></i>Rate Seller
                     </button>
                   )}

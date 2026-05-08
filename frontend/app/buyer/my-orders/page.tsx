@@ -57,7 +57,7 @@ function MyOrdersInner() {
       // Clean up URL without re-render
       window.history.replaceState({}, '', '/buyer/my-orders');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() =>
@@ -379,7 +379,7 @@ function MyOrdersInner() {
               </div>
               <div className="modal-footer border-0 p-4 pt-0 d-grid">
                 <button
-                  className="btn btn-dark rounded-pill py-3 fw-bold"
+                  className="bg-gold text-white py-3 rounded-pill px-4 fw-bold"
                   onClick={handleReview}
                   disabled={reviewLoading}
                 >

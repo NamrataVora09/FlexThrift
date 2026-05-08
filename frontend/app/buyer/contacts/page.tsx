@@ -311,7 +311,7 @@ export default function Page() {
                 </p>
 
                 <button
-                  className="btn btn-warning w-100 py-3 rounded-pill fw-bold"
+                  className="bg-gold text-white py-3 rounded-pill fw-bold"
                   onClick={handleRate}
                   disabled={ratingLoading}
                 >

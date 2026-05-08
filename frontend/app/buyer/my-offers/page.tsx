@@ -677,7 +677,7 @@ export default function Page() {
                     )}
                     {o.status === 'accepted' && !Number(o.buyer_rated_seller) && (
                       <button
-                        className="btn btn-warning rounded-pill fw-bold"
+                        className="btn btn-warning text-white! rounded-pill fw-bold"
                         style={{ fontSize: '0.82rem', background: '#ffc63a', border: 'none' }}
                         onClick={() => { setRatingModal({ id: o.id, title: o.product_title }); setRatingValue(5); }}
                       >
@@ -850,7 +850,7 @@ export default function Page() {
                 <button type="button" className="btn btn-light rounded-pill px-4 fw-bold" onClick={() => setRatingModal(null)}>Cancel</button>
                 <button
                   type="button"
-                  className="btn btn-dark rounded-pill px-4 fw-bold"
+                  className="bg-gold text-white py-3 rounded-pill px-4 fw-bold"
                   onClick={handleRateSubmit}
                   disabled={ratingLoading}
                 >
