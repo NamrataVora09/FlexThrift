@@ -56,6 +56,7 @@ const RANGES = [
   { label: 'Last 2 Weeks', value: 'last_2_weeks' },
   { label: 'Current Month', value: 'current_month' },
   { label: 'Last Month', value: 'last_month' },
+  { label: 'Last 2 Months', value: 'last_2_months' },
   { label: 'Current Quarter', value: 'current_quarter' },
   { label: 'Last Quarter', value: 'last_quarter' },
   { label: 'Last 2 Quarters', value: 'last_2_quarters' },
@@ -169,16 +170,15 @@ export default function AnalyticsView({ role }: Props) {
   const pieChartData: ChartData<'pie'> = {
     labels: data?.revenue_by_listing_type.map(r => r.listing_type.toUpperCase()) || [],
     datasets: [{
-      data: data?.revenue_by_listing_type.map(r => parseFloat(r.revenue)) || [],
+      data: data?.revenue_by_listing_type.map(r => parseFloat(r.revenue || '0')) || [],
       backgroundColor: ['#d96459', '#008080', '#ef4444', '#d7b467', 'rgb(255, 198, 58)', 'rgb(231, 239, 229)', '#ffffff'],
       borderWidth: 0,
       hoverBackgroundColor: '#d96459',
     }]
   };
 
-  const commonOptions: any = {
+  const barOptions: any = {
     responsive: true,
-
     maintainAspectRatio: false,
     plugins: {
       legend: {
@@ -190,7 +190,7 @@ export default function AnalyticsView({ role }: Props) {
           label: (context: any) => {
             let label = context.dataset.label || '';
             if (label) label += ': ';
-            if (context.parsed.y !== null) {
+            if (context.parsed.y !== null && context.parsed.y !== undefined) {
               label += new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(context.parsed.y);
             }
             return label;
@@ -204,6 +204,26 @@ export default function AnalyticsView({ role }: Props) {
         ticks: {
           callback: (value: any) => {
             return '₹' + value.toLocaleString('en-IN');
+          }
+        }
+      }
+    }
+  };
+
+  const pieOptions: any = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { font: { weight: 'bold' } }
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            const label = context.label || '';
+            const value = context.raw || 0;
+            return `${label}: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)}`;
           }
         }
       }
@@ -353,7 +373,7 @@ export default function AnalyticsView({ role }: Props) {
                   <RangePicker value={barRange} onChange={setBarRange} />
                 </div>
                 <div className="chart-container">
-                  <Bar data={barChartData} options={commonOptions} />
+                  <Bar data={barChartData} options={barOptions} />
                 </div>
               </div>
             </div>
@@ -368,7 +388,7 @@ export default function AnalyticsView({ role }: Props) {
                   <RangePicker value={pieRange} onChange={setPieRange} />
                 </div>
                 <div className="chart-container">
-                  <Pie data={pieChartData} options={commonOptions} />
+                  <Pie data={pieChartData} options={pieOptions} />
                 </div>
               </div>
             </div>

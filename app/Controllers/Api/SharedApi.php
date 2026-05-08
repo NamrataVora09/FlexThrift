@@ -249,6 +249,7 @@ class SharedApi extends ResourceController
             case 'last_2_weeks': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('-2 weeks')) . "'"; break;
             case 'current_month': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00') . "'"; break;
             case 'last_month': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of last month')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; break;
+            case 'last_2_months': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-2 months')) . "'"; break;
             case 'current_quarter': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-2 months')) . "'"; break;
             case 'last_quarter': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-5 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('-3 months')) . "'"; break;
             case 'last_2_quarters': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-8 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('-3 months')) . "'"; break;
@@ -270,7 +271,7 @@ class SharedApi extends ResourceController
 
         // Revenue and Sales count (Bar Chart)
         // Group by day for shorter ranges, by month for longer ranges
-        $dailyRanges = ['current_week', 'last_week', 'last_2_weeks', 'current_month', 'last_month'];
+        $dailyRanges = ['current_week', 'last_week', 'last_2_weeks', 'current_month', 'last_month', 'last_2_months'];
         $groupBy = (in_array($range, $dailyRanges)) ? 'DATE(created_at)' : "DATE_FORMAT(created_at, '%Y-%m')";
         $labelAlias = (in_array($range, $dailyRanges)) ? 'date' : 'month';
         
@@ -1189,8 +1190,10 @@ class SharedApi extends ResourceController
 
         // 1. Base query for transactions (for Table and overall Stats)
         $txBuilder = $db->table('transactions t')
-            ->select('t.*, u.name as user_name')
+            ->select('t.*, u.name as user_name, sp.user_type as plan_type')
             ->join('users u', 'u.id = t.user_id', 'left')
+            ->join('user_subscriptions us', 'us.merchant_transaction_id = t.transaction_id AND t.transaction_id != ""', 'left')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
             ->orderBy('t.created_at', 'DESC');
 
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
@@ -1202,6 +1205,9 @@ class SharedApi extends ResourceController
             case 'current_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
             case 'last_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
             case 'last_2_weeks': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks'))); break;
+            case 'current_month': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00')); break;
+            case 'last_month': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
+            case 'last_2_months': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
             case 'current_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
             case 'last_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('-1 month'))); break;
             case 'last_2_quarters': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months'))); break;
@@ -1213,6 +1219,35 @@ class SharedApi extends ResourceController
 
         $allTransactions = $txBuilder->get()->getResultArray();
         $successfulTxs = array_filter($allTransactions, fn($t) => in_array($t['payment_status'], ['paid', 'completed', 'success']));
+
+        // Fetch all active plans for fallback lookup
+        $allPlans = $db->table('subscription_plans')->where('is_active', 1)->get()->getResultArray();
+
+        // Fetch user info for return data
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        $userType = $user['user_type'] ?? $jwtUser['role'];
+
+        // Populate plan_type fallback if join failed
+        foreach ($allTransactions as &$tx) {
+            if ($tx['type'] === 'subscription') {
+                // If join gave us nothing, or if it matched an empty transaction_id (which we now avoid in JOIN), use fallback
+                if (empty($tx['plan_type']) || empty($tx['transaction_id'])) {
+                    $desc = $tx['description'] ?? '';
+                    if (str_contains($desc, ':')) {
+                        $parts = explode(':', $desc);
+                        $planName = trim($parts[1] ?? '');
+                        if ($planName) {
+                            foreach ($allPlans as $p) {
+                                if ($p['name'] === $planName) {
+                                    $tx['plan_type'] = $p['user_type'];
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // 2. Fetch Subscription specific data (for Plan Breakdown)
         $subBuilder = $db->table('user_subscriptions us')
@@ -1228,6 +1263,9 @@ class SharedApi extends ResourceController
             case 'current_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
             case 'last_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
             case 'last_2_weeks': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks'))); break;
+            case 'current_month': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00')); break;
+            case 'last_month': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
+            case 'last_2_months': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
             case 'current_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
             case 'last_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('-1 month'))); break;
             case 'last_2_quarters': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months'))); break;
@@ -1275,13 +1313,6 @@ class SharedApi extends ResourceController
         }
 
         // 4. Plan Breakdown (remain subscription based)
-        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        $userType = $user['user_type'] ?? $jwtUser['role'];
-        $allPlansBuilder = $db->table('subscription_plans');
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin']) && $userType !== 'both') {
-            $allPlansBuilder->where('user_type', $jwtUser['role']);
-        }
-        $allPlans = $allPlansBuilder->get()->getResultArray();
         $planBreakdown = []; $planTypes = [];
         foreach ($allPlans as $p) {
             $planBreakdown[$p['name']] = 0;

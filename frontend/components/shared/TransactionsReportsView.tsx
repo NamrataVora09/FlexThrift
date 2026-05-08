@@ -42,6 +42,9 @@ const RANGES = [
   { label: 'Current Week', value: 'current_week' },
   { label: 'Last Week', value: 'last_week' },
   { label: 'Last 2 Weeks', value: 'last_2_weeks' },
+  { label: 'Current Month', value: 'current_month' },
+  { label: 'Last Month', value: 'last_month' },
+  { label: 'Last 2 Months', value: 'last_2_months' },
   { label: 'Current Quarter', value: 'current_quarter' },
   { label: 'Last Quarter', value: 'last_quarter' },
   { label: 'Last 2 Quarters', value: 'last_2_quarters' },
@@ -54,18 +57,21 @@ export default function TransactionsReportsView({ role }: { role: string }) {
   const [barRange, setBarRange] = useState('all_time');
   const [pieRange, setPieRange] = useState('all_time');
   const [countRange, setCountRange] = useState('all_time');
+  const [countPieRange, setCountPieRange] = useState('all_time');
   const [historyRange, setHistoryRange] = useState('all_time');
 
   const [summaryData, setSummaryData] = useState<ReportData | null>(null);
   const [barData, setBarData] = useState<ReportData | null>(null);
   const [pieData, setPieData] = useState<ReportData | null>(null);
   const [countData, setCountData] = useState<ReportData | null>(null);
+  const [countPieData, setCountPieData] = useState<ReportData | null>(null);
   const [historyData, setHistoryData] = useState<ReportData | null>(null);
 
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [barLoading, setBarLoading] = useState(false);
   const [pieLoading, setPieLoading] = useState(false);
   const [countLoading, setCountLoading] = useState(false);
+  const [countPieLoading, setCountPieLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const barChartRef = useRef<HTMLCanvasElement>(null);
@@ -97,6 +103,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
   useEffect(() => { fetchSectionData(barRange, setBarData, setBarLoading); }, [barRange]);
   useEffect(() => { fetchSectionData(pieRange, setPieData, setPieLoading); }, [pieRange]);
   useEffect(() => { fetchSectionData(countRange, setCountData, setCountLoading); }, [countRange]);
+  useEffect(() => { fetchSectionData(countPieRange, setCountPieData, setCountPieLoading); }, [countPieRange]);
   useEffect(() => { fetchSectionData(historyRange, setHistoryData, setHistoryLoading); }, [historyRange]);
   useEffect(() => { if (barData) setSummaryData(barData); }, [barData]);
 
@@ -248,9 +255,9 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     }
 
     if (countPieChartInstance.current) countPieChartInstance.current.destroy();
-    if (countPieChartRef.current) {
-      const buyerCounts = countData.charts?.monthly_stats?.buyer_count || [];
-      const sellerCounts = countData.charts?.monthly_stats?.seller_count || [];
+    if (countPieChartRef.current && countPieData) {
+      const buyerCounts = countPieData.charts?.monthly_stats?.buyer_count || [];
+      const sellerCounts = countPieData.charts?.monthly_stats?.seller_count || [];
       const totalBuyer = Array.isArray(buyerCounts) ? buyerCounts.reduce((a, b) => a + (Number(b) || 0), 0) : 0;
       const totalSeller = Array.isArray(sellerCounts) ? sellerCounts.reduce((a, b) => a + (Number(b) || 0), 0) : 0;
 
@@ -273,12 +280,13 @@ export default function TransactionsReportsView({ role }: { role: string }) {
         }
       });
     }
-  }, [countData]);
+  }, [countPieData]);
 
   const columns: Column<any>[] = [
     { key: 'id', label: '#', render: (r) => <span className="small text-muted">#{r.id}</span> },
     { key: 'user_name', label: 'User', render: (r) => <span className="fw-medium">{r.user_name || 'System'}</span> },
     { key: 'description', label: 'Description' },
+    { key: 'plan_type', label: 'Plan Type', render: (r) => <span className="badge bg-light text-muted border text-capitalize" style={{ fontSize: '0.65rem' }}>{r.plan_type || 'N/A'}</span> },
     { key: 'amount', label: 'Amount', render: (r) => <span className="fw-bold">₹{r.amount}</span> },
     {
       key: 'status', label: 'Status', render: (r) => (
@@ -350,7 +358,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
           </div>
           <div className="col-md-4">
             <div className="metric-card">
-              <i className="bi bi-percent metric-icon"></i>
+              <i className="bi bi-currency-rupee metric-icon"></i>
               <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN') || 0}</div>
               <div className="metric-label">Total Discounts Availed</div>
             </div>
@@ -401,10 +409,10 @@ export default function TransactionsReportsView({ role }: { role: string }) {
                   </div>
                   <div className="col-md-4">
                     <div className="card-wrap p-4">
-                      {countLoading && <LoadingOverlay />}
+                      {countPieLoading && <LoadingOverlay />}
                       <div className="card-header-flex">
                         <h6 className="fw-bold mb-0" style={{ fontSize: '0.9rem', color: '#1a1a1a', fontFamily: "inter" }}>Bifurcation</h6>
-                        {/* Synchronized with the bar chart range */}
+                        <RangePicker value={countPieRange} onChange={setCountPieRange} />
                       </div>
                       <div style={{ height: '320px' }}><canvas ref={countPieChartRef}></canvas></div>
                     </div>
