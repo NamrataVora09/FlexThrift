@@ -923,7 +923,7 @@ class SharedApi extends ResourceController
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
         $contacts = $db->table('contact_views cv')
-            ->select('cv.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, p.title as product_title')
+            ->select('cv.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.city as seller_city, u.state as seller_state, u.pin_code as seller_pin_code, p.title as product_title')
             ->join('users u', 'u.id = cv.seller_id', 'left')
             ->join('products p', 'p.id = cv.product_id', 'left')
             ->where('cv.user_id = ' . (int) $jwtUser['user_id'])

@@ -14,6 +14,9 @@ interface Contact {
   seller_name?: string;
   seller_email?: string;
   seller_mobile?: string;
+  seller_city?: string;
+  seller_state?: string;
+  seller_pin_code?: string;
   viewed_at?: string;
   created_at: string;
   return_confirmed?: boolean;
@@ -161,19 +164,9 @@ export default function Page() {
         }
       `}</style>
 
-      <div className="d-flex justify-content-between align-items-center mb-5">
-        <div>
-          <h1 className="fw-bold mb-1">Contacted Sellers</h1>
-          <p className="text-muted mb-0">Manage your connections and rate self-delivery services.</p>
-        </div>
-        <div className="stat-badge-box shadow-sm">
-          <div className="small text-muted fw-bold text-uppercase mb-1" style={{ fontSize: '10px', letterSpacing: '1px' }}>
-            RATINGS AVAILABLE
-          </div>
-          <div className="h4 mb-0 fw-bold">
-            {availableRatings} <small className="text-muted fs-6 fw-normal">/ {contacts.length} contacts</small>
-          </div>
-        </div>
+      <div className="mb-5">
+        <h1 className="fw-bold mb-1">Contacted Sellers</h1>
+        <p className="text-muted mb-0">Manage your connections and rate self-delivery services.</p>
       </div>
 
       {loading ? (
@@ -207,51 +200,63 @@ export default function Page() {
                 </span>
               );
             } else {
-              badgeEl = (
-                <span className="status-badge badge-not-confirmed">
-                  <i className="bi bi-hourglass me-1"></i> Waiting Confirmation
-                </span>
-              );
+              badgeEl = null;
             }
 
             return (
               <div key={c.id} className="col-12 mb-3">
                 <div className="seller-card">
                   <div className="row align-items-center">
-                    <div className="col-auto">
-                      <div className="profile-avatar shadow-sm">
-                        <i className="bi bi-person-check-fill"></i>
-                      </div>
-                    </div>
-                    <div className="col px-md-4">
-                      <div className="d-flex justify-content-between align-items-start mb-2">
+                    <div className="col">
+                      <div className="d-flex justify-content-between align-items-start mb-3">
                         <div>
-                          <h5 className="fw-bold mb-1">{c.seller_name || 'Verified Fashion Seller'}</h5>
-                          <small className="text-muted d-block mb-1">
+                          <div className="d-flex align-items-center gap-3 mb-1">
+                            <h5 className="fw-bold mb-0 text-dark" style={{ fontSize: '1.25rem' }}>{c.seller_name || 'Verified Fashion Seller'}</h5>
+
+                          </div>
+                          <small className="text-muted d-block">
                             Inquiry for: <strong className="text-dark">{c.product_title || 'Product'}</strong>
                           </small>
                         </div>
                         {badgeEl}
                       </div>
 
-                      <div className="rating-meta d-flex flex-wrap gap-4">
-                        <div>
-                          <small className="text-muted d-block fw-bold mb-1">CONTACTED ON</small>
-                          <span className="fw-bold text-dark">{formatDate(contactDate)}</span>
-                        </div>
-                        <div>
-                          <small className="text-muted d-block fw-bold mb-1">MOBILE</small>
-                          <span className="fw-bold text-dark">{c.seller_mobile || 'N/A'}</span>
-                        </div>
-                        {c.return_confirmed && !c.window_expired && !c.already_rated && c.days_left !== undefined && (
+                      <div className="py-3 border-top border-bottom mb-0">
+                        <div className="d-flex flex-wrap gap-5">
                           <div>
-                            <small className="text-muted d-block fw-bold mb-1">RATING EXPIRES IN</small>
-                            <span className="fw-bold text-warning">{c.days_left} days</span>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>Mobile No</small>
+                            <span className="fw-bold text-dark">{c.seller_mobile || 'N/A'}</span>
                           </div>
-                        )}
+                          <div>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>Email Address</small>
+                            <span className="fw-bold text-dark">{c.seller_email || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>City</small>
+                            <span className="fw-bold text-dark">{c.seller_city || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>State</small>
+                            <span className="fw-bold text-dark">{c.seller_state || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>Pincode</small>
+                            <span className="fw-bold text-dark">{c.seller_pin_code || 'N/A'}</span>
+                          </div>
+                          {c.return_confirmed && !c.window_expired && !c.already_rated && c.days_left !== undefined && (
+                            <div>
+                              <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>Rating Expires In</small>
+                              <span className="fw-bold text-warning">{c.days_left} days</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="col-md-3 text-end">
+                      <div className="mb-3">
+                        <small className=" d-block fw-bold mb-1">CONTACTED ON</small>
+                        <span className="fw-bold text-dark">{formatDate(contactDate)}</span>
+                      </div>
                       {c.already_rated ? (
                         <div className="text-center bg-light p-2 rounded-3 border">
                           <div className="text-warning h4 mb-0"><i className="bi bi-star-fill"></i></div>
@@ -269,9 +274,7 @@ export default function Page() {
                         </button>
                       ) : c.window_expired ? (
                         <span className="text-muted small fst-italic">Rating window closed</span>
-                      ) : (
-                        <small className="text-muted fst-italic">Unlocks after return confirmation</small>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
