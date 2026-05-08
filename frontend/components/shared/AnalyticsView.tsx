@@ -66,7 +66,9 @@ const RANGES = [
 ];
 
 export default function AnalyticsView({ role }: Props) {
-  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [summaryData, setSummaryData] = useState<AnalyticsData | null>(null);
+  const [barData, setBarData] = useState<AnalyticsData | null>(null);
+  const [pieData, setPieData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [barRange, setBarRange] = useState('all_time');
   const [pieRange, setPieRange] = useState('all_time');
@@ -78,7 +80,11 @@ export default function AnalyticsView({ role }: Props) {
   // Initial load
   useEffect(() => {
     api.get<AnalyticsData>('/shared/analytics').then((r) => {
-      if (r.success && r.data) setData(r.data);
+      if (r.success && r.data) {
+        setSummaryData(r.data);
+        setBarData(r.data);
+        setPieData(r.data);
+      }
       setLoading(false);
     });
   }, []);
@@ -89,26 +95,28 @@ export default function AnalyticsView({ role }: Props) {
     setBarLoading(true);
     api.get<AnalyticsData>(`/shared/analytics?range=${barRange}`).then((r) => {
       if (r.success && r.data) {
-        setData(r.data);
+        setBarData(r.data);
+        // Also update summary if it's the "main" filter
+        setSummaryData(r.data);
       }
       setBarLoading(false);
     });
   }, [barRange]);
 
-  // Update Pie Chart and other metrics
+  // Update Pie Chart
   useEffect(() => {
     if (loading) return;
     setPieLoading(true);
     api.get<AnalyticsData>(`/shared/analytics?range=${pieRange}`).then((r) => {
       if (r.success && r.data) {
-        setData(r.data);
+        setPieData(r.data);
       }
       setPieLoading(false);
     });
   }, [pieRange]);
 
   const getStatusCount = (status: string) =>
-    data?.status_stats?.find((s) => s.status === status)?.count ?? 0;
+    summaryData?.status_stats?.find((s) => s.status === status)?.count ?? 0;
 
   const scroll = (direction: 'left' | 'right') => {
     if (sliderRef.current) {
@@ -127,10 +135,10 @@ export default function AnalyticsView({ role }: Props) {
   );
 
   const stats = [
-    { label: 'Total Revenue', value: `₹${(data?.monthly_stats?.reduce((s, r) => s + parseFloat(r.revenue || '0'), 0) ?? 0).toLocaleString()}`, icon: 'bi bi-currency-rupee', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-    { label: 'Total Products', value: data?.total_products ?? 0, icon: 'bi bi-box-seam', color: '#6366f1', bg: 'rgba(99,102,241,0.1)' },
-    { label: 'Total Offers', value: data?.total_offers ?? 0, icon: 'bi bi-tags', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-    { label: 'Score Points', value: data?.score_points ?? 0, icon: 'bi bi-star-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.1)' },
+    { label: 'Total Revenue', value: `₹${(summaryData?.monthly_stats?.reduce((s, r) => s + parseFloat(r.revenue || '0'), 0) ?? 0).toLocaleString()}`, icon: 'bi bi-currency-rupee', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+    { label: 'Total Products', value: summaryData?.total_products ?? 0, icon: 'bi bi-box-seam', color: '#6366f1', bg: 'rgba(99,102,241,0.1)' },
+    { label: 'Total Offers', value: summaryData?.total_offers ?? 0, icon: 'bi bi-tags', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+    { label: 'Score Points', value: summaryData?.score_points ?? 0, icon: 'bi bi-star-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.1)' },
     { label: 'Approved', value: getStatusCount('approved'), icon: 'bi bi-check-circle-fill', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
     { label: 'Pending', value: getStatusCount('pending'), icon: 'bi bi-clock-fill', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
     { label: 'Rejected', value: getStatusCount('rejected'), icon: 'bi bi-x-circle-fill', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
@@ -154,11 +162,11 @@ export default function AnalyticsView({ role }: Props) {
   };
 
   const barChartData: ChartData<'bar'> = {
-    labels: data?.monthly_stats.map(s => formatLabel((s as any).month || (s as any).date)) || [],
+    labels: barData?.monthly_stats.map(s => formatLabel((s as any).month || (s as any).date)) || [],
     datasets: [
       {
         label: 'Total Revenue',
-        data: data?.monthly_stats.map(s => parseFloat(s.revenue || '0')) || [],
+        data: barData?.monthly_stats.map(s => parseFloat(s.revenue || '0')) || [],
         backgroundColor: '#d96459',
         borderRadius: 6,
         hoverBackgroundColor: '#d96459',
@@ -168,9 +176,9 @@ export default function AnalyticsView({ role }: Props) {
 
   // Pie Chart Data: Revenue Distribution by Listing Type
   const pieChartData: ChartData<'pie'> = {
-    labels: data?.revenue_by_listing_type.map(r => r.listing_type.toUpperCase()) || [],
+    labels: pieData?.revenue_by_listing_type.map(r => r.listing_type.toUpperCase()) || [],
     datasets: [{
-      data: data?.revenue_by_listing_type.map(r => parseFloat(r.revenue || '0')) || [],
+      data: pieData?.revenue_by_listing_type.map(r => parseFloat(r.revenue || '0')) || [],
       backgroundColor: ['#d96459', '#008080', '#ef4444', '#d7b467', 'rgb(255, 198, 58)', 'rgb(231, 239, 229)', '#ffffff'],
       borderWidth: 0,
       hoverBackgroundColor: '#d96459',
@@ -414,7 +422,7 @@ export default function AnalyticsView({ role }: Props) {
           <div className="table-responsive">
             <DataTable
               columns={topProductCols}
-              data={sortType === 'offers' ? (data?.top_products_by_offers ?? []) : (data?.top_products_by_revenue ?? [])}
+              data={sortType === 'offers' ? (summaryData?.top_products_by_offers ?? []) : (summaryData?.top_products_by_revenue ?? [])}
               emptyIcon="bi bi-box"
               emptyText="No product data yet"
               keyField="title"

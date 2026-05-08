@@ -105,7 +105,9 @@ export default function TransactionsReportsView({ role }: { role: string }) {
   useEffect(() => { fetchSectionData(countRange, setCountData, setCountLoading); }, [countRange]);
   useEffect(() => { fetchSectionData(countPieRange, setCountPieData, setCountPieLoading); }, [countPieRange]);
   useEffect(() => { fetchSectionData(historyRange, setHistoryData, setHistoryLoading); }, [historyRange]);
-  useEffect(() => { if (barData) setSummaryData(barData); }, [barData]);
+
+  // Summary data should follow the main history/payment range
+  useEffect(() => { if (historyData) setSummaryData(historyData); }, [historyData]);
 
   useEffect(() => {
     if (!barData) return;
@@ -253,7 +255,9 @@ export default function TransactionsReportsView({ role }: { role: string }) {
         }
       });
     }
+  }, [countData]);
 
+  useEffect(() => {
     if (countPieChartInstance.current) countPieChartInstance.current.destroy();
     if (countPieChartRef.current && countPieData) {
       const buyerCounts = countPieData.charts?.monthly_stats?.buyer_count || [];

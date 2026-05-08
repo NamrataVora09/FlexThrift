@@ -240,66 +240,115 @@ class SharedApi extends ResourceController
         $db = \Config\Database::connect();
         $userId = $jwtUser['user_id'];
         $range = $this->request->getGet('range') ?? 'all_time';
+        $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin']);
 
         // Helper for date filter
         $dateFilter = "";
+        $trendInterval = "INTERVAL 30 DAY"; // Default for trend
+
         switch ($range) {
-            case 'current_week': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday this week')) . "'"; break;
-            case 'last_week': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday last week')) . "' AND created_at <= '" . date('Y-m-d 23:59:59', strtotime('sunday last week')) . "'"; break;
-            case 'last_2_weeks': $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('-2 weeks')) . "'"; break;
-            case 'current_month': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00') . "'"; break;
-            case 'last_month': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of last month')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; break;
-            case 'last_2_months': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-2 months')) . "'"; break;
-            case 'current_quarter': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-2 months')) . "'"; break;
-            case 'last_quarter': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-5 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('-3 months')) . "'"; break;
-            case 'last_2_quarters': $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-8 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('-3 months')) . "'"; break;
-            case 'current_year': $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00') . "'"; break;
-            case 'last_year': $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00', strtotime('first day of last year')) . "' AND created_at <= '" . date('Y-12-31 23:59:59', strtotime('last day of last year')) . "'"; break;
-            case 'last_2_years': $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00', strtotime('first day of -2 years')) . "' AND created_at <= '" . date('Y-12-31 23:59:59', strtotime('last day of -1 year')) . "'"; break;
-            case 'all_time': default: $dateFilter = ""; break;
+            case 'current_week': 
+                $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday this week')) . "'"; 
+                $trendInterval = "INTERVAL 7 DAY";
+                break;
+            case 'last_week': 
+                $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday last week')) . "' AND created_at <= '" . date('Y-m-d 23:59:59', strtotime('sunday last week')) . "'"; 
+                $trendInterval = "INTERVAL 14 DAY";
+                break;
+            case 'last_2_weeks': 
+                $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday -2 weeks')) . "' AND created_at <= '" . date('Y-m-d 23:59:59', strtotime('sunday last week')) . "'"; 
+                $trendInterval = "INTERVAL 21 DAY";
+                break;
+            case 'current_month': 
+                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00') . "'"; 
+                $trendInterval = "INTERVAL 30 DAY";
+                break;
+            case 'last_month': 
+                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of last month')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; 
+                $trendInterval = "INTERVAL 60 DAY";
+                break;
+            case 'last_2_months': 
+                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of -2 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; 
+                $trendInterval = "INTERVAL 90 DAY";
+                break;
+            case 'current_quarter': 
+                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-2 months')) . "'"; 
+                $trendInterval = "INTERVAL 90 DAY";
+                break;
+            case 'last_quarter': 
+                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of -3 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; 
+                $trendInterval = "INTERVAL 180 DAY";
+                break;
+            case 'last_2_quarters': 
+                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of -6 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; 
+                $trendInterval = "INTERVAL 270 DAY";
+                break;
+            case 'current_year': 
+                $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00') . "'"; 
+                $trendInterval = "INTERVAL 365 DAY";
+                break;
+            case 'last_year': 
+                $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00', strtotime('first day of january last year')) . "' AND created_at <= '" . date('Y-12-31 23:59:59', strtotime('last day of december last year')) . "'"; 
+                $trendInterval = "INTERVAL 365 DAY";
+                break;
+            case 'last_2_years': 
+                $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00', strtotime('first day of january -2 years')) . "' AND created_at <= '" . date('Y-12-31 23:59:59', strtotime('last day of december last year')) . "'"; 
+                $trendInterval = "INTERVAL 730 DAY";
+                break;
+            case 'all_time': default: 
+                $dateFilter = ""; 
+                $trendInterval = "INTERVAL 10 YEAR";
+                break;
         }
 
-        // Product stats by status (always all-time as it's inventory status)
-        $statusStats = $db->query("SELECT status, COUNT(*) as count FROM products WHERE seller_id = ? GROUP BY status", [$userId])->getResultArray();
+        $whereSeller = $isAdmin ? "1=1" : "seller_id = " . (int)$userId;
+        $whereOffers = $isAdmin ? "1=1" : "o.seller_id = " . (int)$userId;
+        $whereProducts = $isAdmin ? "1=1" : "p.seller_id = " . (int)$userId;
 
-        // Offers over last 30 days (Trend chart)
+        // Product stats by status
+        $statusStats = $db->query("SELECT p.status, COUNT(*) as count FROM products p WHERE $whereProducts GROUP BY p.status")->getResultArray();
+
+        // Offers trend (respecting range)
         $offerTrend = $db->query("
-            SELECT DATE(created_at) as date, COUNT(*) as count, SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as accepted
-            FROM offers WHERE seller_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-            GROUP BY DATE(created_at) ORDER BY date ASC
-        ", [$userId])->getResultArray();
+            SELECT DATE(o.created_at) as date, COUNT(*) as count, SUM(CASE WHEN o.status='accepted' THEN 1 ELSE 0 END) as accepted
+            FROM offers o WHERE $whereOffers AND o.created_at >= DATE_SUB(NOW(), $trendInterval)
+            GROUP BY DATE(o.created_at) ORDER BY date ASC
+        ")->getResultArray();
 
         // Revenue and Sales count (Bar Chart)
         // Group by day for shorter ranges, by month for longer ranges
         $dailyRanges = ['current_week', 'last_week', 'last_2_weeks', 'current_month', 'last_month', 'last_2_months'];
-        $groupBy = (in_array($range, $dailyRanges)) ? 'DATE(created_at)' : "DATE_FORMAT(created_at, '%Y-%m')";
+        $groupBy = (in_array($range, $dailyRanges)) ? 'DATE(o.created_at)' : "DATE_FORMAT(o.created_at, '%Y-%m')";
         $labelAlias = (in_array($range, $dailyRanges)) ? 'date' : 'month';
         
         $monthlyStats = $db->query("
             SELECT $groupBy as $labelAlias,
-                   SUM(CASE WHEN status='accepted' THEN offer_price ELSE 0 END) as revenue,
-                   SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) as sales_count,
-                   COUNT(id) as offer_count
-            FROM offers WHERE seller_id = ? $dateFilter
+                   SUM(CASE WHEN o.status='accepted' THEN o.offer_price ELSE 0 END) as revenue,
+                   SUM(CASE WHEN o.status='accepted' THEN 1 ELSE 0 END) as sales_count,
+                   COUNT(o.id) as offer_count
+            FROM offers o WHERE $whereOffers " . ($dateFilter ? "AND o." . ltrim($dateFilter, 'AND ') : "") . "
             GROUP BY $groupBy ORDER BY $labelAlias ASC
-        ", [$userId])->getResultArray();
+        ")->getResultArray();
 
         // Revenue distribution by listing type category (Pie Chart)
         $revenueByListingType = $db->query("
             SELECT p.listing_type_category as listing_type, SUM(o.offer_price) as revenue
             FROM offers o
             JOIN products p ON p.id = o.product_id
-            WHERE o.seller_id = ? AND o.status = 'accepted' $dateFilter
+            WHERE $whereOffers AND o.status = 'accepted' " . ($dateFilter ? "AND o." . ltrim($dateFilter, 'AND ') : "") . "
             GROUP BY p.listing_type_category
-        ", [$userId])->getResultArray();
+        ")->getResultArray();
 
         // Total stats for cards
-        $totalProducts = $db->table('products')->where('seller_id', $userId)->countAllResults();
+        $totalProductsBuilder = $db->table('products p');
+        if (!$isAdmin) $totalProductsBuilder->where('p.seller_id', $userId);
+        $totalProducts = $totalProductsBuilder->countAllResults();
         
         // Filter total offers by date range
-        $totalOffersQuery = $db->table('offers')->where('seller_id', $userId);
+        $totalOffersQuery = $db->table('offers o');
+        if (!$isAdmin) $totalOffersQuery->where('o.seller_id', $userId);
         if ($dateFilter) {
-            $totalOffersQuery->where(ltrim($dateFilter, 'AND '));
+            $totalOffersQuery->where("o." . ltrim($dateFilter, 'AND '));
         }
         $totalOffers = $totalOffersQuery->countAllResults();
         
@@ -309,17 +358,18 @@ class SharedApi extends ResourceController
         // Top 10 products by offers (with date filter)
         $topProductsQuery = $db->table('products p')
             ->select('p.title, p.listing_type_category as listing_type, COUNT(o.id) as offer_count, SUM(CASE WHEN o.status="accepted" THEN 1 ELSE 0 END) as accepted_count, SUM(CASE WHEN o.status="accepted" THEN o.offer_price ELSE 0 END) as total_revenue')
-            ->join('offers o', "o.product_id = p.id " . ($dateFilter ? "AND o." . ltrim($dateFilter, 'AND ') : ""), 'left')
-            ->where('p.seller_id', $userId);
+            ->join('offers o', "o.product_id = p.id " . ($dateFilter ? "AND o." . ltrim($dateFilter, 'AND ') : ""), 'left');
+
+        if (!$isAdmin) $topProductsQuery->where('p.seller_id', $userId);
 
         $topProductsByOffers = (clone $topProductsQuery)
-            ->groupBy('o.product_id')
+            ->groupBy('p.id')
             ->orderBy('offer_count', 'DESC')
             ->limit(10)
             ->get()->getResultArray();
 
         $topProductsByRevenue = (clone $topProductsQuery)
-            ->groupBy('o.product_id')
+            ->groupBy('p.id')
             ->orderBy('total_revenue', 'DESC')
             ->limit(10)
             ->get()->getResultArray();
@@ -1204,16 +1254,16 @@ class SharedApi extends ResourceController
         switch ($range) {
             case 'current_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
             case 'last_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'last_2_weeks': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks'))); break;
+            case 'last_2_weeks': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
             case 'current_month': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00')); break;
             case 'last_month': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_months': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
+            case 'last_2_months': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
             case 'current_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
-            case 'last_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('-1 month'))); break;
-            case 'last_2_quarters': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months'))); break;
+            case 'last_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
+            case 'last_2_quarters': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
             case 'current_year': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00')); break;
-            case 'last_year': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-1 year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('-1 year'))); break;
-            case 'last_2_years': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('-2 years'))); break;
+            case 'last_year': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
+            case 'last_2_years': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
             case 'all_time': default: break;
         }
 
@@ -1262,16 +1312,16 @@ class SharedApi extends ResourceController
         switch ($range) {
             case 'current_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
             case 'last_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'last_2_weeks': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('-2 weeks'))); break;
+            case 'last_2_weeks': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
             case 'current_month': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00')); break;
             case 'last_month': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_months': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
+            case 'last_2_months': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
             case 'current_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
-            case 'last_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('-1 month'))); break;
-            case 'last_2_quarters': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-6 months'))); break;
+            case 'last_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
+            case 'last_2_quarters': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
             case 'current_year': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00')); break;
-            case 'last_year': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('-1 year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('-1 year'))); break;
-            case 'last_2_years': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('-2 years'))); break;
+            case 'last_year': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
+            case 'last_2_years': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
             case 'all_time': default: break;
         }
 
@@ -1336,7 +1386,7 @@ class SharedApi extends ResourceController
                         'buyer' => ['spent' => $buyerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'buyer') ? (float)$i['referral_discount_applied'] : 0), 0)],
                         'seller' => ['spent' => $sellerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'seller') ? (float)$i['referral_discount_applied'] : 0), 0)],
                     ],
-                    'monthly_stats' => $this->getMonthlyStats($successfulTxs, $subs),
+                    'monthly_stats' => $this->getMonthlyStats($successfulTxs, $subs, $range),
                     'plan_breakdown' => [
                         'labels' => array_keys($planBreakdown),
                         'values' => array_values($planBreakdown),
@@ -1350,15 +1400,19 @@ class SharedApi extends ResourceController
         ]);
     }
 
-    private function getMonthlyStats($transactions, $subs)
+    private function getMonthlyStats($transactions, $subs, $range = 'all_time')
     {
         $stats = [];
         usort($transactions, fn($a, $b) => strtotime($a['created_at']) - strtotime($b['created_at']));
 
+        $shortRanges = ['current_week', 'last_week', 'last_2_weeks', 'current_month', 'last_month', 'last_2_months'];
+        $isShort = in_array($range, $shortRanges);
+        $format = $isShort ? 'd M' : 'M Y';
+
         foreach ($transactions as $tx) {
-            $month = date('M Y', strtotime($tx['created_at']));
-            if (!isset($stats[$month])) {
-                $stats[$month] = ['buyer_spent' => 0, 'seller_spent' => 0, 'buyer_count' => 0, 'seller_count' => 0, 'discount' => 0];
+            $label = date($format, strtotime($tx['created_at']));
+            if (!isset($stats[$label])) {
+                $stats[$label] = ['buyer_spent' => 0, 'seller_spent' => 0, 'buyer_count' => 0, 'seller_count' => 0, 'discount' => 0];
             }
             
             $amt = (float)$tx['amount'];
@@ -1377,17 +1431,17 @@ class SharedApi extends ResourceController
                 }
 
                 if ($s && $s['plan_user_type'] === 'seller') {
-                    $stats[$month]['seller_spent'] += $amt;
-                    $stats[$month]['seller_count']++;
-                    $stats[$month]['discount'] += (float)$s['referral_discount_applied'];
+                    $stats[$label]['seller_spent'] += $amt;
+                    $stats[$label]['seller_count']++;
+                    $stats[$label]['discount'] += (float)$s['referral_discount_applied'];
                 } else {
-                    $stats[$month]['buyer_spent'] += $amt;
-                    $stats[$month]['buyer_count']++;
-                    if ($s) $stats[$month]['discount'] += (float)$s['referral_discount_applied'];
+                    $stats[$label]['buyer_spent'] += $amt;
+                    $stats[$label]['buyer_count']++;
+                    if ($s) $stats[$label]['discount'] += (float)$s['referral_discount_applied'];
                 }
             } else {
-                $stats[$month]['buyer_spent'] += $amt;
-                $stats[$month]['buyer_count']++;
+                $stats[$label]['buyer_spent'] += $amt;
+                $stats[$label]['buyer_count']++;
             }
         }
 
