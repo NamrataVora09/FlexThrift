@@ -221,27 +221,27 @@ export default function Page() {
                         {badgeEl}
                       </div>
 
-                      <div className="py-3 border-top border-bottom mb-0">
+                      <div className="py-3  mb-0">
                         <div className="d-flex flex-wrap gap-5">
                           <div>
-                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>Mobile No</small>
-                            <span className="fw-bold text-dark">{c.seller_mobile || 'N/A'}</span>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>Mobile No</small>
+                            <span className="fw-bold">{c.seller_mobile || 'N/A'}</span>
                           </div>
                           <div>
-                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>Email Address</small>
-                            <span className="fw-bold text-dark">{c.seller_email || 'N/A'}</span>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>Email Address</small>
+                            <span className="fw-bold">{c.seller_email || 'N/A'}</span>
                           </div>
                           <div>
-                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>City</small>
-                            <span className="fw-bold text-dark">{c.seller_city || 'N/A'}</span>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>City</small>
+                            <span className="fw-bold">{c.seller_city || 'N/A'}</span>
                           </div>
                           <div>
-                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>State</small>
-                            <span className="fw-bold text-dark">{c.seller_state || 'N/A'}</span>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>State</small>
+                            <span className="fw-bold">{c.seller_state || 'N/A'}</span>
                           </div>
                           <div>
-                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ fontSize: '10px', color: "#ffc63a", letterSpacing: '0.5px' }}>Pincode</small>
-                            <span className="fw-bold text-dark">{c.seller_pin_code || 'N/A'}</span>
+                            <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>Pincode</small>
+                            <span className="fw-bold">{c.seller_pin_code || 'N/A'}</span>
                           </div>
                           {c.return_confirmed && !c.window_expired && !c.already_rated && c.days_left !== undefined && (
                             <div>
@@ -255,12 +255,12 @@ export default function Page() {
                     <div className="col-md-3 text-end">
                       <div className="mb-3">
                         <small className=" d-block fw-bold mb-1">CONTACTED ON</small>
-                        <span className="fw-bold text-dark">{formatDate(contactDate)}</span>
+                        <span className="fw-bold ">{formatDate(contactDate)}</span>
                       </div>
                       {c.already_rated ? (
                         <div className="text-center bg-light p-2 rounded-3 border">
                           <div className="text-warning h4 mb-0"><i className="bi bi-star-fill"></i></div>
-                          <small className="text-dark fw-bold" style={{ fontSize: '10px' }}>CREDIT AWARDED</small>
+                          <small className=" fw-bold" style={{ fontSize: '10px' }}>CREDIT AWARDED</small>
                         </div>
                       ) : c.can_rate_now ? (
                         <button

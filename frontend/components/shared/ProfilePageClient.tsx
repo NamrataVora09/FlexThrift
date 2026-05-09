@@ -272,7 +272,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: #cf0048;
+          background: #ef4444;
           color: #fff;
           border: none;
           padding: 10px 24px;

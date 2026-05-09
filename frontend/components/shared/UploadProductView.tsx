@@ -871,11 +871,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 <div className="btn-group w-100" role="group">
                   <input type="radio" className="btn-check" name="listing_type_radio" id="sell" value="sell" checked={isSell} onChange={() => setF(p => ({ ...p, listing_type: 'sell' }))} />
                   <label className="btn" htmlFor="sell" style={{ border: '1px solid #ddd', color: isSell ? '#fff' : '#666', background: isSell ? '#d96459' : '#fff', borderColor: isSell ? '#d96459' : '#ddd', fontWeight: 600 }}>
-                    <i className="bi bi-currency-rupee me-1"></i> Sell This Product
+                    <i className="bi bi-currency-rupee me-1"></i> Sell
                   </label>
                   <input type="radio" className="btn-check" name="listing_type_radio" id="rent" value="rent" checked={!isSell} onChange={() => setF(p => ({ ...p, listing_type: 'rent' }))} />
                   <label className="btn" htmlFor="rent" style={{ border: '1px solid #ddd', color: !isSell ? '#fff' : '#666', background: !isSell ? '#008080' : '#fff', borderColor: !isSell ? '#008080' : '#ddd', fontWeight: 600 }}>
-                    <i className="bi bi-clock-history me-1"></i> Rent This Product
+                    <i className="bi bi-clock-history me-1"></i> Rent
                   </label>
                 </div>
               </div>
@@ -1136,14 +1136,14 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             {/* ── Bill Upload ── */}
             <div style={sectionStyle}>
               <h5 style={sectionTitle}><i className="bi bi-receipt me-2"></i>Bill (Optional)</h5>
-              <div className="form-check mb-3">
+              <div className="form-check mb-3" >
                 <input className="form-check-input" type="checkbox" name="has_bill" checked={f.has_bill as boolean} onChange={handleChange} />
                 <label className="form-check-label">I have the original bill/invoice</label>
               </div>
               {f.has_bill && (
                 <>
                   <input ref={billRef} type="file" accept="image/*,application/pdf,.doc,.docx" multiple onChange={handleBills} style={{ display: 'none' }} />
-                  <button type="button" className="btn" style={{ border: '2px dashed #ffc63a', borderRadius: 12, padding: '20px', width: '100%', textAlign: 'center', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }} onClick={() => !submitting && billRef.current?.click()} disabled={submitting}>
+                  <button type="button" className="btn" style={{ border: '2px dashed #ffc63a', background: 'rgba(255,198,58,0.05)', borderRadius: 12, padding: '20px', width: '100%', textAlign: 'center', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }} onClick={() => !submitting && billRef.current?.click()} disabled={submitting}>
                     <i className="bi bi-paperclip" style={{ fontSize: '2rem', color: '#ffc63a' }}></i>
                     <p className="mb-0 mt-1 fw-bold small">Click to upload bill</p>
                     <p className="text-muted mb-0" style={{ fontSize: '0.75rem' }}>Up to 2 files (Images, PDF, Word)</p>

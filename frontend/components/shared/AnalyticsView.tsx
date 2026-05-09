@@ -135,13 +135,13 @@ export default function AnalyticsView({ role }: Props) {
   );
 
   const stats = [
-    { label: 'Total Revenue', value: `₹${(summaryData?.monthly_stats?.reduce((s, r) => s + parseFloat(r.revenue || '0'), 0) ?? 0).toLocaleString()}`, icon: 'bi bi-currency-rupee', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-    { label: 'Total Products', value: summaryData?.total_products ?? 0, icon: 'bi bi-box-seam', color: '#6366f1', bg: 'rgba(99,102,241,0.1)' },
-    { label: 'Total Offers', value: summaryData?.total_offers ?? 0, icon: 'bi bi-tags', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-    { label: 'Score Points', value: summaryData?.score_points ?? 0, icon: 'bi bi-star-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.1)' },
-    { label: 'Approved', value: getStatusCount('approved'), icon: 'bi bi-check-circle-fill', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-    { label: 'Pending', value: getStatusCount('pending'), icon: 'bi bi-clock-fill', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-    { label: 'Rejected', value: getStatusCount('rejected'), icon: 'bi bi-x-circle-fill', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+    { label: 'Total Revenue', value: `₹${(summaryData?.monthly_stats?.reduce((s, r) => s + parseFloat(r.revenue || '0'), 0) ?? 0).toLocaleString()}`, icon: 'bi bi-currency-rupee', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
+    { label: 'Total Products', value: summaryData?.total_products ?? 0, icon: 'bi bi-box-seam', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
+    { label: 'Total Offers', value: summaryData?.total_offers ?? 0, icon: 'bi bi-tags', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
+    { label: 'Score Points', value: summaryData?.score_points ?? 0, icon: 'bi bi-star-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
+    { label: 'Approved', value: getStatusCount('approved'), icon: 'bi bi-check-circle-fill', color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.2)' },
+    { label: 'Pending', value: getStatusCount('pending'), icon: 'bi bi-clock-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
+    { label: 'Rejected', value: getStatusCount('rejected'), icon: 'bi bi-x-circle-fill', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)' },
   ];
 
   // Bar Chart Data: Sales per Month/Date
@@ -318,6 +318,7 @@ export default function AnalyticsView({ role }: Props) {
           justify-content: center;
           font-size: 1.25rem;
           margin-bottom: 0.75rem;
+          border: 1px solid transparent;
         }
         .stat-value {
           font-size: 1.5rem;
@@ -358,7 +359,7 @@ export default function AnalyticsView({ role }: Props) {
           <div className="stats-slider" ref={sliderRef}>
             {stats.map((s, i) => (
               <div key={i} className="stat-card">
-                <div className="stat-icon" style={{ backgroundColor: s.bg }}>
+                <div className="stat-icon" style={{ backgroundColor: s.bg, borderColor: (s as any).border }}>
                   <i className={s.icon} style={{ color: s.color }}></i>
                 </div>
                 <div className="stat-value">{s.value}</div>

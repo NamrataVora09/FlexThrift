@@ -116,7 +116,14 @@ export default function BuyerDashboardPage() {
           color: #ffc63a;
           font-size: 1.25rem;
           margin-bottom: 1rem;
-          display: block;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          border: 1px solid #ffc63a;
+          background: rgba(255,198,58,0.05);
         }
         .metric-value {
           font-size: 1.8rem;

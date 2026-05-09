@@ -244,66 +244,113 @@ class SharedApi extends ResourceController
 
         // Helper for date filter
         $dateFilter = "";
-        $trendInterval = "INTERVAL 30 DAY"; // Default for trend
+        $trendWhere = "";
 
         switch ($range) {
             case 'current_week': 
-                $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday this week')) . "'"; 
-                $trendInterval = "INTERVAL 7 DAY";
+                $start = date('Y-m-d 00:00:00', strtotime('monday this week'));
+                $dateFilter = "AND o.created_at >= '$start'"; 
+                $trendWhere = "AND o.created_at >= '$start'";
                 break;
             case 'last_week': 
-                $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday last week')) . "' AND created_at <= '" . date('Y-m-d 23:59:59', strtotime('sunday last week')) . "'"; 
-                $trendInterval = "INTERVAL 14 DAY";
+                $start = date('Y-m-d 00:00:00', strtotime('monday last week'));
+                $end = date('Y-m-d 23:59:59', strtotime('sunday last week'));
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
             case 'last_2_weeks': 
-                $dateFilter = "AND created_at >= '" . date('Y-m-d 00:00:00', strtotime('monday -2 weeks')) . "' AND created_at <= '" . date('Y-m-d 23:59:59', strtotime('sunday last week')) . "'"; 
-                $trendInterval = "INTERVAL 21 DAY";
+                $start = date('Y-m-d 00:00:00', strtotime('monday -2 weeks'));
+                $end = date('Y-m-d 23:59:59', strtotime('sunday last week'));
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
             case 'current_month': 
-                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00') . "'"; 
-                $trendInterval = "INTERVAL 30 DAY";
+                $start = date('Y-m-01 00:00:00');
+                $dateFilter = "AND o.created_at >= '$start'"; 
+                $trendWhere = "AND o.created_at >= '$start'";
                 break;
             case 'last_month': 
-                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of last month')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; 
-                $trendInterval = "INTERVAL 60 DAY";
+                $start = date('Y-m-01 00:00:00', strtotime('first day of last month'));
+                $end = date('Y-m-t 23:59:59', strtotime('last day of last month'));
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
             case 'last_2_months': 
-                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of -2 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; 
-                $trendInterval = "INTERVAL 90 DAY";
+                $start = date('Y-m-01 00:00:00', strtotime('first day of -2 months'));
+                $end = date('Y-m-t 23:59:59', strtotime('last day of last month'));
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
             case 'current_quarter': 
-                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('-2 months')) . "'"; 
-                $trendInterval = "INTERVAL 90 DAY";
+                $month = date('n');
+                $quarter = ceil($month / 3);
+                $startMonth = ($quarter - 1) * 3 + 1;
+                $start = date('Y-' . str_pad($startMonth, 2, '0', STR_PAD_LEFT) . '-01 00:00:00');
+                $dateFilter = "AND o.created_at >= '$start'"; 
+                $trendWhere = "AND o.created_at >= '$start'";
                 break;
             case 'last_quarter': 
-                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of -3 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; 
-                $trendInterval = "INTERVAL 180 DAY";
+                $month = date('n');
+                $quarter = ceil($month / 3) - 1;
+                $year = date('Y');
+                if ($quarter == 0) { $quarter = 4; $year--; }
+                $startMonth = ($quarter - 1) * 3 + 1;
+                $endMonth = $startMonth + 2;
+                $start = "$year-" . str_pad($startMonth, 2, '0', STR_PAD_LEFT) . "-01 00:00:00";
+                $end = date('Y-m-t 23:59:59', strtotime("$year-" . str_pad($endMonth, 2, '0', STR_PAD_LEFT) . "-01"));
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
             case 'last_2_quarters': 
-                $dateFilter = "AND created_at >= '" . date('Y-m-01 00:00:00', strtotime('first day of -6 months')) . "' AND created_at <= '" . date('Y-m-t 23:59:59', strtotime('last day of last month')) . "'"; 
-                $trendInterval = "INTERVAL 270 DAY";
+                $month = date('n');
+                $currQ = ceil($month / 3);
+                
+                // End: last day of last quarter
+                $lastQ = $currQ - 1;
+                $lastQYear = date('Y');
+                if ($lastQ == 0) { $lastQ = 4; $lastQYear--; }
+                $endMonth = $lastQ * 3;
+                $end = date('Y-m-t 23:59:59', strtotime("$lastQYear-" . str_pad($endMonth, 2, '0', STR_PAD_LEFT) . "-01"));
+                
+                // Start: first day of 2nd quarter back
+                $startQ = $currQ - 2;
+                $startQYear = date('Y');
+                if ($startQ <= 0) { $startQ += 4; $startQYear--; }
+                $startMonth = ($startQ - 1) * 3 + 1;
+                $start = "$startQYear-" . str_pad($startMonth, 2, '0', STR_PAD_LEFT) . "-01 00:00:00";
+                
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
             case 'current_year': 
-                $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00') . "'"; 
-                $trendInterval = "INTERVAL 365 DAY";
+                $start = date('Y-01-01 00:00:00');
+                $dateFilter = "AND o.created_at >= '$start'"; 
+                $trendWhere = "AND o.created_at >= '$start'";
                 break;
             case 'last_year': 
-                $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00', strtotime('first day of january last year')) . "' AND created_at <= '" . date('Y-12-31 23:59:59', strtotime('last day of december last year')) . "'"; 
-                $trendInterval = "INTERVAL 365 DAY";
+                $year = (int)date('Y') - 1;
+                $start = "$year-01-01 00:00:00";
+                $end = "$year-12-31 23:59:59";
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
             case 'last_2_years': 
-                $dateFilter = "AND created_at >= '" . date('Y-01-01 00:00:00', strtotime('first day of january -2 years')) . "' AND created_at <= '" . date('Y-12-31 23:59:59', strtotime('last day of december last year')) . "'"; 
-                $trendInterval = "INTERVAL 730 DAY";
+                $currYear = (int)date('Y');
+                $start = ($currYear - 2) . "-01-01 00:00:00";
+                $end = ($currYear - 1) . "-12-31 23:59:59";
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
             case 'all_time': default: 
                 $dateFilter = ""; 
-                $trendInterval = "INTERVAL 10 YEAR";
+                $trendWhere = "AND o.created_at >= DATE_SUB(NOW(), INTERVAL 10 YEAR)";
                 break;
         }
 
-        $whereSeller = $isAdmin ? "1=1" : "seller_id = " . (int)$userId;
-        $whereOffers = $isAdmin ? "1=1" : "o.seller_id = " . (int)$userId;
-        $whereProducts = $isAdmin ? "1=1" : "p.seller_id = " . (int)$userId;
+        // Force all roles to see only their personal 'Received' (Seller) perspective
+        $whereSeller = "seller_id = " . (int)$userId;
+        $whereOffers = "o.seller_id = " . (int)$userId;
+        $whereProducts = "p.seller_id = " . (int)$userId;
 
         // Product stats by status
         $statusStats = $db->query("SELECT p.status, COUNT(*) as count FROM products p WHERE $whereProducts GROUP BY p.status")->getResultArray();
@@ -311,12 +358,11 @@ class SharedApi extends ResourceController
         // Offers trend (respecting range)
         $offerTrend = $db->query("
             SELECT DATE(o.created_at) as date, COUNT(*) as count, SUM(CASE WHEN o.status='accepted' THEN 1 ELSE 0 END) as accepted
-            FROM offers o WHERE $whereOffers AND o.created_at >= DATE_SUB(NOW(), $trendInterval)
+            FROM offers o WHERE $whereOffers $trendWhere
             GROUP BY DATE(o.created_at) ORDER BY date ASC
         ")->getResultArray();
 
         // Revenue and Sales count (Bar Chart)
-        // Group by day for shorter ranges, by month for longer ranges
         $dailyRanges = ['current_week', 'last_week', 'last_2_weeks', 'current_month', 'last_month', 'last_2_months'];
         $groupBy = (in_array($range, $dailyRanges)) ? 'DATE(o.created_at)' : "DATE_FORMAT(o.created_at, '%Y-%m')";
         $labelAlias = (in_array($range, $dailyRanges)) ? 'date' : 'month';
@@ -326,7 +372,7 @@ class SharedApi extends ResourceController
                    SUM(CASE WHEN o.status='accepted' THEN o.offer_price ELSE 0 END) as revenue,
                    SUM(CASE WHEN o.status='accepted' THEN 1 ELSE 0 END) as sales_count,
                    COUNT(o.id) as offer_count
-            FROM offers o WHERE $whereOffers " . ($dateFilter ? "AND o." . ltrim($dateFilter, 'AND ') : "") . "
+            FROM offers o WHERE $whereOffers $dateFilter
             GROUP BY $groupBy ORDER BY $labelAlias ASC
         ")->getResultArray();
 
@@ -335,7 +381,7 @@ class SharedApi extends ResourceController
             SELECT p.listing_type_category as listing_type, SUM(o.offer_price) as revenue
             FROM offers o
             JOIN products p ON p.id = o.product_id
-            WHERE $whereOffers AND o.status = 'accepted' " . ($dateFilter ? "AND o." . ltrim($dateFilter, 'AND ') : "") . "
+            WHERE $whereOffers AND o.status = 'accepted' $dateFilter
             GROUP BY p.listing_type_category
         ")->getResultArray();
 
@@ -344,11 +390,11 @@ class SharedApi extends ResourceController
         if (!$isAdmin) $totalProductsBuilder->where('p.seller_id', $userId);
         $totalProducts = $totalProductsBuilder->countAllResults();
         
-        // Filter total offers by date range
+        // Filter total offers by date range and scope to received only
         $totalOffersQuery = $db->table('offers o');
-        if (!$isAdmin) $totalOffersQuery->where('o.seller_id', $userId);
+        $totalOffersQuery->where('o.seller_id', $userId);
         if ($dateFilter) {
-            $totalOffersQuery->where("o." . ltrim($dateFilter, 'AND '));
+            $totalOffersQuery->where(ltrim($dateFilter, 'AND '));
         }
         $totalOffers = $totalOffersQuery->countAllResults();
         
@@ -358,9 +404,9 @@ class SharedApi extends ResourceController
         // Top 10 products by offers (with date filter)
         $topProductsQuery = $db->table('products p')
             ->select('p.title, p.listing_type_category as listing_type, COUNT(o.id) as offer_count, SUM(CASE WHEN o.status="accepted" THEN 1 ELSE 0 END) as accepted_count, SUM(CASE WHEN o.status="accepted" THEN o.offer_price ELSE 0 END) as total_revenue')
-            ->join('offers o', "o.product_id = p.id " . ($dateFilter ? "AND o." . ltrim($dateFilter, 'AND ') : ""), 'left');
+            ->join('offers o', "o.product_id = p.id $dateFilter", 'left');
 
-        if (!$isAdmin) $topProductsQuery->where('p.seller_id', $userId);
+        $topProductsQuery->where('p.seller_id', $userId);
 
         $topProductsByOffers = (clone $topProductsQuery)
             ->groupBy('p.id')
@@ -1246,9 +1292,8 @@ class SharedApi extends ResourceController
             ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
             ->orderBy('t.created_at', 'DESC');
 
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
-            $txBuilder->where('t.user_id', $jwtUser['user_id']);
-        }
+        // Always scope to the logged-in user's transactions
+        $txBuilder->where('t.user_id', $jwtUser['user_id']);
 
         // Apply Range Filter to transactions
         switch ($range) {

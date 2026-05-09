@@ -320,7 +320,19 @@ export default function TransactionsReportsView({ role }: { role: string }) {
       <style jsx>{`
         .metric-card { background: #fff; border-radius: 32px; padding: 2rem; border: 1px solid #f0f0f0; cursor: default; height: 100%; transition: transform 0.2s ease; position: relative; }
         .metric-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .metric-icon { color: #ffc63a; font-size: 1.5rem; margin-bottom: 1.5rem; display: block; }
+        .metric-icon { 
+          color: #ffc63a; 
+          font-size: 1.5rem; 
+          margin-bottom: 1.5rem; 
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          border: 1px solid #ffc63a;
+          background: rgba(255,198,58,0.05);
+        }
         .metric-label { font-size: 0.75rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
         .metric-value { font-size: 2.4rem; font-weight: 900; color: #000; line-height: 1.1; }
         .container-fluid { font-family: 'Poppins', 'Inter', sans-serif; }
