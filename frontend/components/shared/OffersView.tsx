@@ -365,6 +365,42 @@ const CSS = `
     color: #999;
     cursor: not-allowed;
   }
+
+  /* ── seller action buttons (matching screenshot) ── */
+  .seller-action-group {
+    display: inline-flex;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+  .seller-action-group button {
+    border: none;
+    padding: 10px 24px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Poppins', sans-serif;
+  }
+  .seller-action-group .btn-accept {
+    background: #ffc63a;
+    color: #fff !important;
+    font-weight: 800;
+  }
+  .seller-action-group .btn-accept:hover {
+    background: #e6b233;
+  }
+  .seller-action-group .btn-reject {
+    background: #fff;
+    color: #6b7280;
+    font-weight: 600;
+    border-left: 1px solid #e5e7eb;
+  }
+  .seller-action-group .btn-reject:hover {
+    background: #f9fafb;
+    color: #111827;
+  }
 `;
 
 /* ─────────────────────────── main component ────────────────── */
@@ -1125,7 +1161,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                 <p className="text-muted small mb-4">Choose how you want to accept this offer for <strong>{acceptChoiceModal.offer.product_title}</strong>.</p>
                 <div className="d-grid gap-3">
                   <button
-                    className="btn-yellow fw-bold rounded-3 py-3"
+                    className="btn-yellow fw-bold flex flex-column justify-content-center align-items-center rounded-3 py-3"
                     onClick={() => {
                       const o = acceptChoiceModal.offer;
                       setAcceptChoiceModal(null);
@@ -1542,9 +1578,9 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                                   <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>These dates overlap with an accepted booking.</div>
                                 </div>
                               )}
-                              <div className="btn-group btn-group-sm">
-                                <button className="btn-yellow" onClick={() => onAccept(offer)}>Accept</button>
-                                <button className="btn-red" onClick={() => onReject(offer)}>Reject</button>
+                              <div className="seller-action-group">
+                                <button className="btn-accept" onClick={() => onAccept(offer)}>Accept</button>
+                                <button className="btn-reject" onClick={() => onReject(offer)}>Reject</button>
                               </div>
                             </div>
                           )}
