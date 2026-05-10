@@ -181,7 +181,7 @@ if (!function_exists('validateSalePriceWithRules')) {
         if ($ruleResult['matched_rules'] > 0) {
             $baseThreshold = $ruleResult['base_threshold'];
             $maxAllowed = $originalPrice * (1 - ($baseThreshold / 100));
-            return $salePrice <= (round($maxAllowed) + 0.01);
+            return $salePrice <= ($maxAllowed + 0.01);
         }
 
         // Fallback
@@ -202,7 +202,7 @@ if (!function_exists('validateDepositWithRules')) {
         if ($ruleResult['matched_rules'] > 0) {
             $baseThreshold = $ruleResult['base_threshold'];
             $maxAllowed = $originalPrice * (1 - ($baseThreshold / 100));
-            return $deposit <= (round($maxAllowed) + 0.01);
+            return $deposit <= ($maxAllowed + 0.01);
         }
 
         // Fallback
@@ -223,7 +223,7 @@ if (!function_exists('validateRentalCostWithRules')) {
             $globalMaxCap = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
             $maxCap = (float) ($ruleResult['max_cost_cap_per_day'] > 0 ? $ruleResult['max_cost_cap_per_day'] : $globalMaxCap);
             $maxAllowed = $deposit * ($maxCap / 100);
-            return $rentalCost <= (round($maxAllowed) + 0.01);
+            return $rentalCost <= ($maxAllowed + 0.01);
         }
 
         // Fallback
@@ -292,7 +292,7 @@ if (!function_exists('validateSalePrice')) {
     {
         $baseDiscountPercent = (float) getSystemSetting('sale_base_discount', 0);
         $maxAllowed = $originalPrice * (1 - ($baseDiscountPercent / 100));
-        return $salePrice <= (round($maxAllowed) + 0.01);
+        return $salePrice <= ($maxAllowed + 0.01);
     }
 }
 
@@ -306,7 +306,7 @@ if (!function_exists('validateDeposit')) {
 
         $baseDeductionPercent = (float) getSystemSetting('rental_base_deposit_deduction', 0);
         $maxAllowed = $originalPrice * (1 - ($baseDeductionPercent / 100));
-        return $deposit <= (round($maxAllowed) + 0.01);
+        return $deposit <= ($maxAllowed + 0.01);
     }
 }
 
@@ -318,7 +318,7 @@ if (!function_exists('validateRentalCost')) {
     {
         $maxCap = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
         $maxAllowed = $deposit * ($maxCap / 100);
-        return $rentalCost <= (round($maxAllowed) + 0.01);
+        return $rentalCost <= ($maxAllowed + 0.01);
     }
 }
 

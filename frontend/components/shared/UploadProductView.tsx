@@ -384,7 +384,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     }
 
     // Suggested = original × (1 - (deductionThreshold + depreciationAmount) / 100)
-    const suggested = Math.round(origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
+    const suggested = (origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
     setF(prev => ({ ...prev, price: String(suggested > 0 ? suggested : 1) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f.original_price, f.used_times, f.listing_type, f.sub_category_id, f.category_id, f.listing_type_category, meta, isEditMode]);
@@ -413,13 +413,13 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '0');
       const maxCapPct = Number(found.rule.max_cost_cap_per_day) > 0 ? Number(found.rule.max_cost_cap_per_day) : globalMaxCap;
 
-      deposit = Math.round(origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
-      rental = Math.round(deposit * (maxCapPct / 100));
+      deposit = (origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
+      rental = (deposit * (maxCapPct / 100));
     } else {
       // Use fallback settings: Deposit = Original Price, Rental = Deposit * (FallbackMaxCap%)
       const fallbackMaxCap = parseFloat(meta.config.fallback_rental_cost_per_day || '0');
       deposit = origPrice;
-      rental = Math.round(deposit * (fallbackMaxCap / 100));
+      rental = (deposit * (fallbackMaxCap / 100));
     }
 
     setF(prev => ({
@@ -590,10 +590,10 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const found = findPricingRule(meta.pricing_rules || [], usedTimes);
       const deductionThreshold = found ? Number(found.rule.deduction_threshold) : parseFloat(meta.config.sale_base_discount || '0');
       // Maximum Allowed Price = original × (1 - deductionThreshold / 100)
-      const maxPrice = Math.round(origPrice * (1 - deductionThreshold / 100));
+      const maxPrice = (origPrice * (1 - deductionThreshold / 100));
       if (parseFloat(f.price) > maxPrice) {
         const src = found ? found.source : 'Global';
-        setError(`Sale price cannot exceed ₹${maxPrice.toLocaleString('en-IN')} (Original ₹${origPrice.toLocaleString('en-IN')} minus ${deductionThreshold}% deduction threshold — ${src} rule)`);
+        setError(`Sale price cannot exceed ₹${maxPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (Original ₹${origPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })} minus ${deductionThreshold}% deduction threshold — ${src} rule)`);
         setSubmitting(false);
         return;
       }
@@ -614,9 +614,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
       // 1. Validate Deposit Amount based on base deduction threshold
       const enteredDeposit = parseFloat(f.rental_deposit || '0');
-      const maxDepositAllowed = Math.round(origPrice * (1 - deductionThreshold / 100));
+      const maxDepositAllowed = (origPrice * (1 - deductionThreshold / 100));
       if (enteredDeposit > maxDepositAllowed) {
-        setError(`Deposit cannot exceed ₹${maxDepositAllowed.toLocaleString('en-IN')} (based on ${deductionThreshold}% base deduction rule)`);
+        setError(`Deposit cannot exceed ₹${maxDepositAllowed.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (based on ${deductionThreshold}% base deduction rule)`);
         setSubmitting(false);
         return;
       }
@@ -624,11 +624,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       // 2. Validate Rental Cost based on ENTERED deposit
       const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '0');
       const maxCapPct = (found && Number(found.rule.max_cost_cap_per_day) > 0) ? Number(found.rule.max_cost_cap_per_day) : globalMaxCap;
-      const maxRentalAllowed = Math.round(enteredDeposit * maxCapPct / 100);
+      const maxRentalAllowed = (enteredDeposit * maxCapPct / 100);
 
       if (parseFloat(f.rental_cost) > maxRentalAllowed) {
         const src = found ? found.source : 'Global Default';
-        setError(`Rental cost cannot exceed ₹${maxRentalAllowed.toLocaleString('en-IN')} per day (${maxCapPct}% cap based on ${src})`);
+        setError(`Rental cost cannot exceed ₹${maxRentalAllowed.toLocaleString('en-IN', { minimumFractionDigits: 2 })} per day (${maxCapPct}% cap based on ${src})`);
         setSubmitting(false);
         return;
       }
@@ -710,9 +710,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     const source = found ? found.source : 'Default';
 
     // Suggested = original × (1 - (deductionThreshold + depreciationAmount) / 100)
-    const suggestedPrice = Math.round(origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
+    const suggestedPrice = (origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
     // Maximum Allowed = original × (1 - deductionThreshold / 100)
-    const maxAllowedPrice = Math.round(origPrice * (1 - deductionThreshold / 100));
+    const maxAllowedPrice = (origPrice * (1 - deductionThreshold / 100));
 
     return { deductionThreshold, depreciationAmount, suggestedPrice, maxAllowedPrice, source, ruleLabel: found?.rule.filter_label || '' };
   })();
@@ -739,13 +739,13 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? deductionThreshold);
       depreciationAmount = Number(found.rule.depreciation_amount ?? 0);
 
-      const suggestedDeposit = Math.round(origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
-      const maxDeposit = Math.round(origPrice * (1 - deductionThreshold / 100));
+      const suggestedDeposit = (origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
+      const maxDeposit = (origPrice * (1 - deductionThreshold / 100));
 
       const globalMaxCap = parseFloat(cfg.rental_max_cost_cap_per_day || '0');
       const maxCapPct = Number(found.rule.max_cost_cap_per_day) > 0 ? Number(found.rule.max_cost_cap_per_day) : globalMaxCap;
-      const suggestedRental = Math.round(suggestedDeposit * (maxCapPct / 100));
-      const maxRental = Math.round(maxDeposit * (maxCapPct / 100));
+      const suggestedRental = (suggestedDeposit * (maxCapPct / 100));
+      const maxRental = (maxDeposit * (maxCapPct / 100));
 
       return {
         deductionThreshold,
@@ -764,9 +764,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const baseDedPct = parseFloat(cfg.rental_base_deposit_deduction || '0');
       const maxCapPct = parseFloat(cfg.rental_max_cost_cap_per_day || '0');
 
-      const suggestedDeposit = Math.round(origPrice * (1 - baseDedPct / 100));
+      const suggestedDeposit = (origPrice * (1 - baseDedPct / 100));
       const maxDeposit = suggestedDeposit;
-      const suggestedRental = Math.round(suggestedDeposit * (maxCapPct / 100));
+      const suggestedRental = (suggestedDeposit * (maxCapPct / 100));
       const maxRental = suggestedRental;
 
       return {

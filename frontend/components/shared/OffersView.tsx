@@ -530,7 +530,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
     const dailyRate = Number(dateModal.rentalCostPerDay || 0);
     const days = daysBetween(dateModal.start, dateModal.end);
-    const computedPrice = (dateModal.type === 'rent' && dailyRate > 0 && days > 0) ? Math.round(days * dailyRate) : Number(dateModal.price || 0);
+    const computedPrice = (dateModal.type === 'rent' && dailyRate > 0 && days > 0) ? (days * dailyRate) : Number(dateModal.price || 0);
 
     const payload = {
       rental_start_date: dateModal.start,
@@ -1106,7 +1106,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                   })()}
                   {dateModal.type === 'rent' && (dateModal.rentalCostPerDay ?? 0) > 0 && dateModal.start && dateModal.end && (
                     <small className="text-muted mt-1 d-block">
-                      Calculated: ₹{Number(dateModal.rentalCostPerDay || 0).toLocaleString('en-IN')} × {daysBetween(dateModal.start, dateModal.end)} days
+                      Calculated: ₹{Number(dateModal.rentalCostPerDay || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} × {daysBetween(dateModal.start, dateModal.end)} days
                     </small>
                   )}
                 </div>
@@ -1227,7 +1227,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                   {(() => {
                     const daily = Number(suggestModal.offer.product_rental_cost ?? suggestModal.offer.rental_cost ?? 0);
                     const days = daysBetween(sdStart, sdEnd);
-                    const computed = (daily > 0 && days > 0) ? Math.round(days * daily) : 0;
+                    const computed = (daily > 0 && days > 0) ? (days * daily) : 0;
                     return (
                       <input
                         type="text"
@@ -1240,7 +1240,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
                   })()}
                   {sdStart && sdEnd && (
                     <small className="text-muted mt-1 d-block">
-                      Recalculated: ₹{Number(suggestModal.offer.product_rental_cost ?? suggestModal.offer.rental_cost ?? 0).toLocaleString('en-IN')} × {daysBetween(sdStart, sdEnd)} days
+                      Recalculated: ₹{Number(suggestModal.offer.product_rental_cost ?? suggestModal.offer.rental_cost ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} × {daysBetween(sdStart, sdEnd)} days
                     </small>
                   )}
                 </div>

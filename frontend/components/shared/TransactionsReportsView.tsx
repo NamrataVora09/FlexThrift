@@ -169,7 +169,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
             tooltip: { mode: 'index', intersect: false }
           },
           scales: {
-            y: { beginAtZero: true, ticks: { callback: (val) => `₹${val}` } }
+            y: { beginAtZero: true, ticks: { callback: (val: any) => `₹${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` } }
           }
         }
       });
@@ -291,7 +291,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
     { key: 'user_name', label: 'User', render: (r) => <span className="fw-medium">{r.user_name || 'System'}</span> },
     { key: 'description', label: 'Description' },
     { key: 'plan_type', label: 'Plan Type', render: (r) => <span className="badge bg-light text-muted border text-capitalize" style={{ fontSize: '0.65rem' }}>{r.plan_type || 'N/A'}</span> },
-    { key: 'amount', label: 'Amount', render: (r) => <span className="fw-bold">₹{r.amount}</span> },
+    { key: 'amount', label: 'Amount', render: (r) => <span className="fw-bold">₹{Number(r.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span> },
     {
       key: 'status', label: 'Status', render: (r) => (
         <span className={`badge rounded-pill ${r.payment_status === 'completed' || r.payment_status === 'paid' ? 'bg-success' : 'bg-warning text-dark'}`} style={{ fontSize: '0.7rem' }}>
@@ -368,14 +368,14 @@ export default function TransactionsReportsView({ role }: { role: string }) {
           <div className="col-md-4">
             <div className="metric-card">
               <i className="bi bi-currency-rupee metric-icon"></i>
-              <div className="metric-value">₹{summaryData?.summary.total_spent.toLocaleString('en-IN') || 0}</div>
+              <div className="metric-value">₹{summaryData?.summary.total_spent.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}</div>
               <div className="metric-label">Total Amount Spend on Subscription Plans </div>
             </div>
           </div>
           <div className="col-md-4">
             <div className="metric-card">
               <i className="bi bi-currency-rupee metric-icon"></i>
-              <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN') || 0}</div>
+              <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}</div>
               <div className="metric-label">Total Discounts Availed</div>
             </div>
           </div>

@@ -502,7 +502,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                               <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Listing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
                             </div>
                             <div style={{ marginBottom: '3rem' }}>
-                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
+                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                               {(() => {
@@ -598,7 +598,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                               <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Sourcing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
                             </div>
                             <div style={{ marginBottom: '3rem' }}>
-                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN')}</span>
+                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                               {(() => {
@@ -681,7 +681,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                         <h6 className="fw-bold mb-0">{checkoutData?.plan?.name}</h6>
                         <span className="plan-chip">{checkoutData?.plan?.plan_type}</span>
                       </div>
-                      <div className="fw-bold">₹{Number(checkoutData?.plan?.price || 0).toLocaleString('en-IN')}</div>
+                      <div className="fw-bold">₹{Number(checkoutData?.plan?.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
                     </div>
 
                     {/* Privileges */}

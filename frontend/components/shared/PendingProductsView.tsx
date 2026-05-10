@@ -258,10 +258,10 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
                             <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{p.title}</h5>
                             <div className="text-end">
                               <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>
-                                ₹{Number(p.listing_type === 'rent' ? (p.rental_cost || 0) : (p.price || p.original_price || 0)).toLocaleString()}
+                                ₹{Number(p.listing_type === 'rent' ? (p.rental_cost || 0) : (p.price || p.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 {p.listing_type === 'rent' && <small className="ms-1" style={{ fontSize: '0.65rem', textTransform: 'lowercase' }}>/day</small>}
                               </div>
-                              {p.listing_type === 'rent' && p.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(p.rental_deposit).toLocaleString()} deposit</small>}
+                              {p.listing_type === 'rent' && p.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(p.rental_deposit).toLocaleString('en-IN', { minimumFractionDigits: 2 })} deposit</small>}
                             </div>
                           </div>
                           <div className="mb-3 d-flex flex-wrap gap-2">
@@ -561,7 +561,7 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Mobile</label><div className="fw-bold small">{inspecting.seller_mobile || 'N/A'}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Category</label><div className="fw-bold small">{inspecting.category || 'N/A'}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Color / Size</label><div className="fw-bold small">{inspecting.color || '—'} / {inspecting.size || '—'}</div></div></div>
-                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Price</label><div className="fw-bold small" style={{ color: '#ffc63a' }}>₹{Number(inspecting.listing_type === 'rent' ? (inspecting.rental_cost || 0) : (inspecting.price || inspecting.original_price || 0)).toLocaleString()}{inspecting.listing_type === 'rent' ? ' /day' : ''}</div></div></div>
+                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Price</label><div className="fw-bold small" style={{ color: '#ffc63a' }}>₹{Number(inspecting.listing_type === 'rent' ? (inspecting.rental_cost || 0) : (inspecting.price || inspecting.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}{inspecting.listing_type === 'rent' ? ' /day' : ''}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Used Times</label><div className="fw-bold small">{inspecting.used_times || '0'}</div></div></div>
                     </div>
                     {Number(inspecting.has_bill) && inspecting.bill_image ? (
@@ -630,12 +630,12 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
                       { l: 'Used Times', v: comparison.original?.used_times ?? 'N/A' },
                     ])}
                     {renderCompSection('Pricing', [
-                      { l: 'Original Price', v: '₹' + Number(comparison.original?.original_price || 0).toLocaleString() },
+                      { l: 'Original Price', v: '₹' + Number(comparison.original?.original_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
                       { 
                         l: comparison.original?.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price', 
-                        v: '₹' + Number(comparison.original?.listing_type === 'rent' ? (comparison.original?.rental_cost || 0) : (comparison.original?.price || 0)).toLocaleString() + (comparison.original?.listing_type === 'rent' ? ' /day' : '')
+                        v: '₹' + Number(comparison.original?.listing_type === 'rent' ? (comparison.original?.rental_cost || 0) : (comparison.original?.price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 }) + (comparison.original?.listing_type === 'rent' ? ' /day' : '')
                       },
-                      comparison.original?.listing_type === 'rent' && { l: 'Security Deposit', v: '₹' + Number(comparison.original?.rental_deposit || 0).toLocaleString() }
+                      comparison.original?.listing_type === 'rent' && { l: 'Security Deposit', v: '₹' + Number(comparison.original?.rental_deposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }
                     ].filter((item): item is { l: string; v: any } => !!item))}
                     {renderCompSection('Details', [
                       { l: 'Description', v: <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{comparison.original?.description || 'No description'}</div> },

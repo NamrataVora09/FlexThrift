@@ -46,7 +46,7 @@ const topProductCols: Column<any>[] = [
   { key: 'listing_type', label: 'Type', render: (r) => <span className="badge rounded-pill bg-light text-muted border" style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>{r.listing_type}</span> },
   { key: 'offer_count', label: 'Offers', render: (r) => <span className="fw-bold">{r.offer_count}</span> },
   { key: 'accepted_count', label: 'Accepted', render: (r) => <span className="badge bg-success-subtle text-success border-0 px-2" style={{ fontSize: '0.7rem' }}>{r.accepted_count}</span> },
-  { key: 'total_revenue', label: 'Revenue', render: (r) => <span className="fw-bold" style={{ color: '' }}>₹{parseFloat(r.total_revenue || '0').toLocaleString()}</span> },
+  { key: 'total_revenue', label: 'Revenue', render: (r) => <span className="fw-bold" style={{ color: '' }}>₹{parseFloat(r.total_revenue || '0').toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span> },
 ];
 
 const RANGES = [
@@ -135,7 +135,7 @@ export default function AnalyticsView({ role }: Props) {
   );
 
   const stats = [
-    { label: 'Total Revenue', value: `₹${(summaryData?.monthly_stats?.reduce((s, r) => s + parseFloat(r.revenue || '0'), 0) ?? 0).toLocaleString()}`, icon: 'bi bi-currency-rupee', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
+    { label: 'Total Revenue', value: `₹${(summaryData?.monthly_stats?.reduce((s, r) => s + parseFloat(r.revenue || '0'), 0) ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, icon: 'bi bi-currency-rupee', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
     { label: 'Total Products', value: summaryData?.total_products ?? 0, icon: 'bi bi-box-seam', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
     { label: 'Total Offers', value: summaryData?.total_offers ?? 0, icon: 'bi bi-tags', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
     { label: 'Score Points', value: summaryData?.score_points ?? 0, icon: 'bi bi-star-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
@@ -199,7 +199,7 @@ export default function AnalyticsView({ role }: Props) {
             let label = context.dataset.label || '';
             if (label) label += ': ';
             if (context.parsed.y !== null && context.parsed.y !== undefined) {
-              label += new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(context.parsed.y);
+              label += new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(context.parsed.y);
             }
             return label;
           }
@@ -211,7 +211,7 @@ export default function AnalyticsView({ role }: Props) {
         beginAtZero: true,
         ticks: {
           callback: (value: any) => {
-            return '₹' + value.toLocaleString('en-IN');
+            return '₹' + value.toLocaleString('en-IN', { minimumFractionDigits: 2 });
           }
         }
       }
@@ -231,7 +231,7 @@ export default function AnalyticsView({ role }: Props) {
           label: (context: any) => {
             const label = context.label || '';
             const value = context.raw || 0;
-            return `${label}: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)}`;
+            return `${label}: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(value)}`;
           }
         }
       }

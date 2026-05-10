@@ -683,7 +683,7 @@ class SellerApi extends ResourceController
         $product   = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $rentalCost = (float)($product['rental_cost'] ?? $product['price'] ?? 0);
         $days       = max(1, (int)ceil((strtotime($newEnd) - strtotime($newStart)) / 86400) + 1); // inclusive
-        $newPrice   = round($rentalCost * $days);
+        $newPrice   = $rentalCost * $days;
 
         $msg = 'Seller suggests new dates: ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ($remarks ? '. Note: ' . $remarks : '');
 
