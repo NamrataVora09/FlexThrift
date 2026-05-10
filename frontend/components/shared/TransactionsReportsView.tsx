@@ -330,7 +330,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
           width: 44px;
           height: 44px;
           border-radius: 12px;
-          border: 1px solid #ffc63a;
+       
           background: rgba(255,198,58,0.05);
         }
         .metric-label { font-size: 0.75rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }

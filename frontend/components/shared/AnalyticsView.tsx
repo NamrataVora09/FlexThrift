@@ -318,7 +318,6 @@ export default function AnalyticsView({ role }: Props) {
           justify-content: center;
           font-size: 1.25rem;
           margin-bottom: 0.75rem;
-          border: 1px solid transparent;
         }
         .stat-value {
           font-size: 1.5rem;

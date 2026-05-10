@@ -225,23 +225,23 @@ export default function Page() {
                         <div className="d-flex flex-wrap gap-5">
                           <div>
                             <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>Mobile No</small>
-                            <span className="fw-bold">{c.seller_mobile || 'N/A'}</span>
+                            <span className="fw-bold" style={{color:"#9CA3Af"}}>{c.seller_mobile || 'N/A'}</span>
                           </div>
                           <div>
                             <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>Email Address</small>
-                            <span className="fw-bold">{c.seller_email || 'N/A'}</span>
+                            <span className="fw-bold"  style={{color:"#9CA3Af"}}>{c.seller_email || 'N/A'}</span>
                           </div>
                           <div>
                             <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>City</small>
-                            <span className="fw-bold">{c.seller_city || 'N/A'}</span>
+                            <span className="fw-bold" style={{color:"#9CA3Af"}}>{c.seller_city || 'N/A'}</span>
                           </div>
                           <div>
                             <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>State</small>
-                            <span className="fw-bold">{c.seller_state || 'N/A'}</span>
+                            <span className="fw-bold" style={{color:"#9CA3Af"}}>{c.seller_state || 'N/A'}</span>
                           </div>
                           <div>
                             <small className=" d-block fw-bold mb-1 text-uppercase" style={{ letterSpacing: '0.5px' }}>Pincode</small>
-                            <span className="fw-bold">{c.seller_pin_code || 'N/A'}</span>
+                            <span className="fw-bold" style={{color:"#9CA3Af"}}>{c.seller_pin_code || 'N/A'}</span>
                           </div>
                           {c.return_confirmed && !c.window_expired && !c.already_rated && c.days_left !== undefined && (
                             <div>
