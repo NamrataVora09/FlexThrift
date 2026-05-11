@@ -8,7 +8,7 @@ import PageHeader from './PageHeader';
 import { api } from '@/lib/api';
 
 interface Plan { id: number; name: string; user_type?: string; plan_type: string; limit_value: number; duration_hours: number; price: string; features?: string; is_featured?: number | string; is_most_selected?: number | string; }
-interface ActiveSub { plan_name: string; plan_type: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; duration_hours: number; }
+interface ActiveSub { plan_name: string; plan_type: string; plan_user_type?: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; duration_hours: number; }
 
 const CountdownTimer = ({ expiryDate }: { expiryDate: string }) => {
   const [timeLeft, setTimeLeft] = useState('...');
@@ -52,7 +52,7 @@ const CountdownTimer = ({ expiryDate }: { expiryDate: string }) => {
   return <span style={{ fontFamily: 'monospace', fontWeight: 900 }}>{timeLeft}</span>;
 };
 interface HistoryItem { plan_name: string; plan_type: string; price: string; starts_at: string; expires_at: string; is_active: number; }
-interface SubData { plans: Plan[]; active: ActiveSub | null; history: HistoryItem[]; unlock_card?: Record<string, string>; }
+interface SubData { plans: Plan[]; active: ActiveSub | null; active_seller?: ActiveSub | null; active_buyer?: ActiveSub | null; history: HistoryItem[]; unlock_card?: Record<string, string>; }
 
 interface ChargeItem { name: string; type: 'percentage' | 'fixed'; value: number; amount: number; }
 interface CheckoutData {
@@ -332,22 +332,52 @@ export default function SubscriptionsView({ role, userType }: Props) {
           </div>
         )}
 
-        {/* Active Subscription */}
+        {/* Active Subscriptions Section */}
+        <h2 style={{ fontFamily: 'Poppins', fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: '1.5rem' }}>
+          My Active Subscriptions
+        </h2>
         {(() => {
-          const active = data?.active;
-          if (!active) return null;
+          const activePlans: ActiveSub[] = [];
+          if (isSuperAdmin) {
+            if (data?.active_seller) activePlans.push(data.active_seller);
+            if (data?.active_buyer) activePlans.push(data.active_buyer);
+          } else if (data?.active) {
+            activePlans.push(data.active);
+          }
 
-          const targetStr = active.expires_at.replace(' ', 'T');
-          const expiryDate = new Date(targetStr);
-          const isValid = !isNaN(expiryDate.getTime()) && expiryDate >= new Date();
+          if (activePlans.length === 0) {
+            return (
+              <div className="text-center py-5 bg-white rounded-4 border mb-5" style={{ borderRadius: '1.25rem' }}>
+                <i className="bi bi-gem opacity-25" style={{ fontSize: '5rem', color: '#adb5bd' }} />
+                <h3 className="mt-4 fw-bold" style={{ color: '#111' }}>No active plan found</h3>
+                <p className="text-muted">Unlock direct access to {userType === 'buyer' ? 'sellers' : 'buyers'} by subscribing to a plan.</p>
+                <button
+                  onClick={() => {
+                    const el = document.getElementById('available-plans-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                  }}
+                  className="btn px-5 rounded-pill mt-3"
+                  style={{ width: 'auto', background: '#ffc63a', color: '#fff', border: 'none', padding: '12px 30px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                >
+                  Explore Membership Plans
+                </button>
+              </div>
+            );
+          }
 
-          if (!isValid) return null;
+          return activePlans.map((active, aIdx) => {
+            const targetStr = active.expires_at.replace(' ', 'T');
+            const expiryDate = new Date(targetStr);
+            const isValid = !isNaN(expiryDate.getTime()) && expiryDate >= new Date();
 
-          return (() => {
+            if (!isValid) return null;
+
             const used = active.usage_count;
             const limit = active.limit_value;
             const isQty = active.plan_type !== 'duration';
             const remaining = isQty ? Math.max(0, limit - used) : null;
+            const pType = active.plan_user_type || userType;
 
             let pct = 0;
             if (isQty) {
@@ -361,13 +391,14 @@ export default function SubscriptionsView({ role, userType }: Props) {
               pct = total > 0 ? (elapsed / total) * 100 : 0;
             }
             pct = Math.min(100, Math.max(0, pct));
+
             return (
-              <div className="bento-grid">
+              <div className="bento-grid mb-4" key={aIdx}>
                 <div className="bento-col-8">
                   <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 280, border: '1px solid #f0f0f0', height: '100%' }}>
                     <div style={{ position: 'relative', zIndex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
-                        <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active Plan</span>
+                        <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active {pType.toUpperCase()} Plan</span>
                         <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>
                           Valid For {active.duration_hours > 0 ? `${active.duration_hours} hour/s` : 'Unlimited hours'}
                         </span>
@@ -386,7 +417,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                           ) : (
                             <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {active.duration_hours} hrs</span>
                           )}
-                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{isQty ? 'Listings Left' : 'Time Left'}</span>
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{isQty ? 'Slots Left' : 'Time Left'}</span>
                         </div>
                       </div>
                       <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
@@ -394,20 +425,20 @@ export default function SubscriptionsView({ role, userType }: Props) {
                       </div>
                     </div>
                     <div style={{ position: 'absolute', right: '-5rem', top: '-5rem', width: '20rem', height: '20rem', background: '#D7B467', opacity: 0.05, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
-                    <span className="material-symbols-outlined" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 48" }}>workspace_premium</span>
+                    <span className="material-symbols-outlined" style={{ position: 'absolute', right: '2rem', bottom: '1rem', opacity: 0.07, fontSize: '8rem', lineHeight: 1, pointerEvents: 'none', fontVariationSettings: "'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 48" }}>{pType === 'seller' ? 'storefront' : 'contacts'}</span>
                   </div>
                 </div>
                 {(() => {
                   const uc = data?.unlock_card || {};
-                  const ucLabel = (uc as any)[`${userType}_unlock_label`] || 'Unlock More';
-                  const ucTitle = (uc as any)[`${userType}_unlock_title`] || 'Elevate to a Higher Tier';
-                  const ucBtn = (uc as any)[`${userType}_unlock_btn`] || 'Upgrade Plan';
-                  const defaultItems = userType === 'seller'
+                  const ucLabel = (uc as any)[`${pType}_unlock_label`] || 'Unlock More';
+                  const ucTitle = (uc as any)[`${pType}_unlock_title`] || 'Elevate to a Higher Tier';
+                  const ucBtn = (uc as any)[`${pType}_unlock_btn`] || 'Upgrade Plan';
+                  const defaultItems = pType === 'seller'
                     ? [{ icon: 'all_inclusive', text: 'Unlimited product listings' }, { icon: 'stars', text: 'Priority placement in search' }, { icon: 'insights', text: 'Advanced seller analytics' }, { icon: 'support_agent', text: 'Dedicated seller support' }]
                     : [{ icon: 'all_inclusive', text: 'Unlimited concierge contacts' }, { icon: 'stars', text: 'Early access to new listings' }, { icon: 'insights', text: 'Custom market reporting' }, { icon: 'support_agent', text: 'Priority support' }];
                   let ucItems: { icon: string; text: string }[] = defaultItems;
                   try {
-                    const pJson = (uc as any)[`${userType}_unlock_items`];
+                    const pJson = (uc as any)[`${pType}_unlock_items`];
                     const p = JSON.parse(pJson || '[]');
                     if (Array.isArray(p) && p.length) ucItems = p;
                   } catch { }
@@ -426,7 +457,12 @@ export default function SubscriptionsView({ role, userType }: Props) {
                             ))}
                           </ul>
                         </div>
-                        <button onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', cursor: 'pointer', transition: 'background 0.3s' }}>
+                        <button onClick={() => {
+                          const sectionId = pType === 'seller' ? 'available-plans-section' : 'buyer-plans-section';
+                          const el = document.getElementById(sectionId);
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                          else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                        }} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', cursor: 'pointer', transition: 'background 0.3s' }}>
                           {ucBtn}
                         </button>
                       </div>
@@ -435,25 +471,8 @@ export default function SubscriptionsView({ role, userType }: Props) {
                 })()}
               </div>
             );
-          })()
-        })() || (
-            <div className="text-center py-5 bg-white rounded-4 border mb-5" style={{ borderRadius: '1.25rem' }}>
-              <i className="bi bi-gem opacity-25" style={{ fontSize: '5rem', color: '#adb5bd' }} />
-              <h3 className="mt-4 fw-bold" style={{ color: '#111' }}>No active plan found</h3>
-              <p className="text-muted">Unlock direct access to {userType === 'buyer' ? 'sellers' : 'buyers'} by subscribing to a plan.</p>
-              <button
-                onClick={() => {
-                  const el = document.getElementById('available-plans-section');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                }}
-                className="btn px-5 rounded-pill mt-3"
-                style={{ width: 'auto', background: '#ffc63a', color: '#fff', border: 'none', padding: '12px 30px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}
-              >
-                Explore Membership Plans
-              </button>
-            </div>
-          )}
+          });
+        })()}
 
         {/* Seller Plans */}
         {(isSuperAdmin || userType === 'seller') && (

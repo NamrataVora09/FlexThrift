@@ -178,6 +178,7 @@ class SharedApi extends ResourceController
                 ->update(['is_active' => 0]);
         }
 
+        // We'll fetch active plans for both types to support dual view for admins
         $activeQuery = $db->table('user_subscriptions us')
             ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours, sp.user_type as plan_user_type')
             ->join('subscription_plans sp', 'sp.id = us.plan_id')
@@ -191,13 +192,11 @@ class SharedApi extends ResourceController
             $activeQuery->where('us.starts_at <=', date('Y-m-d H:i:s'));
         }
 
-        // If not admin, restrict active plan to current portal type
-        if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
-            $activeQuery->where('sp.user_type', $userType);
-        }
+        $activeSeller = (clone $activeQuery)->where('sp.user_type', 'seller')->orderBy('us.expires_at', 'ASC')->get()->getRowArray();
+        $activeBuyer = (clone $activeQuery)->where('sp.user_type', 'buyer')->orderBy('us.expires_at', 'ASC')->get()->getRowArray();
 
-        $active = $activeQuery->orderBy('us.expires_at', 'ASC')
-            ->get()->getRowArray();
+        // Primary active plan based on current portal context
+        $active = ($userType === 'seller') ? $activeSeller : $activeBuyer;
 
         $historyQuery = $db->table('user_subscriptions us')
             ->select('us.*, sp.name as plan_name, sp.plan_type, sp.limit_value, sp.price, sp.duration_hours, sp.user_type as plan_user_type')
@@ -226,7 +225,14 @@ class SharedApi extends ResourceController
 
         return $this->respond([
             'success' => true,
-            'data' => ['plans' => $plans, 'active' => $active, 'history' => $history, 'unlock_card' => $unlockCard],
+            'data' => [
+                'plans' => $plans,
+                'active' => $active,
+                'active_seller' => $activeSeller,
+                'active_buyer' => $activeBuyer,
+                'history' => $history,
+                'unlock_card' => $unlockCard
+            ],
         ]);
     }
 
