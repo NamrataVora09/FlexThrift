@@ -170,6 +170,7 @@ export default function AnalyticsView({ role }: Props) {
         backgroundColor: '#d96459',
         borderRadius: 6,
         hoverBackgroundColor: '#d96459',
+        hoverBorderColor: '#d96459',
       }
     ]
   };
@@ -180,8 +181,9 @@ export default function AnalyticsView({ role }: Props) {
     datasets: [{
       data: pieData?.revenue_by_listing_type.map(r => parseFloat(r.revenue || '0')) || [],
       backgroundColor: ['#d96459', '#008080', '#ef4444', '#d7b467', 'rgb(255, 198, 58)', 'rgb(231, 239, 229)', '#ffffff'],
+      hoverBackgroundColor: ['#d96459', '#008080', '#ef4444', '#d7b467', 'rgb(255, 198, 58)', 'rgb(231, 239, 229)', '#ffffff'],
+      hoverBorderColor: ['#d96459', '#008080', '#ef4444', '#d7b467', 'rgb(255, 198, 58)', 'rgb(231, 239, 229)', '#ffffff'],
       borderWidth: 0,
-      hoverBackgroundColor: '#d96459',
     }]
   };
 
@@ -284,7 +286,6 @@ export default function AnalyticsView({ role }: Props) {
           box-shadow: 0 4px 12px rgba(0,0,0,0.05);
           z-index: 10;
           transition: 0.3s;
-          color: #ffc63a;
           position: absolute;
         }
         .nav-btn:hover {

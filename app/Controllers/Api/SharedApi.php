@@ -386,9 +386,9 @@ class SharedApi extends ResourceController
         ")->getResultArray();
 
         // Total stats for cards
-        $totalProductsBuilder = $db->table('products p');
-        if (!$isAdmin) $totalProductsBuilder->where('p.seller_id', $userId);
-        $totalProducts = $totalProductsBuilder->countAllResults();
+        $totalProducts = $db->table('products p')
+            ->where('p.seller_id', $userId)
+            ->countAllResults();
         
         // Filter total offers by date range and scope to received only
         $totalOffersQuery = $db->table('offers o');
