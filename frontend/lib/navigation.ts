@@ -55,6 +55,7 @@ export function getNavigation(role: string): NavSection[] {
         {
           items: [
             { label: 'Dashboard', href: '/admin', icon: 'bi bi-speedometer2' },
+            { label: 'Profile', href: '/admin/profile', icon: 'fa fa-user' },
             { label: 'Subscription', href: '/admin/subscriptions', icon: 'fa fa-credit-card' },
             { label: 'Transactions / Reports', href: '/admin/transactions', icon: 'fa fa-receipt' },
           ],

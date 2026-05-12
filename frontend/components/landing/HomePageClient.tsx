@@ -363,12 +363,21 @@ export default function HomePageClient() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
-      if (user.role === 'admin') router.replace('/admin');
-      else if (user.role === 'delivery') router.replace('/delivery');
-      else if (user.user_type === 'seller') router.replace('/seller');
-      else if (user.user_type === 'buyer' || user.role === 'both') router.replace('/buyer/browse');
+      // Super Admin is the only role allowed to stay on the Landing Page after login
+      if (user.role === 'super_admin') return;
+
+      // All other roles are redirected to their respective portals
+      if (user.role === 'admin') {
+        router.replace('/admin');
+      } else if (user.role === 'delivery') {
+        router.replace('/delivery');
+      } else if (user.user_type === 'seller') {
+        router.replace('/seller');
+      } else {
+        router.replace('/buyer/browse');
+      }
     }
-  }, [isLoading, isAuthenticated, user]);
+  }, [isLoading, isAuthenticated, user, router]);
 
   const [sidebarMode, setSidebarMode] = useState<'buy' | 'sell'>('buy');
   const [sidebarView, setSidebarView] = useState<'listing' | 'login' | 'otp'>('listing');
@@ -452,7 +461,7 @@ export default function HomePageClient() {
       const role = u.role || u.user_type || '';
       if (role === 'seller') router.push('/seller');
       else if (role === 'admin') router.push('/admin');
-      else if (role === 'superadmin') router.push('/superadmin');
+      else if (role === 'super_admin') router.push('/superadmin');
       else router.push('/buyer/browse');
     } catch {
       router.push('/buyer/browse');
@@ -466,7 +475,15 @@ export default function HomePageClient() {
     const res = await login(sidebarEmail, sidebarPassword);
     setSidebarLoading(false);
     if (!res.success) { setSidebarError(res.message || 'Login failed'); return; }
-    router.push(sidebarMode === 'sell' ? '/seller' : '/buyer/browse');
+    
+    const u = JSON.parse(localStorage.getItem('flex_user') || '{}');
+    const role = u.role || u.user_type || '';
+    if (role === 'super_admin') router.push('/superadmin');
+    else if (role === 'admin') router.push('/admin');
+    else if (role === 'delivery') router.push('/delivery');
+    else if (role === 'seller') router.push('/seller');
+    else if (sidebarMode === 'sell' && role !== 'buyer') router.push('/seller');
+    else router.push('/buyer/browse');
   };
   const [catImgIdx, setCatImgIdx] = useState<number[]>(CATEGORY_CARDS.map(() => 0));
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>(CATEGORY_CARDS);
