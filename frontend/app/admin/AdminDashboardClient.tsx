@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatsCard from '@/components/ui/StatsCard';
+import AdBanner from '@/components/shared/AdBanner';
 import { api } from '@/lib/api';
 
 import { useAuth } from '@/lib/auth-context';
@@ -39,6 +40,11 @@ export default function AdminDashboardClient() {
     <DashboardLayout requiredRoles={['admin']}>
       <div className="container pb-5">
         <h1 className="header_label_font mb-4">Admin Dashboard</h1>
+
+        {/* Top Banner Ad */}
+        <div className="mb-4">
+          <AdBanner position="top_banner" page="portal_admin_dashboard" />
+        </div>
         
         <h5 className="fw-bold mb-3" style={{ opacity: 0.6 }}>Platform Overview</h5>
         <div className="row mb-4">
@@ -103,6 +109,11 @@ export default function AdminDashboardClient() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Bottom Ad */}
+        <div className="mt-5">
+          <AdBanner position="rows" page="portal_admin_dashboard" />
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import { confirmToast } from '@/lib/toast-utils';
 
 interface Ad {
   id: number; title: string; short_description: string; position: string;
+  display_page: string;
   ad_type: string; media_type: string; media_path: string;
   payment_date: string | null; start_date: string | null; end_date: string | null;
   is_active: string; created_at: string;
@@ -27,7 +28,19 @@ const POSITIONS = [
   { value: 'rows', label: 'In-Feed (Between Products)' },
 ];
 
-const emptyForm = { title: '', short_description: '', position: 'top_banner', payment_date: '', start_date: '', end_date: '' };
+const DISPLAY_PAGES = [
+  { value: 'all', label: 'All Pages' },
+  { value: 'landing', label: 'Landing Page' },
+  { value: 'browse', label: 'Browse Market' },
+  { value: 'product_detail', label: 'Product Detail Page' },
+  { value: 'portal_seller_dashboard', label: 'Seller Portal: Dashboard' },
+  { value: 'portal_seller_profile', label: 'Seller Portal: Profile' },
+  { value: 'portal_buyer_dashboard', label: 'Buyer Portal: Dashboard' },
+  { value: 'portal_buyer_profile', label: 'Buyer Portal: Profile' },
+  { value: 'portal_admin_dashboard', label: 'Admin Portal: Dashboard' },
+];
+
+const emptyForm = { title: '', short_description: '', position: 'top_banner', display_page: 'all', payment_date: '', start_date: '', end_date: '' };
 
 export default function AdvertisementsClient() {
   const [ads, setAds] = useState<Ad[]>([]);
@@ -71,6 +84,7 @@ export default function AdvertisementsClient() {
     fd.append('title', form.title);
     fd.append('short_description', form.short_description);
     fd.append('position', form.position);
+    fd.append('display_page', form.display_page);
     fd.append('payment_date', form.payment_date);
     fd.append('start_date', form.start_date);
     fd.append('end_date', form.end_date);
@@ -92,7 +106,15 @@ export default function AdvertisementsClient() {
     if (res.success && res.data) {
       const ad = res.data;
       setEditId(String(ad.id));
-      setForm({ title: ad.title, short_description: ad.short_description || '', position: ad.position, payment_date: ad.payment_date || '', start_date: ad.start_date || '', end_date: ad.end_date || '' });
+      setForm({
+        title: ad.title,
+        short_description: ad.short_description || '',
+        position: ad.position,
+        display_page: ad.display_page || 'all',
+        payment_date: ad.payment_date || '',
+        start_date: ad.start_date || '',
+        end_date: ad.end_date || ''
+      });
       if (ad.media_path) {
         setPreviewUrl(`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace('/api/v1', '')}/uploads/advertisements/${ad.media_path}`);
         setPreviewType(ad.media_type || (ad.ad_type === 'video' ? 'video/mp4' : 'image/jpeg'));
@@ -157,6 +179,12 @@ export default function AdvertisementsClient() {
                   <div className="col-md-6">
                     <label style={labelStyle}>Payment Date</label>
                     <input type="date" className="form-control" style={inputStyle} value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} />
+                  </div>
+                  <div className="col-md-12">
+                    <label style={labelStyle}>Display Page Location</label>
+                    <select className="form-select" style={inputStyle} value={form.display_page} onChange={(e) => setForm({ ...form, display_page: e.target.value })}>
+                      {DISPLAY_PAGES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                    </select>
                   </div>
                   <div className="col-md-6">
                     <label style={labelStyle}>Start Date</label>
@@ -238,6 +266,7 @@ export default function AdvertisementsClient() {
                 <thead><tr>
                   <th style={{ ...thStyle, paddingLeft: '1.5rem' }}>Preview</th>
                   <th style={thStyle}>Title & Slot</th>
+                  <th style={thStyle}>Display Page</th>
                   <th style={thStyle}>Schedule</th>
                   <th style={thStyle}>Status</th>
                   <th style={{ ...thStyle, textAlign: 'end', paddingRight: '1.5rem' }}>Actions</th>
@@ -257,6 +286,12 @@ export default function AdvertisementsClient() {
                       <td style={tdStyle}>
                         <div className="fw-bold">{ad.title}</div>
                         <span className="badge bg-light text-dark border py-1 px-2" style={{ fontSize: '0.65rem' }}>{ad.position.replace(/_/g, ' ').toUpperCase()}</span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span className="badge bg-info-subtle text-info border py-1 px-2" style={{ fontSize: '0.65rem' }}>
+                          <i className="bi bi-pin-map-fill me-1"></i>
+                          {DISPLAY_PAGES.find(p => p.value === ad.display_page)?.label || ad.display_page}
+                        </span>
                       </td>
                       <td style={tdStyle}>
                         <div className="small">

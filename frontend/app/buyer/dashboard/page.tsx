@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import AdBanner from '@/components/shared/AdBanner';
 import { api } from '@/lib/api';
 
 interface DashboardData {
@@ -307,6 +308,11 @@ export default function BuyerDashboardPage() {
               <p style={{ color: '#9ca3af', fontSize: '0.85rem', margin: 0 }}>{subtitle}</p>
             </div>
 
+            {/* Top Banner Ad */}
+            <div className="mb-4">
+              <AdBanner position="top_banner" page="portal_buyer_dashboard" />
+            </div>
+
             {/* Analytics Cards */}
             <div className="g-3 grid gap-3 grid-cols-1 sm:grid-cols-2  lg:grid-cols-3! xl:grid-cols-4! mb-4">
               {statCards.map((card, i) => (
@@ -477,6 +483,11 @@ export default function BuyerDashboardPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* Bottom Ad */}
+            <div className="mt-4">
+              <AdBanner position="rows" page="portal_buyer_dashboard" />
             </div>
           </>
         )}

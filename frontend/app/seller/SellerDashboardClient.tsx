@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import AdBanner from '@/components/shared/AdBanner';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
@@ -279,6 +280,12 @@ export default function SellerDashboardClient() {
 
             </div>
 
+
+            {/* Top Banner Ad */}
+            <div className="mb-4">
+              <AdBanner position="top_banner" page="portal_seller_dashboard" />
+            </div>
+
             {/* Analytics Cards */}
             <div className="row g-3 mb-4">
               {statCards.map((card, i) => (
@@ -442,6 +449,11 @@ export default function SellerDashboardClient() {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* Bottom Ad */}
+            <div className="mt-4">
+              <AdBanner position="rows" page="portal_seller_dashboard" />
             </div>
           </>
         )}

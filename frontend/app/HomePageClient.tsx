@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { getCartCount } from '@/lib/cart';
+import AdBanner from '@/components/shared/AdBanner';
 
 interface Product {
   id: number;
@@ -952,6 +953,12 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
 
         </div>
 
+
+        {/* Top Banner Ad */}
+        <div className="container mt-4">
+          <AdBanner position="top_banner" page="landing" />
+        </div>
+
         {/* ===== BROWSE BY ESSENCE (Dynamic Category Cards) ===== */}
         <section style={{ padding: '80px 0', background: '#fff', position: 'relative' }}>
 
@@ -1282,6 +1289,12 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
             </div>
           </div>
         </section>
+
+
+        {/* Footer Banner Ad */}
+        <div className="container mb-5">
+          <AdBanner position="footer" page="landing" />
+        </div>
 
         {/* ===== FOOTER ===== */}
         <footer className="main-footer" style={{ position: 'relative' }}>

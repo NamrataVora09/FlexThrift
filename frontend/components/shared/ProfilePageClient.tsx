@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import AdBanner from '@/components/shared/AdBanner';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -449,6 +450,12 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
 
 
 
+
+            {/* Top Banner Ad */}
+            <div className="mb-4">
+              <AdBanner position="top_banner" page={user.role === 'seller' ? 'portal_seller_profile' : 'portal_buyer_profile'} />
+            </div>
+
             {/* ── Main Grid ── */}
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
               {/* Left — Profile Details */}
@@ -522,6 +529,11 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                       </div>
                     </div>
                   )}
+
+                  {/* Sidebar Ad */}
+                  <div className="mt-3">
+                    <AdBanner position="sidebar" page={user.role === 'seller' ? 'portal_seller_profile' : 'portal_buyer_profile'} />
+                  </div>
                 </div>
               </div>
             </div>

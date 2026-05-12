@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { addToCart } from '@/lib/cart';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import Footer from '@/components/layout/Footer';
+import AdBanner from '@/components/shared/AdBanner';
 
 interface Product {
   id: number;
@@ -1129,6 +1130,11 @@ export default function BrowsePage() {
                 </div>
               )}
 
+              {/* Top Banner Ad */}
+              <div className="mb-4">
+                <AdBanner position="top_banner" page="browse" />
+              </div>
+
               {/* Product Grid */}
               <section
                 className="em-grid"
@@ -2065,6 +2071,11 @@ function EliteSidebar({
 
           return null;
         })}
+
+      {/* Sidebar Ad */}
+      <div className="mt-4 pt-3 border-top">
+        <AdBanner position="sidebar" page="browse" />
+      </div>
 
     </div>
   );

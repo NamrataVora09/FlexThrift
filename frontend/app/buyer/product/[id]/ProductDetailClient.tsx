@@ -8,6 +8,7 @@ import { addToCart, isInCart } from '@/lib/cart';
 import { addToWishlist, removeFromWishlist, isInWishlist } from '@/lib/wishlist';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import Footer from '@/components/layout/Footer';
+import AdBanner from '@/components/shared/AdBanner';
 import { RentalCalendar } from '@/components/shared/RentalCalendar';
 import toast from 'react-hot-toast';
 
@@ -421,6 +422,11 @@ export default function ProductDetailClient({ product, images, similarProducts =
           <span style={{ color: '#acadad' }}>/</span>
           <span style={{ color: '#0c0f0f', textTransform: 'capitalize' }}>{product.title}</span>
         </nav>
+      </div>
+
+      {/* Top Banner Ad */}
+      <div className="xl:px-28 px-8 mb-4">
+        <AdBanner position="top_banner" page="product_detail" />
       </div>
 
       {/* Product container */}
@@ -1203,6 +1209,12 @@ export default function ProductDetailClient({ product, images, similarProducts =
           </div>
         </div>
       )}
+
+
+      {/* Footer Banner Ad */}
+      <div className="xl:px-28 px-8 my-10">
+        <AdBanner position="footer" page="product_detail" />
+      </div>
 
       {!isPreview && <Footer />}
     </div>

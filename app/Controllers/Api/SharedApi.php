@@ -959,7 +959,24 @@ class SharedApi extends ResourceController
     public function advertisements()
     {
         $db = \Config\Database::connect();
-        $ads = $db->table('advertisements')->orderBy('created_at', 'DESC')->get()->getResultArray();
+        $builder = $db->table('advertisements')
+            ->where('is_active', 1)
+            ->orderBy('created_at', 'DESC');
+
+        $position = $this->request->getGet('position');
+        if ($position) {
+            $builder->where('position', $position);
+        }
+
+        $page = $this->request->getGet('page');
+        if ($page && $page !== 'all') {
+            $builder->groupStart()
+                ->where('display_page', $page)
+                ->orWhere('display_page', 'all')
+            ->groupEnd();
+        }
+
+        $ads = $builder->get()->getResultArray();
         return $this->respond(['success' => true, 'data' => $ads]);
     }
 

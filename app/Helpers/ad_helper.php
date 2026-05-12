@@ -31,23 +31,31 @@ if (!function_exists('render_ad')) {
  * @return string The HTML for the ad or empty string
  */
 if (!function_exists('render_media_ad')) {
-    function render_media_ad($position)
+    function render_media_ad($position, $page = 'all')
     {
         $db = \Config\Database::connect();
         $today = date('Y-m-d');
 
-        $ad = $db->table('advertisements')
+        $builder = $db->table('advertisements')
             ->where('position', $position)
             ->where('is_active', 1)
             ->groupStart()
-            ->where('start_date <=', $today)
-            ->orWhere('start_date', null)
+                ->where('start_date <=', $today)
+                ->orWhere('start_date', null)
             ->groupEnd()
             ->groupStart()
-            ->where('end_date >=', $today)
-            ->orWhere('end_date', null)
-            ->groupEnd()
-            ->orderBy('id', 'RANDOM')
+                ->where('end_date >=', $today)
+                ->orWhere('end_date', null)
+            ->groupEnd();
+
+        if ($page !== 'all') {
+            $builder->groupStart()
+                ->where('display_page', $page)
+                ->orWhere('display_page', 'all')
+            ->groupEnd();
+        }
+
+        $ad = $builder->orderBy('id', 'RANDOM')
             ->get()
             ->getRowArray();
 
