@@ -12,6 +12,8 @@ interface User {
   name: string;
   email: string;
   mobile: string;
+  address?: string;
+  pin_code?: string;
   user_type: string;
   role: string;
   is_blocked: number;
@@ -273,6 +275,11 @@ export default function UsersView({ role, apiPath, searchable = false }: Props) 
                                 <div className="fw-bold" style={{ fontSize: '1rem' }}>{u.name}</div>
                                 <div className="text-muted small"><i className="bi bi-envelope me-1"></i>{u.email}</div>
                                 <div className="text-muted small"><i className="bi bi-phone me-1"></i>{u.mobile}</div>
+                                {u.address && (
+                                  <div className="text-muted small text-truncate" style={{ maxWidth: 200 }} title={u.address}>
+                                    <i className="bi bi-geo-alt me-1"></i>{u.address} {u.pin_code && `(${u.pin_code})`}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>

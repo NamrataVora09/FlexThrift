@@ -111,14 +111,47 @@ class AdminApi extends ResourceController
             }
         }
 
-        $users = $db->table('users')
-            ->select('id, name, email, mobile, user_type, role, is_blocked, is_verified, reliability_score, created_at, blocked_seller, blocked_buyer')
-            ->whereNotIn('role', ['admin', 'super_admin'])
+        $search = $this->request->getGet('search');
+        $type = $this->request->getGet('type');
+        $status = $this->request->getGet('status');
+
+        $builder = $db->table('users')
+            ->select('id, name, email, mobile, address, pin_code, user_type, role, is_blocked, is_verified, reliability_score, created_at, blocked_seller, blocked_buyer');
+
+        if ($search) {
+            $builder->groupStart()
+                ->like('name', $search)
+                ->orLike('email', $search)
+                ->orLike('mobile', $search)
+                ->groupEnd();
+        }
+
+        if ($type && $type !== 'all') {
+            $builder->where('user_type', $type);
+        }
+
+        if ($status === 'active') {
+            $builder->where('is_blocked', 0)->where('is_verified', 1);
+        } elseif ($status === 'suspended') {
+            $builder->where('is_blocked', 1);
+        } elseif ($status === 'unverified') {
+            $builder->where('is_verified', 0)->where('is_blocked', 0);
+        }
+
+        $users = $builder->whereNotIn('role', ['admin', 'super_admin'])
             ->orderBy('created_at', 'DESC')
             ->get()->getResultArray();
 
         foreach ($users as &$u) {
             $u['products_uploaded_count'] = $db->table('products')->where('seller_id', $u['id'])->countAllResults();
+            
+            // Mask sensitive details for regular admins
+            if ($jwtUser['role'] === 'admin') {
+                $u['email'] = '********';
+                $u['mobile'] = '********';
+                $u['address'] = '********';
+                $u['pin_code'] = '********';
+            }
         }
 
         return $this->respond(['success' => true, 'data' => $users]);

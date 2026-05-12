@@ -63,7 +63,6 @@ export function getNavigation(role: string): NavSection[] {
           title: 'Moderation',
           items: [
             { label: 'Pending Approvals', href: '/admin/pending-products', icon: 'bi bi-hourglass-split' },
-            { label: 'Moderation History', href: '/admin/moderation-history', icon: 'bi bi-clock-history' },
           ],
         },
         {

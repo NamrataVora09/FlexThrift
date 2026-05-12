@@ -513,7 +513,7 @@ class SuperAdminApi extends ResourceController
         $status = $this->request->getGet('status');
 
         $builder = $db->table('users')
-            ->select('id, name, email, mobile, user_type, role, is_blocked, is_verified, reliability_score, buyer_rating_avg, buyer_rating_count, seller_rating_avg, seller_rating_count, blocked_seller, blocked_buyer, created_at');
+            ->select('id, name, email, mobile, address, pin_code, user_type, role, is_blocked, is_verified, reliability_score, buyer_rating_avg, buyer_rating_count, seller_rating_avg, seller_rating_count, blocked_seller, blocked_buyer, created_at');
 
         if ($search) {
             $builder->groupStart()
