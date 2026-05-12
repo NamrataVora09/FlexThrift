@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getNavigation } from '@/lib/navigation';
+import AdBanner from '@/components/shared/AdBanner';
 
 interface Props {
   isOpen: boolean;
@@ -34,6 +35,11 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
           effectiveRole === 'seller' ? 'Seller' : 'Buyer';
 
   const roleBadgeColor = effectiveRole === 'seller' ? '#d96459' : '#008080';
+
+  const adPage = 
+    effectiveRole === 'super_admin' ? 'admin' :
+    effectiveRole === 'admin' ? 'admin' :
+    effectiveRole === 'seller' ? 'seller' : 'buyer';
 
   return (
     <div
@@ -157,6 +163,11 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
           <i className="fa-solid fa-power-off"></i>
           <span>Logout</span>
         </button>
+
+        {/* Sidebar Ad */}
+        <div className="mt-4 px-2">
+          <AdBanner position="sidebar" page={adPage} />
+        </div>
       </div>
     </div>
   );

@@ -9,6 +9,18 @@ interface SettingsData { config: Record<string, string>; }
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.85rem', fontFamily: "'Fira Code', 'Courier New', monospace" };
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '2rem', padding: '0.6rem 2.5rem' };
 
+const DISPLAY_PAGES = [
+  { value: 'all', label: 'All Pages' },
+  { value: 'landing', label: 'Landing Page' },
+  { value: 'browse', label: 'Browse Market' },
+  { value: 'product_detail', label: 'Product Detail' },
+  { value: 'portal_seller_dashboard', label: 'Seller Portal: Dashboard' },
+  { value: 'portal_buyer_dashboard', label: 'Buyer Portal: Dashboard' },
+  { value: 'portal_admin_dashboard', label: 'Admin Portal: Dashboard' },
+  { value: 'portal_seller_profile', label: 'Seller Portal: Profile' },
+  { value: 'portal_buyer_profile', label: 'Buyer Portal: Profile' },
+];
+
 const AD_SLOTS = [
   { key: 'ad_slot_sidebar', label: 'Sidebar Ad Slot', tag: "render_ad('sidebar')", placeholder: 'AdSense sidebar unit code...' },
   { key: 'ad_slot_top_banner', label: 'Top Banner Slot', tag: "render_ad('top_banner')", placeholder: 'AdSense top banner code...' },
@@ -33,8 +45,12 @@ export default function AdSettingsClient() {
 
   const handleSave = async () => {
     setSaving(true); setMsg('');
-    // Only save ad-related keys
-    const adKeys = ['ad_slot_header_script', ...AD_SLOTS.map(s => s.key)];
+    // Only save ad-related keys (slots + their page targeting)
+    const adKeys = ['ad_slot_header_script'];
+    AD_SLOTS.forEach(s => {
+      adKeys.push(s.key);
+      adKeys.push(`${s.key}_page`);
+    });
     const payload: Record<string, string> = {};
     adKeys.forEach(k => { payload[k] = config[k] || ''; });
     const res = await api.post('/shared/business-settings', payload);
@@ -94,8 +110,21 @@ export default function AdSettingsClient() {
                 <div className="col-md-6" key={slot.key}>
                   <div className="p-3 border rounded" style={{ background: 'rgba(248,249,250,0.5)' }}>
                     <label className="form-label fw-bold">{slot.label}</label>
-                    <textarea className="form-control" style={inputStyle} rows={4} placeholder={slot.placeholder}
+                    <textarea className="form-control mb-3" style={inputStyle} rows={4} placeholder={slot.placeholder}
                       value={config[slot.key] || ''} onChange={(e) => update(slot.key, e.target.value)} />
+                    
+                    <div className="mb-3">
+                      <label className="form-label small fw-bold">Display Page Targeting</label>
+                      <select 
+                        className="form-select form-select-sm" 
+                        style={{ ...inputStyle, padding: '0.4rem 0.8rem' }}
+                        value={config[`${slot.key}_page`] || 'all'}
+                        onChange={(e) => update(`${slot.key}_page`, e.target.value)}
+                      >
+                        {DISPLAY_PAGES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                      </select>
+                    </div>
+
                     <div className="mt-2 d-flex justify-content-between align-items-center">
                       <small className="text-muted">Designer Tag:</small>
                       <code className="bg-dark text-white p-1 rounded small">{slot.tag}</code>
@@ -131,7 +160,7 @@ export default function AdSettingsClient() {
               <div className="col-md-6">
                 <h6 className="fw-bold text-white mb-2 small">Displaying an Ad unit:</h6>
                 <pre className="p-3 rounded" style={{ background: '#000', border: '1px solid #495057', color: '#10b981', margin: 0 }}>
-                  <code>{`<?= render_ad('sidebar'); ?>`}</code>
+                  <code>{`<?= render_ad('sidebar', 'browse'); ?>`}</code>
                 </pre>
               </div>
               <div className="col-md-6">
@@ -139,6 +168,7 @@ export default function AdSettingsClient() {
                 <p className="small" style={{ color: '#6c757d' }}>
                   You can create any new slot by simply adding a textarea with a name starting with <code className="text-warning">ad_slot_</code>.
                   For example, <code className="text-warning">{`<textarea name="ad_slot_vibrating">`}</code> can be rendered using <code className="text-warning">{`render_ad('vibrating')`}</code>.
+                  You can also pass an optional second parameter to filter by page: <code className="text-warning">{`render_ad('slot', 'landing')`}</code>.
                 </p>
               </div>
             </div>

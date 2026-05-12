@@ -994,6 +994,11 @@ export default function BrowsePage() {
                   activeType={activeType}
                   onTypeChange={handleTypeClick}
                 />
+
+                {/* Sidebar Ad */}
+                <div className="mt-5">
+                  <AdBanner position="sidebar" page="browse" />
+                </div>
               </div>
             </aside>
 

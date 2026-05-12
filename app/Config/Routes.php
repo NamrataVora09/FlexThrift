@@ -38,6 +38,11 @@ function register_api_routes($routes)
     $routes->get('landing-content', 'Api\SharedApi::landingContent');
     $routes->get('featured-products', 'Api\SharedApi::featuredProducts');
 
+    // Public shared routes
+    $routes->group('shared', function ($routes) {
+        $routes->get('advertisements', 'Api\SharedApi::advertisements');
+    });
+
     // Public product browsing (no login required)
     $routes->get('browse', 'Api\BuyerApi::browse');
     $routes->get('product/(:num)', 'Api\BuyerApi::productDetails/$1');
@@ -167,7 +172,6 @@ function register_api_routes($routes)
         $routes->post('coupons/(:num)/toggle', 'Api\SharedApi::toggleCoupon/$1');
         $routes->post('coupons/(:num)/delete', 'Api\SharedApi::deleteCoupon/$1');
         $routes->get('financial-reports', 'Api\SharedApi::financialReports');
-        $routes->get('advertisements', 'Api\SharedApi::advertisements');
         $routes->get('zones', 'Api\SharedApi::zones');
         $routes->get('cms-pages', 'Api\SharedApi::cmsPages');
         $routes->post('cms-pages', 'Api\SharedApi::saveCmsPage');

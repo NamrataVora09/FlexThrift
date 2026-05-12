@@ -7,18 +7,30 @@
  * @return string The ad script/html content
  */
 if (!function_exists('render_ad')) {
-    function render_ad($slot_key)
+    function render_ad($slot_key, $page = 'all')
     {
         // Helper specifically for ad rendering
         // Ad slots are stored in system_settings with ad_slot_ prefix
         $key = 'ad_slot_' . $slot_key;
+        $pageKey = $key . '_page';
+
+        $db = \Config\Database::connect();
+        
+        // Check page targeting
+        if ($page !== 'all') {
+            $targetPageRow = $db->table('system_settings')->where('setting_key', $pageKey)->get()->getRowArray();
+            $targetPage = $targetPageRow ? $targetPageRow['setting_value'] : 'all';
+            
+            if ($targetPage !== 'all' && $targetPage !== $page) {
+                return '';
+            }
+        }
 
         // Use existing getSystemSetting if available, otherwise manual fetch
         if (function_exists('getSystemSetting')) {
             return getSystemSetting($key, '');
         }
 
-        $db = \Config\Database::connect();
         $row = $db->table('system_settings')->where('setting_key', $key)->get()->getRowArray();
         return $row ? $row['setting_value'] : '';
     }
