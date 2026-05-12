@@ -48,6 +48,7 @@ export default function AdvertisementsClient() {
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewType, setPreviewType] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -65,12 +66,21 @@ export default function AdvertisementsClient() {
 
   const resetForm = () => {
     setForm(emptyForm); setEditId(''); setPreviewUrl(''); setPreviewType(''); setSelectedFile(null);
+    setUploadProgress(0);
     if (fileRef.current) fileRef.current.value = '';
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // Size validation
+    if (file.size > 100 * 1024 * 1024) { // 100MB limit
+      toast.error('File too large. Maximum allowed size is 100MB.');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     setPreviewType(file.type);
@@ -79,6 +89,8 @@ export default function AdvertisementsClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setUploadProgress(0);
+
     const fd = new FormData();
     if (editId) fd.append('ad_id', editId);
     fd.append('title', form.title);
@@ -91,14 +103,21 @@ export default function AdvertisementsClient() {
     if (selectedFile) fd.append('ad_media', selectedFile);
 
     const url = editId ? '/superadmin/update-advertisement' : '/superadmin/upload-advertisement';
-    const res = await api.upload(url, fd);
+    
+    const res = await api.uploadWithProgress(url, fd, (percent) => {
+      setUploadProgress(percent);
+    });
+
     setSaving(false);
     if (res.success) {
       toast.success(editId ? 'Advertisement updated!' : 'Advertisement uploaded!');
       resetForm();
       load();
     }
-    else toast.error(res.message || 'Failed');
+    else {
+      toast.error(res.message || 'Failed');
+      setUploadProgress(0);
+    }
   };
 
   const editAd = async (id: number) => {
@@ -203,12 +222,32 @@ export default function AdvertisementsClient() {
                       <input type="file" ref={fileRef} className="d-none" accept="image/*,video/*" onChange={handleFileChange} />
                     </div>
                     {selectedFile && <div className="mt-2 small fw-bold" style={{ color: '#ffc63a' }}>Selected: {selectedFile.name}</div>}
+                    
+                    {saving && (
+                      <div className="mt-3">
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <span className="small fw-bold">Uploading media...</span>
+                          <span className="small fw-bold">{uploadProgress}%</span>
+                        </div>
+                        <div className="progress" style={{ height: 8, borderRadius: 10, background: '#e9ecef' }}>
+                          <div 
+                            className="progress-bar progress-bar-striped progress-bar-animated" 
+                            role="progressbar" 
+                            style={{ width: `${uploadProgress}%`, background: '#ffc63a', borderRadius: 10 }}
+                            aria-valuenow={uploadProgress} 
+                            aria-valuemin={0} 
+                            aria-valuemax={100}
+                          ></div>
+                        </div>
+                        <p className="text-muted mt-1 mb-0" style={{ fontSize: '0.65rem' }}>Please do not close this page until the upload is complete.</p>
+                      </div>
+                    )}
                   </div>
                   <div className="col-12 mt-4 d-flex gap-2">
                     <button type="submit" className="btn sa-filter-btn" style={btnGold} disabled={saving}>
-                      {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : 'Save Advertisement'}
+                      {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>{uploadProgress < 100 ? 'Uploading...' : 'Finalizing...'}</> : 'Save Advertisement'}
                     </button>
-                    <button type="button" className="btn btn-outline-secondary" onClick={resetForm}>Clear Form</button>
+                    <button type="button" className="btn btn-outline-secondary" onClick={resetForm} disabled={saving}>Clear Form</button>
                   </div>
                 </div>
               </form>

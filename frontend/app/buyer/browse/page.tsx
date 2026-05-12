@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -1162,13 +1162,19 @@ export default function BrowsePage() {
                   </div>
                 )}
 
-                {sortedProducts.length > 0 ? sortedProducts.map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    p={p}
-                    wishlisted={wishlist.includes(p.id)}
-                    onWishlist={handleWishlist}
-                  />
+                {sortedProducts.length > 0 ? sortedProducts.map((p, index) => (
+                  <Fragment key={p.id}>
+                    <ProductCard
+                      p={p}
+                      wishlisted={wishlist.includes(p.id)}
+                      onWishlist={handleWishlist}
+                    />
+                    {(index + 1) % 6 === 0 && (
+                      <div style={{ gridColumn: '1 / -1', margin: '20px 0' }}>
+                        <AdBanner position="rows" page="browse" />
+                      </div>
+                    )}
+                  </Fragment>
                 )) : !loading ? (
                   <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px 0' }}>
                     <span className="material-symbols-outlined" style={{ fontSize: 64, color: '#acadad', display: 'block', marginBottom: 16 }}>search</span>

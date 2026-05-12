@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
+import AdBanner from '@/components/shared/AdBanner';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
 
@@ -243,6 +244,11 @@ export default function Footer() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Footer Ad */}
+        <div className="xl:px-28! lg:px-28! md:px-28 sm:px-8 px-4 mb-8">
+          <AdBanner position="footer" page="all" />
         </div>
 
         <div className="border-t border-gray-700 py-4 text-center text-gray-500 text-xs">

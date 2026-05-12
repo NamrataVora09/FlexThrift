@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import LandingNavbar from '../layout/LandingNavbar';
 import Footer from '../layout/Footer';
+import AdBanner from '../shared/AdBanner';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api/v1').replace(/\/$/, '');
 
@@ -644,50 +645,56 @@ export default function HomePageClient() {
               </button>
             )}
             {categoryCards.map((cat, i) => (
-              <Link
-                key={cat.name}
-                href={`/buyer/browse?listing_type=${cat.slug}`}
-                className={`flex sm:flex-row flex-col  ${i % 2 == 1 ? 'sm:flex-row-reverse flex-col' : ''} h-[390px] rounded-lg overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] group relative`}
-              >
-                {/* Left: category name — centered vertically & horizontally */}
-                <div className="sm:w-[30%] w-full shrink-0 flex  py-4 sm:py-0  items-center justify-center bg-[#e7efe5] z-10 px-4">
-                  <h2 className="text-xl font-[Maven Pro] text-[20px]! font-bold text-black text-center">{cat.name}</h2>
-                </div>
-
-                {/* Right: single auto-scrolling image */}
-                <div className="relative  w-full h-full flex-1 overflow-hidden">
-                  <img
-                    src={cat.imgs[catImgIdx[i]]}
-                    alt={cat.name}
-                    className="w-full h-full min-h-[400px] object-cover transition-opacity duration-500"
-                  />
-
-                  {/* Dot indicators */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                    {cat.imgs.map((_, j) => (
-                      <div
-                        key={j}
-                        onClick={e => { e.preventDefault(); setCatImgIdx(prev => prev.map((v, k) => k === i ? j : v)); }}
-                        className={`w-2 h-2 rounded-full cursor-pointer transition-colors ${catImgIdx[i] === j ? 'bg-white' : 'bg-white/40'}`}
-                      />
-                    ))}
+              <Fragment key={cat.name}>
+                <Link
+                  href={`/buyer/browse?listing_type=${cat.slug}`}
+                  className={`flex sm:flex-row flex-col  ${i % 2 == 1 ? 'sm:flex-row-reverse flex-col' : ''} h-[390px] rounded-lg overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] group relative`}
+                >
+                  {/* Left: category name — centered vertically & horizontally */}
+                  <div className="sm:w-[30%] w-full shrink-0 flex  py-4 sm:py-0  items-center justify-center bg-[#e7efe5] z-10 px-4">
+                    <h2 className="text-xl font-[Maven Pro] text-[20px]! font-bold text-black text-center">{cat.name}</h2>
                   </div>
 
-                  {/* Prev / Next arrows */}
-                  <button
-                    onClick={e => { e.preventDefault(); setCatImgIdx(prev => prev.map((idx, k) => k === i ? (idx - 1 + cat.imgs.length) % cat.imgs.length : idx)); }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white w-7 h-7 rounded-full flex items-center justify-center z-10 transition-colors"
-                  >
-                    <i className="bi bi-chevron-left text-sm"></i>
-                  </button>
-                  <button
-                    onClick={e => { e.preventDefault(); setCatImgIdx(prev => prev.map((idx, k) => k === i ? (idx + 1) % cat.imgs.length : idx)); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white w-7 h-7 rounded-full flex items-center justify-center z-10 transition-colors"
-                  >
-                    <i className="bi bi-chevron-right text-sm"></i>
-                  </button>
-                </div>
-              </Link>
+                  {/* Right: single auto-scrolling image */}
+                  <div className="relative  w-full h-full flex-1 overflow-hidden">
+                    <img
+                      src={cat.imgs[catImgIdx[i]]}
+                      alt={cat.name}
+                      className="w-full h-full min-h-[400px] object-cover transition-opacity duration-500"
+                    />
+
+                    {/* Dot indicators */}
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                      {cat.imgs.map((_, j) => (
+                        <div
+                          key={j}
+                          onClick={e => { e.preventDefault(); setCatImgIdx(prev => prev.map((v, k) => k === i ? j : v)); }}
+                          className={`w-2 h-2 rounded-full cursor-pointer transition-colors ${catImgIdx[i] === j ? 'bg-white' : 'bg-white/40'}`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Prev / Next arrows */}
+                    <button
+                      onClick={e => { e.preventDefault(); setCatImgIdx(prev => prev.map((idx, k) => k === i ? (idx - 1 + cat.imgs.length) % cat.imgs.length : idx)); }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white w-7 h-7 rounded-full flex items-center justify-center z-10 transition-colors"
+                    >
+                      <i className="bi bi-chevron-left text-sm"></i>
+                    </button>
+                    <button
+                      onClick={e => { e.preventDefault(); setCatImgIdx(prev => prev.map((idx, k) => k === i ? (idx + 1) % cat.imgs.length : idx)); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white w-7 h-7 rounded-full flex items-center justify-center z-10 transition-colors"
+                    >
+                      <i className="bi bi-chevron-right text-sm"></i>
+                    </button>
+                  </div>
+                </Link>
+                {i === 1 && (
+                  <div className="w-full my-8">
+                    <AdBanner position="rows" page="landing" />
+                  </div>
+                )}
+              </Fragment>
             ))}
           </div>
 

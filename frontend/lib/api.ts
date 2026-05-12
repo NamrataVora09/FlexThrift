@@ -142,6 +142,59 @@ class ApiClient {
     }
     return data;
   }
+
+  async uploadWithProgress<T>(
+    endpoint: string,
+    formData: FormData,
+    onProgress?: (percent: number) => void
+  ): Promise<ApiResponse<T>> {
+    const token = this.getToken();
+    
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${this.baseUrl}${endpoint}`);
+      
+      xhr.setRequestHeader('Accept', 'application/json');
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      if (onProgress) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            onProgress(percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        let data: any;
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          resolve({ success: false, message: `Upload failed (${xhr.status})` });
+          return;
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(data);
+        } else {
+          resolve({
+            success: false,
+            message: data.message || 'Upload failed',
+            errors: data.errors,
+          });
+        }
+      };
+
+      xhr.onerror = () => {
+        resolve({ success: false, message: 'Network error occurred during upload.' });
+      };
+
+      xhr.send(formData);
+    });
+  }
 }
 
 export const api = new ApiClient(API_BASE);

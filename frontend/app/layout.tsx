@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 import GeolocationBlocker from '@/components/shared/GeolocationBlocker';
 import SystemLockBlocker from '@/components/shared/SystemLockBlocker';
+import AdBanner from '@/components/shared/AdBanner';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SystemLockBlocker>
             <GeolocationBlocker>
               {children}
+              <AdBanner position="popup" page="all" />
             </GeolocationBlocker>
           </SystemLockBlocker>
         </AuthProvider>
