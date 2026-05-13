@@ -30,7 +30,7 @@ const categoryBgColors: Record<string, string> = {
 };
 
 const sectionStyle: React.CSSProperties = { background: '#fff', padding: 25, borderRadius: 12, marginBottom: 25, border: '1px solid #eee' };
-const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#000', fontWeight: 600, border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' };
+const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#fff', fontWeight: 600, border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' };
 const btnDanger: React.CSSProperties = { background: '#dc3545', color: '#fff', fontWeight: 600, border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' };
 const btnSecondary: React.CSSProperties = { background: '#6c757d', color: '#fff', fontWeight: 600, border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' };
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
@@ -81,19 +81,19 @@ export default function ErrorMessagesClient() {
     if (!formData.message_key.trim()) errors.message_key = 'Message key is required';
     if (!formData.message_value.trim()) errors.message_value = 'Message value is required';
     if (formData.message_key.includes(' ')) errors.message_key = 'Message key cannot contain spaces';
-    
+
     if (!editingMessage) {
       const exists = messages.some(m => m.message_key === formData.message_key);
       if (exists) errors.message_key = 'This message key already exists';
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleAddMessage = async () => {
     if (!validateForm()) return;
-    
+
     setSubmitting(true);
     try {
       const res = await api.post('/superadmin/error-messages', formData);
@@ -115,7 +115,7 @@ export default function ErrorMessagesClient() {
 
   const handleEditMessage = async () => {
     if (!editingMessage || !validateForm()) return;
-    
+
     setSubmitting(true);
     try {
       const res = await api.post(`/superadmin/error-messages/${editingMessage.id}`, formData);
@@ -138,7 +138,7 @@ export default function ErrorMessagesClient() {
 
   const handleDeleteMessage = async () => {
     if (!deleteId) return;
-    
+
     setSubmitting(true);
     try {
       const res = await api.delete(`/superadmin/error-messages/${deleteId}`);
@@ -178,7 +178,7 @@ export default function ErrorMessagesClient() {
 
   // Filter messages
   const filteredMessages = messages.filter(m => {
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       m.message_key.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.message_value.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === '' || m.category === selectedCategory;
@@ -204,18 +204,18 @@ export default function ErrorMessagesClient() {
         <div style={sectionStyle}>
           <div className="row g-3 mb-3">
             <div className="col-md-4">
-              <input 
-                type="text" 
-                className="form-control" 
+              <input
+                type="text"
+                className="form-control"
                 style={inputStyle}
-                placeholder="Search by key or value..." 
+                placeholder="Search by key or value..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <div className="col-md-3">
-              <select 
-                className="form-control" 
+              <select
+                className="form-control"
                 style={inputStyle}
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
@@ -266,8 +266,8 @@ export default function ErrorMessagesClient() {
                       </div>
                     </td>
                     <td style={{ verticalAlign: 'middle' }}>
-                      <span style={{ 
-                        background: categoryBgColors[msg.category] || '#e2e3e5', 
+                      <span style={{
+                        background: categoryBgColors[msg.category] || '#e2e3e5',
                         color: categoryColors[msg.category] || '#6c757d',
                         padding: '4px 12px',
                         borderRadius: 20,
@@ -291,6 +291,54 @@ export default function ErrorMessagesClient() {
             </table>
           </div>
         )}
+
+        {/* Reference Section — always visible */}
+        {!loading && (
+          <div style={{ ...sectionStyle, marginTop: 8, background: '#fafbff', border: '1px solid #e8ecff' }}>
+            <h6 style={{ fontWeight: 700, marginBottom: 4, fontSize: '0.9rem', color: '#1a1a1a' }}>
+              <i className="bi bi-bookmark-fill me-2" style={{ color: '#ffc63a' }}></i>
+              Message Keys Reference
+              <span className="text-muted fw-normal ms-2" style={{ fontSize: '0.75rem' }}>
+                — click a key to search for it
+              </span>
+            </h6>
+            <p className="text-muted mb-3" style={{ fontSize: '0.78rem' }}>
+              These are all the message keys currently defined in the system. Use these keys in your application code to display dynamic, editable messages.
+            </p>
+            <div className="d-flex flex-wrap gap-2">
+              {(messages.length > 0
+                ? Array.from(new Set(messages.map(m => m.message_key))).sort()
+                : [
+                  'auth_login_required', 'already_rated_seller', 'booking_conflict',
+                  'dates_update_success', 'min_rental_duration', 'offer_cancelled_success',
+                  'offer_not_found', 'offer_sent_success', 'order_cancel_success',
+                  'order_not_found', 'payment_success', 'product_not_found',
+                  'rating_window_expired', 'review_submit_success'
+                ]
+              ).map(key => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSearchQuery(key)}
+                  style={{
+                    background: searchQuery === key ? '#ffc63a' : '#fff',
+                    border: `1px solid ${searchQuery === key ? '#ffc63a' : '#dde2f0'}`,
+                    padding: '5px 12px',
+                    borderRadius: 6,
+                    fontSize: '0.75rem',
+                    color: searchQuery === key ? '#fff' : '#444',
+                    cursor: 'pointer',
+                    fontFamily: 'monospace',
+                    fontWeight: searchQuery === key ? 700 : 400,
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Message Modal */}
@@ -300,12 +348,12 @@ export default function ErrorMessagesClient() {
             <h5 style={{ fontWeight: 700, marginBottom: 20 }}>
               {editingMessage ? 'Edit Error Message' : 'Add New Error Message'}
             </h5>
-            
+
             <div className="mb-3">
               <label className="form-label fw-bold small">Message Key {!editingMessage && <span style={{ color: '#dc3545' }}>*</span>}</label>
-              <input 
-                type="text" 
-                className="form-control" 
+              <input
+                type="text"
+                className="form-control"
                 style={inputStyle}
                 value={formData.message_key}
                 onChange={(e) => setFormData({ ...formData, message_key: e.target.value })}
@@ -317,8 +365,8 @@ export default function ErrorMessagesClient() {
 
             <div className="mb-3">
               <label className="form-label fw-bold small">Message Value <span style={{ color: '#dc3545' }}>*</span></label>
-              <textarea 
-                className="form-control" 
+              <textarea
+                className="form-control"
                 style={inputStyle}
                 rows={4}
                 value={formData.message_value}
@@ -331,8 +379,8 @@ export default function ErrorMessagesClient() {
 
             <div className="mb-3">
               <label className="form-label fw-bold small">Category</label>
-              <select 
-                className="form-control" 
+              <select
+                className="form-control"
                 style={inputStyle}
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -342,14 +390,14 @@ export default function ErrorMessagesClient() {
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button 
+              <button
                 style={btnSecondary}
                 onClick={() => { setShowAddModal(false); setShowEditModal(false); }}
                 disabled={submitting}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 style={btnGold}
                 onClick={editingMessage ? handleEditMessage : handleAddMessage}
                 disabled={submitting}
@@ -368,14 +416,14 @@ export default function ErrorMessagesClient() {
             <h5 style={{ fontWeight: 700, marginBottom: 20 }}>Confirm Delete</h5>
             <p>Are you sure you want to delete this error message? This action cannot be undone.</p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button 
+              <button
                 style={btnSecondary}
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={submitting}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 style={btnDanger}
                 onClick={handleDeleteMessage}
                 disabled={submitting}

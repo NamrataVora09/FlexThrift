@@ -35,7 +35,6 @@ interface FormMeta {
   colors: Array<{ id: number; name: string; hex_code: string }>;
   genders: Array<{ id: number; name: string }>;
   original_brands: Array<{ id: number; brand_name: string; brand_image?: string; listing_type_id?: number | string | null; listing_type_ids?: string | null }>;
-  seller_brands: Array<{ id: number; brand_name: string; brand_image?: string; listing_type_id?: number | string | null; listing_type_ids?: string | null }>;
   config: Record<string, string>;
   pricing_rules: PricingRule[];
   rental_pricing_rules: PricingRule[];
@@ -57,6 +56,9 @@ const priceSuggestion: React.CSSProperties = {
   boxShadow: '0 8px 30px rgba(255,198,58,0.15)',
   border: '1px solid rgba(0,0,0,0.05)'
 };
+
+const PRODUCT_CSV_TEMPLATE = `title,seller_email,listing_type,original_price,selling_price,rental_cost,rental_deposit,description,brand_name,color,size,gender,category,times_used,condition_description,status,images
+Blue Denim Jacket,admin@example.com,sell,2500,1800,,,Stylish denim jacket,Levi's,Blue,L,Male,Jackets,3,Good condition,pending,"https://example.com/img1.jpg,https://example.com/img2.jpg"`;
 
 export default function UploadProductView({ role, apiBasePath, redirectPath }: Props) {
   const router = useRouter();
@@ -87,7 +89,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   // Form state
   const [f, setF] = useState({
     listing_type: 'sell', title: '', gender: '', listing_type_category: '', product_type: '',
-    category_id: '', sub_category_id: '', orignal_brand_id: '', brand_id: '', description: '',
+    category_id: '', sub_category_id: '', orignal_brand_id: '', description: '',
     color: '', used_times: '0', original_price: '', price: '', rental_deposit: '',
     rental_cost: '', allow_alter_fitting: false, dispatch_address: '', dispatch_state: '',
     dispatch_city: '', dispatch_pin_code: '', has_bill: false,
@@ -100,11 +102,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [obSearch, setObSearch] = useState('');
   const [obOpen, setObOpen] = useState(false);
   const [selectedOb, setSelectedOb] = useState<{ id: number; name: string } | null>(null);
-
-  // Seller Brand search
-  const [sbSearch, setSbSearch] = useState('');
-  const [sbOpen, setSbOpen] = useState(false);
-  const [selectedSb, setSelectedSb] = useState<{ id: number; name: string } | null>(null);
 
   // Helper to resolve media URLs (handles both old filename-only and new prefixed paths)
   const resolveUrl = (path: string, type: 'product' | 'bill' = 'product') => {
@@ -157,7 +154,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             category_id: String(cId),
             sub_category_id: String(scId),
             orignal_brand_id: product.orignal_brand_id || '',
-            brand_id: product.brand_id || '',
             description: product.description || product.condition_description || '',
             color: product.color || '',
             used_times: String(product.used_times || product.times_used || '0'),
@@ -196,14 +192,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             const brand = meta.original_brands.find(b => String(b.id) === String(product.orignal_brand_id));
             if (brand) {
               setSelectedOb({ id: brand.id, name: brand.brand_name });
-            }
-          }
-
-          // Set selected seller brand if exists
-          if (product.brand_id) {
-            const brand = meta.seller_brands.find(b => String(b.id) === String(product.brand_id));
-            if (brand) {
-              setSelectedSb({ id: brand.id, name: brand.brand_name });
             }
           }
 
@@ -443,11 +431,8 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         next.category_id = '';
         next.sub_category_id = '';
         next.orignal_brand_id = '';
-        next.brand_id = '';
         setSelectedOb(null);
-        setSelectedSb(null);
         setObSearch('');
-        setSbSearch('');
       } else if (name === 'product_type') {
         next.category_id = '';
         next.sub_category_id = '';
@@ -555,12 +540,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     return true;
   });
 
-  const filteredSellerBrands = (meta?.seller_brands || []).filter(b => {
-    if (sbSearch && !b.brand_name.toLowerCase().includes(sbSearch.toLowerCase())) return false;
-    if (f.listing_type_category) return filterBrandByListingType(b, Number(f.listing_type_category));
-    return true;
-  });
-
   const selectOb = (b: { id: number; brand_name: string }) => {
     setSelectedOb({ id: b.id, name: b.brand_name });
     setF(prev => ({ ...prev, orignal_brand_id: String(b.id) }));
@@ -568,15 +547,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     setObSearch('');
   };
 
-  const selectSb = (b: { id: number; brand_name: string }) => {
-    setSelectedSb({ id: b.id, name: b.brand_name });
-    setF(prev => ({ ...prev, brand_id: String(b.id) }));
-    setSbOpen(false);
-    setSbSearch('');
-  };
-
   const clearOb = () => { setSelectedOb(null); setF(prev => ({ ...prev, orignal_brand_id: '' })); };
-  const clearSb = () => { setSelectedSb(null); setF(prev => ({ ...prev, brand_id: '' })); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -831,15 +802,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
 
 
-          {role === 'super_admin' && (
-            <BulkCsvUpload
-              endpoint="/superadmin/bulk-upload-products"
-              templateCsv="title,seller_id,listing_type,original_price,selling_price,rental_cost,rental_deposit,description,brand,color,size,gender,category,times_used,condition_description,status\nBlue Denim Jacket,5,sell,2500,1800,,,Stylish denim jacket,Levi's,Blue,L,Male,Jackets,3,Good condition,pending"
-              templateFilename="products_template.csv"
-              formatGuide="title (required), seller_id (required), listing_type (sell/rent), original_price (required), selling_price, rental_cost, rental_deposit, description, brand, color, size, gender, category, times_used, condition_description, status"
-              title="Bulk Upload Products from CSV"
-            />
-          )}
+
 
           {error && (
             <div className="alert alert-danger mb-4 shadow-sm border-0 d-flex align-items-center" style={{ borderRadius: 12, background: '#fee2e2', color: '#991b1b', padding: '12px 20px' }}>
@@ -920,7 +883,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   </div>
                 )}
                 <div className="col-md-3">
-                  <label className="form-label" style={labelStyle}>Brand</label>
+                  <label className="form-label" style={labelStyle}>Original Brand</label>
                   <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                     <div className="input-group">
                       <span className="input-group-text bg-white border-end-0"><i className="bi bi-search"></i></span>

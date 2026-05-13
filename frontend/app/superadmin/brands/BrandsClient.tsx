@@ -279,9 +279,9 @@ export default function BrandsClient() {
 
         <BulkCsvUpload
           endpoint="/superadmin/bulk-upload-brands"
-          templateCsv="brand_name,listing_type_id,seller_id,description\nNike,1,,Premium sportswear\nAdidas,1,,Sports & lifestyle"
+          templateCsv="brand_name,listing_type,seller_email,description\nNike,Footwear,seller@example.com,Premium sportswear\nAdidas,Footwear,admin@example.com,Sports & lifestyle"
           templateFilename="brands_template.csv"
-          formatGuide="brand_name (required), listing_type_id, seller_id, description"
+          formatGuide="brand_name (required), listing_type (Listing Type Name), seller_email (User Email), description"
           title="Bulk Upload Brands"
         />
 

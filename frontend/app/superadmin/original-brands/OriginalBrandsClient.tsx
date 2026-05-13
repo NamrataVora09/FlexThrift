@@ -251,9 +251,9 @@ export default function OriginalBrandsClient() {
 
         <BulkCsvUpload
           endpoint="/superadmin/bulk-upload-original-brands"
-          templateCsv={'brand_name,listing_type_ids,description\nNike,"[1,2]",Premium sportswear\nZara,"[3,4]",Fashion brand'}
+          templateCsv={'brand_name,listing_types,brand_image,description\nNike,"Clothing, Footwear",https://example.com/nike.png,Premium sportswear\nZara,Clothing,,Fashion brand'}
           templateFilename="original_brands_template.csv"
-          formatGuide="brand_name (required), listing_type_ids (JSON array format e.g. [1,2]), description"
+          formatGuide="brand_name (required), listing_types (Listing Type Names, comma separated), brand_image (URL or path), description"
           title="Bulk Upload Original Brands"
         />
 

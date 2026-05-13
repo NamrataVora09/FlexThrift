@@ -2062,7 +2062,11 @@ class SuperAdminApi extends ResourceController
 
         while (($line = fgetcsv($handle)) !== false) {
             $row++;
-            if (count($line) < count($header)) { $skipped++; $errors[] = "Row {$row}: Insufficient columns"; continue; }
+            if (count($line) < count($header)) { 
+                $skipped++; 
+                $errors[] = "Row {$row}: Insufficient columns (Expected: " . implode(', ', $header) . ")"; 
+                continue; 
+            }
             $data = array_combine($header, array_map('trim', $line));
 
             try {
@@ -2072,7 +2076,13 @@ class SuperAdminApi extends ResourceController
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
                         $gender = $data['gender_config'] ?? 'optional';
                         $rec = ['type_name' => $name, 'field_config' => json_encode(['gender' => $gender]), 'created_at' => $now];
-                        if (!empty($data['image'])) $rec['image'] = $data['image'];
+                        
+                        $imageSource = $data['image'] ?? $data['image_path'] ?? '';
+                        if ($imageSource) {
+                            $processed = $this->processImage($imageSource, 'uploads/listing-types/');
+                            if ($processed) $rec['image'] = $processed;
+                        }
+                        
                         $db->table('listing_types')->insert($rec);
                         $inserted++;
                         break;
@@ -2087,7 +2097,14 @@ class SuperAdminApi extends ResourceController
                     case 'product_types':
                         $name = $data['name'] ?? '';
                         $ltId = $data['listing_type_id'] ?? '';
-                        if (!$name || !$ltId) { $skipped++; $errors[] = "Row {$row}: Name or listing_type_id missing"; continue 2; }
+                        
+                        // Name lookup if ID missing
+                        if (!$ltId && !empty($data['listing_type'])) {
+                            $lt = $db->table('listing_types')->where('type_name', $data['listing_type'])->get()->getRowArray();
+                            if ($lt) $ltId = $lt['id'];
+                        }
+
+                        if (!$name || !$ltId) { $skipped++; $errors[] = "Row {$row}: Name or listing_type missing"; continue 2; }
                         $db->table('product_types')->insert(['name' => $name, 'listing_type_id' => $ltId, 'created_at' => $now]);
                         $inserted++;
                         break;
@@ -2095,7 +2112,17 @@ class SuperAdminApi extends ResourceController
                     case 'categories':
                         $name = $data['category_name'] ?? $data['name'] ?? '';
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
+                        
+                        // ID parsing
                         $ptIds = isset($data['product_type_ids']) ? json_decode($data['product_type_ids'], true) : [];
+                        
+                        // Name lookup
+                        if (empty($ptIds) && !empty($data['product_types'])) {
+                            $names = array_map('trim', explode(',', $data['product_types']));
+                            $pts = $db->table('product_types')->whereIn('name', $names)->get()->getResultArray();
+                            $ptIds = array_column($pts, 'id');
+                        }
+
                         $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
                         $db->table('categories')->insert([
                             'category_name' => $name,
@@ -2109,7 +2136,29 @@ class SuperAdminApi extends ResourceController
                     case 'sub_categories':
                         $name = $data['name'] ?? '';
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
+                        
+                        // ID parsing
                         $catIds = isset($data['category_ids']) ? json_decode($data['category_ids'], true) : [];
+                        
+                        // Name lookup
+                        $categoryInput = $data['categories'] ?? $data['category'] ?? '';
+                        if (empty($catIds) && !empty($categoryInput)) {
+                            $names = array_map('trim', explode(',', $categoryInput));
+                            $cats = $db->table('categories')->whereIn('LOWER(category_name)', array_map('strtolower', $names))->get()->getResultArray();
+                            $catIds = array_column($cats, 'id');
+                            
+                            if (count($catIds) < count($names)) {
+                                $foundNames = array_map('strtolower', array_column($cats, 'category_name'));
+                                $missing = [];
+                                foreach ($names as $n) {
+                                    if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
+                                }
+                                if (!empty($missing)) {
+                                    $errors[] = "Row {$row}: Categories not found: " . implode(', ', $missing);
+                                }
+                            }
+                        }
+
                         $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
                         $db->table('sub_categories')->insert([
                             'name' => $name,
@@ -2141,7 +2190,7 @@ class SuperAdminApi extends ResourceController
             'message' => "{$inserted} records inserted, {$skipped} skipped.",
             'inserted' => $inserted,
             'skipped' => $skipped,
-            'errors' => array_slice($errors, 0, 10),
+            'errors' => $errors,
         ]);
     }
 
@@ -2160,12 +2209,45 @@ class SuperAdminApi extends ResourceController
         $rows = [];
         while (($line = fgetcsv($handle)) !== false) {
             if (count($line) >= count($header)) {
-                $rows[] = array_combine($header, array_map('trim', $line));
+                $rows[] = array_combine($header, array_slice(array_map('trim', $line), 0, count($header)));
             }
         }
-        fclose($handle);
-        return ['header' => $header, 'rows' => $rows];
+    fclose($handle);
+    return ['header' => $header, 'rows' => $rows];
+}
+
+private function processImage($source, $subDir): ?string
+{
+    if (empty($source)) return null;
+    $source = trim($source, " \t\n\r\0\x0B\""); // Trim whitespace and quotes
+    
+    $targetDir = FCPATH . $subDir;
+    if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+
+    $ext = pathinfo($source, PATHINFO_EXTENSION);
+    if (!$ext || strlen($ext) > 5) $ext = 'png';
+    
+    $newFileName = time() . '_' . uniqid() . '.' . $ext;
+    $targetPath = $targetDir . $newFileName;
+    $dbPath = $subDir . $newFileName;
+
+    $success = false;
+    if (filter_var($source, FILTER_VALIDATE_URL)) {
+        try {
+            $content = @file_get_contents($source);
+            if ($content) {
+                file_put_contents($targetPath, $content);
+                $success = true;
+            }
+        } catch (\Exception $e) {}
+    } else {
+        if (file_exists($source)) {
+            $success = @copy($source, $targetPath);
+        }
     }
+
+    return ($success && file_exists($targetPath)) ? $dbPath : null;
+}
 
     public function bulkUploadBrands()
     {
@@ -2180,14 +2262,38 @@ class SuperAdminApi extends ResourceController
             if (!$name) { $skipped++; $errors[] = "Row {$row}: brand_name is empty"; continue; }
             try {
                 $rec = ['brand_name' => $name, 'created_at' => $now];
-                if (!empty($data['seller_id'])) $rec['seller_id'] = $data['seller_id'];
-                if (!empty($data['listing_type_id'])) $rec['listing_type_id'] = $data['listing_type_id'];
+                
+                // Seller Resolution (by email or ID)
+                $sellerId = $data['seller_id'] ?? '';
+                $sellerEmail = $data['seller_email'] ?? $data['email'] ?? '';
+                if (!$sellerId && $sellerEmail) {
+                    $seller = $db->table('users')->where('email', $sellerEmail)->get()->getRowArray();
+                    if ($seller) $sellerId = $seller['id'];
+                }
+                if ($sellerId) $rec['seller_id'] = $sellerId;
+
+                // Listing Type Resolution (by name or ID)
+                $ltId = $data['listing_type_id'] ?? '';
+                $ltName = $data['listing_type'] ?? '';
+                if (!$ltId && $ltName) {
+                    $lt = $db->table('listing_types')->where('LOWER(type_name)', strtolower($ltName))->get()->getRowArray();
+                    if ($lt) $ltId = $lt['id'];
+                }
+                if ($ltId) $rec['listing_type_id'] = $ltId;
+
                 if (!empty($data['description'])) $rec['description'] = $data['description'];
-                $db->table('orignal_brands')->insert($rec);
+                
+                $logoSource = $data['logo'] ?? $data['image'] ?? $data['brand_image'] ?? '';
+                if ($logoSource) {
+                    $processed = $this->processImage($logoSource, 'uploads/brands/');
+                    if ($processed) $rec['logo'] = $processed;
+                }
+
+                $db->table('brands')->insert($rec);
                 $inserted++;
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} brands inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => array_slice($errors, 0, 10)]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} brands inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     public function bulkUploadOriginalBrands()
@@ -2203,13 +2309,36 @@ class SuperAdminApi extends ResourceController
             if (!$name) { $skipped++; $errors[] = "Row {$row}: brand_name is empty"; continue; }
             try {
                 $rec = ['brand_name' => $name, 'is_active' => 1, 'created_at' => $now];
-                if (!empty($data['listing_type_id'])) $rec['listing_type_id'] = $data['listing_type_id'];
+                
+                // Listing Type Resolution
+                $ltIds = [];
+                $ltInput = $data['listing_types'] ?? $data['listing_type_ids'] ?? '';
+                if ($ltInput) {
+                    if (strpos($ltInput, '[') === 0) {
+                        $ltIds = json_decode($ltInput, true) ?: [];
+                    } else {
+                        $names = array_map('trim', explode(',', $ltInput));
+                        $lts = $db->table('listing_types')->whereIn('LOWER(type_name)', array_map('strtolower', $names))->get()->getResultArray();
+                        $ltIds = array_column($lts, 'id');
+                    }
+                }
+                
+                $rec['listing_type_ids'] = json_encode(array_map('intval', $ltIds));
+                if (!empty($ltIds)) $rec['listing_type_id'] = $ltIds[0]; // For backward compatibility
+                
                 if (!empty($data['description'])) $rec['description'] = $data['description'];
+
+                $imageSource = $data['brand_image'] ?? $data['image'] ?? $data['logo'] ?? '';
+                if ($imageSource) {
+                    $processed = $this->processImage($imageSource, 'uploads/original_brands/');
+                    if ($processed) $rec['brand_image'] = $processed;
+                }
+
                 $db->table('orignal_brands')->insert($rec);
                 $inserted++;
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} brands inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => array_slice($errors, 0, 10)]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} brands inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     public function bulkUploadProducts()
@@ -2225,8 +2354,35 @@ class SuperAdminApi extends ResourceController
             $sellerId = $data['seller_id'] ?? '';
             $listingType = $data['listing_type'] ?? 'sell';
             $originalPrice = $data['original_price'] ?? '';
-            if (!$title || !$sellerId || !$originalPrice) { $skipped++; $errors[] = "Row {$row}: title, seller_id, or original_price missing"; continue; }
+
+            // Seller Lookup by Email
+            if (!$sellerId && !empty($data['seller_email'])) {
+                $user = $db->table('users')->where('email', $data['seller_email'])->get()->getRowArray();
+                if ($user) $sellerId = $user['id'];
+            }
+
+            if (!$title || !$sellerId || !$originalPrice) { 
+                $skipped++; 
+                $errors[] = "Row {$row}: title, seller (id/email), or original_price missing"; 
+                continue; 
+            }
+
             try {
+                // Brand Lookup by Name
+                $brandId = !empty($data['brand_id']) ? $data['brand_id'] : null;
+                if (!$brandId && !empty($data['brand_name'])) {
+                    $brand = $db->table('brands')->where('brand_name', $data['brand_name'])->get()->getRowArray();
+                    if ($brand) $brandId = $brand['id'];
+                }
+
+                // Category Lookup by Name
+                $category = $data['category'] ?? '';
+                $categoryIds = $data['category_ids'] ?? null;
+                if (!$categoryIds && !empty($category)) {
+                    $cat = $db->table('categories')->where('category_name', $category)->get()->getRowArray();
+                    if ($cat) $categoryIds = json_encode([$cat['id']]);
+                }
+
                 $rec = [
                     'seller_id' => $sellerId, 'title' => $title, 'listing_type' => $listingType,
                     'original_price' => $originalPrice,
@@ -2236,8 +2392,9 @@ class SuperAdminApi extends ResourceController
                     'rental_deposit' => $data['rental_deposit'] ?? null,
                     'color' => $data['color'] ?? null,
                     'size' => $data['size'] ?? null,
-                    'brand' => $data['brand'] ?? null,
-                    'category' => $data['category'] ?? null,
+                    'brand_id' => $brandId,
+                    'category' => $category,
+                    'category_ids' => $categoryIds,
                     'gender' => $data['gender'] ?? null,
                     'times_used' => $data['times_used'] ?? $data['used_times'] ?? 0,
                     'condition_description' => $data['condition_description'] ?? '',
@@ -2245,10 +2402,28 @@ class SuperAdminApi extends ResourceController
                     'created_at' => $now, 'updated_at' => $now,
                 ];
                 $db->table('products')->insert($rec);
+                $productId = $db->insertID();
                 $inserted++;
+
+                // Handle Images
+                $imagesStr = $data['images'] ?? $data['image_path'] ?? '';
+                if ($imagesStr) {
+                    $images = explode(',', $imagesStr);
+                    foreach ($images as $imgIdx => $imgSource) {
+                        $processed = $this->processImage($imgSource, 'uploads/products/');
+                        if ($processed) {
+                            $db->table('product_images')->insert([
+                                'product_id' => $productId,
+                                'image_path' => $processed,
+                                'is_primary' => ($imgIdx === 0 ? 1 : 0),
+                                'created_at' => $now
+                            ]);
+                        }
+                    }
+                }
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} products inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => array_slice($errors, 0, 10)]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} products inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     public function bulkUploadCoupons()
@@ -2279,7 +2454,7 @@ class SuperAdminApi extends ResourceController
                 $inserted++;
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} coupons inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => array_slice($errors, 0, 10)]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} coupons inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     public function bulkUploadSubscriptionPlans()
@@ -2291,26 +2466,42 @@ class SuperAdminApi extends ResourceController
         $inserted = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
-            $name = $data['name'] ?? '';
+            $name = trim($data['name'] ?? $data['plan_name'] ?? '');
+            $userType = strtolower(trim($data['user_type'] ?? ''));
             $price = $data['price'] ?? '';
-            $userType = $data['user_type'] ?? '';
-            if (!$name || !$price || !$userType) { $skipped++; $errors[] = "Row {$row}: name, price, or user_type missing"; continue; }
+            
+            // Validation
+            if (!$name || !$price || !in_array($userType, ['buyer', 'seller'])) {
+                $skipped++;
+                $errors[] = "Row {$row}: name, price, or valid user_type (buyer/seller) missing";
+                continue;
+            }
+
+            $planType = strtolower(trim($data['plan_type'] ?? 'duration'));
+            if ($planType === 'limit') $planType = 'quantity';
+            if (!in_array($planType, ['quantity', 'duration'])) $planType = 'duration';
+
             try {
                 $db->table('subscription_plans')->insert([
                     'name' => $name,
+                    'plan_name' => $name,
                     'user_type' => $userType,
-                    'plan_type' => $data['plan_type'] ?? 'duration',
+                    'plan_type' => $planType,
                     'limit_value' => (int)($data['limit_value'] ?? 0),
                     'duration_hours' => (float)($data['duration_hours'] ?? 0),
-                    'price' => (float)($price),
+                    'price' => (float)$price,
                     'base_price' => (float)($data['base_price'] ?? $price),
+                    'features' => !empty($data['features']) ? $data['features'] : null,
+                    'is_featured' => (int)($data['is_featured'] ?? 0),
+                    'is_most_selected' => (int)($data['is_most_selected'] ?? 0),
                     'is_active' => 1,
-                    'created_at' => $now, 'updated_at' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ]);
                 $inserted++;
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} plans inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => array_slice($errors, 0, 10)]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} plans inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     // ── User Reports Management ──────────────────────────────

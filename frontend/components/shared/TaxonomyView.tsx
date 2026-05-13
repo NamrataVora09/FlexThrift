@@ -195,9 +195,9 @@ export default function TaxonomyView() {
     const templates: Record<string, string> = {
       listing_types: 'name,gender_config,image\nClothing,mandatory,uploads/listing-types/clothing.jpg\nElectronics,hidden,',
       genders: 'name\nMale\nFemale\nUnisex\nKids',
-      product_types: 'name,listing_type_id\nShirts,1\nPants,1',
-      categories: 'category_name,product_type_ids,applies_to\nCasual Wear,"[1,2]","[""Male"",""Female""]"',
-      sub_categories: 'name,category_ids,applies_to\nT-Shirts,"[1]","[""Male"",""Unisex""]"',
+      product_types: 'name,listing_type\nShirts,Clothing\nPants,Clothing',
+      categories: 'category_name,product_types,applies_to\nCasual Wear,"Shirts,Pants","[""Male"",""Female""]"',
+      sub_categories: 'name,categories,applies_to\nT-Shirts,Casual Wear,"[""Male"",""Unisex""]"',
       colors: 'name,hex_code\nCrimson,#dc143c\nNavy Blue,#000080\nForest Green,#228b22',
     };
     const csv = templates[csvType] || '';
@@ -349,13 +349,13 @@ export default function TaxonomyView() {
               <strong>CSV Format Guide:</strong>
               <div className="row mt-2">
                 <div className="col-md-6">
-                  <div><strong>Listing Types:</strong> name, gender_config (mandatory/optional/hidden), image (path)</div>
+                  <div><strong>Listing Types:</strong> name, gender_config (mandatory/optional/hidden), image (path/URL)</div>
                   <div><strong>Genders:</strong> name</div>
-                  <div><strong>Product Types:</strong> name, listing_type_id</div>
+                  <div><strong>Product Types:</strong> name, listing_type (Name)</div>
                 </div>
                 <div className="col-md-6">
-                  <div><strong>Categories:</strong> category_name, product_type_ids (JSON array), applies_to (JSON array)</div>
-                  <div><strong>Sub-Categories:</strong> name, category_ids (JSON array), applies_to (JSON array)</div>
+                  <div><strong>Categories:</strong> category_name, product_types (Names, comma separated), applies_to (JSON array)</div>
+                  <div><strong>Sub-Categories:</strong> name, categories (Names, comma separated), applies_to (JSON array)</div>
                   <div><strong>Colors:</strong> name, hex_code</div>
                 </div>
               </div>

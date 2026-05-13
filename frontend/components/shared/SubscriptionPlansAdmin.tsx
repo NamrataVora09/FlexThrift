@@ -268,9 +268,11 @@ export default function SubscriptionPlansAdmin() {
 
         <BulkCsvUpload
           endpoint="/superadmin/bulk-upload-subscription-plans"
-          templateCsv="name,user_type,plan_type,limit_value,duration_hours,price,base_price\nStarter Buyer,buyer,duration,5,720,99,149\nPro Seller,seller,limit,20,0,299,399"
+          templateCsv={`name,user_type,plan_type,limit_value,duration_hours,price,base_price,features,is_featured,is_most_selected
+Starter Buyer,buyer,duration,5,720,99,149,"[]",0,0
+Pro Seller,seller,quantity,20,0,299,399,"[]",1,0`}
           templateFilename="subscription_plans_template.csv"
-          formatGuide="name (required), user_type (required: buyer/seller), plan_type (duration/limit), limit_value, duration_hours, price (required), base_price"
+          formatGuide="name (req), user_type (buyer/seller), plan_type (duration/quantity), limit_value, duration_hours, price (req), base_price, features (JSON), is_featured (0/1), is_most_selected (0/1)"
           title="Bulk Upload Subscription Plans"
         />
 

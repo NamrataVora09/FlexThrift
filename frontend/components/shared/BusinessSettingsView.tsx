@@ -675,7 +675,7 @@ export default function BusinessSettingsView() {
                     </div>
                     <div className="modal-footer border-0">
                       <button className="btn btn-light" onClick={() => setChargeModal(false)}>Cancel</button>
-                      <button className="btn btn-warning fw-bold" disabled={chargeSaving} onClick={saveCharge}>
+                      <button className="btn btn-warning fw-bold text-white!" disabled={chargeSaving} onClick={saveCharge}>
                         {chargeSaving ? <><span className="spinner-border spinner-border-sm me-1"></span>Saving…</> : <><i className="bi bi-check-lg me-1"></i>Save Charge</>}
                       </button>
                     </div>
