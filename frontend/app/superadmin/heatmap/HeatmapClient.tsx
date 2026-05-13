@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 
-// Approximate center coordinates for each Indian state
+// Approximate center coordinates for each Indian state (for fallback/bubbles)
 const STATE_COORDS: Record<string, [number, number]> = {
   'Andhra Pradesh': [15.9129, 79.7400], 'Arunachal Pradesh': [28.2180, 94.7278],
   'Assam': [26.2006, 92.9376], 'Bihar': [25.0961, 85.3131],
@@ -28,46 +28,66 @@ const STATE_COORDS: Record<string, [number, number]> = {
   'Puducherry': [11.9416, 79.8083],
 };
 
-interface StateTotals {
-  state: string; total: number; sellers: number; buyers: number; both_users: number;
-}
-interface ByStateType {
-  state: string; user_type: string; total: number; verified: number; first_reg: string; last_reg: string;
-}
-interface Summary {
-  total_users: number; total_sellers: number; total_buyers: number; total_both: number; total_states: number;
+interface HeatmapPoint {
+  lat: number;
+  lng: number;
+  state: string;
+  city: string;
 }
 
-type FilterType = 'all' | 'seller' | 'buyer' | 'both';
-
-const FILTER_CONFIG = {
-  all:    { label: 'All Users',  color: '#ffc63a', bg: '#ffc63a33', icon: 'bi-people-fill' },
-  seller: { label: 'Sellers',   color: '#3b82f6', bg: '#3b82f633', icon: 'bi-shop-window' },
-  buyer:  { label: 'Buyers',    color: '#10b981', bg: '#10b98133', icon: 'bi-bag-heart-fill' },
-  both:   { label: 'Both',      color: '#8b5cf6', bg: '#8b5cf633', icon: 'bi-person-fill-check' },
-};
+interface RegistrationAttempt {
+  id: number;
+  name: string;
+  email: string;
+  mobile: string;
+  address: string;
+  pin_code: string;
+  ip_address: string;
+  country: string;
+  state: string;
+  city: string;
+  is_allowed: number;
+  created_at: string;
+}
 
 export default function HeatmapClient() {
-  const [stateTotals, setStateTotals] = useState<StateTotals[]>([]);
-  const [byStateType, setByStateType] = useState<ByStateType[]>([]);
-  const [summary, setSummary] = useState<Summary | null>(null);
+  const [points, setPoints] = useState<HeatmapPoint[]>([]);
+  const [stateCounts, setStateCounts] = useState<Record<string, number>>({});
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [attempts, setAttempts] = useState<RegistrationAttempt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterType>('all');
   const [selectedState, setSelectedState] = useState<string | null>(null);
+  
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
-  const circleLayersRef = useRef<any[]>([]);
+  const layersRef = useRef<any[]>([]);
   const mapInitRef = useRef(false);
 
   useEffect(() => {
-    api.get<any>('/superadmin/user-state-heatmap').then((r) => {
-      if (r.success && r.data) {
-        setStateTotals(r.data.state_totals || []);
-        setByStateType(r.data.by_state_type || []);
-        setSummary(r.data.summary || null);
+    const fetchData = async () => {
+      try {
+        const [heatmapRes, attemptsRes] = await Promise.all([
+          api.get<any>('/superadmin/user-state-heatmap'),
+          api.get<any>('/superadmin/registration-attempts')
+        ]);
+
+        if (heatmapRes.success) {
+          setPoints(heatmapRes.data.points || []);
+          setStateCounts(heatmapRes.data.state_counts || {});
+          setTotalUsers(heatmapRes.data.total_users || 0);
+        }
+
+        if (attemptsRes.success) {
+          setAttempts(attemptsRes.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch heatmap data', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    };
+
+    fetchData();
   }, []);
 
   // Init map
@@ -79,294 +99,205 @@ export default function HeatmapClient() {
       const L = (await import('leaflet')).default;
       const map = L.map(mapRef.current!).setView([22.5, 82.5], 5);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
       }).addTo(map);
       mapInstanceRef.current = map;
-      renderCircles(L, map, stateTotals, filter);
+      renderLayers(L, map);
     };
     initMap();
   }, [loading]);
 
-  // Re-render circles on filter/data change
-  useEffect(() => {
-    if (!mapInstanceRef.current || typeof window === 'undefined' || loading) return;
-    import('leaflet').then(({ default: L }) => {
-      renderCircles(L, mapInstanceRef.current, stateTotals, filter);
+  const renderLayers = (L: any, map: any) => {
+    // Clear existing
+    layersRef.current.forEach(l => map.removeLayer(l));
+    layersRef.current = [];
+
+    // 1. Render User Points (Individual Dots)
+    points.forEach(p => {
+      const dot = L.circleMarker([p.lat, p.lng], {
+        radius: 4,
+        fillColor: '#ffc63a',
+        color: '#000',
+        weight: 1,
+        opacity: 0.8,
+        fillOpacity: 0.8
+      }).addTo(map);
+      
+      dot.bindPopup(`<strong>${p.city || 'Unknown City'}</strong><br>${p.state}`);
+      layersRef.current.push(dot);
     });
-  }, [filter, stateTotals]);
 
-  const renderCircles = (L: any, map: any, data: StateTotals[], activeFilter: FilterType) => {
-    // Clear existing layers
-    circleLayersRef.current.forEach(l => map.removeLayer(l));
-    circleLayersRef.current = [];
-
-    const maxVal = Math.max(...data.map(s => getCount(s, activeFilter)), 1);
-
-    data.forEach((s) => {
-      const coords = STATE_COORDS[s.state];
+    // 2. Render State Bubbles (Aggregated)
+    const maxCount = Math.max(...Object.values(stateCounts), 1);
+    Object.entries(stateCounts).forEach(([state, count]) => {
+      const coords = STATE_COORDS[state];
       if (!coords) return;
-      const count = getCount(s, activeFilter);
-      if (count === 0) return;
 
-      const cfg = FILTER_CONFIG[activeFilter];
-      const radius = 20000 + (count / maxVal) * 120000; // 20km–140km
-      const opacity = 0.25 + (count / maxVal) * 0.5;
-
-      const circle = L.circle(coords, {
-        radius, color: cfg.color, fillColor: cfg.color,
-        fillOpacity: opacity, weight: 2,
+      const radius = 15000 + (count / maxCount) * 100000;
+      const bubble = L.circle(coords, {
+        radius,
+        color: '#ffc63a',
+        fillColor: '#ffc63a',
+        fillOpacity: 0.2,
+        weight: 2,
+        dashArray: '5, 5'
       }).addTo(map);
 
-      circle.bindPopup(`
-        <div style="min-width:200px;font-family:Inter,sans-serif">
-          <h6 style="font-weight:800;margin-bottom:8px;font-size:1rem">${s.state}</h6>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
-            <div style="background:#ffc63a22;padding:6px 10px;border-radius:8px;text-align:center">
-              <div style="font-size:1.2rem;font-weight:800">${s.total}</div>
-              <div style="font-size:0.7rem;color:#666">Total</div>
-            </div>
-            <div style="background:#3b82f622;padding:6px 10px;border-radius:8px;text-align:center">
-              <div style="font-size:1.2rem;font-weight:800;color:#3b82f6">${s.sellers}</div>
-              <div style="font-size:0.7rem;color:#666">Sellers</div>
-            </div>
-            <div style="background:#10b98122;padding:6px 10px;border-radius:8px;text-align:center">
-              <div style="font-size:1.2rem;font-weight:800;color:#10b981">${s.buyers}</div>
-              <div style="font-size:0.7rem;color:#666">Buyers</div>
-            </div>
-            <div style="background:#8b5cf622;padding:6px 10px;border-radius:8px;text-align:center">
-              <div style="font-size:1.2rem;font-weight:800;color:#8b5cf6">${s.both_users}</div>
-              <div style="font-size:0.7rem;color:#666">Both</div>
-            </div>
-          </div>
-        </div>
-      `);
+      bubble.bindTooltip(`<strong>${state}</strong>: ${count} users`, { permanent: false, direction: 'top' });
+      
+      bubble.on('click', () => setSelectedState(state));
+      layersRef.current.push(bubble);
 
-      circle.on('click', () => setSelectedState(s.state));
-      circleLayersRef.current.push(circle);
-
-      // State label
+      // Label
       const label = L.divIcon({
-        className: '',
-        html: `<div style="font-size:0.7rem;font-weight:700;color:#222;white-space:nowrap;text-shadow:1px 1px 2px #fff,-1px -1px 2px #fff">${s.state.split(' ')[0]}<br>${count}</div>`,
-        iconAnchor: [0, 0],
+        className: 'state-label',
+        html: `<div style="font-size:0.7rem;font-weight:700;color:#333;text-align:center;">${state.split(' ')[0]}<br>${count}</div>`,
+        iconAnchor: [20, 10]
       });
       const marker = L.marker(coords, { icon: label, interactive: false }).addTo(map);
-      circleLayersRef.current.push(marker);
+      layersRef.current.push(marker);
     });
   };
 
-  const getCount = (s: StateTotals, f: FilterType) => {
-    if (f === 'all') return s.total;
-    if (f === 'seller') return s.sellers;
-    if (f === 'buyer') return s.buyers;
-    return s.both_users;
-  };
-
-  const selectedStateDetails = selectedState
-    ? byStateType.filter(r => r.state === selectedState)
-    : [];
-  const selectedStateSummary = selectedState
-    ? stateTotals.find(s => s.state === selectedState)
-    : null;
-
-  const displayData = filter === 'all'
-    ? stateTotals
-    : stateTotals.filter(s => getCount(s, filter) > 0).sort((a, b) => getCount(b, filter) - getCount(a, filter));
+  const sortedStates = Object.entries(stateCounts)
+    .sort(([, a], [, b]) => b - a);
 
   return (
     <DashboardLayout requiredRoles={['super_admin']}>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <style>{`
+        .state-label { background: transparent; border: none; }
+        .attempt-allowed { color: #10b981; }
+        .attempt-blocked { color: #ef4444; }
+      `}</style>
 
-      <div className="container-fluid">
-        {/* Header */}
-        <div className="mb-4">
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10, marginBottom: '0.25rem' }}>
-            <i className="bi bi-map-fill" style={{ color: '#ffc63a' }}></i> Registration Heatmap
-          </h1>
-          <p className="text-muted small">Visual breakdown of Sellers, Buyers & Both users by state across India</p>
-        </div>
-
-        {/* Summary Stats */}
-        <div className="row g-3 mb-4">
-          {[
-            { key: 'all',    label: 'Total Users',  value: summary?.total_users ?? 0,   color: '#ffc63a', icon: 'bi-people-fill' },
-            { key: 'seller', label: 'Sellers',       value: summary?.total_sellers ?? 0, color: '#3b82f6', icon: 'bi-shop-window' },
-            { key: 'buyer',  label: 'Buyers',        value: summary?.total_buyers ?? 0,  color: '#10b981', icon: 'bi-bag-heart-fill' },
-            { key: 'both',   label: 'Both Roles',   value: summary?.total_both ?? 0,    color: '#8b5cf6', icon: 'bi-person-fill-check' },
-            { key: 'states', label: 'States Active', value: summary?.total_states ?? 0, color: '#f97316', icon: 'bi-geo-alt-fill' },
-          ].map((s) => (
-            <div key={s.key} className="col-md">
-              <div
-                className="card border-0"
-                style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: s.key !== 'states' ? 'pointer' : 'default', border: filter === s.key ? `2px solid ${s.color}` : '2px solid transparent', transition: '0.2s' }}
-                onClick={() => s.key !== 'states' && setFilter(s.key as FilterType)}
-              >
-                <div className="card-body d-flex align-items-center gap-3 py-3">
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: `${s.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <i className={`bi ${s.icon}`} style={{ fontSize: '1.2rem', color: s.color }}></i>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 800, lineHeight: 1 }}>{loading ? '—' : s.value}</div>
-                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>{s.label}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="card border-0 mb-4" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div className="card-body p-3">
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <span className="text-muted small fw-semibold me-2">Show on map:</span>
-              {(Object.entries(FILTER_CONFIG) as [FilterType, typeof FILTER_CONFIG['all']][]).map(([key, cfg]) => (
-                <button key={key} onClick={() => setFilter(key)}
-                  style={{ background: filter === key ? cfg.color : '#f8f9fa', color: filter === key ? '#fff' : '#333', border: 'none', borderRadius: '2rem', padding: '6px 18px', fontWeight: 600, fontSize: '0.82rem', transition: '0.2s', cursor: 'pointer' }}>
-                  <i className={`bi ${cfg.icon} me-1`}></i>{cfg.label}
-                </button>
-              ))}
-            </div>
+      <div className="container-fluid py-4">
+        <div className="d-flex justify-content-between align-items-end mb-4">
+          <div>
+            <h1 className="h3 mb-1 fw-bold">Registration Heatmap</h1>
+            <p className="text-muted small mb-0">Geographic distribution of verified users and registration demand tracking.</p>
+          </div>
+          <div className="text-end">
+            <div className="h2 mb-0 fw-bold text-warning">{totalUsers}</div>
+            <div className="text-muted small fw-bold">TOTAL VERIFIED USERS</div>
           </div>
         </div>
 
         <div className="row g-4">
-          {/* Map */}
+          {/* Map Column */}
           <div className="col-lg-8">
-            <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-              <div className="card-header bg-light d-flex justify-content-between align-items-center" style={{ padding: '0.75rem 1.25rem' }}>
-                <span className="fw-bold small">
-                  <i className={`bi ${FILTER_CONFIG[filter].icon} me-2`} style={{ color: FILTER_CONFIG[filter].color }}></i>
-                  {FILTER_CONFIG[filter].label} — State Distribution
-                </span>
-                <span className="badge" style={{ background: FILTER_CONFIG[filter].color, color: filter === 'all' ? '#000' : '#fff', fontSize: '0.7rem' }}>
-                  Bubble size ∝ user count
-                </span>
+            <div className="card border-0 shadow-sm overflow-hidden" style={{ borderRadius: '1rem' }}>
+              <div className="card-header bg-white py-3 border-bottom-0">
+                <div className="d-flex justify-content-between align-items-center">
+                  <h6 className="mb-0 fw-bold">Live Distribution Map</h6>
+                  <span className="badge bg-warning-subtle text-warning px-3 py-2 rounded-pill">
+                    <i className="bi bi-broadcast me-2"></i>Real-time Data
+                  </span>
+                </div>
               </div>
-              <div className="card-body p-0">
-                {loading ? (
-                  <div style={{ height: 520, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="spinner-border" style={{ color: '#ffc63a' }}></div>
+              <div className="card-body p-0 position-relative">
+                {loading && (
+                  <div className="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-flex align-items-center justify-content-center" style={{ zIndex: 1000 }}>
+                    <div className="spinner-border text-warning"></div>
                   </div>
-                ) : (
-                  <div ref={mapRef} style={{ height: 520 }}></div>
                 )}
+                <div ref={mapRef} style={{ height: '600px', width: '100%' }}></div>
               </div>
             </div>
           </div>
 
-          {/* State Detail Panel */}
+          {/* Sidebar Column */}
           <div className="col-lg-4">
-            <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', height: '100%' }}>
-              <div className="card-header bg-light" style={{ padding: '0.75rem 1.25rem' }}>
-                <span className="fw-bold small">
-                  {selectedState ? <><i className="bi bi-geo-fill me-1" style={{ color: '#ffc63a' }}></i>{selectedState}</> : 'Click a bubble for details'}
-                </span>
+            {/* State Leaderboard */}
+            <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '1rem', height: '600px', display: 'flex', flexDirection: 'column' }}>
+              <div className="card-header bg-white py-3 border-bottom-0">
+                <h6 className="mb-0 fw-bold">State Breakdown</h6>
               </div>
-              <div className="card-body p-3" style={{ overflowY: 'auto', maxHeight: 470 }}>
-                {selectedState && selectedStateSummary ? (
-                  <>
-                    {/* State mini stats */}
-                    <div className="row g-2 mb-3">
-                      {[
-                        { label: 'Total', value: selectedStateSummary.total, color: '#ffc63a' },
-                        { label: 'Sellers', value: selectedStateSummary.sellers, color: '#3b82f6' },
-                        { label: 'Buyers', value: selectedStateSummary.buyers, color: '#10b981' },
-                        { label: 'Both', value: selectedStateSummary.both_users, color: '#8b5cf6' },
-                      ].map(stat => (
-                        <div key={stat.label} className="col-6">
-                          <div style={{ background: `${stat.color}15`, borderRadius: '0.5rem', padding: '10px', textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: stat.color }}>{stat.value}</div>
-                            <div style={{ fontSize: '0.7rem', color: '#666' }}>{stat.label}</div>
-                          </div>
+              <div className="card-body p-0 overflow-auto flex-grow-1">
+                <ul className="list-group list-group-flush">
+                  {sortedStates.length > 0 ? sortedStates.map(([state, count], idx) => {
+                    const max = Math.max(...Object.values(stateCounts), 1);
+                    const pct = (count / max) * 100;
+                    return (
+                      <li key={state} className={`list-group-item border-0 px-4 py-3 ${selectedState === state ? 'bg-warning-subtle' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setSelectedState(state)}>
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <span className="fw-bold small">{idx + 1}. {state}</span>
+                          <span className="badge bg-dark rounded-pill">{count}</span>
                         </div>
-                      ))}
+                        <div className="progress" style={{ height: '4px' }}>
+                          <div className="progress-bar bg-warning" style={{ width: `${pct}%` }}></div>
+                        </div>
+                      </li>
+                    );
+                  }) : (
+                    <div className="p-5 text-center text-muted">
+                      <i className="bi bi-geo-alt display-4 opacity-25"></i>
+                      <p className="mt-2">No location data found</p>
                     </div>
-                    {/* Breakdown */}
-                    {selectedStateDetails.map((d, i) => (
-                      <div key={i} className="d-flex justify-content-between align-items-center mb-2 p-2" style={{ background: '#f8f9fa', borderRadius: '0.5rem' }}>
-                        <span>
-                          <span className="badge me-2" style={{ background: d.user_type === 'seller' ? '#3b82f6' : d.user_type === 'buyer' ? '#10b981' : '#8b5cf6', color: '#fff', fontSize: '0.7rem' }}>
-                            {d.user_type}
-                          </span>
-                          <span className="small text-muted">{d.verified} verified</span>
-                        </span>
-                        <strong>{d.total}</strong>
-                      </div>
-                    ))}
-                    <div className="text-muted" style={{ fontSize: '0.72rem', marginTop: '0.75rem' }}>
-                      First reg: {selectedStateDetails[0]?.first_reg ? new Date(selectedStateDetails[0].first_reg).toLocaleDateString('en-IN') : '—'}<br />
-                      Latest: {selectedStateDetails[0]?.last_reg ? new Date(selectedStateDetails[0].last_reg).toLocaleDateString('en-IN') : '—'}
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center text-muted py-4">
-                    <i className="bi bi-cursor-fill" style={{ fontSize: '2rem', opacity: 0.2 }}></i>
-                    <p className="small mt-2">Click any bubble on the map to see state-level breakdown</p>
-                  </div>
-                )}
+                  )}
+                </ul>
+              </div>
+              <div className="card-footer bg-light border-0 py-3 text-center">
+                <span className="small text-muted">{Object.keys(stateCounts).length} active states detected</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* State Leaderboard Table */}
-        <div className="card border-0 mt-4" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <div className="card-header bg-light d-flex justify-content-between align-items-center" style={{ borderRadius: '0.75rem 0.75rem 0 0', padding: '1rem 1.5rem' }}>
-            <h5 className="mb-0 fw-bold"><i className="bi bi-bar-chart-fill me-2" style={{ color: '#ffc63a' }}></i>State Leaderboard</h5>
-            <span className="badge bg-secondary-subtle text-secondary">{displayData.length} states</span>
+        {/* Registration Attempts Log */}
+        <div className="mt-5">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h5 className="fw-bold mb-0">Registration Audit Log</h5>
+            <div className="text-muted small">Showing latest 1000 attempts</div>
           </div>
-          <div className="card-body p-0">
+          <div className="card border-0 shadow-sm overflow-hidden" style={{ borderRadius: '1rem' }}>
             <div className="table-responsive">
               <table className="table table-hover align-middle mb-0">
-                <thead>
-                  <tr style={{ background: '#f8f9fa', fontSize: '0.75rem', color: '#677788', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    <th style={{ padding: '0.875rem 1.5rem' }}>#</th>
-                    <th style={{ padding: '0.875rem 1rem' }}>State</th>
-                    <th style={{ padding: '0.875rem 1rem' }}>Total</th>
-                    <th style={{ padding: '0.875rem 1rem' }}>Sellers</th>
-                    <th style={{ padding: '0.875rem 1rem' }}>Buyers</th>
-                    <th style={{ padding: '0.875rem 1rem' }}>Both</th>
-                    <th style={{ padding: '0.875rem 1.5rem' }}>Distribution</th>
+                <thead className="bg-light">
+                  <tr>
+                    <th className="px-4 py-3 small fw-bold">USER / CONTACT</th>
+                    <th className="py-3 small fw-bold">IP & ADDRESS</th>
+                    <th className="py-3 small fw-bold">DETECTION TYPE</th>
+                    <th className="py-3 small fw-bold">RESULT</th>
+                    <th className="px-4 py-3 small fw-bold">TIME</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {loading ? (
-                    <tr><td colSpan={7} className="text-center py-4"><div className="spinner-border" style={{ color: '#ffc63a' }}></div></td></tr>
-                  ) : displayData.length > 0 ? displayData.map((s, i) => {
-                    const max = Math.max(...displayData.map(x => x.total), 1);
-                    const pct = Math.round((s.total / max) * 100);
-                    return (
-                      <tr key={s.state} style={{ cursor: 'pointer', background: selectedState === s.state ? '#ffc63a10' : undefined }} onClick={() => setSelectedState(s.state)}>
-                        <td style={{ padding: '0.875rem 1.5rem', color: '#aaa', fontWeight: 600 }}>#{i + 1}</td>
-                        <td style={{ padding: '0.875rem 1rem', fontWeight: 700 }}>
-                          <i className="bi bi-geo-alt-fill me-1" style={{ color: '#ffc63a', fontSize: '0.8rem' }}></i>{s.state}
-                        </td>
-                        <td style={{ padding: '0.875rem 1rem' }}><strong>{s.total}</strong></td>
-                        <td style={{ padding: '0.875rem 1rem' }}>
-                          <span style={{ color: '#3b82f6', fontWeight: 600 }}>{s.sellers}</span>
-                        </td>
-                        <td style={{ padding: '0.875rem 1rem' }}>
-                          <span style={{ color: '#10b981', fontWeight: 600 }}>{s.buyers}</span>
-                        </td>
-                        <td style={{ padding: '0.875rem 1rem' }}>
-                          <span style={{ color: '#8b5cf6', fontWeight: 600 }}>{s.both_users}</span>
-                        </td>
-                        <td style={{ padding: '0.875rem 1.5rem' }}>
-                          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                            <div style={{ flex: 1, height: 8, background: '#f0f0f0', borderRadius: 4, overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #ffc63a, #f97316)', borderRadius: 4, transition: '0.5s' }}></div>
-                            </div>
-                            <span style={{ fontSize: '0.72rem', color: '#999', minWidth: 30, textAlign: 'right' }}>{pct}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  }) : (
-                    <tr><td colSpan={7} className="text-center py-5 text-muted">
-                      <i className="bi bi-people" style={{ fontSize: '2rem', opacity: 0.2 }}></i>
-                      <p className="mt-2 small">No state data yet. Users need to have a state in their profile.</p>
-                    </td></tr>
+                  {attempts.length > 0 ? attempts.map(att => (
+                    <tr key={att.id}>
+                      <td className="px-4 py-3">
+                        <div className="fw-bold text-dark">{att.name}</div>
+                        <div className="text-muted x-small">{att.email} | {att.mobile}</div>
+                      </td>
+                      <td className="py-3">
+                        <div className="small fw-semibold">{att.city || 'Unknown City'}, {att.state || 'Unknown State'}</div>
+                        <div className="text-muted x-small">IP: {att.ip_address} | PIN: {att.pin_code}</div>
+                      </td>
+                      <td className="py-3">
+                        <span className="badge bg-secondary-subtle text-secondary rounded-pill x-small">
+                          {att.state ? 'Geographic' : 'Unknown'}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        {att.is_allowed ? (
+                          <span className="attempt-allowed fw-bold small">
+                            <i className="bi bi-check-circle-fill me-1"></i>SUCCESS
+                          </span>
+                        ) : (
+                          <span className="attempt-blocked fw-bold small">
+                            <i className="bi bi-x-circle-fill me-1"></i>BLOCKED (RESTRICTED ZONE)
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted small">
+                        {new Date(att.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={5} className="text-center py-5 text-muted">No registration attempts logged yet.</td>
+                    </tr>
                   )}
                 </tbody>
               </table>

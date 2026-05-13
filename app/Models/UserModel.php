@@ -57,7 +57,14 @@ class UserModel extends Model
         'referred_by',
         'referral_balance',
         'has_used_referral',
-        'referral_expires_at'
+        'referral_expires_at',
+        'state',
+        'city',
+        'latitude',
+        'longitude',
+        'alternate_mobile',
+        'gender',
+        'profile_image'
     ];
 
     protected $beforeInsert = ['generateReferralCode'];

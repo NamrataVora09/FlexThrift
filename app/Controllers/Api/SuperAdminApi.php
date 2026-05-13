@@ -1343,10 +1343,11 @@ class SuperAdminApi extends ResourceController
     public function userStateHeatmap()
     {
         $db = \Config\Database::connect();
+        helper('geolocation');
 
-        // Get user counts grouped by state and user_type from users table
+        // 1. Get detailed stats via SQL
         $rows = $db->query("
-            SELECT
+            SELECT 
                 TRIM(state) as state,
                 user_type,
                 COUNT(*) as total,
@@ -1360,9 +1361,8 @@ class SuperAdminApi extends ResourceController
             ORDER BY total DESC
         ")->getResultArray();
 
-        // Also get total unique users per state (any type)
         $stateTotals = $db->query("
-            SELECT
+            SELECT 
                 TRIM(state) as state,
                 COUNT(*) as total,
                 SUM(CASE WHEN user_type = 'seller' THEN 1 ELSE 0 END) as sellers,
@@ -1375,25 +1375,55 @@ class SuperAdminApi extends ResourceController
             ORDER BY total DESC
         ")->getResultArray();
 
+        // 2. Fetch all verified users for precise coordinate mapping (Heatmap)
+        $allUsers = $db->table('users')
+            ->select('state, pin_code, latitude, longitude, city')
+            ->where('is_verified', 1)
+            ->where('is_blocked', 0)
+            ->get()
+            ->getResultArray();
+
+        $heatmapPoints = [];
+        $preciseStateCounts = [];
+
+        foreach ($allUsers as $u) {
+            $st = $u['state'];
+            if (empty($st) && !empty($u['pin_code'])) {
+                $st = getStateFromPinCode($u['pin_code']);
+            }
+
+            if ($st) {
+                $preciseStateCounts[$st] = ($preciseStateCounts[$st] ?? 0) + 1;
+            }
+
+            if (!empty($u['latitude']) && !empty($u['longitude']) && (float)$u['latitude'] != 0) {
+                $heatmapPoints[] = [
+                    'lat'   => (float)$u['latitude'],
+                    'lng'   => (float)$u['longitude'],
+                    'state' => $st,
+                    'city'  => $u['city']
+                ];
+            }
+        }
+
         // Summary stats
-        $totalUsers    = $db->table('users')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults();
-        $totalSellers  = $db->table('users')->where('user_type', 'seller')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults();
-        $totalBuyers   = $db->table('users')->where('user_type', 'buyer')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults();
-        $totalBoth     = $db->table('users')->where('user_type', 'both')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults();
-        $totalStates   = count($stateTotals);
+        $summary = [
+            'total_users'   => $db->table('users')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults(),
+            'total_sellers' => $db->table('users')->where('user_type', 'seller')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults(),
+            'total_buyers'  => $db->table('users')->where('user_type', 'buyer')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults(),
+            'total_both'    => $db->table('users')->where('user_type', 'both')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults(),
+            'total_states'  => count($stateTotals),
+        ];
 
         return $this->respond([
             'success' => true,
             'data' => [
                 'by_state_type' => $rows,
                 'state_totals'  => $stateTotals,
-                'summary' => [
-                    'total_users'   => $totalUsers,
-                    'total_sellers' => $totalSellers,
-                    'total_buyers'  => $totalBuyers,
-                    'total_both'    => $totalBoth,
-                    'total_states'  => $totalStates,
-                ],
+                'state_counts'  => $preciseStateCounts,
+                'points'        => $heatmapPoints,
+                'summary'       => $summary,
+                'total_users'   => count($allUsers)
             ]
         ]);
     }
@@ -2896,4 +2926,5 @@ private function processImage($source, $subDir): ?string
             'url'     => base_url($publicPath),
         ]);
     }
+
 }

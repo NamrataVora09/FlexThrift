@@ -239,6 +239,29 @@ class AuthApi extends ResourceController
             }
         }
 
+        // Add detected location to user data for storage
+        $data['state'] = $detectedState;
+        $data['city'] = $loc['city'] ?? null;
+        $data['latitude'] = $clientLat ?: ($loc['latitude'] ?? null);
+        $data['longitude'] = $clientLng ?: ($loc['longitude'] ?? null);
+
+        // Log successful registration attempt
+        logRegistrationAttempt([
+            'name'       => $data['name'],
+            'email'      => $data['email'],
+            'mobile'     => $data['mobile'],
+            'address'    => $data['address'],
+            'pin_code'   => $data['pin_code'],
+            'user_type'  => $data['user_type'],
+            'ip'         => $ip,
+            'country'    => $loc['country'] ?? null,
+            'state'      => $data['state'],
+            'city'       => $data['city'],
+            'latitude'   => $data['latitude'],
+            'longitude'  => $data['longitude'],
+            'is_allowed' => 1,
+            'zone_id'    => $detectedZone['id'] ?? null,
+        ]);
         // Check existing email
         $existingUser = $this->userModel->getUserByEmail($data['email']);
         if ($existingUser) {
