@@ -61,6 +61,13 @@ class Database extends Config
         $this->default['database'] = getenv('DB_DATABASE') ?: getenv('database.default.database') ?: 'flex';
         $this->default['port']     = (int)(getenv('DB_PORT') ?: getenv('database.default.port') ?: 3306);
 
+        // Enable SSL for cloud MySQL connections (Aiven, PlanetScale, etc.)
+        if (getenv('DB_SSL') === 'true' || (ENVIRONMENT === 'production' && $this->default['hostname'] !== 'localhost' && $this->default['hostname'] !== '127.0.0.1')) {
+            $this->default['encrypt'] = [
+                'ssl_verify' => false,
+            ];
+        }
+
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
         }
