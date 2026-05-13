@@ -108,6 +108,21 @@ export default function ZonesView() {
 
       mapInstanceRef.current = map;
       drawnItemsRef.current = drawnItems;
+
+      // Click to select state
+      map.on('click', async (e: any) => {
+        const { lat, lng } = e.latlng;
+        const loadingToast = toast.loading('Detecting location...');
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lng}`);
+          const data = await res.json();
+          toast.dismiss(loadingToast);
+          await goToLocation(lat, lng, data.display_name || 'Selected Location', data.address);
+        } catch {
+          toast.dismiss(loadingToast);
+          await goToLocation(lat, lng, 'Selected Location');
+        }
+      });
     };
 
     initMap();
@@ -140,11 +155,11 @@ export default function ZonesView() {
       }),
     }).addTo(map);
     searchMarkerRef.current.bindPopup(`<b>${name.split(',')[0]}</b><br>Draw your zone here`).openPopup();
-    map.setView([lat, lng], 8);
+    map.setView([lat, lng], 10);
 
     // Auto-fill state from Nominatim address details
     if (address) {
-      const detectedState = address.state || address.region || address.county || '';
+      const detectedState = address.state || address.region || address.county || address.city || address.town || address.state_district || '';
       if (detectedState) {
         // Find best match in INDIAN_STATES
         const matched = INDIAN_STATES.find(
@@ -154,11 +169,11 @@ export default function ZonesView() {
         );
         if (matched) {
           setZoneState(matched);
-          if (!zoneName) setZoneName(`${matched} Zone`);
+          setZoneName(`${matched} Zone`);
           toast.success(`State auto-detected: ${matched}`, { duration: 2500 });
-        } else if (detectedState) {
+        } else if (detectedState && INDIAN_STATES.includes(detectedState)) {
           setZoneState(detectedState);
-          if (!zoneName) setZoneName(`${detectedState} Zone`);
+          setZoneName(`${detectedState} Zone`);
         }
       }
     }
@@ -195,8 +210,8 @@ export default function ZonesView() {
   };
 
   const saveZone = async () => {
-    if (!zoneName.trim()) { toast.error('Please enter a zone name'); return; }
-    if (!zoneState.trim()) { toast.error('Please select a state for this zone'); return; }
+    const finalZoneName = zoneName || `${zoneState} Zone`;
+    if (!zoneState.trim()) { toast.error('Please select a state via the map first'); return; }
 
     // Check for duplicate state
     const duplicate = zones.find(z => z.state?.toLowerCase() === zoneState.toLowerCase() && Number(z.is_active));
@@ -213,7 +228,7 @@ export default function ZonesView() {
 
     setSaving(true);
     const res = await api.post<any>('/superadmin/add-zone', {
-      zone_name: zoneName,
+      zone_name: finalZoneName,
       state: zoneState,
       zone_polygon: polygonJson,
     });
@@ -299,39 +314,13 @@ export default function ZonesView() {
         <div className="card border-0 mb-4" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div className="card-header bg-light" style={{ borderRadius: '0.75rem 0.75rem 0 0', padding: '1rem 1.5rem' }}>
             <h5 className="mb-0 fw-bold"><i className="bi bi-plus-circle me-2" style={{ color: '#ffc63a' }}></i>Add New Zone</h5>
-            <small className="text-muted">Select a state and optionally draw a geographic boundary on the map</small>
+            <small className="text-muted">Search for a location or click on the map to select a state for registration restriction.</small>
           </div>
           <div className="card-body p-4">
-            {/* Zone Name + State */}
-            <div className="row g-3 mb-4">
-              <div className="col-md-6">
-                <label className="form-label fw-semibold small">Zone Name <span className="text-danger">*</span></label>
-                <input className="form-control" style={inputStyle} placeholder="e.g., Maharashtra Zone, Delhi NCR"
-                  value={zoneName} onChange={(e) => setZoneName(e.target.value)} />
-              </div>
-              <div className="col-md-6">
-                <label className="form-label fw-semibold small">
-                  State <span className="text-danger">*</span>
-                  <span className="ms-2 badge bg-warning text-dark" style={{ fontSize: '0.7rem' }}>Registration Gate</span>
-                </label>
-                <select className="form-select" style={inputStyle} value={zoneState} onChange={(e) => setZoneState(e.target.value)}>
-                  <option value="">— Select State —</option>
-                  {INDIAN_STATES.map(s => (
-                    <option key={s} value={s} disabled={!!zones.find(z => z.state === s && Number(z.is_active))}>
-                      {s}{zones.find(z => z.state === s && Number(z.is_active)) ? ' (already active)' : ''}
-                    </option>
-                  ))}
-                </select>
-                <small className="text-muted mt-1 d-block">Users from this state will be allowed to register</small>
-              </div>
-            </div>
-
             {/* Map Section */}
             <div className="mb-3">
-              <label className="form-label fw-semibold small">Geographic Boundary <span className="text-muted">(Optional — for visual reference)</span></label>
-
               {/* Search + Location */}
-              <div className="row mb-2 g-2">
+              <div className="row mb-3 g-2">
                 <div className="col-md-8">
                   <div className="input-group">
                     <span className="input-group-text"><i className="bi bi-search"></i></span>
@@ -343,7 +332,7 @@ export default function ZonesView() {
                   {searchResults.length > 0 && (
                     <div className="list-group mt-1" style={{ maxHeight: 200, overflowY: 'auto', position: 'absolute', zIndex: 1000, width: '66%', boxShadow: '0 4px 20px rgba(0,0,0,0.12)', borderRadius: '0.5rem' }}>
                       {searchResults.map((r, i) => {
-                        const detectedState = r.address?.state || r.address?.region || '';
+                        const detectedState = r.address?.state || r.address?.region || r.address?.city || r.address?.town || '';
                         const matchedState = INDIAN_STATES.find(
                           s => s.toLowerCase() === detectedState.toLowerCase() ||
                                detectedState.toLowerCase().includes(s.toLowerCase())
@@ -367,37 +356,47 @@ export default function ZonesView() {
                   )}
                 </div>
                 <div className="col-md-4">
-                  <button className="btn btn-outline-secondary w-100" style={{ borderRadius: '0.5rem', fontWeight: 600 }} onClick={useCurrentLocation}>
+                  <button className="btn btn-outline-secondary w-100" style={{ borderRadius: '0.5rem', fontWeight: 600, height: '100%' }} onClick={useCurrentLocation}>
                     <i className="bi bi-geo-alt-fill me-1"></i> Use My Location
                   </button>
                 </div>
               </div>
 
+              <div className="mb-2 small text-muted"><i className="bi bi-info-circle me-1"></i> Click anywhere on the map to auto-detect and select a state.</div>
               <div ref={mapRef} style={{ height: 450, borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid #e7eaf3' }}></div>
-              <div className="mt-2 d-flex gap-2 flex-wrap">
-                {zoneState && (
-                  <div className="alert alert-warning py-2 px-3 small mb-0 d-flex align-items-center gap-2" style={{ borderRadius: '0.5rem' }}>
-                    <i className="bi bi-geo-fill text-warning"></i>
-                    <span>State auto-detected: <strong>{zoneState}</strong></span>
-                    <button className="btn btn-sm btn-link text-muted p-0 ms-2" onClick={() => setZoneState('')} title="Clear state">✕</button>
+              
+              <div className="mt-3 d-flex gap-2 flex-wrap">
+                {zoneState ? (
+                  <div className="alert alert-warning py-2 px-3 small mb-0 d-flex align-items-center gap-2" style={{ borderRadius: '0.5rem', border: '1px solid #ffc63a44', background: '#ffc63a11' }}>
+                    <i className="bi bi-geo-fill text-warning" style={{ fontSize: '1.1rem' }}></i>
+                    <div>
+                      <span className="text-muted d-block" style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700 }}>Selected State</span>
+                      <strong style={{ fontSize: '0.9rem' }}>{zoneState}</strong>
+                    </div>
+                    <button className="btn btn-sm btn-link text-muted p-0 ms-3" onClick={() => { setZoneState(''); setZoneName(''); }} title="Clear selection">✕</button>
+                  </div>
+                ) : (
+                  <div className="alert alert-secondary py-2 px-3 small mb-0 d-flex align-items-center gap-2" style={{ borderRadius: '0.5rem', opacity: 0.7 }}>
+                    <i className="bi bi-geo"></i>
+                    <span>No state selected yet. Click the map or search above.</span>
                   </div>
                 )}
                 {hasPolygon && (
                   <div className="alert alert-success py-2 px-3 small mb-0 d-flex align-items-center gap-2" style={{ borderRadius: '0.5rem' }}>
                     <i className="bi bi-bounding-box"></i>
-                    <span>Polygon drawn — will be saved with the zone</span>
+                    <span>Polygon boundary drawn</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Save Buttons */}
-            <div className="d-flex gap-2">
-              <button className="btn sa-filter-btn" style={btnGold} onClick={saveZone} disabled={saving || !zoneName.trim() || !zoneState.trim()}>
-                {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : <><i className="bi bi-save me-1"></i>Save Zone</>}
+            <div className="d-flex gap-2 mt-4">
+              <button className="btn sa-filter-btn" style={btnGold} onClick={saveZone} disabled={saving || !zoneState.trim()}>
+                {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : <><i className="bi bi-plus-lg me-1"></i>Create Restricted Zone for {zoneState || '...'}</>}
               </button>
               <button className="btn btn-outline-secondary" style={{ borderRadius: '0.5rem' }} onClick={clearDrawing}>
-                <i className="bi bi-x-circle me-1"></i>Clear
+                <i className="bi bi-trash me-1"></i>Clear Map
               </button>
             </div>
           </div>

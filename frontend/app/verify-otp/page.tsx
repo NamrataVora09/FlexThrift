@@ -91,8 +91,7 @@ export default function VerifyOtpPage() {
         .auth-input-group label { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.8rem; color: #333; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
         .otp-input { width: 100%; padding: 16px; border: 2px solid #eee; border-radius: 12px; font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 700; text-align: center; letter-spacing: 12px; transition: all 0.3s; outline: none; background: #fafafa; box-sizing: border-box; }
         .otp-input:focus { border-color: #ffc63a; background: #fff; box-shadow: 0 0 0 4px rgba(255,198,58,0.1); }
-        .auth-btn { width: 100%; padding: 14px; background: #ffc63a; color: #000; border: none; border-radius: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.3s; margin-top: 8px; }
-        .auth-btn:hover { background: #000; color: #ffc63a; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+        .auth-btn { width: 100%; padding: 14px; background: #ffc63a; color: #fff; border: none; border-radius: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.3s; margin-top: 8px; }
         .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .auth-alert { padding: 12px 16px; border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; background: #fff0f0; color: #d32f2f; border: 1px solid #ffd6d6; }
         .auth-footer-text { text-align: center; margin-top: 24px; font-family: 'Inter', sans-serif; font-size: 0.85rem; color: #888; }
@@ -147,8 +146,8 @@ export default function VerifyOtpPage() {
               {resendLoading
                 ? 'Sending...'
                 : resendCooldown > 0
-                ? `Resend in ${resendCooldown}s`
-                : 'Resend OTP'}
+                  ? `Resend in ${resendCooldown}s`
+                  : 'Resend OTP'}
             </button>
           </div>
 

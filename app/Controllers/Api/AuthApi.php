@@ -181,23 +181,35 @@ class AuthApi extends ResourceController
 
         if ($enableZones === '1') {
             $ip = getUserIP();
-            $loc = null;
-
-            // Try to get state from request body first (client-provided)
+            $loc = getLocationFromIP($ip);
+            
+            $clientLat = $data['user_latitude'] ?? null;
+            $clientLng = $data['user_longitude'] ?? null;
             $clientState = $data['user_state'] ?? null;
-
-            // Fall back to IP geolocation
-            if (empty($clientState)) {
-                $loc = getLocationFromIP($ip);
-                $clientState = $loc['state'] ?? null;
-            }
 
             $zoneMatch = false;
             $detectedZone = null;
+            $detectedState = $clientState ?: ($loc['state'] ?? null);
 
-            if (!empty($clientState)) {
-                $detectedZone = isStateAllowed($clientState);
-                $zoneMatch = (bool) $detectedZone;
+            // 3. Last Fallback: Check PIN code (Especially for Localhost/Blocked GPS)
+            if (empty($detectedState) && !empty($data['pin_code'])) {
+                $detectedState = getStateFromPinCode($data['pin_code']);
+            }
+
+            // 1. Priority: Check GPS coordinates against Polygon zones (Highest accuracy)
+            if (!empty($clientLat) && !empty($clientLng)) {
+                $detectedZone = isLocationAllowed((float)$clientLat, (float)$clientLng);
+                if ($detectedZone) {
+                    $zoneMatch = true;
+                }
+            }
+
+            // 2. Fallback: Check state name (from IP or client)
+            if (!$zoneMatch && !empty($detectedState)) {
+                $detectedZone = isStateAllowed($detectedState);
+                if ($detectedZone) {
+                    $zoneMatch = true;
+                }
             }
 
             if (!$zoneMatch) {
@@ -213,15 +225,16 @@ class AuthApi extends ResourceController
                     'country'    => $loc['country'] ?? null,
                     'state'      => $clientState,
                     'city'       => $loc['city'] ?? null,
-                    'latitude'   => $loc['latitude'] ?? null,
-                    'longitude'  => $loc['longitude'] ?? null,
+                    'latitude'   => $clientLat ?: ($loc['latitude'] ?? null),
+                    'longitude'  => $clientLng ?: ($loc['longitude'] ?? null),
                     'is_allowed' => 0,
                 ]);
 
                 return $this->respond([
                     'success' => false,
-                    'message' => 'Sorry, our services are not yet available in ' . ($clientState ? "\"{$clientState}\"" : 'your state') . '. Registration is restricted to authorised zones only.',
-                    'state_detected' => $clientState,
+                    'message' => 'Sorry, our services are not yet available in ' . ($detectedState ? "\"{$detectedState}\"" : 'your area') . '. Registration is restricted to authorised zones only.',
+                    'state_detected' => $detectedState,
+                    'is_outside_zone' => true
                 ], 403);
             }
         }
