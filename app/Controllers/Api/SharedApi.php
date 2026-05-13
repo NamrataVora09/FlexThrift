@@ -460,7 +460,7 @@ class SharedApi extends ResourceController
             $config[$s['setting_key']] = $s['setting_value'];
 
         $groups = [
-            'General' => ['support_email', 'support_phone', 'support_hours'],
+            'General' => ['site_name', 'support_email', 'support_phone', 'support_hours'],
             'Pricing' => ['sale_base_discount', 'usage_no_dep_max', 'sale_depreciation_per_use', 'sale_max_additional_depreciation'],
             'Rental' => ['fallback_rental_cost_per_day', 'min_rental_days', 'rental_base_deposit_deduction', 'rental_max_cost_cap_per_day'],
             'Commission & Delivery' => ['commission_rate', 'delivery_charge', 'min_order_value'],
@@ -1262,7 +1262,8 @@ class SharedApi extends ResourceController
                 'category_cards',
                 'buyer_dashboard_subtitle',
                 'seller_dashboard_subtitle',
-                'global_system_lock'
+                'global_system_lock',
+                'site_name'
             ])
             ->get()->getResultArray();
         $content = [];

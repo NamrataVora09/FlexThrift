@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 import { getDashboardPath } from '@/lib/navigation';
 import { confirmToast } from '@/lib/toast-utils';
 import ProfileDropdown from '@/components/shared/ProfileDropdown';
@@ -12,6 +13,7 @@ interface Props {
 
 export default function DashboardTopbar({ onToggleSidebar }: Props) {
   const { user, logout, switchRole } = useAuth();
+  const { settings } = useSystem();
 
   if (!user) return null;
 
@@ -79,7 +81,7 @@ export default function DashboardTopbar({ onToggleSidebar }: Props) {
         </button>
 
         <Link href={getDashboardPath(user.role)} className="topbar-brand">
-          <span className="topbar-brand-text">Flex Market</span>
+          <span className="topbar-brand-text">{settings.site_name}</span>
         </Link>
 
         <span className={`topbar-role-badge ${user.role === 'seller' ? 'bg-[#d96459]!' : 'bg-[#008080]!'}`}>

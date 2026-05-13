@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
 import AdBanner from '@/components/shared/AdBanner';
 
@@ -68,6 +69,7 @@ const DEFAULT_SECTIONS: FooterSection[] = [
 
 export default function Footer() {
   const { user } = useAuth();
+  const { settings } = useSystem();
   const isSuperAdmin = user?.role === 'super_admin';
 
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
@@ -206,7 +208,7 @@ export default function Footer() {
         <div className="  xl:px-28! lg:px-28! md:px-28 sm:px-8 px-4  py-5 grid grid-cols-1 justify-center lg:grid-cols-4  gap-10">
           {/* Brand */}
           <div className="md:col-span-1">
-            <h2 className="text-3xl font-bold text-white mb-2.5">Flex Market</h2>
+            <h2 className="text-3xl font-bold text-white mb-2.5">{settings.site_name}</h2>
             <p className="text-white m-0! text-sm leading-relaxed">{desc}</p>
           </div>
 
@@ -252,7 +254,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-gray-700 py-4 text-center text-gray-500 text-xs">
-          &copy; {new Date().getFullYear()} Flex Market. All rights reserved.
+          &copy; {new Date().getFullYear()} {settings.site_name}. All rights reserved.
         </div>
       </footer>
 

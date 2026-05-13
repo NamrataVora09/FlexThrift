@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import PricingRulesManager from '@/components/shared/PricingRulesManager';
+import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 import { showToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
@@ -221,6 +223,8 @@ function UnlockItemsEditor({ settingKey, settings, update }: { settingKey: strin
 
 // ==================== COMPONENT ====================
 export default function BusinessSettingsView() {
+  const { user } = useAuth();
+  const { refreshSettings } = useSystem();
   const [config, setConfig] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -404,6 +408,7 @@ export default function BusinessSettingsView() {
     setSaving(false);
     if (res.success) {
       showToast.success('Settings saved successfully!');
+      refreshSettings();
     } else {
       showToast.error(res.message || 'Failed to save settings');
     }

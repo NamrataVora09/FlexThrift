@@ -2,13 +2,20 @@ import type { Metadata } from 'next';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@/styles/globals.css';
 import { AuthProvider } from '@/lib/auth-context';
+import { SystemProvider } from '@/lib/system-context';
 import BootstrapClient from '@/components/BootstrapClient';
 import ToastProvider from '@/components/ToastProvider';
 
-export const metadata: Metadata = {
-  title: 'Flex Market',
-  description: 'Buy, Sell & Rent — Flex Market',
-};
+import { getLandingContent } from '@/lib/server-fetch';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await getLandingContent();
+  const siteName = content?.site_name || 'Flex Market';
+  return {
+    title: siteName,
+    description: `Buy, Sell & Rent — ${siteName}`,
+  };
+}
 
 import GeolocationBlocker from '@/components/shared/GeolocationBlocker';
 import SystemLockBlocker from '@/components/shared/SystemLockBlocker';
@@ -38,14 +45,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <AuthProvider>
-          <SystemLockBlocker>
-            <GeolocationBlocker>
-              {children}
-              <AdBanner position="popup" page="all" />
-            </GeolocationBlocker>
-          </SystemLockBlocker>
-        </AuthProvider>
+        <SystemProvider>
+          <AuthProvider>
+            <SystemLockBlocker>
+              <GeolocationBlocker>
+                {children}
+                <AdBanner position="popup" page="all" />
+              </GeolocationBlocker>
+            </SystemLockBlocker>
+          </AuthProvider>
+        </SystemProvider>
         <ToastProvider />
         <BootstrapClient />
       </body>

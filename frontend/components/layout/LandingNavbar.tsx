@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import React from 'react';
 import ProfileDropdown from '@/components/shared/ProfileDropdown';
+import { useSystem } from '@/lib/system-context';
 
 interface Category { id: number; category_name?: string; name?: string; product_type_id: number; }
 interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
@@ -18,6 +19,7 @@ const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:80
 export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean }) {
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
+  const { settings } = useSystem();
 
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
   const [showMegaMenu, setShowMegaMenu] = useState(false);
@@ -72,7 +74,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
     <>
       <nav className='flex px-6 md:px-4 xl:px-28 py-3 left-0 font-semibold text-black items-center justify-between shadow-md fixed top-0 z-50 w-full bg-white'>
         {/* Brand */}
-        <Link href="/" className='text-2xl md:text-3xl lg:text-[40px] text-nowrap'>Flex Market</Link>
+        <Link href="/" className='text-2xl md:text-3xl lg:text-[40px] text-nowrap'>{settings.site_name}</Link>
 
         {/* Mobile toggle & Profile (Mobile) */}
         <div className="flex items-center gap-4 lg:hidden">
@@ -353,7 +355,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
           </div>
 
           <div className="p-6 bg-gray-50 border-t">
-            <p className="text-xs text-center text-gray-400 font-medium">© 2024 Flex Market</p>
+            <p className="text-xs text-center text-gray-400 font-medium">© {new Date().getFullYear()} {settings.site_name}</p>
           </div>
         </div>
       </div>

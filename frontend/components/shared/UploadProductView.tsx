@@ -7,6 +7,7 @@ import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 
 interface Attribute { name: string; type: string; required?: boolean; options?: string; }
 
@@ -64,6 +65,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { settings } = useSystem();
   const imgRef = useRef<HTMLInputElement>(null);
   const billRef = useRef<HTMLInputElement>(null);
   const [meta, setMeta] = useState<FormMeta | null>(null);
@@ -795,7 +797,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 {isEditMode ? 'Edit Product' : 'Upload New Product'}
               </h2>
               <p className="text-muted mb-0">
-                {isEditMode ? 'Update your product details' : 'List your item on Flex Market'}
+                {isEditMode ? 'Update your product details' : `List your item on ${settings.site_name}`}
               </p>
             </div>
           </div>
