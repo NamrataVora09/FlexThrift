@@ -179,23 +179,23 @@ class AuthApi extends ResourceController
         helper(['geolocation', 'utilityClass']);
         $enableZones = getSystemSetting('enable_zone_restriction', '0');
 
+        $ip = getUserIP();
+        $loc = getLocationFromIP($ip);
+        
+        $clientLat = $data['user_latitude'] ?? null;
+        $clientLng = $data['user_longitude'] ?? null;
+        $clientState = $data['user_state'] ?? null;
+
+        $zoneMatch = false;
+        $detectedZone = null;
+        $detectedState = $clientState ?: ($loc['state'] ?? null);
+
+        // 3. Last Fallback: Check PIN code (Especially for Localhost/Blocked GPS)
+        if (empty($detectedState) && !empty($data['pin_code'])) {
+            $detectedState = getStateFromPinCode($data['pin_code']);
+        }
+
         if ($enableZones === '1') {
-            $ip = getUserIP();
-            $loc = getLocationFromIP($ip);
-            
-            $clientLat = $data['user_latitude'] ?? null;
-            $clientLng = $data['user_longitude'] ?? null;
-            $clientState = $data['user_state'] ?? null;
-
-            $zoneMatch = false;
-            $detectedZone = null;
-            $detectedState = $clientState ?: ($loc['state'] ?? null);
-
-            // 3. Last Fallback: Check PIN code (Especially for Localhost/Blocked GPS)
-            if (empty($detectedState) && !empty($data['pin_code'])) {
-                $detectedState = getStateFromPinCode($data['pin_code']);
-            }
-
             // 1. Priority: Check GPS coordinates against Polygon zones (Highest accuracy)
             if (!empty($clientLat) && !empty($clientLng)) {
                 $detectedZone = isLocationAllowed((float)$clientLat, (float)$clientLng);
