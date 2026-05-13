@@ -173,9 +173,7 @@ export default function SuperAdminDashboardClient() {
           <div className="col-md-2 mt-2">
             <StatsCard title="Both" value={s?.both ?? 0} icon="bi bi-arrow-left-right" color="#8b5cf6" />
           </div>
-          <div className="col-md-2 mt-2">
-            <StatsCard title="Delivery" value={s?.delivery ?? 0} icon="bi bi-truck" color="#f59e0b" />
-          </div>
+
           <div className="col-md-2 mt-2">
             <StatsCard title="Admins" value={s?.admins ?? 0} icon="bi bi-shield-lock" color="#ef4444" />
           </div>

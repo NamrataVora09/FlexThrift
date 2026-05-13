@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
-const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
+const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#fff', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 
 function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
