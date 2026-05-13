@@ -52,16 +52,14 @@ export default function BrandsClient() {
 
   // Fixed-position dropdown state
   const [openDropdown, setOpenDropdown] = useState<{ brandId: number; x: number; y: number } | null>(null);
-  const dropdownOpenedAt = useRef(0);
 
   const toggleDropdown = (e: React.MouseEvent<HTMLButtonElement>, brandId: number) => {
+    e.preventDefault();
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     if (openDropdown?.brandId === brandId) {
       setOpenDropdown(null);
     } else {
-      dropdownOpenedAt.current = Date.now();
-      // position: fixed is viewport-relative, no scrollY needed
       setOpenDropdown({ brandId, x: rect.right, y: rect.bottom });
     }
   };
@@ -84,16 +82,19 @@ export default function BrandsClient() {
 
   useEffect(() => { load(); }, []);
 
-  // Close dropdown on outside click — use mousedown + 50ms guard
+  // Close dropdown on outside click
   useEffect(() => {
-    const handler = () => {
-      if (Date.now() - dropdownOpenedAt.current > 50) {
-        setOpenDropdown(null);
+    const handler = (e: MouseEvent) => {
+      if (!openDropdown) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('.dropdown-trigger') || target.closest('.fixed-dropdown')) {
+        return;
       }
+      setOpenDropdown(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [openDropdown]);
 
   const openBlockModal = (b: Brand) => { setBlockTarget(b); setBlockReason(''); };
 
@@ -346,9 +347,9 @@ export default function BrandsClient() {
                         </td>
                         <td style={{ ...tdStyle, textAlign: 'end', paddingRight: '1.5rem' }}>
                           <button
-                            className="btn btn-light btn-sm border"
+                            className="btn btn-light btn-sm border dropdown-trigger"
                             style={{ borderRadius: 8 }}
-                            onClick={(e) => toggleDropdown(e, b.id)}
+                            onMouseDown={(e) => toggleDropdown(e, b.id)}
                           >
                             <i className="bi bi-three-dots-vertical"></i>
                           </button>
@@ -658,6 +659,7 @@ export default function BrandsClient() {
         if (!b) return null;
         return (
           <div
+            className="fixed-dropdown"
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             style={{
@@ -677,7 +679,7 @@ export default function BrandsClient() {
               { label: 'Edit Brand', icon: 'bi-pencil', color: '#f59e0b', onClick: () => { setOpenDropdown(null); openEditBrand(b); } },
               { label: 'Tag Products', icon: 'bi-tag-fill', color: '#ffc63a', onClick: () => { setOpenDropdown(null); openTagModal(b.id, b.seller_id); } },
             ].map((item) => (
-              <button key={item.label} onClick={item.onClick}
+              <button key={item.label} onMouseDown={(e) => { e.stopPropagation(); item.onClick(); }}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#374151', textAlign: 'left', transition: 'background 0.15s' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#f8f9fa')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -687,7 +689,7 @@ export default function BrandsClient() {
               </button>
             ))}
             <div style={{ height: 1, background: '#f0f0f0', margin: '0.3rem 0.5rem' }} />
-            <button onClick={() => { setOpenDropdown(null); toggleDeactivate(b.id, !Number(b.is_blocked) && Number(b.is_active ?? 1) === 1); }}
+            <button onMouseDown={(e) => { e.stopPropagation(); setOpenDropdown(null); toggleDeactivate(b.id, !Number(b.is_blocked) && Number(b.is_active ?? 1) === 1); }}
               style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#6c757d', textAlign: 'left', transition: 'background 0.15s' }}
               onMouseEnter={e => (e.currentTarget.style.background = '#f8f9fa')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -696,7 +698,7 @@ export default function BrandsClient() {
               {Number(b.is_active ?? 1) ? 'Deactivate' : 'Activate'}
             </button>
             {Number(b.is_blocked) ? (
-              <button onClick={() => { setOpenDropdown(null); handleUnblock(b.id); }}
+              <button onMouseDown={(e) => { e.stopPropagation(); setOpenDropdown(null); handleUnblock(b.id); }}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#198754', textAlign: 'left', transition: 'background 0.15s' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#f0fdf4')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -704,7 +706,7 @@ export default function BrandsClient() {
                 <i className="bi bi-check-circle" style={{ fontSize: '0.95rem', width: 18, textAlign: 'center' }}></i>Unblock
               </button>
             ) : (
-              <button onClick={() => { setOpenDropdown(null); openBlockModal(b); }}
+              <button onMouseDown={(e) => { e.stopPropagation(); setOpenDropdown(null); openBlockModal(b); }}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#dc3545', textAlign: 'left', transition: 'background 0.15s' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#fff5f5')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -713,7 +715,7 @@ export default function BrandsClient() {
               </button>
             )}
             <div style={{ height: 1, background: '#f0f0f0', margin: '0.3rem 0.5rem' }} />
-            <button onClick={() => { setOpenDropdown(null); handleDeleteBrand(b.id); }}
+            <button onMouseDown={(e) => { e.stopPropagation(); setOpenDropdown(null); handleDeleteBrand(b.id); }}
               style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '0.65rem 1rem', border: 'none', background: 'transparent', borderRadius: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500, color: '#dc3545', textAlign: 'left', transition: 'background 0.15s' }}
               onMouseEnter={e => (e.currentTarget.style.background = '#fff5f5')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}

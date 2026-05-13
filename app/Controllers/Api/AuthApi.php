@@ -649,14 +649,17 @@ class AuthApi extends ResourceController
         }
 
         $emailConfig = [
-            'protocol'  => 'smtp',
-            'SMTPHost'  => $cfg['smtp_host']       ?? 'smtp.gmail.com',
-            'SMTPPort'  => (int) ($cfg['smtp_port'] ?? 587),
-            'SMTPUser'  => $cfg['smtp_username']   ?? '',
-            'SMTPPass'  => $cfg['smtp_password']   ?? '',
-            'SMTPCrypto'=> $cfg['smtp_encryption'] ?? 'tls',
-            'mailType'  => 'html',
-            'charset'   => 'utf-8',
+            'protocol'    => 'smtp',
+            'SMTPHost'    => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
+            'SMTPPort'    => !empty($cfg['smtp_port']) ? (int)$cfg['smtp_port'] : 587,
+            'SMTPUser'    => $cfg['smtp_username'] ?? '',
+            'SMTPPass'    => $cfg['smtp_password'] ?? '',
+            'SMTPCrypto'  => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
+            'mailType'    => 'html',
+            'charset'     => 'utf-8',
+            'newline'     => "\r\n",
+            'CRLF'        => "\r\n",
+            'SMTPTimeout' => 30,
         ];
 
         $email = \Config\Services::email();
@@ -671,6 +674,9 @@ class AuthApi extends ResourceController
             <br><p>— Flex Market</p>
         ");
 
-        $email->send(false);
+        if (!$email->send(false)) {
+            log_message('error', 'Email failed to send to: ' . $to);
+            log_message('error', 'Email Debugger: ' . $email->printDebugger(['headers', 'subject', 'body']));
+        }
     }
 }
