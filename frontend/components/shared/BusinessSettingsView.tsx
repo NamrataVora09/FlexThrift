@@ -762,6 +762,53 @@ export default function BusinessSettingsView() {
                   </button>
                 ))}
               </div>
+
+              {/* Keys Reference Panel */}
+              <div style={{ background: '#fafbff', border: '1px solid #e8ecff', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1a1a1a', marginBottom: 6 }}>
+                  <i className="bi bi-bookmark-fill me-2" style={{ color: '#ffc63a' }}></i>
+                  Message Keys Reference
+                  <span className="text-muted fw-normal ms-2" style={{ fontSize: '0.72rem' }}>— click a key to filter</span>
+                </div>
+                <div className="d-flex flex-wrap gap-2">
+                  {(appMessages.length > 0
+                    ? Array.from(new Set(appMessages.map(m => m.message_key))).sort()
+                    : [
+                      'auth_login_required', 'already_rated_seller', 'booking_conflict',
+                      'dates_update_success', 'min_rental_duration', 'offer_cancelled_success',
+                      'offer_not_found', 'offer_sent_success', 'order_cancel_success',
+                      'order_not_found', 'payment_success', 'product_not_found',
+                      'rating_window_expired', 'review_submit_success'
+                    ]
+                  ).map(key => {
+                    const cat = appMessages.find(m => m.message_key === key)?.category || '';
+                    const isActive = appMessages.find(m => m.message_key === key && (!msgFilter || m.category === msgFilter));
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setMsgFilter(cat)}
+                        title={`Category: ${cat || 'unknown'}`}
+                        style={{
+                          background: isActive ? '#ffc63a' : '#fff',
+                          border: `1px solid ${isActive ? '#ffc63a' : '#dde2f0'}`,
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          fontSize: '0.72rem',
+                          color: isActive ? '#000' : '#555',
+                          cursor: 'pointer',
+                          fontFamily: 'monospace',
+                          fontWeight: isActive ? 700 : 400,
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {key}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="table-responsive" style={{ maxHeight: 500, overflowY: 'auto' }}>
                 <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
                   <thead className="bg-light" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
