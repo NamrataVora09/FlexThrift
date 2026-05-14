@@ -2490,6 +2490,19 @@ private function processImage($source, $subDir): ?string
 
                 $min = (int)($data['depreciation_range_min'] ?? $data['min'] ?? 0);
                 $max = (int)($data['depreciation_range_max'] ?? $data['max'] ?? 0);
+                $amount = (float)($data['depreciation_amount'] ?? $data['amount'] ?? 0);
+
+                if ($min >= $max && $max !== 0) {
+                    $skipped++;
+                    $errors[] = "Row {$row}: Min range ({$min}) must be less than Max range ({$max})";
+                    continue;
+                }
+
+                if ($amount <= 0) {
+                    $skipped++;
+                    $errors[] = "Row {$row}: Depreciation amount must be greater than 0";
+                    continue;
+                }
 
                 // Check for overlapping rules (Same rule as single upload)
                 $existing = $this->checkOverlappingRules($table, $filterType, $filterValue, $min, $max);
@@ -2555,7 +2568,6 @@ private function processImage($source, $subDir): ?string
                     'discount_type' => $data['discount_type'] ?? 'percentage',
                     'discount_value' => $discountValue,
                     'min_order_amount' => $data['min_order_amount'] ?? 0,
-                    'max_discount' => !empty($data['max_discount']) ? $data['max_discount'] : null,
                     'usage_limit' => $data['usage_limit'] ?? 0,
                     'valid_from' => !empty($data['valid_from']) ? $data['valid_from'] : null,
                     'valid_until' => !empty($data['valid_until']) ? $data['valid_until'] : null,

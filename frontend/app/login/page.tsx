@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Script from 'next/script';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, sendOtp, isAuthenticated, user, isLoading } = useAuth();
+  const { getMsg } = useSystem();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
@@ -42,14 +44,14 @@ export default function LoginPage() {
     e.preventDefault(); setError(''); setLoading(true);
     const result = await login(email, password); setLoading(false);
     if (result.success) { const user = JSON.parse(localStorage.getItem('flex_user') || '{}'); redirectByRole(user.role); }
-    else setError(result.message || 'Login failed');
+    else setError(result.message || getMsg('login_failed', 'Login failed'));
   };
 
   const handleOtpLogin = async (e: FormEvent) => {
     e.preventDefault(); setError(''); setLoading(true);
     const result = await sendOtp(email); setLoading(false);
     if (result.success) { sessionStorage.setItem('otp_email', email); sessionStorage.setItem('otp_type', 'login'); router.push('/verify-otp'); }
-    else setError(result.message || 'Failed to send OTP');
+    else setError(result.message || getMsg('otp_send_failed', 'Failed to send OTP'));
   };
 
   // Google Sign-In callback
@@ -63,7 +65,7 @@ export default function LoginPage() {
         localStorage.setItem('flex_user', JSON.stringify(res.data.user));
         redirectByRole(res.data.user.role);
       } else {
-        setError(res.message || 'Google login failed');
+        setError(res.message || getMsg('google_login_failed', 'Google login failed'));
       }
     };
   }, []);

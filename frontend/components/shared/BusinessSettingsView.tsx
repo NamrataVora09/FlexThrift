@@ -224,7 +224,7 @@ function UnlockItemsEditor({ settingKey, settings, update }: { settingKey: strin
 // ==================== COMPONENT ====================
 export default function BusinessSettingsView() {
   const { user } = useAuth();
-  const { refreshSettings } = useSystem();
+  const { refreshSettings, getMsg } = useSystem();
   const [config, setConfig] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -407,10 +407,10 @@ export default function BusinessSettingsView() {
     const res = await api.post('/shared/business-settings', payload);
     setSaving(false);
     if (res.success) {
-      showToast.success('Settings saved successfully!');
+      showToast.success(getMsg('settings_save_success', 'Settings saved successfully!'));
       refreshSettings();
     } else {
-      showToast.error(res.message || 'Failed to save settings');
+      showToast.error(res.message || getMsg('settings_save_error', 'Failed to save settings'));
     }
   };
 

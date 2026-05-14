@@ -476,8 +476,6 @@ Pro Seller,seller,quantity,20,0,299,399,"[]",1,0`}
                       <select className="form-select" style={inputStyle} value={form.user_type} onChange={(e) => setForm({ ...form, user_type: e.target.value })}>
                         <option value="buyer">Buyer</option>
                         <option value="seller">Seller</option>
-                        <option value="both">Both</option>
-                        <option value="delivery">Delivery</option>
                       </select>
                     </div>
                     <div className="col-6">

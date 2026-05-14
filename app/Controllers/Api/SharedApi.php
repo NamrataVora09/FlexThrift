@@ -1270,15 +1270,13 @@ class SharedApi extends ResourceController
         foreach ($rows as $r)
             $content[$r['setting_key']] = $r['setting_value'];
 
-        // Override dashboard subtitles with values from app_messages (General category)
-        // This allows super admins to configure them via Business Settings → App Messages
-        $subtitleKeys = ['seller_dashboard_subtitle', 'buyer_dashboard_subtitle'];
-        $msgRows = $db->table('app_messages')
-            ->whereIn('message_key', $subtitleKeys)
-            ->get()
-            ->getResultArray();
-        foreach ($msgRows as $m) {
-            if (!empty($m['message_value'])) {
+        // Fetch all app_messages to provide to SystemContext
+        $appMessages = $db->table('app_messages')->get()->getResultArray();
+        $content['app_messages'] = $appMessages;
+
+        // Override dashboard subtitles with specific values from app_messages if they exist
+        foreach ($appMessages as $m) {
+            if (in_array($m['message_key'], ['seller_dashboard_subtitle', 'buyer_dashboard_subtitle']) && !empty($m['message_value'])) {
                 $content[$m['message_key']] = $m['message_value'];
             }
         }

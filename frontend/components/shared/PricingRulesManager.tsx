@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
+import { useSystem } from '@/lib/system-context';
 import BulkCsvUpload from './BulkCsvUpload';
 
 interface PricingRule {
@@ -34,6 +35,7 @@ interface RentalPricingRule {
 interface TaxonomyItem { id: number; name: string; }
 
 export default function PricingRulesManager() {
+  const { getMsg } = useSystem();
   const [loading, setLoading] = useState(true);
   const [saleRules, setSaleRules] = useState<PricingRule[]>([]);
   const [rentalRules, setRentalRules] = useState<RentalPricingRule[]>([]);
@@ -139,7 +141,7 @@ export default function PricingRulesManager() {
   const saveSaleRule = async () => {
     if (!editingSaleRule) return;
     const { filter_type, filter_value, deduction_threshold } = editingSaleRule;
-    if (!deduction_threshold) { showToast.warning('Deduction Threshold is required'); return; }
+    if (!deduction_threshold) { showToast.warning(getMsg('rule_threshold_required', 'Deduction Threshold is required')); return; }
     // Validate no overlapping ranges
     for (let i = 0; i < saleDepRanges.length - 1; i++) {
       const cur = saleDepRanges[i];
@@ -185,7 +187,7 @@ export default function PricingRulesManager() {
           depreciation_range_max: saleDepRanges[0].max || '0',
           depreciation_amount: saleDepRanges[0].amount,
         });
-        if (!res.success) { showToast.error(res.message || 'Failed to save rule'); setModalSaving(false); return; }
+        if (!res.success) { showToast.error(res.message || getMsg('rule_save_failed', 'Failed to save rule')); setModalSaving(false); return; }
       } else {
         if (editingSaleRule.id) await api.post(`/superadmin/delete-pricing-rule/${editingSaleRule.id}`, {});
         for (const r of saleDepRanges) {
@@ -196,14 +198,14 @@ export default function PricingRulesManager() {
             depreciation_amount: r.amount,
           });
           if (!res.success) {
-            showToast.error(res.message || 'Failed to save one or more ranges');
+            showToast.error(res.message || getMsg('rule_save_failed_partial', 'Failed to save one or more ranges'));
             setModalSaving(false);
             loadPricingRules();
             return;
           }
         }
       }
-      showToast.success('Pricing rule(s) saved!');
+      showToast.success(getMsg('rule_save_success', 'Pricing rule(s) saved!'));
       setShowSaleModal(false);
       loadPricingRules();
     } catch (e: any) { showToast.error(e?.message || 'Server error'); }
@@ -211,9 +213,9 @@ export default function PricingRulesManager() {
   };
 
   const deleteSaleRule = (id: number) => {
-    confirmToast('Delete this pricing rule?', async () => {
+    confirmToast(getMsg('rule_delete_confirm', 'Delete this pricing rule?'), async () => {
       const res = await api.post(`/superadmin/delete-pricing-rule/${id}`, {});
-      if (res.success) { showToast.success('Deleted'); loadPricingRules(); }
+      if (res.success) { showToast.success(getMsg('rule_delete_success', 'Deleted')); loadPricingRules(); }
     }, 'Delete');
   };
 
@@ -298,14 +300,14 @@ export default function PricingRulesManager() {
             depreciation_amount: r.amount,
           });
           if (!res.success) {
-            showToast.error(res.message || 'Failed to save one or more ranges');
+            showToast.error(res.message || getMsg('rule_save_failed_partial', 'Failed to save one or more ranges'));
             setModalSaving(false);
             loadPricingRules();
             return;
           }
         }
       }
-      showToast.success('Rental rule(s) saved!');
+      showToast.success(getMsg('rental_rule_save_success', 'Rental rule(s) saved!'));
       setShowRentalModal(false);
       loadPricingRules();
     } catch (e: any) { showToast.error(e?.message || 'Server error'); }

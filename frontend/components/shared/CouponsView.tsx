@@ -6,10 +6,11 @@ import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
+import { useSystem } from '@/lib/system-context';
 
 interface Coupon {
   id: number; code: string; discount_type: string; discount_value: string;
-  min_order_amount: string; max_discount: string | null; usage_limit: string;
+  min_order_amount: string; usage_limit: string;
   used_count: string; valid_until: string | null; is_active: string; created_at: string;
 }
 
@@ -19,9 +20,10 @@ const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px so
 const modalLabel: React.CSSProperties = { fontWeight: 700, fontSize: '0.8rem', color: '#4b566b', marginBottom: 6, display: 'block' };
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 
-const emptyForm = { code: '', discount_type: 'percentage', discount_value: '', min_order_amount: '0', max_discount: '', usage_limit: '', valid_until: '' };
+const emptyForm = { code: '', discount_type: 'percentage', discount_value: '', min_order_amount: '0', usage_limit: '', valid_until: '' };
 
 export default function CouponsView() {
+  const { getMsg } = useSystem();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -42,7 +44,7 @@ export default function CouponsView() {
     setEditId(c.id);
     setForm({
       code: c.code, discount_type: c.discount_type, discount_value: c.discount_value,
-      min_order_amount: c.min_order_amount, max_discount: c.max_discount || '',
+      min_order_amount: c.min_order_amount,
       usage_limit: c.usage_limit || '', valid_until: c.valid_until ? c.valid_until.split(' ')[0] : '',
     });
     setShowModal(true);
@@ -56,11 +58,11 @@ export default function CouponsView() {
       : await api.post('/shared/coupons', form);
     setSaving(false);
     if (res.success) {
-      toast.success(editId ? 'Coupon updated' : 'Coupon created');
+      toast.success(editId ? getMsg('coupon_update_success', 'Coupon updated') : getMsg('coupon_create_success', 'Coupon created'));
       setShowModal(false);
       load();
     } else {
-      toast.error(res.message || 'Failed to save');
+      toast.error(res.message || getMsg('coupon_save_failed', 'Failed to save'));
     }
   };
 
@@ -70,13 +72,13 @@ export default function CouponsView() {
   };
 
   const deleteCoupon = (id: number) => {
-    confirmToast('This coupon will be permanently deleted! Are you sure?', async () => {
+    confirmToast(getMsg('coupon_delete_confirm', 'This coupon will be permanently deleted! Are you sure?'), async () => {
       const res = await api.post(`/shared/coupons/${id}/delete`);
       if (res.success) {
-        toast.success('Coupon deleted');
+        toast.success(getMsg('coupon_delete_success', 'Coupon deleted'));
         load();
       } else {
-        toast.error(res.message || 'Error deleting coupon');
+        toast.error(res.message || getMsg('coupon_delete_failed', 'Error deleting coupon'));
       }
     }, 'Delete');
   };
@@ -107,9 +109,9 @@ export default function CouponsView() {
 
         <BulkCsvUpload
           endpoint="/superadmin/bulk-upload-coupons"
-          templateCsv="code,discount_type,discount_value,min_order_amount,max_discount,usage_limit,valid_from,valid_until\nSAVE20,percentage,20,500,200,100,2026-01-01,2026-12-31\nFLAT50,fixed,50,200,,50,,"
+          templateCsv="code,discount_type,discount_value,min_order_amount,usage_limit,valid_from,valid_until\nSAVE20,percentage,20,500,100,2026-01-01,2026-12-31\nFLAT50,fixed,50,200,50,,"
           templateFilename="coupons_template.csv"
-          formatGuide="code (required), discount_type (percentage/fixed), discount_value (required), min_order_amount, max_discount, usage_limit, valid_from, valid_until"
+          formatGuide="code (required), discount_type (percentage/fixed), discount_value (required), min_order_amount, usage_limit, valid_from, valid_until"
           title="Bulk Upload Coupons"
         />
 
@@ -126,7 +128,6 @@ export default function CouponsView() {
                     <th style={thStyle}>Discount</th>
                     <th style={thStyle}>Usage</th>
                     <th style={thStyle}>Min Purchase</th>
-                    <th style={thStyle}>Max Discount</th>
                     <th style={thStyle}>Expires At</th>
                     <th style={thStyle}>Status</th>
                     <th style={{ ...thStyle, textAlign: 'end', paddingRight: '1.5rem' }}>Actions</th>
@@ -147,9 +148,6 @@ export default function CouponsView() {
                         </td>
                         <td style={tdStyle}>₹{Number(c.min_order_amount).toFixed(2)}</td>
                         <td style={tdStyle}>
-                          {c.max_discount ? `₹${Number(c.max_discount).toFixed(2)}` : <span className="text-muted">N/A</span>}
-                        </td>
-                        <td style={tdStyle}>
                           {c.valid_until ? new Date(c.valid_until).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : <span className="text-muted">Never</span>}
                         </td>
                         <td style={tdStyle}>
@@ -169,7 +167,7 @@ export default function CouponsView() {
                         </td>
                       </tr>
                     )) : (
-                      <tr><td colSpan={8} className="text-center py-5">
+                      <tr><td colSpan={7} className="text-center py-5">
                         <i className="bi bi-ticket-perforated" style={{ fontSize: '2.5rem', color: '#ddd' }}></i>
                         <p className="text-muted mt-2">No coupons created yet.</p>
                       </td></tr>
@@ -216,18 +214,11 @@ export default function CouponsView() {
                     </div>
                   </div>
 
-                  {/* Min Purchase + Max Discount */}
-                  <div className="row g-3 mb-3">
-                    <div className="col-6">
-                      <label style={modalLabel}>Min Purchase (₹)</label>
-                      <input type="number" className="form-control" style={inputStyle}
-                        value={form.min_order_amount} onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })} />
-                    </div>
-                    <div className="col-6">
-                      <label style={modalLabel}>Max Discount (₹)</label>
-                      <input type="number" className="form-control" style={inputStyle} placeholder="Optional"
-                        value={form.max_discount} onChange={(e) => setForm({ ...form, max_discount: e.target.value })} />
-                    </div>
+                  {/* Min Purchase */}
+                  <div className="mb-3">
+                    <label style={modalLabel}>Min Purchase (₹)</label>
+                    <input type="number" className="form-control" style={inputStyle}
+                      value={form.min_order_amount} onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })} />
                   </div>
 
                   {/* Usage Limit + Expiry */}

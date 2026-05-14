@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
+import { useSystem } from '@/lib/system-context';
 
 interface Zone {
   id: number;
@@ -16,7 +17,7 @@ interface Zone {
   created_at: string;
 }
 
-// All Indian states for dropdown
+// Common Indian states (kept for auto-detection enhancement)
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
   'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
@@ -33,6 +34,7 @@ const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 
 export default function ZonesView() {
+  const { getMsg } = useSystem();
   const [zones, setZones] = useState<Zone[]>([]);
   const [loading, setLoading] = useState(true);
   const [zoneName, setZoneName] = useState('');
@@ -112,7 +114,7 @@ export default function ZonesView() {
       // Click to select state
       map.on('click', async (e: any) => {
         const { lat, lng } = e.latlng;
-        const loadingToast = toast.loading('Detecting location...');
+        const loadingToast = toast.loading(getMsg('location_detecting', 'Detecting location...'));
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lng}`);
           const data = await res.json();
@@ -132,7 +134,7 @@ export default function ZonesView() {
     if (!searchQuery.trim()) return;
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(searchQuery)}&countrycodes=in&limit=8`
+        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(searchQuery)}&limit=8`
       );
       const data = await res.json();
       setSearchResults(data);
@@ -157,24 +159,20 @@ export default function ZonesView() {
     searchMarkerRef.current.bindPopup(`<b>${name.split(',')[0]}</b><br>Draw your zone here`).openPopup();
     map.setView([lat, lng], 10);
 
-    // Auto-fill state from Nominatim address details
+    // Auto-fill state/country from Nominatim address details
     if (address) {
-      const detectedState = address.state || address.region || address.county || address.city || address.town || address.state_district || '';
+      const detectedState = address.state || address.region || address.province || address.country || address.county || address.city || '';
       if (detectedState) {
-        // Find best match in INDIAN_STATES
+        // Find best match in INDIAN_STATES for formatting, otherwise use raw
         const matched = INDIAN_STATES.find(
           s => s.toLowerCase() === detectedState.toLowerCase() ||
                detectedState.toLowerCase().includes(s.toLowerCase()) ||
                s.toLowerCase().includes(detectedState.toLowerCase())
         );
-        if (matched) {
-          setZoneState(matched);
-          setZoneName(`${matched} Zone`);
-          toast.success(`State auto-detected: ${matched}`, { duration: 2500 });
-        } else if (detectedState && INDIAN_STATES.includes(detectedState)) {
-          setZoneState(detectedState);
-          setZoneName(`${detectedState} Zone`);
-        }
+        const finalName = matched || detectedState;
+        setZoneState(finalName);
+        setZoneName(`${finalName} Zone`);
+        toast.success(getMsg('location_detected', 'Location detected: {name}').replace('{name}', finalName), { duration: 2500 });
       }
     }
   };
@@ -211,7 +209,7 @@ export default function ZonesView() {
 
   const saveZone = async () => {
     const finalZoneName = zoneName || `${zoneState} Zone`;
-    if (!zoneState.trim()) { toast.error('Please select a state via the map first'); return; }
+    if (!zoneState.trim()) { toast.error('Please select a location via the map first'); return; }
 
     // Check for duplicate state
     const duplicate = zones.find(z => z.state?.toLowerCase() === zoneState.toLowerCase() && Number(z.is_active));
@@ -235,7 +233,7 @@ export default function ZonesView() {
 
     setSaving(false);
     if (res.success) {
-      toast.success('Zone saved successfully!');
+      toast.success(getMsg('zone_save_success', 'Zone saved successfully!'));
       clearDrawing();
       load();
     } else {
@@ -314,7 +312,7 @@ export default function ZonesView() {
         <div className="card border-0 mb-4" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div className="card-header bg-light" style={{ borderRadius: '0.75rem 0.75rem 0 0', padding: '1rem 1.5rem' }}>
             <h5 className="mb-0 fw-bold"><i className="bi bi-plus-circle me-2" style={{ color: '#ffc63a' }}></i>Add New Zone</h5>
-            <small className="text-muted">Search for a location or click on the map to select a state for registration restriction.</small>
+            <small className="text-muted">Search for a location or click on the map to select a state or country for registration restriction.</small>
           </div>
           <div className="card-body p-4">
             {/* Map Section */}
@@ -324,7 +322,7 @@ export default function ZonesView() {
                 <div className="col-md-8">
                   <div className="input-group">
                     <span className="input-group-text"><i className="bi bi-search"></i></span>
-                    <input className="form-control" style={inputStyle} placeholder="Search for a place (e.g., Mumbai, Maharashtra)"
+                    <input className="form-control" style={inputStyle} placeholder="Search for any place (e.g., New York, London, Mumbai)"
                       value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') searchPlace(); }} />
                     <button className="btn sa-filter-btn" style={btnGold} onClick={searchPlace}>Search</button>
@@ -332,11 +330,8 @@ export default function ZonesView() {
                   {searchResults.length > 0 && (
                     <div className="list-group mt-1" style={{ maxHeight: 200, overflowY: 'auto', position: 'absolute', zIndex: 1000, width: '66%', boxShadow: '0 4px 20px rgba(0,0,0,0.12)', borderRadius: '0.5rem' }}>
                       {searchResults.map((r, i) => {
-                        const detectedState = r.address?.state || r.address?.region || r.address?.city || r.address?.town || '';
-                        const matchedState = INDIAN_STATES.find(
-                          s => s.toLowerCase() === detectedState.toLowerCase() ||
-                               detectedState.toLowerCase().includes(s.toLowerCase())
-                        );
+                        const detectedState = r.address?.state || r.address?.region || r.address?.province || r.address?.country || r.address?.city || '';
+                        const matchedState = detectedState;
                         return (
                           <a key={i} href="#" className="list-group-item list-group-item-action"
                             style={{ fontSize: '0.82rem', padding: '0.6rem 1rem' }}
@@ -362,7 +357,7 @@ export default function ZonesView() {
                 </div>
               </div>
 
-              <div className="mb-2 small text-muted"><i className="bi bi-info-circle me-1"></i> Click anywhere on the map to auto-detect and select a state.</div>
+              <div className="mb-2 small text-muted"><i className="bi bi-info-circle me-1"></i> Click anywhere on the map to auto-detect and select a state or country.</div>
               <div ref={mapRef} style={{ height: 450, borderRadius: '0.75rem', overflow: 'hidden', border: '1px solid #e7eaf3' }}></div>
               
               <div className="mt-3 d-flex gap-2 flex-wrap">
@@ -370,7 +365,7 @@ export default function ZonesView() {
                   <div className="alert alert-warning py-2 px-3 small mb-0 d-flex align-items-center gap-2" style={{ borderRadius: '0.5rem', border: '1px solid #ffc63a44', background: '#ffc63a11' }}>
                     <i className="bi bi-geo-fill text-warning" style={{ fontSize: '1.1rem' }}></i>
                     <div>
-                      <span className="text-muted d-block" style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700 }}>Selected State</span>
+                      <span className="text-muted d-block" style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700 }}>Selected Location</span>
                       <strong style={{ fontSize: '0.9rem' }}>{zoneState}</strong>
                     </div>
                     <button className="btn btn-sm btn-link text-muted p-0 ms-3" onClick={() => { setZoneState(''); setZoneName(''); }} title="Clear selection">✕</button>
@@ -378,7 +373,7 @@ export default function ZonesView() {
                 ) : (
                   <div className="alert alert-secondary py-2 px-3 small mb-0 d-flex align-items-center gap-2" style={{ borderRadius: '0.5rem', opacity: 0.7 }}>
                     <i className="bi bi-geo"></i>
-                    <span>No state selected yet. Click the map or search above.</span>
+                    <span>No location selected yet. Click the map or search above.</span>
                   </div>
                 )}
                 {hasPolygon && (
@@ -416,7 +411,7 @@ export default function ZonesView() {
                 <table className="table table-hover align-middle mb-0">
                   <thead><tr>
                     <th style={{ ...thStyle, paddingLeft: '1.5rem' }}>Zone Name</th>
-                    <th style={thStyle}>State <span className="badge bg-warning text-dark ms-1" style={{ fontSize: '0.65rem' }}>Registration Gate</span></th>
+                    <th style={thStyle}>State/Country <span className="badge bg-warning text-dark ms-1" style={{ fontSize: '0.65rem' }}>Registration Gate</span></th>
                     <th style={thStyle}>Polygon</th>
                     <th style={thStyle}>Created</th>
                     <th style={thStyle}>Status</th>
@@ -468,7 +463,7 @@ export default function ZonesView() {
                       <tr><td colSpan={6} className="text-center py-5">
                         <i className="bi bi-geo-alt" style={{ fontSize: '3rem', opacity: 0.2 }}></i>
                         <p className="text-muted mt-2 mb-0">No zones configured yet.</p>
-                        <p className="text-muted small">Add a zone above to start restricting registrations by state.</p>
+                        <p className="text-muted small">Add a zone above to start restricting registrations by location.</p>
                       </td></tr>
                     )}
                   </tbody>
