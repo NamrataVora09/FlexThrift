@@ -53,6 +53,11 @@ export default function PricingRulesManager() {
   const [saleDepRanges, setSaleDepRanges] = useState<Array<{ min: string; max: string; amount: string }>>([{ min: '', max: '', amount: '' }]);
   const [rentalDepRanges, setRentalDepRanges] = useState<Array<{ min: string; max: string; amount: string }>>([{ min: '', max: '', amount: '' }]);
 
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [salePage, setSalePage] = useState(1);
+  const [rentalPage, setRentalPage] = useState(1);
+
   const loadPricingRules = useCallback(async () => {
     try {
       const [saleRes, rentalRes] = await Promise.all([
@@ -341,10 +346,26 @@ export default function PricingRulesManager() {
       } catch (e: any) {
         showToast.error('Network error: ' + (e?.message || 'Unknown error'));
       } finally {
-        // Always reload to show real DB state
         loadPricingRules();
       }
     }, action === 'delete' ? 'Delete All' : action.charAt(0).toUpperCase() + action.slice(1) + ' All');
+  };
+
+  const Paginator = ({ current, total, onPageChange }: { current: number; total: number; onPageChange: (p: number) => void }) => {
+    const pages = Math.ceil(total / PAGE_SIZE);
+    if (pages <= 1) return null;
+    return (
+      <div className="d-flex justify-content-between align-items-center px-3 py-2 bg-light border-top">
+        <small className="text-muted">Showing {Math.min(total, (current - 1) * PAGE_SIZE + 1)} to {Math.min(total, current * PAGE_SIZE)} of {total}</small>
+        <div className="btn-group btn-group-sm">
+          <button className="btn btn-outline-secondary" disabled={current === 1} onClick={() => onPageChange(current - 1)}>Prev</button>
+          {[...Array(pages)].map((_, i) => (
+            <button key={i} className={`btn ${current === i + 1 ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => onPageChange(i + 1)}>{i + 1}</button>
+          ))}
+          <button className="btn btn-outline-secondary" disabled={current === pages} onClick={() => onPageChange(current + 1)}>Next</button>
+        </div>
+      </div>
+    );
   };
 
   if (loading) return <div className="text-center p-5"><div className="spinner-border text-warning" /></div>;
@@ -370,7 +391,7 @@ export default function PricingRulesManager() {
             onSuccess={loadPricingRules}
             templateCsv="filter_type,filter_label,threshold,min,max,amount\nlisting_type,Traditional,10,0,5,20"
             templateFilename="sale_pricing_rules_template.csv"
-            formatGuide="Columns: filter_type (listing_type, category, sub_category), filter_label (Name of item), threshold (Base Deduction %), min (Min Usage), max (Max Usage, 0 for ∞), amount (Depreciation %)"
+            formatGuide="Columns: filter_type (listing_type, category, sub_category), filter_label (Name of item), threshold (Base Deduction %), min (Min Usage), max (Max Usage, 0 for ∞), amount (Depreciation %). Overlaps will be skipped."
           />
         </div>
         <div className="col-lg-6">
@@ -381,7 +402,7 @@ export default function PricingRulesManager() {
             onSuccess={loadPricingRules}
             templateCsv="filter_type,filter_label,threshold,min,max,amount,cap\nlisting_type,Traditional,5,0,5,10,14"
             templateFilename="rental_pricing_rules_template.csv"
-            formatGuide="Columns: filter_type, filter_label, threshold (Deposit Ded. %), min, max, amount (Depreciation %), cap (Rental Cost Cap %, optional)"
+            formatGuide="Columns: filter_type, filter_label, threshold (Deposit Ded. %), min, max, amount (Depreciation %), cap (Rental Cost Cap %, optional). Overlaps will be skipped."
           />
         </div>
       </div>
@@ -412,7 +433,7 @@ export default function PricingRulesManager() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSaleRules.length > 0 ? filteredSaleRules.map(r => (
+                {filteredSaleRules.length > 0 ? filteredSaleRules.slice((salePage - 1) * PAGE_SIZE, salePage * PAGE_SIZE).map(r => (
                   <tr key={r.id}>
                     <td><span className="badge bg-light text-dark border">{r.filter_type.replace('_', ' ')}</span></td>
                     <td>{r.filter_label || 'Global'}</td>
@@ -439,6 +460,7 @@ export default function PricingRulesManager() {
             </table>
           </div>
         </div>
+        <Paginator current={salePage} total={filteredSaleRules.length} onPageChange={setSalePage} />
       </div>
 
       {/* Rental Rules */}
@@ -467,7 +489,7 @@ export default function PricingRulesManager() {
                 </tr>
               </thead>
               <tbody>
-                {filteredRentalRules.length > 0 ? filteredRentalRules.map(r => (
+                {filteredRentalRules.length > 0 ? filteredRentalRules.slice((rentalPage - 1) * PAGE_SIZE, rentalPage * PAGE_SIZE).map(r => (
                   <tr key={r.id}>
                     <td><span className="badge bg-light text-dark border">{r.filter_type.replace('_', ' ')}</span></td>
                     <td>{r.filter_label || 'Global'}</td>
@@ -495,6 +517,7 @@ export default function PricingRulesManager() {
             </table>
           </div>
         </div>
+        <Paginator current={rentalPage} total={filteredRentalRules.length} onPageChange={setRentalPage} />
       </div>
 
       {/* Sale Modal - simplified for the new location */}
