@@ -147,6 +147,22 @@ export default function TaxonomyView() {
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvResult, setCsvResult] = useState<{ message: string; errors?: string[] } | null>(null);
 
+  const PAGE_SIZE = 10;
+  const [ltPage, setLtPage] = useState(1);
+  const [gPage, setGPage] = useState(1);
+  const [ptPage, setPtPage] = useState(1);
+  const [catPage, setCatPage] = useState(1);
+  const [scPage, setScPage] = useState(1);
+  const [colPage, setColPage] = useState(1);
+
+  // Search states (search over ALL data, not just current page)
+  const [ltSearch, setLtSearch] = useState('');
+  const [gSearch, setGSearch] = useState('');
+  const [ptSearch, setPtSearch] = useState('');
+  const [catSearch, setCatSearch] = useState('');
+  const [scSearch, setScSearch] = useState('');
+  const [colSearch, setColSearch] = useState('');
+
   const load = useCallback(() => {
     setLoading(true);
     api.get<TaxData>('/shared/taxonomy').then((r) => { if (r.success && r.data) setData(r.data); setLoading(false); });
@@ -289,6 +305,31 @@ export default function TaxonomyView() {
     <div style={cardHeaderStyle}><div style={cardHeaderIcon}><i className={icon}></i></div><h5 className="mb-0 fw-bold" style={{ color: '#1e2022' }}>{title}</h5></div>
   );
 
+  const Paginator = ({ total, page, setPage }: { total: number; page: number; setPage: (p: number) => void }) => {
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+    if (totalPages <= 1) return null;
+    return (
+      <div className="d-flex align-items-center justify-content-between mt-3 px-1">
+        <small className="text-muted">Showing {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} of {total}</small>
+        <nav>
+          <ul className="pagination pagination-sm mb-0">
+            <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
+              <button className="page-link" onClick={() => setPage(page - 1)} style={{ color: '#ffc63a', borderColor: '#e7eaf3' }}>&#8249;</button>
+            </li>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+              <li key={p} className={`page-item ${p === page ? 'active' : ''}`}>
+                <button className="page-link" onClick={() => setPage(p)} style={p === page ? { background: '#ffc63a', borderColor: '#ffc63a', color: '#fff' } : { color: '#ffc63a', borderColor: '#e7eaf3' }}>{p}</button>
+              </li>
+            ))}
+            <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
+              <button className="page-link" onClick={() => setPage(page + 1)} style={{ color: '#ffc63a', borderColor: '#e7eaf3' }}>&#8250;</button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    );
+  };
+
   return (
     <DashboardLayout requiredRoles={['super_admin']}>
       <div className="container-fluid">
@@ -383,14 +424,15 @@ export default function TaxonomyView() {
               <div className="col-md-2"><input name="image" type="file" accept="image/*" className="form-control" style={inputStyle} /></div>
               <div className="col-md-2"><button type="submit" className="btn w-100 sa-filter-btn" style={btnGold}><i className="bi bi-plus-circle me-2"></i>Add Listing Type</button></div>
             </form>
+            <div className="mb-3 position-relative">
+              <i className="bi bi-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#677788', fontSize: '0.9rem' }}></i>
+              <input className="form-control" style={{ ...inputStyle, paddingLeft: 36 }} placeholder="Search listing types..." value={ltSearch} onChange={(e) => { setLtSearch(e.target.value); setLtPage(1); }} />
+            </div>
             <div className="table-responsive"><table className="table table-hover mb-0">
               <thead><tr><th style={thStyle}>ID</th><th style={thStyle}>Image</th><th style={thStyle}>Name & Config</th><th style={thStyle}>Usage Label</th><th style={thStyle}>Created</th><th style={thStyle}>Actions</th></tr></thead>
-              <tbody>{listing_types.length > 0 ? listing_types.map((lt) => {
-                const gender = getGenderConfig(lt.field_config);
-                const bcForGender = gender === 'mandatory' ? '#dc3545' : gender === 'hidden' ? '#6c757d' : '#0dcaf0';
-                return (<tr key={lt.id}><td style={tdStyle}>{lt.id}</td><td style={tdStyle}>{lt.image ? <img src={`http://localhost:8080/${lt.image}`} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} /> : <div style={{ width: 50, height: 50, borderRadius: 8, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}><i className="bi bi-image"></i></div>}</td><td style={tdStyle}><strong>{lt.type_name || lt.name}</strong><div className="small text-muted mt-1">Gender: <span className="badge" style={{ background: bcForGender }}>{gender}</span></div></td><td style={tdStyle}><span className="badge bg-light text-dark border">{lt.usage_label || 'Times Used'}</span></td><td style={tdStyle}>{fmtDate(lt.created_at)}</td><td style={tdStyle}><ActionBtns table="listing_types" id={lt.id} item={lt} type="listing_type" /></td></tr>);
-              }) : <tr><td colSpan={5} className="text-center text-muted py-4">No listing types yet</td></tr>}</tbody>
+              <tbody>{(() => { const filtered = listing_types.filter(lt => (lt.type_name || lt.name || '').toLowerCase().includes(ltSearch.toLowerCase())); const paged = filtered.slice((ltPage - 1) * PAGE_SIZE, ltPage * PAGE_SIZE); return paged.length > 0 ? paged.map((lt) => { const gender = getGenderConfig(lt.field_config); const bcForGender = gender === 'mandatory' ? '#dc3545' : gender === 'hidden' ? '#6c757d' : '#0dcaf0'; return (<tr key={lt.id}><td style={tdStyle}>{lt.id}</td><td style={tdStyle}>{lt.image ? <img src={`http://localhost:8080/${lt.image}`} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} /> : <div style={{ width: 50, height: 50, borderRadius: 8, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}><i className="bi bi-image"></i></div>}</td><td style={tdStyle}><strong>{lt.type_name || lt.name}</strong><div className="small text-muted mt-1">Gender: <span className="badge" style={{ background: bcForGender }}>{gender}</span></div></td><td style={tdStyle}><span className="badge bg-light text-dark border">{lt.usage_label || 'Times Used'}</span></td><td style={tdStyle}>{fmtDate(lt.created_at)}</td><td style={tdStyle}><ActionBtns table="listing_types" id={lt.id} item={lt} type="listing_type" /></td></tr>); }) : <tr><td colSpan={6} className="text-center text-muted py-4">{ltSearch ? `No results for "${ltSearch}"` : 'No listing types yet'}</td></tr>; })()}</tbody>
             </table></div>
+            <Paginator total={listing_types.filter(lt => (lt.type_name || lt.name || '').toLowerCase().includes(ltSearch.toLowerCase())).length} page={ltPage} setPage={setLtPage} />
           </div>
         </div>
 
@@ -401,12 +443,15 @@ export default function TaxonomyView() {
               <div className="col-md-9"><input name="name" className="form-control" style={inputStyle} placeholder="Gender Name (e.g., Male, Women, Unisex)" required /></div>
               <div className="col-md-3"><button type="submit" className="btn w-100 sa-filter-btn" style={btnGold}><i className="bi bi-plus-circle me-2"></i>Add Gender</button></div>
             </form>
+            <div className="mb-3 position-relative">
+              <i className="bi bi-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#677788', fontSize: '0.9rem' }}></i>
+              <input className="form-control" style={{ ...inputStyle, paddingLeft: 36 }} placeholder="Search genders..." value={gSearch} onChange={(e) => { setGSearch(e.target.value); setGPage(1); }} />
+            </div>
             <div className="table-responsive"><table className="table table-hover mb-0">
               <thead><tr><th style={thStyle}>ID</th><th style={thStyle}>Name</th><th style={thStyle}>Created</th><th style={thStyle}>Actions</th></tr></thead>
-              <tbody>{genders.length > 0 ? genders.map((g) => (
-                <tr key={g.id}><td style={tdStyle}>{g.id}</td><td style={tdStyle}><strong>{g.name}</strong></td><td style={tdStyle}>{fmtDate(g.created_at)}</td><td style={tdStyle}><ActionBtns table="genders" id={g.id} item={g} type="gender" /></td></tr>
-              )) : <tr><td colSpan={4} className="text-center text-muted py-4">No genders yet</td></tr>}</tbody>
+              <tbody>{(() => { const filtered = genders.filter(g => g.name.toLowerCase().includes(gSearch.toLowerCase())); const paged = filtered.slice((gPage - 1) * PAGE_SIZE, gPage * PAGE_SIZE); return paged.length > 0 ? paged.map((g) => (<tr key={g.id}><td style={tdStyle}>{g.id}</td><td style={tdStyle}><strong>{g.name}</strong></td><td style={tdStyle}>{fmtDate(g.created_at)}</td><td style={tdStyle}><ActionBtns table="genders" id={g.id} item={g} type="gender" /></td></tr>)) : <tr><td colSpan={4} className="text-center text-muted py-4">{gSearch ? `No results for "${gSearch}"` : 'No genders yet'}</td></tr>; })()}</tbody>
             </table></div>
+            <Paginator total={genders.filter(g => g.name.toLowerCase().includes(gSearch.toLowerCase())).length} page={gPage} setPage={setGPage} />
           </div>
         </div>
 
@@ -418,13 +463,15 @@ export default function TaxonomyView() {
               <div className="col-md-4"><input name="name" className="form-control" style={inputStyle} placeholder="Product Type Name" required /></div>
               <div className="col-md-4"><button type="submit" className="btn w-100 sa-filter-btn" style={btnGold}><i className="bi bi-plus-circle me-2"></i>Add Product Type</button></div>
             </form>
+            <div className="mb-3 position-relative">
+              <i className="bi bi-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#677788', fontSize: '0.9rem' }}></i>
+              <input className="form-control" style={{ ...inputStyle, paddingLeft: 36 }} placeholder="Search product types..." value={ptSearch} onChange={(e) => { setPtSearch(e.target.value); setPtPage(1); }} />
+            </div>
             <div className="table-responsive"><table className="table table-hover mb-0">
               <thead><tr><th style={thStyle}>ID</th><th style={thStyle}>Product Type</th><th style={thStyle}>Listing Type</th><th style={thStyle}>Created</th><th style={thStyle}>Actions</th></tr></thead>
-              <tbody>{product_types.length > 0 ? product_types.map((pt) => {
-                const lt = listing_types.find((l) => l.id == pt.listing_type_id);
-                return (<tr key={pt.id}><td style={tdStyle}>{pt.id}</td><td style={tdStyle}><strong>{pt.name}</strong></td><td style={tdStyle}>{lt ? (lt.type_name || lt.name) : 'N/A'}</td><td style={tdStyle}>{fmtDate(pt.created_at)}</td><td style={tdStyle}><ActionBtns table="product_types" id={pt.id} item={pt} type="product_type" /></td></tr>);
-              }) : <tr><td colSpan={5} className="text-center text-muted py-4">No product types yet</td></tr>}</tbody>
+              <tbody>{(() => { const filtered = product_types.filter(pt => pt.name.toLowerCase().includes(ptSearch.toLowerCase())); const paged = filtered.slice((ptPage - 1) * PAGE_SIZE, ptPage * PAGE_SIZE); return paged.length > 0 ? paged.map((pt) => { const lt = listing_types.find((l) => l.id == pt.listing_type_id); return (<tr key={pt.id}><td style={tdStyle}>{pt.id}</td><td style={tdStyle}><strong>{pt.name}</strong></td><td style={tdStyle}>{lt ? (lt.type_name || lt.name) : 'N/A'}</td><td style={tdStyle}>{fmtDate(pt.created_at)}</td><td style={tdStyle}><ActionBtns table="product_types" id={pt.id} item={pt} type="product_type" /></td></tr>); }) : <tr><td colSpan={5} className="text-center text-muted py-4">{ptSearch ? `No results for "${ptSearch}"` : 'No product types yet'}</td></tr>; })()}</tbody>
             </table></div>
+            <Paginator total={product_types.filter(pt => pt.name.toLowerCase().includes(ptSearch.toLowerCase())).length} page={ptPage} setPage={setPtPage} />
           </div>
         </div>
 
@@ -437,15 +484,15 @@ export default function TaxonomyView() {
               <div className="col-md-3"><label className="small text-muted mb-1 d-block">Applies To</label><div className="form-control" style={{ ...inputStyle, height: 100, overflowY: 'auto' }}>{genders.map((g) => (<div className="form-check" key={g.id}><input className="form-check-input" type="checkbox" name="applies_to[]" value={g.name} /><label className="form-check-label small">{g.name}</label></div>))}</div></div>
               <div className="col-md-2 mt-auto"><button type="submit" className="btn w-100 sa-filter-btn" style={btnGold}><i className="bi bi-plus-circle me-2"></i>Add</button></div>
             </form>
+            <div className="mb-3 position-relative">
+              <i className="bi bi-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#677788', fontSize: '0.9rem' }}></i>
+              <input className="form-control" style={{ ...inputStyle, paddingLeft: 36 }} placeholder="Search categories..." value={catSearch} onChange={(e) => { setCatSearch(e.target.value); setCatPage(1); }} />
+            </div>
             <div className="table-responsive"><table className="table table-hover mb-0">
               <thead><tr><th style={thStyle}>ID</th><th style={thStyle}>Category</th><th style={thStyle}>Product Type</th><th style={thStyle}>Applies To</th><th style={thStyle}>Created</th><th style={thStyle}>Actions</th></tr></thead>
-              <tbody>{categories.length > 0 ? categories.map((c) => {
-                const ptIds = parseJson(c.product_type_ids);
-                const ptNames = ptIds.map((pid: number) => product_types.find((p) => p.id == pid)?.name).filter(Boolean).join(', ') || 'All';
-                const applies = parseJson(c.applies_to);
-                return (<tr key={c.id}><td style={tdStyle}>{c.id}</td><td style={tdStyle}><strong>{c.category_name || c.name}</strong></td><td style={tdStyle}>{ptNames}</td><td style={tdStyle}>{applies.length > 0 ? applies.map((g: string, i: number) => <span key={i} className="badge me-1" style={genderBadge}>{g}</span>) : <span className="badge" style={genderBadge}>All</span>}</td><td style={tdStyle}>{fmtDate(c.created_at)}</td><td style={tdStyle}><ActionBtns table="categories" id={c.id} item={c} type="category" /></td></tr>);
-              }) : <tr><td colSpan={6} className="text-center text-muted py-4">No categories yet</td></tr>}</tbody>
+              <tbody>{(() => { const filtered = categories.filter(c => (c.category_name || c.name || '').toLowerCase().includes(catSearch.toLowerCase())); const paged = filtered.slice((catPage - 1) * PAGE_SIZE, catPage * PAGE_SIZE); return paged.length > 0 ? paged.map((c) => { const ptIds = parseJson(c.product_type_ids); const ptNames = ptIds.map((pid: number) => product_types.find((p) => p.id == pid)?.name).filter(Boolean).join(', ') || 'All'; const applies = parseJson(c.applies_to); return (<tr key={c.id}><td style={tdStyle}>{c.id}</td><td style={tdStyle}><strong>{c.category_name || c.name}</strong></td><td style={tdStyle}>{ptNames}</td><td style={tdStyle}>{applies.length > 0 ? applies.map((g: string, i: number) => <span key={i} className="badge me-1" style={genderBadge}>{g}</span>) : <span className="badge" style={genderBadge}>All</span>}</td><td style={tdStyle}>{fmtDate(c.created_at)}</td><td style={tdStyle}><ActionBtns table="categories" id={c.id} item={c} type="category" /></td></tr>); }) : <tr><td colSpan={6} className="text-center text-muted py-4">{catSearch ? `No results for "${catSearch}"` : 'No categories yet'}</td></tr>; })()}</tbody>
             </table></div>
+            <Paginator total={categories.filter(c => (c.category_name || c.name || '').toLowerCase().includes(catSearch.toLowerCase())).length} page={catPage} setPage={setCatPage} />
           </div>
         </div>
 
@@ -458,15 +505,15 @@ export default function TaxonomyView() {
               <div className="col-md-3"><label className="small text-muted mb-1 d-block">Applies To</label><div className="form-control" style={{ ...inputStyle, height: 100, overflowY: 'auto' }}>{genders.map((g) => (<div className="form-check" key={g.id}><input className="form-check-input" type="checkbox" name="applies_to[]" value={g.name} /><label className="form-check-label small">{g.name}</label></div>))}</div></div>
               <div className="col-md-2 mt-auto"><button type="submit" className="btn w-100 sa-filter-btn" style={btnGold}><i className="bi bi-plus-circle me-2"></i>Add</button></div>
             </form>
+            <div className="mb-3 position-relative">
+              <i className="bi bi-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#677788', fontSize: '0.9rem' }}></i>
+              <input className="form-control" style={{ ...inputStyle, paddingLeft: 36 }} placeholder="Search sub-categories..." value={scSearch} onChange={(e) => { setScSearch(e.target.value); setScPage(1); }} />
+            </div>
             <div className="table-responsive"><table className="table table-hover mb-0">
               <thead><tr><th style={thStyle}>ID</th><th style={thStyle}>Sub-Category</th><th style={thStyle}>Category</th><th style={thStyle}>Applies To</th><th style={thStyle}>Created</th><th style={thStyle}>Actions</th></tr></thead>
-              <tbody>{sub_categories.length > 0 ? sub_categories.map((sc) => {
-                const catIds = parseJson(sc.category_ids);
-                const catNames = catIds.map((cid: number) => { const c = categories.find((x) => x.id == cid); return c ? (c.category_name || c.name) : null; }).filter(Boolean).join(', ') || 'N/A';
-                const applies = parseJson(sc.applies_to);
-                return (<tr key={sc.id}><td style={tdStyle}>{sc.id}</td><td style={tdStyle}><strong>{sc.name}</strong></td><td style={tdStyle}>{catNames}</td><td style={tdStyle}>{applies.length > 0 ? applies.map((g: string, i: number) => <span key={i} className="badge me-1" style={genderBadge}>{g}</span>) : <span className="badge" style={genderBadge}>All</span>}</td><td style={tdStyle}>{fmtDate(sc.created_at)}</td><td style={tdStyle}><ActionBtns table="sub_categories" id={sc.id} item={sc} type="sub_category" /></td></tr>);
-              }) : <tr><td colSpan={6} className="text-center text-muted py-4">No sub-categories yet</td></tr>}</tbody>
+              <tbody>{(() => { const filtered = sub_categories.filter(sc => sc.name.toLowerCase().includes(scSearch.toLowerCase())); const paged = filtered.slice((scPage - 1) * PAGE_SIZE, scPage * PAGE_SIZE); return paged.length > 0 ? paged.map((sc) => { const catIds = parseJson(sc.category_ids); const catNames = catIds.map((cid: number) => { const c = categories.find((x) => x.id == cid); return c ? (c.category_name || c.name) : null; }).filter(Boolean).join(', ') || 'N/A'; const applies = parseJson(sc.applies_to); return (<tr key={sc.id}><td style={tdStyle}>{sc.id}</td><td style={tdStyle}><strong>{sc.name}</strong></td><td style={tdStyle}>{catNames}</td><td style={tdStyle}>{applies.length > 0 ? applies.map((g: string, i: number) => <span key={i} className="badge me-1" style={genderBadge}>{g}</span>) : <span className="badge" style={genderBadge}>All</span>}</td><td style={tdStyle}>{fmtDate(sc.created_at)}</td><td style={tdStyle}><ActionBtns table="sub_categories" id={sc.id} item={sc} type="sub_category" /></td></tr>); }) : <tr><td colSpan={6} className="text-center text-muted py-4">{scSearch ? `No results for "${scSearch}"` : 'No sub-categories yet'}</td></tr>; })()}</tbody>
             </table></div>
+            <Paginator total={sub_categories.filter(sc => sc.name.toLowerCase().includes(scSearch.toLowerCase())).length} page={scPage} setPage={setScPage} />
           </div>
         </div>
 
@@ -478,12 +525,15 @@ export default function TaxonomyView() {
               <div className="col-md-4 d-flex align-items-center gap-2"><label className="mb-0 small text-muted">Picker:</label><input type="color" name="hex_code" className="form-control form-control-color" defaultValue="#563d7c" style={{ width: '100%' }} /></div>
               <div className="col-md-3"><button type="submit" className="btn w-100 sa-filter-btn" style={btnGold}><i className="bi bi-plus-circle me-2"></i>Add Color</button></div>
             </form>
+            <div className="mb-3 position-relative">
+              <i className="bi bi-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#677788', fontSize: '0.9rem' }}></i>
+              <input className="form-control" style={{ ...inputStyle, paddingLeft: 36 }} placeholder="Search colors..." value={colSearch} onChange={(e) => { setColSearch(e.target.value); setColPage(1); }} />
+            </div>
             <div className="table-responsive"><table className="table table-hover mb-0">
               <thead><tr><th style={thStyle}>ID</th><th style={thStyle}>Color</th><th style={thStyle}>Hex</th><th style={thStyle}>Preview</th><th style={thStyle}>Created</th><th style={thStyle}>Actions</th></tr></thead>
-              <tbody>{colors.length > 0 ? colors.map((c) => (
-                <tr key={c.id}><td style={tdStyle}>{c.id}</td><td style={tdStyle}><strong>{c.name}</strong></td><td style={tdStyle}><code>{c.hex_code}</code></td><td style={tdStyle}><div style={{ width: 30, height: 30, borderRadius: 6, background: c.hex_code, border: '1px solid #ddd' }}></div></td><td style={tdStyle}>{fmtDate(c.created_at)}</td><td style={tdStyle}><ActionBtns table="colors" id={c.id} item={c} type="color" /></td></tr>
-              )) : <tr><td colSpan={6} className="text-center text-muted py-4">No colors yet</td></tr>}</tbody>
+              <tbody>{(() => { const filtered = colors.filter(c => c.name.toLowerCase().includes(colSearch.toLowerCase()) || c.hex_code.toLowerCase().includes(colSearch.toLowerCase())); const paged = filtered.slice((colPage - 1) * PAGE_SIZE, colPage * PAGE_SIZE); return paged.length > 0 ? paged.map((c) => (<tr key={c.id}><td style={tdStyle}>{c.id}</td><td style={tdStyle}><strong>{c.name}</strong></td><td style={tdStyle}><code>{c.hex_code}</code></td><td style={tdStyle}><div style={{ width: 30, height: 30, borderRadius: 6, background: c.hex_code, border: '1px solid #ddd' }}></div></td><td style={tdStyle}>{fmtDate(c.created_at)}</td><td style={tdStyle}><ActionBtns table="colors" id={c.id} item={c} type="color" /></td></tr>)) : <tr><td colSpan={6} className="text-center text-muted py-4">{colSearch ? `No results for "${colSearch}"` : 'No colors yet'}</td></tr>; })()}</tbody>
             </table></div>
+            <Paginator total={colors.filter(c => c.name.toLowerCase().includes(colSearch.toLowerCase()) || c.hex_code.toLowerCase().includes(colSearch.toLowerCase())).length} page={colPage} setPage={setColPage} />
           </div>
         </div>
       </div>
