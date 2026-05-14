@@ -2488,26 +2488,45 @@ private function processImage($source, $subDir): ?string
 
                 $filterLabel = $this->resolveFilterLabel($filterType, $filterValue);
 
+                $min = (int)($data['depreciation_range_min'] ?? $data['min'] ?? 0);
+                $max = (int)($data['depreciation_range_max'] ?? $data['max'] ?? 0);
+
+                // Check for overlapping rules (Same rule as single upload)
+                $existing = $this->checkOverlappingRules($table, $filterType, $filterValue, $min, $max);
+                if ($existing) {
+                    $skipped++;
+                    $errors[] = "Row {$row} overlaps with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")";
+                    continue;
+                }
+
                 if ($type === 'rental') {
                     $db->table($table)->insert([
                         'filter_type' => $filterType,
                         'filter_value' => $filterValue,
                         'filter_label' => $filterLabel,
                         'deposit_deduction_threshold' => (float)($data['deposit_deduction_threshold'] ?? $data['threshold'] ?? 0),
-                        'depreciation_range_min' => (int)($data['depreciation_range_min'] ?? $data['min'] ?? 0),
-                        'depreciation_range_max' => (int)($data['depreciation_range_max'] ?? $data['max'] ?? 0),
+                        'depreciation_range_min' => $min,
+                        'depreciation_range_max' => $max,
                         'depreciation_amount' => (float)($data['depreciation_amount'] ?? $data['amount'] ?? 0),
                         'max_cost_cap_per_day' => (float)($data['max_cost_cap_per_day'] ?? $data['cap'] ?? 0),
                         'is_active' => 1,
                     ]);
                 } else {
+                    $threshold = (float)($data['deduction_threshold'] ?? $data['threshold'] ?? 0);
+                    
+                    // Sync deduction_threshold across all existing rows in the same filter group (Same rule as single upload)
+                    $db->table('pricing_rules')
+                       ->where('filter_type', $filterType)
+                       ->where('filter_value', $filterValue)
+                       ->update(['deduction_threshold' => $threshold]);
+
                     $db->table($table)->insert([
                         'filter_type' => $filterType,
                         'filter_value' => $filterValue,
                         'filter_label' => $filterLabel,
-                        'deduction_threshold' => (float)($data['deduction_threshold'] ?? $data['threshold'] ?? 0),
-                        'depreciation_range_min' => (int)($data['depreciation_range_min'] ?? $data['min'] ?? 0),
-                        'depreciation_range_max' => (int)($data['depreciation_range_max'] ?? $data['max'] ?? 0),
+                        'deduction_threshold' => $threshold,
+                        'depreciation_range_min' => $min,
+                        'depreciation_range_max' => $max,
                         'depreciation_amount' => (float)($data['depreciation_amount'] ?? $data['amount'] ?? 0),
                         'is_active' => 1,
                     ]);
