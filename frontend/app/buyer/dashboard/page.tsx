@@ -123,7 +123,6 @@ export default function BuyerDashboardPage() {
           width: 40px;
           height: 40px;
           border-radius: 12px;
-          border: 1px solid #ffc63a;
           background: rgba(255,198,58,0.05);
         }
         .metric-value {
