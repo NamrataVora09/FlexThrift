@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
@@ -44,6 +44,7 @@ function Toggle({ label, desc, settingKey, settings, update }: { label: string; 
 }
 
 export default function SettingsClient() {
+  const { toastSuccess, toastError } = useToast();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,15 +69,15 @@ export default function SettingsClient() {
     const res = await api.post('/superadmin/update-settings', settings);
     setSaving(false);
     if (res.success) {
-      toast.success('Settings saved successfully!');
+      toastSuccess('settings_save_success', 'Settings saved successfully!');
     } else {
-      toast.error(res.message || 'Failed to save settings');
+      toastError('settings_save_error', res.message || 'Failed to save settings');
     }
   };
 
   const handleBulkDelete = () => {
     if (!fromDate || !toDate) {
-      toast.error('Please select both from and to dates');
+      toastError('settings_date_required', 'Please select both from and to dates');
       return;
     }
     confirmToast('All rejected products and their images will be permanently deleted! Are you sure?', async () => {
@@ -86,8 +87,8 @@ export default function SettingsClient() {
       fd.append('to_date', toDate);
       const res = await api.post('/superadmin/bulk-delete-rejected', fd);
       setDeleting(false);
-      if (res.success) toast.success(res.message || 'Cleanup complete');
-      else toast.error(res.message || 'Failed');
+      if (res.success) toastSuccess('generic_success', res.message || 'Cleanup complete');
+      else toastError('generic_error', res.message || 'Failed');
     }, 'Delete All');
   };
 

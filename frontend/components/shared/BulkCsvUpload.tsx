@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 interface Props {
   endpoint: string;
@@ -18,6 +18,7 @@ const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px so
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#ffff', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.5rem 1.25rem' };
 
 export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename, formatGuide, title, onSuccess, extraData }: Props) {
+  const { toastSuccess, toastError } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<{ message: string; errors?: string[] } | null>(null);
@@ -36,14 +37,14 @@ export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename,
     const res = await api.upload<{ message: string; inserted: number; skipped: number; errors: string[] }>(endpoint, fd);
     setUploading(false);
     if (res.success) {
-      toast.success(res.data?.message || res.message || 'Upload complete');
+      toastSuccess('bulk_upload_success', res.data?.message || res.message || 'Upload complete');
       setResult({ message: res.data?.message || res.message || 'Upload complete', errors: res.data?.errors });
       setFile(null);
       const input = document.getElementById(`csvInput-${templateFilename}`) as HTMLInputElement;
       if (input) input.value = '';
       if (onSuccess) onSuccess();
     } else {
-      toast.error(res.message || 'Upload failed');
+      toastError('bulk_upload_failed', res.message || 'Upload failed');
       setResult({ message: res.message || 'Upload failed' });
     }
   };

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import AdBanner from '@/components/shared/AdBanner';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 
@@ -39,6 +39,7 @@ interface Props {
 }
 
 export default function ProfilePageClient({ requiredRoles }: Props) {
+  const { toastSuccess, toastError } = useToast();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -102,7 +103,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
     const res = await api.post('/shared/update-profile', form);
     setSaving(false);
     if (res?.success) {
-      toast.success('Profile updated successfully!');
+      toastSuccess('profile_update_success', 'Profile updated successfully!');
       setSuccess('Profile updated successfully!');
       setModalOpen(false);
       const refresh = await api.get<UserProfile>('/auth/me');
@@ -121,9 +122,9 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
     setImgUploading(false);
     if (res.success && res.data) {
       setUser(u => u ? { ...u, profile_image: res.data!.path } : u);
-      toast.success('Profile image updated!');
+      toastSuccess('profile_image_update_success', 'Profile image updated!');
     } else {
-      toast.error(res.message || 'Image upload failed');
+      toastError('profile_image_update_failed', res.message || 'Image upload failed');
     }
   };
 

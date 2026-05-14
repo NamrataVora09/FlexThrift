@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import PageHeader from './PageHeader';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 
 interface Props { role: string; }
 
 export default function ProfileView({ role }: Props) {
   const { user } = useAuth();
+  const { toastSuccess, toastError } = useToast();
   const [profile, setProfile] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -48,9 +49,9 @@ export default function ProfileView({ role }: Props) {
     if (res?.success) {
       setProfile({ ...profile, ...form });
       setEditing(false);
-      toast.success('Profile updated successfully!');
+      toastSuccess('profile_update_success', 'Profile updated successfully!');
     } else {
-      toast.error(res?.message || 'Update failed');
+      toastError('profile_update_failed', res?.message || 'Failed to update profile.');
     }
   };
 
@@ -65,9 +66,9 @@ export default function ProfileView({ role }: Props) {
     const res = await api.upload('/shared/upload-kyc', formData);
     setKycSaving(false);
     if (res?.success) {
-      toast.success('KYC documents uploaded!');
+      toastSuccess('kyc_upload_success', 'KYC documents uploaded successfully!');
     } else {
-      toast.error(res?.message || 'Upload failed');
+      toastError('kyc_upload_failed', res?.message || 'KYC document upload failed.');
     }
   };
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface Product {
@@ -45,6 +45,7 @@ const resolveUrl = (path: string) => {
 };
 
 export default function PendingProductsView({ role, apiPath, showRatings = false }: Props) {
+  const { toastSuccess, toastError } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [editRequests, setEditRequests] = useState<EditRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,12 +117,12 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
     if (!approveModal) return;
     const res = await api.post(`/shared/approve-product/${approveModal.id}`, { remarks: approveRemarks });
     if (res.success) {
-      toast.success('Product approved!');
+      toastSuccess('product_approve_success', 'Product approved!');
       setApproveModal(null); 
       setApproveRemarks('');
       load();
     } else {
-      toast.error(res.message || 'Approval failed');
+      toastError('product_approve_failed', res.message || 'Approval failed');
     }
   };
 
@@ -139,14 +140,14 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
       res = await api.post(`${baseApiPath}/reject-edit-request/${rejectModal.id}`, payload);
     }
     if (res.success) {
-      toast.success(rejectModal.type === 'product' ? 'Product rejected' : 'Edit request rejected');
+      toastSuccess(rejectModal.type === 'product' ? 'product_reject_success' : 'edit_request_reject_success', rejectModal.type === 'product' ? 'Product rejected' : 'Edit request rejected');
       setRejectModal(null); 
       setRejectReason(''); 
       setSelectedTemplateId(null);
       setTemplateSearchInput('');
       load();
     } else {
-      toast.error(res.message || 'Rejection failed');
+      toastError(rejectModal.type === 'product' ? 'product_reject_failed' : 'edit_request_reject_failed', res.message || 'Rejection failed');
     }
   };
 
@@ -187,11 +188,11 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
       const baseApiPath = role === 'super_admin' ? '/superadmin' : '/admin';
       const res = await api.post(`${baseApiPath}/approve-edit-request/${id}`);
       if (res.success) {
-        toast.success('Edit request approved and merged!');
+        toastSuccess('edit_request_approve_success', 'Edit request approved and merged!');
         setComparison(null); 
         load();
       } else {
-        toast.error(res.message || 'Failed to approve');
+        toastError('edit_request_approve_failed', res.message || 'Failed to approve');
       }
     }, 'Approve');
   };

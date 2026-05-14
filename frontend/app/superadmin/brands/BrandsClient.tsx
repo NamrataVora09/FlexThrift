@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface Brand { id: number; brand_name: string; seller_id: number; seller_name: string | null; seller_mobile: string | null; is_blocked: string; rejection_reason: string | null; is_active?: string | number; description?: string; listing_type_id?: number | null; listing_type_name?: string | null; created_at: string; }
@@ -22,6 +22,7 @@ const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#fff', fon
 const avatarStyle: React.CSSProperties = { width: 40, height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffc63a', color: '#fff', fontWeight: 600, fontSize: '1rem' };
 
 export default function BrandsClient() {
+  const { toastSuccess, toastError } = useToast();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,11 +114,11 @@ export default function BrandsClient() {
     const res = await api.upload(`/superadmin/block-brand/${blockTarget.id}`, fd);
     setBlockSubmitting(false);
     if (res.success) {
-      toast.success('Brand blocked and products rejected');
+      toastSuccess('brand_blocked', 'Brand blocked and all products rejected.');
       setBlockTarget(null);
       load();
     } else {
-      toast.error(res.message || 'Action failed');
+      toastError('brand_update_failed', res.message || 'Action failed.');
     }
   };
 
@@ -125,10 +126,10 @@ export default function BrandsClient() {
     confirmToast('Unblock this brand?', async () => {
       const res = await api.post(`/superadmin/unblock-brand/${id}`);
       if (res.success) {
-        toast.success('Brand unblocked');
+        toastSuccess('brand_unblocked', 'Brand unblocked successfully.');
         load();
       } else {
-        toast.error(res.message || 'Action failed');
+        toastError('brand_update_failed', res.message || 'Action failed.');
       }
     }, 'Unblock');
   };
@@ -150,11 +151,11 @@ export default function BrandsClient() {
     const res = await api.upload(`/superadmin/update-brand/${showEdit.id}`, fd);
     setSubmitting(true);
     if (res.success) {
-      toast.success('Brand updated');
+      toastSuccess('brand_update_success', 'Brand updated successfully.');
       setShowEdit(null);
       load();
     } else {
-      toast.error(res.message || 'Update failed');
+      toastError('brand_update_failed', res.message || 'Failed to update brand.');
     }
     setSubmitting(false);
   };
@@ -163,10 +164,10 @@ export default function BrandsClient() {
     confirmToast('Delete this brand? Products will be untagged. This cannot be undone.', async () => {
       const res = await api.post(`/superadmin/delete-brand/${id}`);
       if (res.success) {
-        toast.success('Brand deleted');
+        toastSuccess('brand_delete_success', 'Brand deleted successfully.');
         load();
       } else {
-        toast.error(res.message || 'Delete failed');
+        toastError('brand_delete_failed', res.message || 'Failed to delete brand.');
       }
     }, 'Delete');
   };
@@ -176,10 +177,10 @@ export default function BrandsClient() {
     confirmToast(`${action} this brand?${isActive ? ' Products remain visible without brand name.' : ''}`, async () => {
       const res = await api.post(`/superadmin/${isActive ? 'deactivate' : 'activate'}-brand/${id}`);
       if (res.success) {
-        toast.success(`Brand ${action === 'Deactivate' ? 'deactivated' : 'activated'}`);
+        toastSuccess('brand_update_success', `Brand ${action === 'Deactivate' ? 'deactivated' : 'activated'} successfully.`);
         load();
       } else {
-        toast.error(res.message || 'Action failed');
+        toastError('brand_update_failed', res.message || 'Action failed.');
       }
     }, action);
   };
@@ -195,12 +196,12 @@ export default function BrandsClient() {
     const res = await api.upload('/superadmin/create-brand', fd);
     setSubmitting(false);
     if (res.success) {
-      toast.success('Brand created successfully!');
+      toastSuccess('brand_create_success', 'Brand created successfully!');
       setShowCreate(false);
       setCreateForm({ seller_id: '', brand_name: '', description: '', listing_type_id: '' });
       load();
     }
-    else toast.error(res.message || 'Failed');
+    else toastError('brand_create_failed', res.message || 'Failed to create brand.');
   };
 
   const openTagModal = (brandId: number, sellerId: number | null) => {
@@ -261,11 +262,11 @@ export default function BrandsClient() {
       .forEach((p) => fd.append('untag_ids[]', String(p.id)));
     const res = await api.upload('/superadmin/bulk-tag-products', fd);
     if (res.success) {
-      toast.success('Products tagged successfully');
+      toastSuccess('brand_update_success', 'Products tagged to brand successfully!');
       setShowTag(false);
       load();
     }
-    else toast.error(res.message || 'Failed');
+    else toastError('brand_update_failed', res.message || 'Failed to tag products.');
   };
 
   const filteredSellers = sellers.filter((s) => !sellerSearch || s.name.toLowerCase().includes(sellerSearch.toLowerCase()) || s.email.toLowerCase().includes(sellerSearch.toLowerCase()));

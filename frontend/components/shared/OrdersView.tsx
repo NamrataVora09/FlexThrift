@@ -6,7 +6,7 @@ import DataTable, { Column } from './DataTable';
 import StatusFilter from './StatusFilter';
 import PageHeader from './PageHeader';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
@@ -28,6 +28,7 @@ interface Props {
 }
 
 export default function OrdersView({ role, apiPath, perspective }: Props) {
+  const { toastSuccess, toastError } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -78,10 +79,10 @@ export default function OrdersView({ role, apiPath, perspective }: Props) {
       }
       setActionLoading(null);
       if (res?.success) {
-        toast.success(`Order ${action.replace('-', ' ')}ed!`);
+        toastSuccess('order_cancel_success', `Order ${action.replace('-', ' ')} successful!`);
         load();
       } else {
-        toast.error(res?.message || 'Action failed');
+        toastError('order_action_failed', res?.message || 'Order action failed. Please try again.');
       }
     }, action === 'cancel' ? 'Confirm Cancel' : 'Confirm Action');
   };
@@ -96,10 +97,10 @@ export default function OrdersView({ role, apiPath, perspective }: Props) {
     if (res?.success) {
       setDeliveryModal(null);
       setDeliveryPhoto(null);
-      toast.success('Delivery confirmed!');
+      toastSuccess('order_delivery_confirmed', 'Delivery confirmed!');
       load();
     } else {
-      toast.error(res?.message || 'Failed to confirm delivery');
+      toastError('order_delivery_failed', res?.message || 'Failed to confirm delivery.');
     }
   };
 
@@ -116,10 +117,10 @@ export default function OrdersView({ role, apiPath, perspective }: Props) {
       setReviewModal(null);
       setRating(5);
       setReviewComment('');
-      toast.success('Review submitted!');
+      toastSuccess('order_review_submitted', 'Review submitted successfully!');
       load();
     } else {
-      toast.error(res?.message || 'Failed to submit review');
+      toastError('order_review_failed', res?.message || 'Failed to submit review.');
     }
   };
 

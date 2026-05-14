@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface CmsPage { id: number; slug: string; title: string; content: string; status: string; updated_at: string; }
@@ -15,6 +15,7 @@ const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: '0.8rem', c
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 
 export default function CmsPagesView() {
+  const { toastSuccess, toastError } = useToast();
   const [pages, setPages] = useState<CmsPage[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,12 +48,12 @@ export default function CmsPagesView() {
     const res = await api.post('/superadmin/create-cms-page', createForm);
     setCreating(false);
     if (res.success) {
-      toast.success('CMS Page created successfully!');
+      toastSuccess('cms_page_create_success', 'CMS Page created successfully!');
       setShowCreate(false);
       setCreateForm({ slug: '', title: '', content: '' });
       load();
     } else {
-      toast.error(res.message || 'Failed to create page');
+      toastError('cms_page_create_failed', res.message || 'Failed to create page');
     }
   };
 
@@ -77,11 +78,11 @@ export default function CmsPagesView() {
     });
     setSaving(false);
     if (res.success) {
-      toast.success('CMS Page updated successfully!');
+      toastSuccess('cms_page_update_success', 'CMS Page updated successfully!');
       setEditing(null);
       load();
     } else {
-      toast.error(res.message || 'Failed to update page');
+      toastError('cms_page_update_failed', res.message || 'Failed to update page');
     }
   };
 
@@ -90,10 +91,10 @@ export default function CmsPagesView() {
     confirmToast(`Delete "${title}"? This cannot be undone.`, async () => {
       const res = await api.post(`/superadmin/delete-cms-page/${id}`);
       if (res.success) {
-        toast.success('Page deleted');
+        toastSuccess('cms_page_delete_success', 'Page deleted');
         load();
       } else {
-        toast.error(res.message || 'Failed to delete');
+        toastError('cms_page_delete_failed', res.message || 'Failed to delete');
       }
     }, 'Delete');
   };

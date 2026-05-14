@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 import { useAuth } from '@/lib/auth-context';
 
@@ -45,6 +45,7 @@ interface Props {
 const AVATAR_COLORS = ['#377dff', '#ffc63a', '#7000ff', '#ed4c78', '#ff9d00'];
 
 export default function UsersView({ role, apiPath, searchable = false }: Props) {
+  const { toastSuccess, toastError } = useToast();
   const { user: authUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
@@ -90,10 +91,10 @@ export default function UsersView({ role, apiPath, searchable = false }: Props) 
     confirmToast('Are you sure you want to toggle this user\'s status?', async () => {
       const res = await api.post(`${apiBase}/toggle-user-status/${id}`);
       if (res.success) {
-        toast.success('Status updated');
+        toastSuccess('user_status_update_success', 'Status updated');
         load();
       } else {
-        toast.error(res.message || 'Failed');
+        toastError('user_status_update_failed', res.message || 'Failed');
       }
     });
   };
@@ -102,10 +103,10 @@ export default function UsersView({ role, apiPath, searchable = false }: Props) 
     confirmToast(`Toggle ${r} role access for this user?`, async () => {
       const res = await api.post(`${apiBase}/toggle-role-block/${id}/${r}`);
       if (res.success) {
-        toast.success('Role access updated');
+        toastSuccess('user_role_access_update_success', 'Role access updated');
         load();
       } else {
-        toast.error(res.message || 'Failed');
+        toastError('user_role_access_update_failed', res.message || 'Failed');
       }
     });
   };

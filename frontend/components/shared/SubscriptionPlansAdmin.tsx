@@ -5,7 +5,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface Plan {
@@ -142,6 +142,7 @@ function PlanPointsEditor({ value, onChange, form }: { value: string; onChange: 
 
 
 export default function SubscriptionPlansAdmin() {
+  const { toastSuccess, toastError } = useToast();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -200,7 +201,7 @@ export default function SubscriptionPlansAdmin() {
     e.preventDefault();
     const price = parseFloat(form.price);
     const basePrice = parseFloat(form.base_price) || price;
-    if (basePrice < price) { toast.error('Base Original price cannot be less than Final price.'); return; }
+    if (basePrice < price) { toastError('plan_base_price_error', 'Base Original price cannot be less than Final price.'); return; }
 
     setSaving(true);
     const payload = {
@@ -240,10 +241,10 @@ export default function SubscriptionPlansAdmin() {
     confirmToast('Deleting this plan might affect users currently on it! Are you sure?', async () => {
       const res = await api.post(`/shared/admin-subscription-plans/${id}/delete`);
       if (res.success) {
-        toast.success('Plan deleted');
+        toastSuccess('plan_delete_success', 'Plan deleted');
         load();
       } else {
-        toast.error(res.message || 'Delete failed');
+        toastError('plan_delete_failed', res.message || 'Delete failed');
       }
     }, 'Delete');
   };

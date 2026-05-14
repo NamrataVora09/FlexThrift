@@ -10,7 +10,7 @@ import LandingNavbar from '@/components/layout/LandingNavbar';
 import Footer from '@/components/layout/Footer';
 import AdBanner from '@/components/shared/AdBanner';
 import { RentalCalendar } from '@/components/shared/RentalCalendar';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 interface Product {
   id: number;
@@ -85,6 +85,7 @@ interface Props {
 const BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 
 export default function ProductDetailClient({ product, images, similarProducts = [], minRentalDays = 3 }: Props) {
+  const { toastSuccess, toastError, toastWarning } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isPreview = searchParams.get('preview') === 'true';
@@ -311,10 +312,13 @@ export default function ProductDetailClient({ product, images, similarProducts =
         setShowContactModal(true);
         // Notify contacts page (if open) to refresh its list
         window.dispatchEvent(new CustomEvent('flex:contact-created'));
+        toastSuccess('offer_sent_success', 'Offer sent successfully!');
       } else {
+        toastWarning('offer_sent_no_contact', contactRes.message || 'Offer sent! Contact could not be retrieved.');
         setContactError(contactRes.message || 'Offer sent! Contact could not be retrieved.');
       }
     } else {
+      toastError('offer_send_failed', res?.message || 'Failed to submit offer');
       setOfferError(res?.message || 'Failed to submit offer');
     }
   };
@@ -618,7 +622,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                         if (inWishlist) {
                           removeFromWishlist(Number(product.id));
                           setInWishlist(false);
-                          toast.success('Removed from wishlist');
+                          toastSuccess('wishlist_removed', 'Removed from wishlist');
                         } else {
                           addToWishlist({
                             id: Number(product.id),
@@ -629,7 +633,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                             seller_name: product.seller_name
                           });
                           setInWishlist(true);
-                          toast.success('Added to wishlist');
+                          toastSuccess('wishlist_added', 'Added to wishlist');
                         }
                       }}
                       style={{

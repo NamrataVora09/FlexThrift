@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface Product {
@@ -53,6 +53,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 const TABS = ['all', 'pending', 'approved', 'rejected'];
 
 export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
+  const { toastSuccess, toastError } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -75,10 +76,10 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
       const res = await api.post(`/seller/delete-product/${id}`);
       setActionLoading(false);
       if (res?.success) {
-        toast.success('Product deleted successfully');
+        toastSuccess('product_delete_success', 'Product deleted successfully.');
         load();
       } else {
-        toast.error(res?.message || 'Delete failed');
+        toastError('product_delete_failed', res?.message || 'Failed to delete product.');
       }
     }, 'Delete');
   };

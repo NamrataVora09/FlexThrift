@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import { useSystem } from '@/lib/system-context';
 
@@ -66,6 +66,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { settings } = useSystem();
+  const { toastSuccess, toastError, toastWarning } = useToast();
   const imgRef = useRef<HTMLInputElement>(null);
   const billRef = useRef<HTMLInputElement>(null);
   const [meta, setMeta] = useState<FormMeta | null>(null);
@@ -457,7 +458,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     const remaining = max - currentTotal;
 
     if (remaining <= 0) {
-      toast.error(`Maximum ${max} images allowed`);
+      toastWarning('product_max_images', `Maximum ${max} images allowed.`, { max: String(max) });
       return;
     }
 
@@ -496,7 +497,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     const remaining = max - currentTotal;
 
     if (remaining <= 0) {
-      toast.error(`Maximum ${max} bills allowed`);
+      toastWarning('product_max_bills', `Maximum ${max} bill uploads allowed.`, { max: String(max) });
       return;
     }
 
@@ -642,12 +643,14 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         // Create new product
         res = await api.upload(`${apiBasePath}/upload-product`, fd);
       }
-
+      
       if (res.success) {
         const isAutoApproved = ['super_admin', 'admin', 'superadmin'].includes(user?.role || '') || meta?.config.product_approval_required !== '1';
         const successMessage = isEditMode
           ? (isAutoApproved ? 'Product updated successfully!' : 'Edit request submitted for admin approval!')
           : (isAutoApproved ? 'Product uploaded!' : 'Product uploaded and pending admin approval!');
+        
+        toastSuccess('product_upload_success', res.message || successMessage);
         setSuccess(res.message || successMessage);
         setTimeout(() => router.push(redirectPath), 1500);
       }

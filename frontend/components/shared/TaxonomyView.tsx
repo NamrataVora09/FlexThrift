@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface ListingType { id: number; type_name?: string; name?: string; usage_label?: string; image?: string; field_config?: string; created_at?: string; }
@@ -134,6 +134,7 @@ function CheckboxGroup({ label, items, selected, onChange }: { label: string; it
 }
 
 export default function TaxonomyView() {
+  const { toastSuccess, toastError } = useToast();
   const [data, setData] = useState<TaxData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -180,10 +181,10 @@ export default function TaxonomyView() {
   const submitForm = async (url: string, fd: FormData) => {
     const res = await api.upload(url, fd);
     if (res.success) {
-      toast.success('Successfully updated!');
+      toastSuccess('taxonomy_update_success', 'Successfully updated!');
       load();
     } else {
-      toast.error(res.message || 'Error');
+      toastError('taxonomy_update_failed', res.message || 'Error');
     }
   };
 

@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
-import { useSystem } from '@/lib/system-context';
 
 interface Coupon {
   id: number; code: string; discount_type: string; discount_value: string;
@@ -23,7 +22,7 @@ const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', 
 const emptyForm = { code: '', discount_type: 'percentage', discount_value: '', min_order_amount: '0', usage_limit: '', valid_until: '' };
 
 export default function CouponsView() {
-  const { getMsg } = useSystem();
+  const { toastSuccess, toastError } = useToast();
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -58,11 +57,11 @@ export default function CouponsView() {
       : await api.post('/shared/coupons', form);
     setSaving(false);
     if (res.success) {
-      toast.success(editId ? getMsg('coupon_update_success', 'Coupon updated') : getMsg('coupon_create_success', 'Coupon created'));
+      toastSuccess(editId ? 'coupon_update_success' : 'coupon_create_success', editId ? 'Coupon updated' : 'Coupon created');
       setShowModal(false);
       load();
     } else {
-      toast.error(res.message || getMsg('coupon_save_failed', 'Failed to save'));
+      toastError('coupon_save_failed', res.message || 'Failed to save');
     }
   };
 
@@ -72,13 +71,13 @@ export default function CouponsView() {
   };
 
   const deleteCoupon = (id: number) => {
-    confirmToast(getMsg('coupon_delete_confirm', 'This coupon will be permanently deleted! Are you sure?'), async () => {
+    confirmToast('coupon_delete_confirm', async () => {
       const res = await api.post(`/shared/coupons/${id}/delete`);
       if (res.success) {
-        toast.success(getMsg('coupon_delete_success', 'Coupon deleted'));
+        toastSuccess('coupon_delete_success', 'Coupon deleted');
         load();
       } else {
-        toast.error(res.message || getMsg('coupon_delete_failed', 'Error deleting coupon'));
+        toastError('coupon_delete_failed', res.message || 'Error deleting coupon');
       }
     }, 'Delete');
   };

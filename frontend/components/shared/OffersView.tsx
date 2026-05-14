@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, ChangeEvent, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import { RentalCalendar } from './RentalCalendar';
+import { useToast } from '@/lib/toast';
 import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
 import { useAuth } from '@/lib/auth-context';
@@ -407,6 +408,7 @@ const CSS = `
 
 export default function OffersView({ role, apiPath, perspective, noLayout, noHeader }: Props) {
   const { user } = useAuth();
+  const { toastSuccess, toastError, toastWarning, resolveMsg } = useToast();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [filter, setFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -500,12 +502,12 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     else res = await api.post(`/buyer/cancel-offer/${actionModal.id}`);
     setActionLoading(false);
     if (res?.success) {
-      toast.success(`Offer ${actionModal.action === 'accept' ? 'accepted' : actionModal.action === 'reject' ? 'rejected' : 'cancelled'}`);
+      toastSuccess('offer_action_success', `Offer ${actionModal.action === 'accept' ? 'accepted' : actionModal.action === 'reject' ? 'rejected' : 'cancelled'}!`);
       setActionModal(null);
       setRemarks('');
       load();
     }
-    else toast.error(res?.message || 'Action failed');
+    else toastError('offer_action_failed', res?.message || 'Action failed. Please try again.');
   };
 
   /* ── rating ── */
@@ -516,11 +518,11 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     const res = await api.post<any>(endpoint, { offer_id: ratingModal.id, rating: 5 });
     setRatingLoading(false);
     if (res.success) {
-      toast.success('Rating submitted!');
+      toastSuccess('offer_rating_submitted', 'Rating submitted successfully!');
       setRatingModal(null);
       load();
     }
-    else toast.error(res.message || 'Failed to submit rating');
+    else toastError('offer_rating_failed', res.message || 'Failed to submit rating. Please try again.');
   };
 
   /* ── update dates ── */
@@ -545,11 +547,11 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     const res = await api.post(`/buyer/update-offer-dates/${dateModal.id}`, payload);
     setDateLoading(false);
     if (res?.success) {
-      toast.success('Offer updated successfully!');
+      toastSuccess('offer_update_success', 'Offer updated successfully!');
       setDateModal(null);
       load();
     }
-    else toast.error(res?.message || 'Update failed');
+    else toastError('offer_update_failed', res?.message || 'Failed to update offer.');
   };
 
   /* ── open change dates modal ── */
@@ -567,10 +569,10 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     const { offer } = changeDatesModal;
     const days = daysBetween(cdStart, cdEnd);
     if (days < settings.minRentalDays) {
-      toast.error(`Minimum ${settings.minRentalDays} days rental required`);
+      toastWarning('min_rental_duration', `Minimum ${settings.minRentalDays} days rental required.`, { min: String(settings.minRentalDays) });
       return;
     }
-    if (!cdAddress || !cdPin) { toast.error('Please fill delivery address and pin code'); return; }
+    if (!cdAddress || !cdPin) { toastWarning('offer_address_required', 'Please fill in your delivery address and pin code.'); return; }
     setCdLoading(true);
     const res = await api.post(`/buyer/update-offer-dates/${offer.id}`, {
       rental_start_date: cdStart,
@@ -581,22 +583,22 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     });
     setCdLoading(false);
     if (res?.success) {
-      toast.success('Dates updated!');
+      toastSuccess('offer_dates_updated', 'Rental dates updated successfully!');
       setChangeDatesModal(null);
       load();
     }
-    else toast.error(res?.message || 'Failed to update dates');
+    else toastError('offer_dates_failed', res?.message || 'Failed to update rental dates.');
   };
 
   /* ── submit seller date suggestion ── */
   const submitSuggestDates = async () => {
     if (!suggestModal) return;
-    if (!sdStart || !sdEnd) { toast.error('Please select both start and end dates'); return; }
-    if (sdEnd <= sdStart) { toast.error('End date must be after start date'); return; }
+    if (!sdStart || !sdEnd) { toastWarning('offer_date_required', 'Please select both start and end dates.'); return; }
+    if (sdEnd <= sdStart) { toastWarning('offer_date_invalid', 'End date must be after start date.'); return; }
 
     const days = daysBetween(sdStart, sdEnd);
     if (days < settings.minRentalDays) {
-      toast.error(`Minimum ${settings.minRentalDays} days rental required`);
+      toastWarning('min_rental_duration', `Minimum ${settings.minRentalDays} days rental required.`, { min: String(settings.minRentalDays) });
       return;
     }
 
@@ -608,12 +610,12 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     });
     setSdLoading(false);
     if (res?.success) {
-      toast.success('Date suggestion sent to buyer!');
+      toastSuccess('offer_suggestion_sent', 'Date suggestion sent to buyer!');
       setSuggestModal(null);
       setSdStart(''); setSdEnd(''); setSdRemarks('');
       load();
     } else {
-      toast.error(res?.message || 'Failed to send suggestion');
+      toastError('offer_suggestion_failed', res?.message || 'Failed to send date suggestion.');
     }
   };
 
@@ -621,10 +623,10 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const handleAcceptDates = async (offer: Offer) => {
     const res = await api.post(`/buyer/confirmDateChange/${offer.id}`, {});
     if (res?.success) {
-      toast.success('Dates accepted! Deal is finalized.');
+      toastSuccess('offer_dates_accepted', 'Dates accepted! Deal is finalized.');
       load();
     } else {
-      toast.error(res?.message || 'Action failed');
+      toastError('offer_action_failed', res?.message || 'Action failed. Please try again.');
     }
   };
 

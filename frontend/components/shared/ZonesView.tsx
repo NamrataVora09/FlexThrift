@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 import { useSystem } from '@/lib/system-context';
 
@@ -34,6 +34,7 @@ const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 
 export default function ZonesView() {
+  const { toastSuccess, toastError, toastLoading, toastDismiss } = useToast();
   const { getMsg } = useSystem();
   const [zones, setZones] = useState<Zone[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,14 +115,14 @@ export default function ZonesView() {
       // Click to select state
       map.on('click', async (e: any) => {
         const { lat, lng } = e.latlng;
-        const loadingToast = toast.loading(getMsg('location_detecting', 'Detecting location...'));
+        const loadingToast = toastLoading('location_detecting', 'Detecting location...');
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lng}`);
           const data = await res.json();
-          toast.dismiss(loadingToast);
+          toastDismiss(loadingToast);
           await goToLocation(lat, lng, data.display_name || 'Selected Location', data.address);
         } catch {
-          toast.dismiss(loadingToast);
+          toastDismiss(loadingToast);
           await goToLocation(lat, lng, 'Selected Location');
         }
       });
@@ -172,13 +173,13 @@ export default function ZonesView() {
         const finalName = matched || detectedState;
         setZoneState(finalName);
         setZoneName(`${finalName} Zone`);
-        toast.success(getMsg('location_detected', 'Location detected: {name}').replace('{name}', finalName), { duration: 2500 });
+        toastSuccess('location_detected_success', 'Location detected: {name}', { name: finalName });
       }
     }
   };
 
   const useCurrentLocation = () => {
-    if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
+    if (!navigator.geolocation) { toastError('geolocation_not_supported', 'Geolocation not supported'); return; }
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
@@ -193,7 +194,7 @@ export default function ZonesView() {
           await goToLocation(latitude, longitude, 'Your Current Location');
         }
       },
-      (err) => toast.error('Unable to get location: ' + err.message)
+      (err) => toastError('geolocation_failed', 'Unable to get location: ' + err.message)
     );
   };
 
@@ -209,12 +210,12 @@ export default function ZonesView() {
 
   const saveZone = async () => {
     const finalZoneName = zoneName || `${zoneState} Zone`;
-    if (!zoneState.trim()) { toast.error('Please select a location via the map first'); return; }
+    if (!zoneState.trim()) { toastError('zone_location_required', 'Please select a location via the map first'); return; }
 
     // Check for duplicate state
     const duplicate = zones.find(z => z.state?.toLowerCase() === zoneState.toLowerCase() && Number(z.is_active));
     if (duplicate) {
-      toast.error(`An active zone for "${zoneState}" already exists. Deactivate it first.`);
+      toastError('zone_duplicate_error', `An active zone for "${zoneState}" already exists. Deactivate it first.`);
       return;
     }
 
@@ -233,16 +234,16 @@ export default function ZonesView() {
 
     setSaving(false);
     if (res.success) {
-      toast.success(getMsg('zone_save_success', 'Zone saved successfully!'));
+      toastSuccess('zone_save_success', 'Zone saved successfully!');
       clearDrawing();
       load();
     } else {
-      toast.error(res.message || 'Failed to save zone');
+      toastError('zone_save_failed', res.message || 'Failed to save zone');
     }
   };
 
   const viewZone = async (polygonJson: string) => {
-    if (!polygonJson) { toast.error('No polygon data for this zone'); return; }
+    if (!polygonJson) { toastError('zone_polygon_missing', 'No polygon data for this zone'); return; }
     const L = (await import('leaflet')).default;
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -251,7 +252,7 @@ export default function ZonesView() {
       const latlngs = coordinates.map((c: number[]) => [c[0], c[1]]);
       const polygon = L.polygon(latlngs, { color: '#0dcaf0', fillOpacity: 0.3 }).addTo(map);
       map.fitBounds(polygon.getBounds());
-    } catch { toast.error('Could not render polygon'); }
+    } catch { toastError('zone_polygon_render_failed', 'Could not render polygon'); }
   };
 
   const toggleZone = async (id: number) => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -21,6 +21,7 @@ export function RentalCalendar({
   onRangeChange,
   minRentalDays = 3,
 }: RentalCalendarProps) {
+  const { toastError } = useToast();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const [viewDate, setViewDate] = useState(() => {
@@ -81,7 +82,7 @@ export function RentalCalendar({
       const s = startD!;
       const limit = minRentalDays;
       if (daysBetween(s, d) < limit) {
-        toast.error(`Minimum rental period is ${limit} days.`);
+        toastError('rental_min_days_error', `Minimum rental period is ${limit} days.`);
         return;
       }
       if (d < s) {
