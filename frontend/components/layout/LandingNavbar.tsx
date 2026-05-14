@@ -363,12 +363,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
       {/* Spacing for fixed navbar */}
       <div className="h-[72px] md:h-[84px] lg:h-[96px]"></div>
 
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
-      `}</style>
+
     </>
   );
 }

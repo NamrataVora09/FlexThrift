@@ -267,11 +267,9 @@ export default function AnalyticsView({ role }: Props) {
           overflow-x: auto;
           scroll-behavior: smooth;
           padding: 0.5rem;
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .stats-slider::-webkit-scrollbar {
-          display: none;
+          overflow-x: auto;
+          scroll-behavior: smooth;
+          padding: 0.5rem;
         }
         .nav-btn {
           background: #fff;

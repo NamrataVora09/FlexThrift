@@ -62,24 +62,7 @@ img {
   height: auto;
 }
 
-/* ===== Scrollbar ===== */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #ffc63a;
-}
 
 /* ===== Typography ===== */
 .header_label_font {
@@ -659,12 +642,8 @@ img {
   z-index: 1000;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.sidebar::-webkit-scrollbar {
-  display: none;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar.collapsed {

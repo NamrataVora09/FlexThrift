@@ -186,10 +186,7 @@ export default function LandingPageClient() {
         a { text-decoration: none !important; }
         .fw-800 { font-weight: 800 !important; }
         .fw-900 { font-weight: 900 !important; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--py); }
+
 
         /* ── Preloader ────────────────────────── */
         #lp-preloader {

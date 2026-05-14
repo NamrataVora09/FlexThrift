@@ -602,11 +602,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
         .social-icons-box a { color: #fff; font-size: 1.1rem; margin-right: 25px; transition: none; text-decoration: none; }
         .copyright-bar { text-align: center; padding: 10px 0; margin-top: 12px; border-top: 1px solid #444; font-size: 0.95rem; color: #636e72; background-color: #1e2124; }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #ccc; }
+
 
         @media (max-width: 768px) {
           .hero-slide { height: 400px; border-radius: 20px; }
