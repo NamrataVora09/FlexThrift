@@ -339,6 +339,7 @@ function register_api_routes($routes)
         $routes->post('bulk-upload-products', 'Api\SuperAdminApi::bulkUploadProducts');
         $routes->post('bulk-upload-coupons', 'Api\SuperAdminApi::bulkUploadCoupons');
         $routes->post('bulk-upload-subscription-plans', 'Api\SuperAdminApi::bulkUploadSubscriptionPlans');
+        $routes->post('bulk-upload-pricing-rules', 'Api\SuperAdminApi::bulkUploadPricingRules');
         // Error Messages
         $routes->get('error-messages', 'Api\SuperAdminApi::getAllErrorMessages');
         $routes->post('error-messages', 'Api\SuperAdminApi::createErrorMessage');

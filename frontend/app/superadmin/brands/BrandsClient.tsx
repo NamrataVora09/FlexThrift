@@ -33,6 +33,13 @@ export default function BrandsClient() {
   const [sellerDropdownOpen, setSellerDropdownOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [brandPage, setBrandPage] = useState(1);
+
+  // Table search
+  const [brandSearch, setBrandSearch] = useState('');
+
   // Edit brand state
   const [showEdit, setShowEdit] = useState<Brand | null>(null);
   const [editForm, setEditForm] = useState({ brand_name: '', seller_id: '', listing_type_id: '', description: '' });
@@ -141,7 +148,7 @@ export default function BrandsClient() {
     fd.append('listing_type_id', editForm.listing_type_id);
     fd.append('description', editForm.description);
     const res = await api.upload(`/superadmin/update-brand/${showEdit.id}`, fd);
-    setSubmitting(false);
+    setSubmitting(true);
     if (res.success) {
       toast.success('Brand updated');
       setShowEdit(null);
@@ -149,6 +156,7 @@ export default function BrandsClient() {
     } else {
       toast.error(res.message || 'Update failed');
     }
+    setSubmitting(false);
   };
 
   const handleDeleteBrand = (id: number) => {
@@ -262,6 +270,31 @@ export default function BrandsClient() {
 
   const filteredSellers = sellers.filter((s) => !sellerSearch || s.name.toLowerCase().includes(sellerSearch.toLowerCase()) || s.email.toLowerCase().includes(sellerSearch.toLowerCase()));
 
+  const Paginator = ({ total, page, setPage }: { total: number; page: number; setPage: (p: number) => void }) => {
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+    if (totalPages <= 1) return null;
+    return (
+      <div className="d-flex align-items-center justify-content-between mt-3 px-3 pb-3">
+        <small className="text-muted">Showing {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} of {total}</small>
+        <nav>
+          <ul className="pagination pagination-sm mb-0">
+            <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
+              <button className="page-link" onClick={() => setPage(page - 1)} style={{ color: '#ffc63a', borderColor: '#e7eaf3' }}>&#8249;</button>
+            </li>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+              <li key={p} className={`page-item ${p === page ? 'active' : ''}`}>
+                <button className="page-link" onClick={() => setPage(p)} style={p === page ? { background: '#ffc63a', borderColor: '#ffc63a', color: '#fff' } : { color: '#ffc63a', borderColor: '#e7eaf3' }}>{p}</button>
+              </li>
+            ))}
+            <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
+              <button className="page-link" onClick={() => setPage(page + 1)} style={{ color: '#ffc63a', borderColor: '#e7eaf3' }}>&#8250;</button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    );
+  };
+
   return (
     <DashboardLayout requiredRoles={['super_admin']}>
       <div className="container-fluid">
@@ -284,11 +317,26 @@ export default function BrandsClient() {
           templateFilename="brands_template.csv"
           formatGuide="brand_name (required), listing_type (Listing Type Name), seller_email (User Email), description"
           title="Bulk Upload Brands"
+          onSuccess={load}
         />
 
         {/* Table */}
         <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div className="card-body p-0">
+            {/* Search bar */}
+            <div className="p-3 border-bottom" style={{ background: '#fafbfc' }}>
+              <div className="position-relative">
+                <i className="bi bi-search" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#677788', fontSize: '0.9rem' }}></i>
+                <input
+                  className="form-control"
+                  style={{ ...inputStyle, paddingLeft: 40 }}
+                  placeholder="Search brands by name, seller, or listing type..."
+                  value={brandSearch}
+                  onChange={(e) => { setBrandSearch(e.target.value); setBrandPage(1); }}
+                />
+              </div>
+              {brandSearch && <small className="text-muted mt-1 d-block">{brands.filter(b => (b.brand_name + (b.seller_name || '') + (b.listing_type_name || '')).toLowerCase().includes(brandSearch.toLowerCase())).length} result(s)</small>}
+            </div>
             {loading ? (
               <div className="text-center py-5"><div className="spinner-border" style={{ color: '#ffc63a' }}></div></div>
             ) : (
@@ -304,7 +352,10 @@ export default function BrandsClient() {
                     <th style={{ ...thStyle, textAlign: 'end', paddingRight: '1.5rem' }}>Actions</th>
                   </tr></thead>
                   <tbody>
-                    {brands.length > 0 ? brands.map((b) => (
+                    {(() => { 
+                      const filtered = brands.filter(b => (b.brand_name + ' ' + (b.seller_name || '') + ' ' + (b.listing_type_name || '')).toLowerCase().includes(brandSearch.toLowerCase())); 
+                      const paged = filtered.slice((brandPage - 1) * PAGE_SIZE, brandPage * PAGE_SIZE);
+                      return paged.length > 0 ? paged.map((b) => (
                       <tr key={b.id}>
                         <td style={{ ...tdStyle, paddingLeft: '1.5rem' }}>
                           <div className="d-flex align-items-center gap-3">
@@ -356,16 +407,21 @@ export default function BrandsClient() {
                         </td>
                       </tr>
                     )) : (
-                      <tr><td colSpan={6} className="text-center py-5">
+                      <tr><td colSpan={7} className="text-center py-5">
                         <i className="bi bi-patch-exclamation" style={{ fontSize: '2.5rem', color: '#ddd' }}></i>
-                        <div className="fw-bold mt-2">No brands found</div>
-                        <p className="text-muted small">You haven't created any brands yet.</p>
+                        <div className="fw-bold mt-2">{brandSearch ? `No results for "${brandSearch}"` : 'No brands found'}</div>
+                        <p className="text-muted small">{brandSearch ? 'Try a different search term.' : "You haven't created any brands yet."}</p>
                       </td></tr>
-                    )}
+                    ); })()}
                   </tbody>
                 </table>
               </div>
             )}
+            <Paginator 
+              total={brands.filter(b => (b.brand_name + ' ' + (b.seller_name || '') + ' ' + (b.listing_type_name || '')).toLowerCase().includes(brandSearch.toLowerCase())).length} 
+              page={brandPage} 
+              setPage={setBrandPage} 
+            />
           </div>
         </div>
       </div>

@@ -2456,6 +2456,68 @@ private function processImage($source, $subDir): ?string
         return $this->respond(['success' => true, 'message' => "{$inserted} products inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
+    public function bulkUploadPricingRules()
+    {
+        $db = \Config\Database::connect();
+        $type = $this->request->getPost('type') ?? 'sale'; // 'sale' or 'rental'
+        $csv = $this->parseCsv($this->request->getFile('csv_file'));
+        if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
+
+        $inserted = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $table = ($type === 'rental') ? 'rental_pricing_rules' : 'pricing_rules';
+
+        foreach ($csv['rows'] as $i => $data) {
+            $row = $i + 2;
+            try {
+                $filterType = $data['filter_type'] ?? '';
+                $filterName = $data['filter_value_name'] ?? $data['filter_label'] ?? '';
+                $filterValue = (int)($data['filter_value'] ?? 0);
+
+                if (!$filterValue && $filterType && $filterName) {
+                    if ($filterType === 'listing_type') {
+                        $lt = $db->table('listing_types')->where('LOWER(type_name)', strtolower($filterName))->get()->getRowArray();
+                        if ($lt) $filterValue = $lt['id'];
+                    } elseif ($filterType === 'category') {
+                        $cat = $db->table('categories')->where('LOWER(category_name)', strtolower($filterName))->get()->getRowArray();
+                        if ($cat) $filterValue = $cat['id'];
+                    } elseif ($filterType === 'sub_category') {
+                        $sc = $db->table('sub_categories')->where('LOWER(name)', strtolower($filterName))->get()->getRowArray();
+                        if ($sc) $filterValue = $sc['id'];
+                    }
+                }
+
+                $filterLabel = $this->resolveFilterLabel($filterType, $filterValue);
+
+                if ($type === 'rental') {
+                    $db->table($table)->insert([
+                        'filter_type' => $filterType,
+                        'filter_value' => $filterValue,
+                        'filter_label' => $filterLabel,
+                        'deposit_deduction_threshold' => (float)($data['deposit_deduction_threshold'] ?? $data['threshold'] ?? 0),
+                        'depreciation_range_min' => (int)($data['depreciation_range_min'] ?? $data['min'] ?? 0),
+                        'depreciation_range_max' => (int)($data['depreciation_range_max'] ?? $data['max'] ?? 0),
+                        'depreciation_amount' => (float)($data['depreciation_amount'] ?? $data['amount'] ?? 0),
+                        'max_cost_cap_per_day' => (float)($data['max_cost_cap_per_day'] ?? $data['cap'] ?? 0),
+                        'is_active' => 1,
+                    ]);
+                } else {
+                    $db->table($table)->insert([
+                        'filter_type' => $filterType,
+                        'filter_value' => $filterValue,
+                        'filter_label' => $filterLabel,
+                        'deduction_threshold' => (float)($data['deduction_threshold'] ?? $data['threshold'] ?? 0),
+                        'depreciation_range_min' => (int)($data['depreciation_range_min'] ?? $data['min'] ?? 0),
+                        'depreciation_range_max' => (int)($data['depreciation_range_max'] ?? $data['max'] ?? 0),
+                        'depreciation_amount' => (float)($data['depreciation_amount'] ?? $data['amount'] ?? 0),
+                        'is_active' => 1,
+                    ]);
+                }
+                $inserted++;
+            } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
+        }
+        return $this->respond(['success' => true, 'message' => "{$inserted} rules inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
+    }
+
     public function bulkUploadCoupons()
     {
         $db = \Config\Database::connect();

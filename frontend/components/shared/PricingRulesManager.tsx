@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
+import BulkCsvUpload from './BulkCsvUpload';
 
 interface PricingRule {
   id: number;
@@ -38,6 +39,9 @@ export default function PricingRulesManager() {
   const [rentalRules, setRentalRules] = useState<RentalPricingRule[]>([]);
   const [taxonomy, setTaxonomy] = useState<{ listing_type: TaxonomyItem[]; category: TaxonomyItem[]; sub_category: TaxonomyItem[] }>({ listing_type: [], category: [], sub_category: [] });
 
+  const [saleSearch, setSaleSearch] = useState('');
+  const [rentalSearch, setRentalSearch] = useState('');
+
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showRentalModal, setShowRentalModal] = useState(false);
   const [editingSaleRule, setEditingSaleRule] = useState<Partial<PricingRule> | null>(null);
@@ -59,6 +63,26 @@ export default function PricingRulesManager() {
       if (rentalRes.success) setRentalRules(rentalRes.data || []);
     } catch { /* ignore */ }
   }, []);
+
+  const filteredSaleRules = useMemo(() => {
+    if (!saleSearch) return saleRules;
+    const s = saleSearch.toLowerCase();
+    return saleRules.filter(r => 
+      r.filter_type.toLowerCase().includes(s) || 
+      (r.filter_label || 'global').toLowerCase().includes(s) ||
+      r.deduction_threshold.toString().includes(s)
+    );
+  }, [saleRules, saleSearch]);
+
+  const filteredRentalRules = useMemo(() => {
+    if (!rentalSearch) return rentalRules;
+    const s = rentalSearch.toLowerCase();
+    return rentalRules.filter(r => 
+      r.filter_type.toLowerCase().includes(s) || 
+      (r.filter_label || 'global').toLowerCase().includes(s) ||
+      r.deposit_deduction_threshold.toString().includes(s)
+    );
+  }, [rentalRules, rentalSearch]);
 
   const loadTaxonomy = useCallback(async () => {
     try {
@@ -331,17 +355,52 @@ export default function PricingRulesManager() {
         .rules-table { font-size: 0.85rem; }
         .rules-table th { background: #f8f9fa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-filter { padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+        .search-box { position: relative; width: 300px; }
+        .search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d; }
+        .search-box input { padding-left: 35px; border-radius: 20px; }
       `}</style>
+
+      {/* Bulk Upload Section */}
+      <div className="row g-4 mb-4">
+        <div className="col-lg-6">
+          <BulkCsvUpload 
+            title="Bulk Upload Sale Rules"
+            endpoint="/superadmin/bulk-upload-pricing-rules"
+            extraData={{ type: 'sale' }}
+            onSuccess={loadPricingRules}
+            templateCsv="filter_type,filter_label,threshold,min,max,amount\nlisting_type,Traditional,10,0,5,20"
+            templateFilename="sale_pricing_rules_template.csv"
+            formatGuide="Columns: filter_type (listing_type, category, sub_category), filter_label (Name of item), threshold (Base Deduction %), min (Min Usage), max (Max Usage, 0 for ∞), amount (Depreciation %)"
+          />
+        </div>
+        <div className="col-lg-6">
+          <BulkCsvUpload 
+            title="Bulk Upload Rental Rules"
+            endpoint="/superadmin/bulk-upload-pricing-rules"
+            extraData={{ type: 'rental' }}
+            onSuccess={loadPricingRules}
+            templateCsv="filter_type,filter_label,threshold,min,max,amount,cap\nlisting_type,Traditional,5,0,5,10,14"
+            templateFilename="rental_pricing_rules_template.csv"
+            formatGuide="Columns: filter_type, filter_label, threshold (Deposit Ded. %), min, max, amount (Depreciation %), cap (Rental Cost Cap %, optional)"
+          />
+        </div>
+      </div>
 
       {/* Sale Rules */}
       <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <h6 className="mb-0 fw-bold"><i className="bi bi-tag-fill me-2 text-primary"></i>Sale Pricing Rules (Filter-Based)</h6>
-          <div className="d-flex gap-2">
-            <button className="btn btn-sm btn-outline-success" onClick={() => bulkAction('sale', 'activate')} title="Activate All"><i className="bi bi-check-circle-fill me-1"></i>Active All</button>
-            <button className="btn btn-sm btn-outline-warning hover:text-white!" onClick={() => bulkAction('sale', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
-            <button className="btn btn-sm btn-outline-danger" onClick={() => bulkAction('sale', 'delete')} title="Delete All"><i className="bi bi-trash-fill me-1"></i>Delete All</button>
-            <button className="btn btn-sm btn-primary" onClick={() => openSaleModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
+        <div className="card-header bg-white py-3">
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <h6 className="mb-0 fw-bold"><i className="bi bi-tag-fill me-2 text-primary"></i>Sale Pricing Rules ({filteredSaleRules.length})</h6>
+            <div className="search-box">
+              <i className="bi bi-search"></i>
+              <input type="text" className="form-control form-control-sm" placeholder="Search sale rules..." value={saleSearch} onChange={e => setSaleSearch(e.target.value)} />
+            </div>
+            <div className="d-flex gap-2">
+              <button className="btn btn-sm btn-outline-success" onClick={() => bulkAction('sale', 'activate')} title="Activate All"><i className="bi bi-check-circle-fill me-1"></i>Active All</button>
+              <button className="btn btn-sm btn-outline-warning hover:text-white!" onClick={() => bulkAction('sale', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
+              <button className="btn btn-sm btn-outline-danger" onClick={() => bulkAction('sale', 'delete')} title="Delete All"><i className="bi bi-trash-fill me-1"></i>Delete All</button>
+              <button className="btn btn-sm btn-primary" onClick={() => openSaleModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
+            </div>
           </div>
         </div>
         <div className="card-body p-0">
@@ -353,7 +412,7 @@ export default function PricingRulesManager() {
                 </tr>
               </thead>
               <tbody>
-                {saleRules.map(r => (
+                {filteredSaleRules.length > 0 ? filteredSaleRules.map(r => (
                   <tr key={r.id}>
                     <td><span className="badge bg-light text-dark border">{r.filter_type.replace('_', ' ')}</span></td>
                     <td>{r.filter_label || 'Global'}</td>
@@ -373,7 +432,9 @@ export default function PricingRulesManager() {
                       <button className="btn btn-sm btn-outline-danger" onClick={() => deleteSaleRule(r.id)}><i className="bi bi-trash"></i></button>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr><td colSpan={7} className="text-center py-4 text-muted">No sale rules found matching your search.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -382,13 +443,19 @@ export default function PricingRulesManager() {
 
       {/* Rental Rules */}
       <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <h6 className="mb-0 fw-bold"><i className="bi bi-calendar-event-fill me-2 text-success"></i>Rental Pricing Rules (Filter-Based)</h6>
-          <div className="d-flex gap-2">
-            <button className="btn btn-sm btn-outline-success" onClick={() => bulkAction('rental', 'activate')} title="Activate All"><i className="bi bi-check-circle-fill me-1"></i>Active All</button>
-            <button className="btn btn-sm btn-outline-warning hover:text-white!" onClick={() => bulkAction('rental', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
-            <button className="btn btn-sm btn-outline-danger" onClick={() => bulkAction('rental', 'delete')} title="Delete All"><i className="bi bi-trash-fill me-1"></i>Delete All</button>
-            <button className="btn btn-sm btn-success" onClick={() => openRentalModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
+        <div className="card-header bg-white py-3">
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <h6 className="mb-0 fw-bold"><i className="bi bi-calendar-event-fill me-2 text-success"></i>Rental Pricing Rules ({filteredRentalRules.length})</h6>
+            <div className="search-box">
+              <i className="bi bi-search"></i>
+              <input type="text" className="form-control form-control-sm" placeholder="Search rental rules..." value={rentalSearch} onChange={e => setRentalSearch(e.target.value)} />
+            </div>
+            <div className="d-flex gap-2">
+              <button className="btn btn-sm btn-outline-success" onClick={() => bulkAction('rental', 'activate')} title="Activate All"><i className="bi bi-check-circle-fill me-1"></i>Active All</button>
+              <button className="btn btn-sm btn-outline-warning hover:text-white!" onClick={() => bulkAction('rental', 'deactivate')} title="Deactivate All"><i className="bi bi-slash-circle me-1"></i>Deactive All</button>
+              <button className="btn btn-sm btn-outline-danger" onClick={() => bulkAction('rental', 'delete')} title="Delete All"><i className="bi bi-trash-fill me-1"></i>Delete All</button>
+              <button className="btn btn-sm btn-success" onClick={() => openRentalModal()}><i className="bi bi-plus-lg me-1"></i>Add Rule</button>
+            </div>
           </div>
         </div>
         <div className="card-body p-0">
@@ -400,7 +467,7 @@ export default function PricingRulesManager() {
                 </tr>
               </thead>
               <tbody>
-                {rentalRules.map(r => (
+                {filteredRentalRules.length > 0 ? filteredRentalRules.map(r => (
                   <tr key={r.id}>
                     <td><span className="badge bg-light text-dark border">{r.filter_type.replace('_', ' ')}</span></td>
                     <td>{r.filter_label || 'Global'}</td>
@@ -421,7 +488,9 @@ export default function PricingRulesManager() {
                       <button className="btn btn-sm btn-outline-danger" onClick={() => deleteRentalRule(r.id)}><i className="bi bi-trash"></i></button>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr><td colSpan={8} className="text-center py-4 text-muted">No rental rules found matching your search.</td></tr>
+                )}
               </tbody>
             </table>
           </div>

@@ -10,12 +10,14 @@ interface Props {
   templateFilename: string;
   formatGuide: string;
   title?: string;
+  onSuccess?: () => void;
+  extraData?: Record<string, string>;
 }
 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#ffff', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.5rem 1.25rem' };
 
-export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename, formatGuide, title }: Props) {
+export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename, formatGuide, title, onSuccess, extraData }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<{ message: string; errors?: string[] } | null>(null);
@@ -26,6 +28,11 @@ export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename,
     setResult(null);
     const fd = new FormData();
     fd.append('csv_file', file);
+    if (extraData) {
+      Object.entries(extraData).forEach(([key, value]) => {
+        fd.append(key, value);
+      });
+    }
     const res = await api.upload<{ message: string; inserted: number; skipped: number; errors: string[] }>(endpoint, fd);
     setUploading(false);
     if (res.success) {
@@ -34,6 +41,7 @@ export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename,
       setFile(null);
       const input = document.getElementById(`csvInput-${templateFilename}`) as HTMLInputElement;
       if (input) input.value = '';
+      if (onSuccess) onSuccess();
     } else {
       toast.error(res.message || 'Upload failed');
       setResult({ message: res.message || 'Upload failed' });

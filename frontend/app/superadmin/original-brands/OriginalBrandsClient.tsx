@@ -40,6 +40,13 @@ export default function OriginalBrandsClient() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
+  // Table search
+  const [brandSearch, setBrandSearch] = useState('');
+
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [brandPage, setBrandPage] = useState(1);
+
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
 
   // Add form states
@@ -233,6 +240,31 @@ export default function OriginalBrandsClient() {
     }, 'Delete');
   };
 
+  const Paginator = ({ total, page, setPage }: { total: number; page: number; setPage: (p: number) => void }) => {
+    const totalPages = Math.ceil(total / PAGE_SIZE);
+    if (totalPages <= 1) return null;
+    return (
+      <div className="d-flex align-items-center justify-content-between mt-3 px-3 pb-3">
+        <small className="text-muted">Showing {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} of {total}</small>
+        <nav>
+          <ul className="pagination pagination-sm mb-0">
+            <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
+              <button className="page-link" onClick={() => setPage(page - 1)} style={{ color: '#ffc63a', borderColor: '#e7eaf3' }}>&#8249;</button>
+            </li>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+              <li key={p} className={`page-item ${p === page ? 'active' : ''}`}>
+                <button className="page-link" onClick={() => setPage(p)} style={p === page ? { background: '#ffc63a', borderColor: '#ffc63a', color: '#fff' } : { color: '#ffc63a', borderColor: '#e7eaf3' }}>{p}</button>
+              </li>
+            ))}
+            <li className={`page-item ${page === totalPages ? 'disabled' : ''}`}>
+              <button className="page-link" onClick={() => setPage(page + 1)} style={{ color: '#ffc63a', borderColor: '#e7eaf3' }}>&#8250;</button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    );
+  };
+
   return (
     <DashboardLayout requiredRoles={['super_admin']}>
       <div className="container-fluid">
@@ -255,11 +287,26 @@ export default function OriginalBrandsClient() {
           templateFilename="original_brands_template.csv"
           formatGuide="brand_name (required), listing_types (Listing Type Names, comma separated), brand_image (URL or path), description"
           title="Bulk Upload Original Brands"
+          onSuccess={load}
         />
 
         {/* Table */}
         <div className="card border-0" style={{ borderRadius: '1rem', boxShadow: '0 0.5rem 1rem rgba(0,0,0,0.05)' }}>
           <div className="card-body p-0">
+            {/* Search bar */}
+            <div className="p-3 border-bottom" style={{ background: '#fafbfc' }}>
+              <div className="position-relative">
+                <i className="bi bi-search" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#677788', fontSize: '0.9rem' }}></i>
+                <input
+                  className="form-control"
+                  style={{ ...inputStyle, paddingLeft: 40 }}
+                  placeholder="Search brands by name, listing type, or description..."
+                  value={brandSearch}
+                  onChange={(e) => { setBrandSearch(e.target.value); setBrandPage(1); }}
+                />
+              </div>
+              {brandSearch && <small className="text-muted mt-1 d-block">{brands.filter(b => (b.brand_name + ' ' + (b.listing_type_names?.join(' ') || '') + ' ' + (b.description || '')).toLowerCase().includes(brandSearch.toLowerCase())).length} result(s)</small>}
+            </div>
             {loading ? (
               <div className="text-center py-5"><div className="spinner-border" style={{ color: '#ffc63a' }}></div></div>
             ) : (
@@ -276,7 +323,10 @@ export default function OriginalBrandsClient() {
                     </tr>
                   </thead>
                   <tbody>
-                    {brands.length > 0 ? brands.map((b) => (
+                    {(() => { 
+                      const filtered = brands.filter(b => (b.brand_name + ' ' + (b.listing_type_names?.join(' ') || '') + ' ' + (b.description || '')).toLowerCase().includes(brandSearch.toLowerCase())); 
+                      const paged = filtered.slice((brandPage - 1) * PAGE_SIZE, brandPage * PAGE_SIZE);
+                      return paged.length > 0 ? paged.map((b) => (
                       <tr key={b.id}>
                         <td style={{ ...tdStyle, paddingLeft: '1.5rem' }}>
                           {b.brand_image ? (
@@ -318,13 +368,18 @@ export default function OriginalBrandsClient() {
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={6} className="text-center py-5 text-muted">No brands found.</td>
+                        <td colSpan={6} className="text-center py-5 text-muted">{brandSearch ? `No results for "${brandSearch}"` : 'No brands found.'}</td>
                       </tr>
-                    )}
+                    ); })()}
                   </tbody>
                 </table>
               </div>
             )}
+            <Paginator 
+              total={brands.filter(b => (b.brand_name + ' ' + (b.listing_type_names?.join(' ') || '') + ' ' + (b.description || '')).toLowerCase().includes(brandSearch.toLowerCase())).length} 
+              page={brandPage} 
+              setPage={setBrandPage} 
+            />
           </div>
         </div>
       </div>
