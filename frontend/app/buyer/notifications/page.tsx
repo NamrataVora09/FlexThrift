@@ -19,7 +19,7 @@ interface Notification {
 function getIconInfo(title: string, type: string, message: string) {
   const titleLower = (title || '').toLowerCase();
   const msgLower = (message || '').toLowerCase();
-  
+
   if (titleLower.includes('accepted') || titleLower.includes('finalized') || titleLower.includes('confirmed')) {
     return { iconClass: 'icon-success', icon: 'bi bi-chat-left-dots-fill' };
   } else if (titleLower.includes('rejected') || titleLower.includes('not accepted')) {
@@ -166,7 +166,7 @@ export default function Page() {
           <i className="bi bi-bell-slash mb-4 text-warning" style={{ fontSize: '5rem' }}></i>
           <h3 className="fw-bold">No notifications yet</h3>
           <p className="text-muted mb-4">You&apos;re all caught up! New alerts will appear here as they arrive.</p>
-          <Link href="/buyer" className="btn btn-warning px-5 rounded-pill fw-bold">
+          <Link href="/buyer" className="btn btn-warning px-5 rounded-pill fw-bold text-white!">
             <i className="bi bi-house-door me-2"></i> Back to Dashboard
           </Link>
         </div>

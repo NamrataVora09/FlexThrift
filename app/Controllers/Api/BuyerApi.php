@@ -1115,7 +1115,13 @@ class BuyerApi extends ResourceController
      */
     public function verifyOrderPayment()
     {
-        $merchantOrderId = $this->request->getGet('id');
+        $merchantOrderId = $this->request->getGet('id') ?: $this->request->getPost('id');
+        // Handle case where it might be in JSON body
+        if (!$merchantOrderId) {
+            $json = $this->request->getJSON(true);
+            $merchantOrderId = $json['merchantOrderId'] ?? ($json['data']['merchantTransactionId'] ?? null);
+        }
+        
         $db = \Config\Database::connect();
 
         if (!$merchantOrderId) {
@@ -2264,9 +2270,13 @@ class BuyerApi extends ResourceController
      */
     public function verifyPayment()
     {
-        log_message('error', 'DEBUG: verifyPayment CRITICAL hit');
-        $merchantOrderId = $this->request->getGet('id');
-        log_message('error', 'DEBUG: verifyPayment ID: ' . ($merchantOrderId ?? 'NULL'));
+        $merchantOrderId = $this->request->getGet('id') ?: $this->request->getPost('id');
+        // Handle case where it might be in JSON body
+        if (!$merchantOrderId) {
+            $json = $this->request->getJSON(true);
+            $merchantOrderId = $json['merchantOrderId'] ?? ($json['data']['merchantTransactionId'] ?? null);
+        }
+
         $db = \Config\Database::connect();
 
         if (!$merchantOrderId) {

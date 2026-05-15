@@ -800,7 +800,7 @@ export default function BusinessSettingsView() {
                           padding: '4px 10px',
                           borderRadius: 6,
                           fontSize: '0.72rem',
-                          color: isActive ? '#000' : '#555',
+                          color: isActive ? '#fff' : '#000',
                           cursor: 'pointer',
                           fontFamily: 'monospace',
                           fontWeight: isActive ? 700 : 400,

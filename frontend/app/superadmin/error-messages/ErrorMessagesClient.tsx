@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
+import { useToast } from '@/lib/toast';
 
 interface ErrorMessage {
   id: number;
@@ -38,12 +39,15 @@ const modalBackdrop: React.CSSProperties = { position: 'fixed', top: 0, left: 0,
 const modalContent: React.CSSProperties = { background: '#fff', borderRadius: 12, padding: 25, maxWidth: 600, width: '90%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' };
 
 export default function ErrorMessagesClient() {
+  const { toastSuccess, toastError } = useToast();
   const [messages, setMessages] = useState<ErrorMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -70,7 +74,7 @@ export default function ErrorMessagesClient() {
         setMessages(res.data);
       }
     } catch (err: any) {
-      setErrorMsg('Failed to load error messages');
+      toastError('generic_error', 'Failed to load error messages');
     } finally {
       setLoading(false);
     }
@@ -98,16 +102,15 @@ export default function ErrorMessagesClient() {
     try {
       const res = await api.post('/superadmin/error-messages', formData);
       if (res.success) {
-        setSuccessMsg('Error message created successfully!');
+        toastSuccess('cms_page_create_success', 'Error message created successfully!');
         setShowAddModal(false);
         setFormData({ message_key: '', message_value: '', category: 'general' });
         await loadMessages();
-        setTimeout(() => setSuccessMsg(''), 3000);
       } else {
-        setErrorMsg(res.message || 'Failed to create message');
+        toastError('generic_error', res.message || 'Failed to create message');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to create message');
+      toastError('generic_error', err.message || 'Failed to create message');
     } finally {
       setSubmitting(false);
     }
@@ -120,17 +123,16 @@ export default function ErrorMessagesClient() {
     try {
       const res = await api.post(`/superadmin/error-messages/${editingMessage.id}`, formData);
       if (res.success) {
-        setSuccessMsg('Error message updated successfully!');
+        toastSuccess('cms_page_update_success', 'Error message updated successfully!');
         setShowEditModal(false);
         setEditingMessage(null);
         setFormData({ message_key: '', message_value: '', category: 'general' });
         await loadMessages();
-        setTimeout(() => setSuccessMsg(''), 3000);
       } else {
-        setErrorMsg(res.message || 'Failed to update message');
+        toastError('generic_error', res.message || 'Failed to update message');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to update message');
+      toastError('generic_error', err.message || 'Failed to update message');
     } finally {
       setSubmitting(false);
     }
@@ -143,16 +145,15 @@ export default function ErrorMessagesClient() {
     try {
       const res = await api.delete(`/superadmin/error-messages/${deleteId}`);
       if (res.success) {
-        setSuccessMsg('Error message deleted successfully!');
+        toastSuccess('cms_page_delete_success', 'Error message deleted successfully!');
         setShowDeleteConfirm(false);
         setDeleteId(null);
         await loadMessages();
-        setTimeout(() => setSuccessMsg(''), 3000);
       } else {
-        setErrorMsg(res.message || 'Failed to delete message');
+        toastError('generic_error', res.message || 'Failed to delete message');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to delete message');
+      toastError('generic_error', err.message || 'Failed to delete message');
     } finally {
       setSubmitting(false);
     }
@@ -185,6 +186,18 @@ export default function ErrorMessagesClient() {
     return matchesSearch && matchesCategory;
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredMessages.length / itemsPerPage);
+  const paginatedMessages = filteredMessages.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 on search or filter
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
+
   return (
     <DashboardLayout requiredRoles={['super_admin']}>
       <div className="container-fluid" style={{ maxWidth: '1200px' }}>
@@ -195,10 +208,6 @@ export default function ErrorMessagesClient() {
           </h1>
           <p className="text-muted small">Manage system-wide messages shown to users across the platform. SuperAdmin only.</p>
         </div>
-
-        {/* Success/Error Messages */}
-        {successMsg && <div className="alert alert-success border-0 shadow-sm mb-4 d-flex align-items-center" style={{ borderRadius: 12 }}><i className="bi bi-check-circle-fill me-2"></i>{successMsg}</div>}
-        {errorMsg && <div className="alert alert-danger border-0 shadow-sm mb-4 d-flex align-items-center" style={{ borderRadius: 12 }}><i className="bi bi-exclamation-circle-fill me-2"></i>{errorMsg}</div>}
 
         {/* Controls Section */}
         <div style={sectionStyle}>
@@ -230,8 +239,15 @@ export default function ErrorMessagesClient() {
               </button>
             </div>
           </div>
-          <div style={{ fontSize: '0.875rem', color: '#666' }}>
-            Found <strong>{filteredMessages.length}</strong> message(s) • Total: <strong>{messages.length}</strong>
+          <div style={{ fontSize: '0.875rem', color: '#666', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              Found <strong>{filteredMessages.length}</strong> message(s) • Total: <strong>{messages.length}</strong>
+            </div>
+            {totalPages > 1 && (
+              <div className="text-muted small">
+                Showing page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+              </div>
+            )}
           </div>
         </div>
 
@@ -255,7 +271,7 @@ export default function ErrorMessagesClient() {
                 </tr>
               </thead>
               <tbody>
-                {filteredMessages.map(msg => (
+                {paginatedMessages.map(msg => (
                   <tr key={msg.id}>
                     <td style={{ verticalAlign: 'middle', fontWeight: 500, fontSize: '0.875rem' }}>
                       <code style={{ background: '#f5f5f5', padding: '4px 8px', borderRadius: 4 }}>{msg.message_key}</code>
@@ -289,6 +305,69 @@ export default function ErrorMessagesClient() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && totalPages > 1 && (
+          <div className="d-flex justify-content-center gap-2 mb-4">
+            <button
+              style={{ ...btnSecondary, background: currentPage === 1 ? '#eee' : '#6c757d', color: currentPage === 1 ? '#999' : '#fff' }}
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => prev - 1)}
+              className="btn btn-sm px-3"
+            >
+              <i className="bi bi-chevron-left me-1"></i> Previous
+            </button>
+
+            <div className="d-flex gap-1 align-items-center mx-2">
+              {[...Array(totalPages)].map((_, i) => {
+                const pageNum = i + 1;
+                // Only show current, first, last, and neighbors
+                if (
+                  pageNum === 1 ||
+                  pageNum === totalPages ||
+                  (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                ) {
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      style={{
+                        ...btnSecondary,
+                        background: currentPage === pageNum ? '#ffc63a' : '#fff',
+                        color: currentPage === pageNum ? '#fff' : '#444',
+                        border: '1px solid #ddd',
+                        width: 36,
+                        height: 36,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: currentPage === pageNum ? 700 : 400
+                      }}
+                      className="btn btn-sm p-0"
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                } else if (
+                  pageNum === currentPage - 2 ||
+                  pageNum === currentPage + 2
+                ) {
+                  return <span key={pageNum} className="text-muted mx-1">...</span>;
+                }
+                return null;
+              })}
+            </div>
+
+            <button
+              style={{ ...btnSecondary, background: currentPage === totalPages ? '#eee' : '#6c757d', color: currentPage === totalPages ? '#999' : '#fff' }}
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              className="btn btn-sm px-3"
+            >
+              Next <i className="bi bi-chevron-right ms-1"></i>
+            </button>
           </div>
         )}
 

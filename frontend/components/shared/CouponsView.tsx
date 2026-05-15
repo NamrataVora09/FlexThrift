@@ -52,7 +52,7 @@ export default function CouponsView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const res = editId 
+    const res = editId
       ? await api.post(`/shared/coupons/${editId}/update`, form)
       : await api.post('/shared/coupons', form);
     setSaving(false);
@@ -143,7 +143,7 @@ export default function CouponsView() {
                           </span>
                         </td>
                         <td style={tdStyle}>
-                          <small className="text-muted">Limit: {Number(c.usage_limit) ? c.usage_limit : '∞'}</small>
+                          <small className="text-muted">Limit: {Number(c.usage_limit) ? c.usage_limit : '0'}</small>
                         </td>
                         <td style={tdStyle}>₹{Number(c.min_order_amount).toFixed(2)}</td>
                         <td style={tdStyle}>

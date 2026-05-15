@@ -109,6 +109,13 @@ class SuperAdminApi extends ResourceController
                 return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
             }
             $db->table('pricing_rules')->where('id', $id)->update($row);
+
+            // Sync deduction_threshold across all rows in the same filter group
+            $db->table('pricing_rules')
+               ->where('filter_type', $filterType)
+               ->where('filter_value', $filterValue)
+               ->update(['deduction_threshold' => $row['deduction_threshold']]);
+
             return $this->respond(['success' => true, 'message' => 'Pricing rule updated', 'id' => $id]);
         } else {
             $existing = $this->checkOverlappingRules('pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max']);
@@ -203,6 +210,13 @@ class SuperAdminApi extends ResourceController
                 return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
             }
             $db->table('rental_pricing_rules')->where('id', $id)->update($row);
+
+            // Sync threshold across group
+            $db->table('rental_pricing_rules')
+               ->where('filter_type', $filterType)
+               ->where('filter_value', $filterValue)
+               ->update(['deposit_deduction_threshold' => $row['deposit_deduction_threshold']]);
+
             return $this->respond(['success' => true, 'message' => 'Rental rule updated', 'id' => $id]);
         } else {
             $existing = $this->checkOverlappingRules('rental_pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max']);
@@ -211,6 +225,13 @@ class SuperAdminApi extends ResourceController
             }
             $db->table('rental_pricing_rules')->insert($row);
             $row['id'] = $db->insertID();
+
+            // Sync threshold across group
+            $db->table('rental_pricing_rules')
+               ->where('filter_type', $filterType)
+               ->where('filter_value', $filterValue)
+               ->update(['deposit_deduction_threshold' => $row['deposit_deduction_threshold']]);
+
             return $this->respond(['success' => true, 'message' => 'Rental rule created', 'id' => $row['id'], 'data' => $row]);
         }
     }

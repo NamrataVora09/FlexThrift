@@ -106,8 +106,8 @@ function register_api_routes($routes)
     });
 
     // Public/Semi-public Subscription check
-    $routes->get('buyer/verify-payment', 'Api\BuyerApi::verifyPayment');
-    $routes->get('buyer/verify-order-payment', 'Api\BuyerApi::verifyOrderPayment');
+    $routes->match(['get', 'post'], 'buyer/verify-payment', 'Api\BuyerApi::verifyPayment');
+    $routes->match(['get', 'post'], 'buyer/verify-order-payment', 'Api\BuyerApi::verifyOrderPayment');
 
     // Seller API (protected)
     $routes->group('seller', ['filter' => 'jwt'], function ($routes) {

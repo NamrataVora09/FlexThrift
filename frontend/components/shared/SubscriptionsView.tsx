@@ -271,11 +271,10 @@ export default function SubscriptionsView({ role, userType }: Props) {
           font-size: .78rem; font-weight: 600; display: inline-block;
         }
         .btn-pay {
-          background: #ffc63a; color: #000; border: none;
+          background: #ffc63a; color: #fff; border: none;
           border-radius: 10px; font-weight: 700; padding: .8rem 1.5rem;
           font-size: 1rem; transition: all .25s; width: 100%;
         }
-        .btn-pay:hover:not(:disabled) { background: #e0a800; transform: translateY(-2px); }
         .btn-pay:disabled { opacity: .6; cursor: not-allowed; }
         .close-btn {
           background: none; border: none; font-size: 1.4rem;

@@ -861,12 +861,12 @@ class SharedApi extends ResourceController
         $data = $this->request->getJSON(true);
         $db = \Config\Database::connect();
         $db->table('coupons')->insert([
-            'code' => strtoupper($data['code']),
+            'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
-            'discount_value' => $data['discount_value'],
+            'discount_value' => $data['discount_value'] ?? 0,
             'min_order_amount' => $data['min_order_amount'] ?? 0,
-            'max_discount' => $data['max_discount'] ?? null,
-            'usage_limit' => $data['usage_limit'] ?? 0,
+            'max_discount' => ($data['max_discount'] ?? null) ?: null,
+            'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
             'valid_from' => $data['valid_from'] ?? null,
             'valid_until' => $data['valid_until'] ?? null,
             'is_active' => 1,
@@ -880,13 +880,13 @@ class SharedApi extends ResourceController
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
         $db = \Config\Database::connect();
         $db->table('coupons')->where('id', $id)->update([
-            'code' => strtoupper($data['code']),
+            'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
-            'discount_value' => $data['discount_value'],
+            'discount_value' => $data['discount_value'] ?? 0,
             'min_order_amount' => $data['min_order_amount'] ?? 0,
-            'max_discount' => $data['max_discount'] ?: null,
-            'usage_limit' => $data['usage_limit'] ?: 0,
-            'valid_until' => $data['valid_until'] ?: null,
+            'max_discount' => ($data['max_discount'] ?? null) ?: null,
+            'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
+            'valid_until' => ($data['valid_until'] ?? null) ?: null,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
         return $this->respond(['success' => true, 'message' => 'Coupon updated']);

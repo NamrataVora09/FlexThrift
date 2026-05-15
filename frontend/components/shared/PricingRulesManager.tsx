@@ -548,7 +548,23 @@ export default function PricingRulesManager() {
                   </div>
                   <div className="col-md-6">
                     <label className="form-label small fw-bold">Filter Value</label>
-                    <select className="form-select" value={editingSaleRule.filter_value} disabled={!editingSaleRule.filter_type} onChange={e => setEditingSaleRule({ ...editingSaleRule, filter_value: e.target.value, filter_label: e.target.options[e.target.selectedIndex].text })}>
+                    <select 
+                      className="form-select" 
+                      value={editingSaleRule.filter_value} 
+                      disabled={!editingSaleRule.filter_type} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        const label = e.target.options[e.target.selectedIndex].text;
+                        // Find if any existing rule has this filter and get its threshold
+                        const existing = saleRules.find(r => r.filter_type === editingSaleRule.filter_type && String(r.filter_value) === String(val));
+                        setEditingSaleRule({ 
+                          ...editingSaleRule, 
+                          filter_value: val, 
+                          filter_label: label,
+                          deduction_threshold: existing ? existing.deduction_threshold : editingSaleRule.deduction_threshold 
+                        });
+                      }}
+                    >
                       <option value="">Select Value</option>
                       {filterValues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                     </select>
@@ -627,7 +643,24 @@ export default function PricingRulesManager() {
                   </div>
                   <div className="col-md-6">
                     <label className="form-label small fw-bold">Filter Value</label>
-                    <select className="form-select" value={editingRentalRule.filter_value} disabled={!editingRentalRule.filter_type} onChange={e => setEditingRentalRule({ ...editingRentalRule, filter_value: e.target.value, filter_label: e.target.options[e.target.selectedIndex].text })}>
+                    <select 
+                      className="form-select" 
+                      value={editingRentalRule.filter_value} 
+                      disabled={!editingRentalRule.filter_type} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        const label = e.target.options[e.target.selectedIndex].text;
+                        // Pre-fill threshold if existing rule found
+                        const existing = rentalRules.find(r => r.filter_type === editingRentalRule.filter_type && String(r.filter_value) === String(val));
+                        setEditingRentalRule({ 
+                          ...editingRentalRule, 
+                          filter_value: val, 
+                          filter_label: label,
+                          deposit_deduction_threshold: existing ? existing.deposit_deduction_threshold : editingRentalRule.deposit_deduction_threshold,
+                          max_cost_cap_per_day: (existing && Number(existing.max_cost_cap_per_day) > 0) ? existing.max_cost_cap_per_day : editingRentalRule.max_cost_cap_per_day
+                        });
+                      }}
+                    >
                       <option value="">Select Value</option>
                       {rentalFilterValues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                     </select>
