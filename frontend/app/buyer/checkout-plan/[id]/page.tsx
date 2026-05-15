@@ -133,7 +133,7 @@ export default function CheckoutPlanPage() {
       >
         <div className="text-center">
           <p className="text-danger fw-bold">{error || 'Plan not found'}</p>
-          <button className="btn btn-secondary mt-2" onClick={() => router.push('/buyer/subscriptions')}>
+          <button className="btn btn-secondary mt-2 fw-bold" style={{ color: '#fff' }} onClick={() => router.push('/buyer/subscriptions')}>
             Back to Plans
           </button>
         </div>

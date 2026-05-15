@@ -401,7 +401,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (found) {
       const deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? 10);
       const depreciationAmount = Number(found.rule.depreciation_amount ?? 0);
-      const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '0');
+      const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
       const maxCapPct = Number(found.rule.max_cost_cap_per_day) > 0 ? Number(found.rule.max_cost_cap_per_day) : globalMaxCap;
 
       deposit = (origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
@@ -596,7 +596,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       }
 
       // 2. Validate Rental Cost based on ENTERED deposit
-      const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '0');
+      const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
       const maxCapPct = (found && Number(found.rule.max_cost_cap_per_day) > 0) ? Number(found.rule.max_cost_cap_per_day) : globalMaxCap;
       const maxRentalAllowed = (enteredDeposit * maxCapPct / 100);
 
@@ -643,13 +643,26 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         // Create new product
         res = await api.upload(`${apiBasePath}/upload-product`, fd);
       }
-      
+
       if (res.success) {
-        const isAutoApproved = ['super_admin', 'admin', 'superadmin'].includes(user?.role || '') || meta?.config.product_approval_required !== '1';
+        const role = user?.role || '';
+        const isSuperAdmin = ['super_admin', 'superadmin'].includes(role);
+        const isAdmin = role === 'admin';
+        const reviewRequired = meta?.config.product_approval_required === '1' || meta?.config.product_approval_required === 'true';
+
+        let isAutoApproved = false;
+        if (isSuperAdmin) {
+          isAutoApproved = true;
+        } else if (isAdmin) {
+          isAutoApproved = !reviewRequired;
+        } else {
+          isAutoApproved = false;
+        }
+
         const successMessage = isEditMode
           ? (isAutoApproved ? 'Product updated successfully!' : 'Edit request submitted for admin approval!')
           : (isAutoApproved ? 'Product uploaded!' : 'Product uploaded and pending admin approval!');
-        
+
         toastSuccess('product_upload_success', res.message || successMessage);
         setSuccess(res.message || successMessage);
         setTimeout(() => router.push(redirectPath), 1500);
@@ -738,12 +751,13 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     } else {
       // Use Global Defaults (when no specific rule matches)
       const baseDedPct = parseFloat(cfg.rental_base_deposit_deduction || '0');
-      const maxCapPct = parseFloat(cfg.rental_max_cost_cap_per_day || '0');
+      const maxCapPct = parseFloat(cfg.rental_max_cost_cap_per_day || '14');
+      const fallbackPct = parseFloat(cfg.fallback_rental_cost_per_day || '10');
 
       const suggestedDeposit = (origPrice * (1 - baseDedPct / 100));
       const maxDeposit = suggestedDeposit;
-      const suggestedRental = (suggestedDeposit * (maxCapPct / 100));
-      const maxRental = suggestedRental;
+      const suggestedRental = (suggestedDeposit * (fallbackPct / 100));
+      const maxRental = (suggestedDeposit * (maxCapPct / 100));
 
       return {
         deductionThreshold: baseDedPct,

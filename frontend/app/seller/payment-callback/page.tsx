@@ -117,7 +117,7 @@ function SellerPaymentCallbackInner() {
 
         {status === 'failed' && (
           <div className="d-flex flex-column gap-2 mt-3">
-            <button className="btn btn-warning fw-bold" style={{ color: '#000' }} onClick={() => router.push('/seller/subscriptions')}>
+            <button className="btn btn-warning fw-bold" style={{ color: '#fff' }} onClick={() => router.push('/seller/subscriptions')}>
               Back to Plans
             </button>
           </div>

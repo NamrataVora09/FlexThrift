@@ -18,9 +18,9 @@ class SellerApi extends ResourceController
 
         $stats = [
             'ttl_products' => $db->table('products')->where('seller_id', $userId)->countAllResults(),
-            'pending'      => $db->table('products')->where('seller_id', $userId)->where('status', 'pending')->countAllResults(),
-            'approved'     => $db->table('products')->where('seller_id', $userId)->where('status', 'approved')->countAllResults(),
-            'rejected'     => $db->table('products')->where('seller_id', $userId)->where('status', 'rejected')->countAllResults(),
+            'pending' => $db->table('products')->where('seller_id', $userId)->where('status', 'pending')->countAllResults(),
+            'approved' => $db->table('products')->where('seller_id', $userId)->where('status', 'approved')->countAllResults(),
+            'rejected' => $db->table('products')->where('seller_id', $userId)->where('status', 'rejected')->countAllResults(),
         ];
 
         $recentProductsRaw = $db->table('products p')
@@ -147,7 +147,7 @@ class SellerApi extends ResourceController
         }
 
         $acceptanceLimitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
-        $ratingPeriod        = (float) getSystemSetting('seller_rating_period_days', 7);
+        $ratingPeriod = (float) getSystemSetting('seller_rating_period_days', 7);
         $rejectionWindowHours = (float) getSystemSetting('seller_rejection_window_hours', 24);
 
         return $this->respond([
@@ -218,10 +218,13 @@ class SellerApi extends ResourceController
 
         $settings = $db->table('system_settings')->get()->getResultArray();
         $config = [];
-        foreach ($settings as $s) $config[$s['setting_key']] = $s['setting_value'];
+        foreach ($settings as $s)
+            $config[$s['setting_key']] = $s['setting_value'];
 
         $defaults = [
             'sale_base_discount' => 0, 
+            'rental_base_deposit_deduction' => 0,
+            'rental_max_cost_cap_per_day' => 14,
             'fallback_rental_cost_per_day' => 10,
             'min_rental_days' => 3,
             'max_product_images' => 7,
@@ -232,7 +235,7 @@ class SellerApi extends ResourceController
         $rentalPricingRules = $db->table('rental_pricing_rules')->where('is_active', 1)->orderBy('filter_type', 'ASC')->get()->getResultArray();
 
         $originalBrands = $db->table('orignal_brands')->where('is_active', 1)->orderBy('brand_name', 'ASC')->get()->getResultArray();
-        
+
         $sellerBrandsBuilder = $db->table('brands')->where('is_blocked', 0);
         if ($this->request->jwt_user['role'] !== 'super_admin') {
             $sellerBrandsBuilder->where('seller_id', $this->request->jwt_user['user_id']);
@@ -242,17 +245,17 @@ class SellerApi extends ResourceController
         return $this->respond([
             'success' => true,
             'data' => [
-                'listing_types'       => $listingTypes,
-                'product_types'       => $productTypes,
-                'categories'          => $categories,
-                'sub_categories'      => $subCategories,
-                'colors'              => $colors,
-                'genders'             => $genders,
-                'original_brands'     => $originalBrands,
-                'seller_brands'       => $sellerBrands,
-                'config'              => $config,
-                'pricing_rules'       => $pricingRules,
-                'rental_pricing_rules'=> $rentalPricingRules,
+                'listing_types' => $listingTypes,
+                'product_types' => $productTypes,
+                'categories' => $categories,
+                'sub_categories' => $subCategories,
+                'colors' => $colors,
+                'genders' => $genders,
+                'original_brands' => $originalBrands,
+                'seller_brands' => $sellerBrands,
+                'config' => $config,
+                'pricing_rules' => $pricingRules,
+                'rental_pricing_rules' => $rentalPricingRules,
             ],
         ]);
     }
@@ -322,37 +325,55 @@ class SellerApi extends ResourceController
         $categoryName = '';
         if (!empty($data['category_id'])) {
             $cat = $db->table('categories')->where('id', $data['category_id'])->get()->getRowArray();
-            if ($cat) $categoryName = $cat['category_name'];
+            if ($cat)
+                $categoryName = $cat['category_name'];
         }
 
         // Resolve sub-category name from sub_category_id
         $subCategoryName = '';
         if (!empty($data['sub_category_id'])) {
             $subCat = $db->table('sub_categories')->where('id', $data['sub_category_id'])->get()->getRowArray();
-            if ($subCat) $subCategoryName = $subCat['name'];
+            if ($subCat)
+                $subCategoryName = $subCat['name'];
         }
 
         // Resolve listing type category name
         $listingTypeCatName = '';
         if (!empty($data['listing_type_category'])) {
             $lt = $db->table('listing_types')->where('id', $data['listing_type_category'])->get()->getRowArray();
-            if ($lt) $listingTypeCatName = $lt['type_name'];
+            if ($lt)
+                $listingTypeCatName = $lt['type_name'];
         }
 
         // Resolve product type name
         $productTypeName = '';
         if (!empty($data['product_type'])) {
             $pt = $db->table('product_types')->where('id', $data['product_type'])->get()->getRowArray();
-            if ($pt) $productTypeName = $pt['name'];
+            if ($pt)
+                $productTypeName = $pt['name'];
         }
 
         // Pricing Validation using dynamic rules
         $v = $this->validatePricing($data);
-        if (!$v['success']) return $this->respond($v, 422);
+        if (!$v['success'])
+            return $this->respond($v, 422);
 
         // Check if admin review is required
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
         $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
+
+        $role = $jwtUser['role'];
+        $isSuperAdmin = in_array($role, ['super_admin', 'superadmin']);
+        $isAdmin = ($role === 'admin');
+
+        if ($isSuperAdmin) {
+            $isAutoApproved = true;
+        } elseif ($isAdmin) {
+            $isAutoApproved = !$reviewRequired;
+        } else {
+            // Sellers always require approval
+            $isAutoApproved = false;
+        }
 
         $productData = [
             'seller_id' => $userId,
@@ -380,12 +401,10 @@ class SellerApi extends ResourceController
             'dispatch_state' => $data['dispatch_state'] ?? null,
             'dispatch_city' => $data['dispatch_city'] ?? null,
             'specifications' => $data['specifications'] ?? null,
-            'status' => (in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) || !$reviewRequired) ? 'approved' : 'pending',
+            'status' => $isAutoApproved ? 'approved' : 'pending',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ];
-
-        $isAutoApproved = (in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) || !$reviewRequired);
 
         $db->table('products')->insert($productData);
         $productId = $db->insertID();
@@ -401,7 +420,8 @@ class SellerApi extends ResourceController
         if ($imageFiles) {
             log_message('info', 'Processing product_images array');
             $uploadPath = FCPATH . 'uploads/products/';
-            if (!is_dir($uploadPath)) mkdir($uploadPath, 0777, true);
+            if (!is_dir($uploadPath))
+                mkdir($uploadPath, 0777, true);
 
             $order = 0;
             foreach ($imageFiles as $img) {
@@ -496,8 +516,9 @@ class SellerApi extends ResourceController
             $query->where('seller_id', $jwtUser['user_id']);
         }
         $offer = $query->get()->getRowArray();
-        
-        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
+
+        if (!$offer)
+            return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $offerType = $offer['offer_type'] ?? $product['listing_type'];
 
@@ -522,37 +543,37 @@ class SellerApi extends ResourceController
         }
 
         if ($overlapQuery->countAllResults() > 0) {
-            $msg = ($offerType === 'rent') 
-                ? 'These dates conflict with an existing accepted booking.' 
+            $msg = ($offerType === 'rent')
+                ? 'These dates conflict with an existing accepted booking.'
                 : 'This product has already been sold to another buyer.';
             return $this->respond(['success' => false, 'message' => $msg], 409);
         }
 
         $db->table('offers')->where('id', $id)->update([
-            'status'         => 'accepted',
+            'status' => 'accepted',
             'seller_remarks' => $data['remarks'] ?? '',
-            'accepted_at'    => date('Y-m-d H:i:s'),
-            'updated_at'     => date('Y-m-d H:i:s'),
+            'accepted_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         // Create order
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $db->table('orders')->insert([
-            'order_number'      => 'FLX' . strtoupper(uniqid()),
-            'product_id'        => $offer['product_id'],
-            'buyer_id'          => $offer['buyer_id'],
-            'seller_id'         => $offer['seller_id'],
-            'order_type'        => $offer['offer_type'] ?? 'sale',
-            'final_price'       => $offer['offer_price'],
-            'deposit_amount'    => $offer['deposit_amount'] ?? null,
+            'order_number' => 'FLX' . strtoupper(uniqid()),
+            'product_id' => $offer['product_id'],
+            'buyer_id' => $offer['buyer_id'],
+            'seller_id' => $offer['seller_id'],
+            'order_type' => $offer['offer_type'] ?? 'sale',
+            'final_price' => $offer['offer_price'],
+            'deposit_amount' => $offer['deposit_amount'] ?? null,
             'rental_start_date' => $offer['rental_start_date'] ?? null,
-            'rental_end_date'   => $offer['rental_end_date'] ?? null,
-            'delivery_address'  => $offer['delivery_address'] ?? null,
+            'rental_end_date' => $offer['rental_end_date'] ?? null,
+            'delivery_address' => $offer['delivery_address'] ?? null,
             'delivery_pin_code' => $offer['delivery_pin_code'] ?? null,
-            'payment_status'    => 'pending',
-            'status'            => 'pending',
-            'created_at'        => date('Y-m-d H:i:s'),
-            'updated_at'        => date('Y-m-d H:i:s'),
+            'payment_status' => 'pending',
+            'status' => 'pending',
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
         $orderId = $db->insertID();
 
@@ -561,20 +582,20 @@ class SellerApi extends ResourceController
         }
 
         $db->table('order_status_history')->insert([
-            'order_id'   => $orderId,
-            'status'     => 'pending',
+            'order_id' => $orderId,
+            'status' => 'pending',
             'updated_by' => $jwtUser['user_id'],
-            'remarks'    => 'Order created from accepted offer',
+            'remarks' => 'Order created from accepted offer',
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         // Notify the accepted buyer
         $db->table('notifications')->insert([
-            'user_id'    => $offer['buyer_id'],
-            'title'      => 'Offer Accepted!',
-            'message'    => 'Your offer of ₹' . $offer['offer_price'] . ' on "' . ($product['title'] ?? '') . '" has been accepted.',
-            'type'       => 'offer',
-            'is_read'    => 0,
+            'user_id' => $offer['buyer_id'],
+            'title' => 'Offer Accepted!',
+            'message' => 'Your offer of ₹' . $offer['offer_price'] . ' on "' . ($product['title'] ?? '') . '" has been accepted.',
+            'type' => 'offer',
+            'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -602,16 +623,16 @@ class SellerApi extends ResourceController
 
         foreach ($otherOffers as $other) {
             $db->table('offers')->where('id', $other['id'])->update([
-                'status'         => 'rejected',
+                'status' => 'rejected',
                 'seller_remarks' => 'Another buyer\'s offer for these dates has been accepted.',
-                'updated_at'     => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
             $db->table('notifications')->insert([
-                'user_id'    => $other['buyer_id'],
-                'title'      => 'Offer Not Accepted',
-                'message'    => 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" for overlapping dates was accepted. Your offer has been closed.',
-                'type'       => 'offer',
-                'is_read'    => 0,
+                'user_id' => $other['buyer_id'],
+                'title' => 'Offer Not Accepted',
+                'message' => 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" for overlapping dates was accepted. Your offer has been closed.',
+                'type' => 'offer',
+                'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
@@ -644,12 +665,14 @@ class SellerApi extends ResourceController
         }
         $offer = $query->get()->getRowArray();
 
-        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
-        if ($offer['status'] !== 'pending') return $this->respond(['success' => false, 'message' => 'Date suggestions are only allowed on pending offers'], 400);
+        if (!$offer)
+            return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
+        if ($offer['status'] !== 'pending')
+            return $this->respond(['success' => false, 'message' => 'Date suggestions are only allowed on pending offers'], 400);
 
-        $newStart  = $data['rental_start_date'] ?? null;
-        $newEnd    = $data['rental_end_date']   ?? null;
-        $remarks   = $data['remarks']           ?? '';
+        $newStart = $data['rental_start_date'] ?? null;
+        $newEnd = $data['rental_end_date'] ?? null;
+        $remarks = $data['remarks'] ?? '';
 
         if (!$newStart || !$newEnd) {
             return $this->respond(['success' => false, 'message' => 'Both start and end dates are required'], 400);
@@ -661,7 +684,7 @@ class SellerApi extends ResourceController
         // Enforce minimum rental days from system settings
         helper('price_calculator');
         $minDays = (int) getSystemSetting('min_rental_days', 3);
-        $days = (int)ceil((strtotime($newEnd) - strtotime($newStart)) / 86400) + 1; // inclusive
+        $days = (int) ceil((strtotime($newEnd) - strtotime($newStart)) / 86400) + 1; // inclusive
         if ($days < $minDays) {
             return $this->respond(['success' => false, 'message' => "Minimum rental period is {$minDays} days. You selected {$days} day(s)."], 400);
         }
@@ -672,7 +695,7 @@ class SellerApi extends ResourceController
             ->where('id !=', $id)
             ->where('status', 'accepted')
             ->where('rental_start_date <=', $newEnd)
-            ->where('rental_end_date >=',  $newStart)
+            ->where('rental_end_date >=', $newStart)
             ->countAllResults();
 
         if ($overlapping > 0) {
@@ -680,43 +703,43 @@ class SellerApi extends ResourceController
         }
 
         // Recalculate price based on suggested nights × rental cost
-        $product   = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
-        $rentalCost = (float)($product['rental_cost'] ?? $product['price'] ?? 0);
-        $days       = max(1, (int)ceil((strtotime($newEnd) - strtotime($newStart)) / 86400) + 1); // inclusive
-        $newPrice   = $rentalCost * $days;
+        $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+        $rentalCost = (float) ($product['rental_cost'] ?? $product['price'] ?? 0);
+        $days = max(1, (int) ceil((strtotime($newEnd) - strtotime($newStart)) / 86400) + 1); // inclusive
+        $newPrice = $rentalCost * $days;
 
         $msg = 'Seller suggests new dates: ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ($remarks ? '. Note: ' . $remarks : '');
 
         $db->table('offers')->where('id', $id)->update([
-            'status'             => 'negotiating',
-            'rental_start_date'  => $newStart,
-            'rental_end_date'    => $newEnd,
-            'offer_price'        => $newPrice,
-            'seller_remarks'     => $remarks,
-            'message'            => $msg,
-            'updated_at'         => date('Y-m-d H:i:s'),
+            'status' => 'negotiating',
+            'rental_start_date' => $newStart,
+            'rental_end_date' => $newEnd,
+            'offer_price' => $newPrice,
+            'seller_remarks' => $remarks,
+            'message' => $msg,
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         // Record in history
         $db->table('offer_history')->insert([
-            'offer_id'       => $id,
-            'changed_by'     => $jwtUser['user_id'],
-            'action'         => 'seller_suggest_dates',
+            'offer_id' => $id,
+            'changed_by' => $jwtUser['user_id'],
+            'action' => 'seller_suggest_dates',
             'old_start_date' => $offer['rental_start_date'],
-            'old_end_date'   => $offer['rental_end_date'],
+            'old_end_date' => $offer['rental_end_date'],
             'new_start_date' => $newStart,
-            'new_end_date'   => $newEnd,
-            'new_price'      => $newPrice,
-            'created_at'     => date('Y-m-d H:i:s'),
+            'new_end_date' => $newEnd,
+            'new_price' => $newPrice,
+            'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         // Notify buyer
         $db->table('notifications')->insert([
-            'user_id'    => $offer['buyer_id'],
-            'title'      => 'Seller Suggested New Dates',
-            'message'    => 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . '. Please review and accept or decline.',
-            'type'       => 'offer',
-            'is_read'    => 0,
+            'user_id' => $offer['buyer_id'],
+            'title' => 'Seller Suggested New Dates',
+            'message' => 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . '. Please review and accept or decline.',
+            'type' => 'offer',
+            'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -730,9 +753,9 @@ class SellerApi extends ResourceController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
-        
+
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_seller'] ?? 0) === 1) {
+        if ($jwtUser['role'] !== 'super_admin' && (int) ($user['blocked_seller'] ?? 0) === 1) {
             return $this->respond(['success' => false, 'message' => 'Your seller role is currently blocked. Access restricted.'], 403);
         }
 
@@ -745,7 +768,8 @@ class SellerApi extends ResourceController
         }
         $offer = $query->get()->getRowArray();
 
-        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
+        if (!$offer)
+            return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
 
         if ($offer['status'] === 'accepted') {
             // Seller retraction: only allowed within the rejection window
@@ -907,7 +931,8 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $offer = $db->table('offers')->where('id', $offerId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+        if (!$offer)
+            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
 
         $messages = $db->table('offer_messages om')
             ->select('om.*, u.name as sender_name')
@@ -931,7 +956,8 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $offer = $db->table('offers')->where('id', $offerId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+        if (!$offer)
+            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
 
         $file = $this->request->getFile('file');
         if (!$file || !$file->isValid()) {
@@ -948,31 +974,32 @@ class SellerApi extends ResourceController
         }
 
         $uploadPath = FCPATH . 'uploads/chat/';
-        if (!is_dir($uploadPath)) mkdir($uploadPath, 0755, true);
+        if (!is_dir($uploadPath))
+            mkdir($uploadPath, 0755, true);
 
         $newName = uniqid('chat_') . '.' . $file->getClientExtension();
         $file->move($uploadPath, $newName);
 
         $mediaUrl = 'uploads/chat/' . $newName;
-        $caption  = trim($this->request->getPost('message') ?? '');
+        $caption = trim($this->request->getPost('message') ?? '');
 
         $db->table('offer_messages')->insert([
-            'offer_id'    => $offerId,
-            'sender_id'   => $jwtUser['user_id'],
+            'offer_id' => $offerId,
+            'sender_id' => $jwtUser['user_id'],
             'sender_role' => 'seller',
-            'message'     => $caption ?: '',
-            'media_url'   => $mediaUrl,
-            'is_read'     => 0,
-            'created_at'  => date('Y-m-d H:i:s'),
+            'message' => $caption ?: '',
+            'media_url' => $mediaUrl,
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $db->table('notifications')->insert([
-            'user_id'    => $offer['buyer_id'],
-            'title'      => 'Seller sent a file',
-            'message'    => 'Seller shared media on your offer for "' . ($product['title'] ?? '') . '".',
-            'type'       => 'offer',
-            'is_read'    => 0,
+            'user_id' => $offer['buyer_id'],
+            'title' => 'Seller sent a file',
+            'message' => 'Seller shared media on your offer for "' . ($product['title'] ?? '') . '".',
+            'type' => 'offer',
+            'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -996,27 +1023,29 @@ class SellerApi extends ResourceController
         $body = $this->request->getJSON(true) ?? [];
 
         $offer = $db->table('offers')->where('id', $offerId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$offer) return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+        if (!$offer)
+            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
 
         $message = trim($body['message'] ?? '');
-        if ($message === '') return $this->respond(['success' => false, 'message' => 'Message cannot be empty'], 400);
+        if ($message === '')
+            return $this->respond(['success' => false, 'message' => 'Message cannot be empty'], 400);
 
         $db->table('offer_messages')->insert([
-            'offer_id'    => $offerId,
-            'sender_id'   => $jwtUser['user_id'],
+            'offer_id' => $offerId,
+            'sender_id' => $jwtUser['user_id'],
             'sender_role' => 'seller',
-            'message'     => $message,
-            'is_read'     => 0,
-            'created_at'  => date('Y-m-d H:i:s'),
+            'message' => $message,
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $db->table('notifications')->insert([
-            'user_id'    => $offer['buyer_id'],
-            'title'      => 'New message from seller',
-            'message'    => 'Seller sent a message on your offer for "' . ($product['title'] ?? '') . '".',
-            'type'       => 'offer',
-            'is_read'    => 0,
+            'user_id' => $offer['buyer_id'],
+            'title' => 'New message from seller',
+            'message' => 'Seller sent a message on your offer for "' . ($product['title'] ?? '') . '".',
+            'type' => 'offer',
+            'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -1032,14 +1061,19 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $order = $db->table('orders')->where('id', $orderId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$order) return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
-        if ($order['status'] !== 'confirmed') return $this->respond(['success' => false, 'message' => 'Order can only be dispatched after payment is received'], 400);
+        if (!$order)
+            return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
+        if ($order['status'] !== 'confirmed')
+            return $this->respond(['success' => false, 'message' => 'Order can only be dispatched after payment is received'], 400);
 
         $db->table('orders')->where('id', $orderId)->update(['status' => 'dispatched', 'dispatched_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]);
 
         $db->table('order_status_history')->insert([
-            'order_id' => $orderId, 'status' => 'dispatched', 'updated_by' => $jwtUser['user_id'],
-            'remarks' => 'Marked as dispatched by seller', 'created_at' => date('Y-m-d H:i:s'),
+            'order_id' => $orderId,
+            'status' => 'dispatched',
+            'updated_by' => $jwtUser['user_id'],
+            'remarks' => 'Marked as dispatched by seller',
+            'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         $db->table('notifications')->insert([
@@ -1064,8 +1098,10 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $order = $db->table('orders')->where('id', $orderId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$order) return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
-        if ($order['status'] !== 'dispatched') return $this->respond(['success' => false, 'message' => 'Order can only be confirmed after dispatching'], 400);
+        if (!$order)
+            return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
+        if ($order['status'] !== 'dispatched')
+            return $this->respond(['success' => false, 'message' => 'Order can only be confirmed after dispatching'], 400);
 
         $photo = $this->request->getFile('delivery_photo');
         if (!$photo || !$photo->isValid()) {
@@ -1073,31 +1109,32 @@ class SellerApi extends ResourceController
         }
 
         $uploadPath = FCPATH . 'uploads/delivery/';
-        if (!is_dir($uploadPath)) mkdir($uploadPath, 0777, true);
+        if (!is_dir($uploadPath))
+            mkdir($uploadPath, 0777, true);
         $newName = $photo->getRandomName();
         $photo->move($uploadPath, $newName);
         $photoPath = 'uploads/delivery/' . $newName;
 
         $db->table('orders')->where('id', $orderId)->update([
-            'status'         => 'delivered',
+            'status' => 'delivered',
             'delivery_photo' => $photoPath,
-            'updated_at'     => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         $db->table('order_status_history')->insert([
-            'order_id'   => $orderId,
-            'status'     => 'delivered',
+            'order_id' => $orderId,
+            'status' => 'delivered',
             'updated_by' => $jwtUser['user_id'],
-            'remarks'    => 'Delivery confirmed by seller with photograph',
+            'remarks' => 'Delivery confirmed by seller with photograph',
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         $db->table('notifications')->insert([
-            'user_id'    => $order['buyer_id'],
-            'title'      => 'Order Delivered',
-            'message'    => 'Your order #' . $orderId . ' has been delivered! You can now leave a review.',
-            'type'       => 'order',
-            'is_read'    => 0,
+            'user_id' => $order['buyer_id'],
+            'title' => 'Order Delivered',
+            'message' => 'Your order #' . $orderId . ' has been delivered! You can now leave a review.',
+            'type' => 'order',
+            'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -1119,10 +1156,12 @@ class SellerApi extends ResourceController
         }
 
         $product = $db->table('products')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+        if (!$product)
+            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
         $hasOrders = $db->table('orders')->where('product_id', $id)->whereNotIn('status', ['cancelled', 'completed'])->countAllResults();
-        if ($hasOrders > 0) return $this->respond(['success' => false, 'message' => 'Cannot delete product with active orders'], 400);
+        if ($hasOrders > 0)
+            return $this->respond(['success' => false, 'message' => 'Cannot delete product with active orders'], 400);
 
         $db->table('product_images')->where('product_id', $id)->delete();
         $db->table('offers')->where('product_id', $id)->where('status', 'pending')->update(['status' => 'cancelled']);
@@ -1146,14 +1185,16 @@ class SellerApi extends ResourceController
         }
 
         $product = $db->table('products')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+        if (!$product)
+            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
         $data = $this->request->getPost();
         $processedData = $this->cleanProductData($data, $db);
 
         // Pricing Validation
         $v = $this->validatePricing($data);
-        if (!$v['success']) return $this->respond($v, 422);
+        if (!$v['success'])
+            return $this->respond($v, 422);
 
         // Handle new image uploads for edit request
         $tempImages = [];
@@ -1161,7 +1202,8 @@ class SellerApi extends ResourceController
         $imageFiles = $files['product_images'] ?? $files['images'] ?? null;
         if ($imageFiles) {
             $uploadPath = FCPATH . 'uploads/products/temp/';
-            if (!is_dir($uploadPath)) mkdir($uploadPath, 0777, true);
+            if (!is_dir($uploadPath))
+                mkdir($uploadPath, 0777, true);
             foreach ($imageFiles as $img) {
                 if ($img && $img->isValid() && !$img->hasMoved()) {
                     $newName = $img->getRandomName();
@@ -1194,7 +1236,7 @@ class SellerApi extends ResourceController
         $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
 
         return $this->respond([
-            'success' => true, 
+            'success' => true,
             'message' => $reviewRequired ? 'Edit request submitted for admin approval' : 'Product updated successfully'
         ]);
     }
@@ -1208,7 +1250,8 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+        if (!$product)
+            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
         // Check permissions: super_admin/admin can update any product, regular sellers can only update their own
         if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $product['seller_id'] != $jwtUser['user_id']) {
@@ -1230,7 +1273,8 @@ class SellerApi extends ResourceController
 
         // Pricing Validation
         $v = $this->validatePricing($data);
-        if (!$v['success']) return $this->respond($v, 422);
+        if (!$v['success'])
+            return $this->respond($v, 422);
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         // Handle file uploads
@@ -1238,13 +1282,14 @@ class SellerApi extends ResourceController
         $imageFiles = $files['product_images'] ?? $files['images'] ?? null;
         if ($imageFiles) {
             $uploadPath = FCPATH . 'uploads/products/';
-            if (!is_dir($uploadPath)) mkdir($uploadPath, 0777, true);
+            if (!is_dir($uploadPath))
+                mkdir($uploadPath, 0777, true);
 
             foreach ($imageFiles as $file) {
                 if ($file->isValid() && !$file->hasMoved()) {
                     $newName = $file->getRandomName();
                     $file->move($uploadPath, $newName);
-                    
+
                     $db->table('product_images')->insert([
                         'product_id' => $id,
                         'image_path' => 'uploads/products/' . $newName,
@@ -1263,7 +1308,8 @@ class SellerApi extends ResourceController
                 $imagesToDelete = $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->get()->getResultArray();
                 foreach ($imagesToDelete as $img) {
                     $fullPath = FCPATH . $img['image_path'];
-                    if (is_file($fullPath)) unlink($fullPath);
+                    if (is_file($fullPath))
+                        unlink($fullPath);
                 }
                 $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->delete();
             }
@@ -1289,14 +1335,15 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $builder = $db->table('products')->where('id', $id);
-        
+
         // Admins and super admins can view any product
         if (!in_array($jwtUser['role'], ['admin', 'super_admin'])) {
             $builder->where('seller_id', $jwtUser['user_id']);
         }
-        
+
         $product = $builder->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+        if (!$product)
+            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
         $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
 
@@ -1309,9 +1356,9 @@ class SellerApi extends ResourceController
      */
     public function reportUser(int $reportedId)
     {
-        $jwtUser  = $this->request->jwt_user;
+        $jwtUser = $this->request->jwt_user;
         $reporter = (int) $jwtUser['user_id'];
-        $db       = \Config\Database::connect();
+        $db = \Config\Database::connect();
 
         if ($reporter === $reportedId) {
             return $this->respond(['success' => false, 'message' => 'You cannot report yourself'], 400);
@@ -1348,14 +1395,14 @@ class SellerApi extends ResourceController
         $assignedAdminId = !empty($admins) ? $admins[array_rand($admins)]['id'] : null;
 
         $db->table('user_reports')->insert([
-            'reporter_id'       => $reporter,
-            'reported_id'       => $reportedId,
-            'reporter_role'     => 'seller',
-            'reason'            => $reason,
-            'status'            => 'pending',
+            'reporter_id' => $reporter,
+            'reported_id' => $reportedId,
+            'reporter_role' => 'seller',
+            'reason' => $reason,
+            'status' => 'pending',
             'assigned_admin_id' => $assignedAdminId,
-            'created_at'        => date('Y-m-d H:i:s'),
-            'updated_at'        => date('Y-m-d H:i:s'),
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         // Count reports against this user in the last 7 days
@@ -1366,31 +1413,31 @@ class SellerApi extends ResourceController
 
         if ($weeklyReports >= 3 && !$reported['is_suspended']) {
             $db->table('users')->where('id', $reportedId)->update([
-                'is_suspended'      => 1,
-                'suspended_at'      => date('Y-m-d H:i:s'),
+                'is_suspended' => 1,
+                'suspended_at' => date('Y-m-d H:i:s'),
                 'suspension_reason' => 'Auto-suspended: received ' . $weeklyReports . ' reports within 7 days.',
-                'updated_at'        => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
 
             // Notify all admins about the auto-suspension
             foreach ($admins as $admin) {
                 $db->table('notifications')->insert([
-                    'user_id'    => $admin['id'],
-                    'title'      => 'User Auto-Suspended',
-                    'message'    => 'User "' . $reported['name'] . '" has been auto-suspended after receiving ' . $weeklyReports . ' reports in 7 days.',
-                    'type'       => 'user_suspended',
-                    'is_read'    => 0,
+                    'user_id' => $admin['id'],
+                    'title' => 'User Auto-Suspended',
+                    'message' => 'User "' . $reported['name'] . '" has been auto-suspended after receiving ' . $weeklyReports . ' reports in 7 days.',
+                    'type' => 'user_suspended',
+                    'is_read' => 0,
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
             }
         } elseif ($assignedAdminId) {
             // Notify the assigned admin
             $db->table('notifications')->insert([
-                'user_id'    => $assignedAdminId,
-                'title'      => 'New User Report',
-                'message'    => 'A seller reported user "' . $reported['name'] . '". Reason: ' . substr($reason, 0, 100),
-                'type'       => 'user_report',
-                'is_read'    => 0,
+                'user_id' => $assignedAdminId,
+                'title' => 'New User Report',
+                'message' => 'A seller reported user "' . $reported['name'] . '". Reason: ' . substr($reason, 0, 100),
+                'type' => 'user_report',
+                'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
@@ -1409,7 +1456,7 @@ class SellerApi extends ResourceController
         $db = \Config\Database::connect();
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_seller'] ?? 0) === 1) {
+        if ($jwtUser['role'] !== 'super_admin' && (int) ($user['blocked_seller'] ?? 0) === 1) {
             return $this->respond(['success' => false, 'message' => 'Your seller role is currently blocked. Access restricted.'], 403);
         }
 
@@ -1434,7 +1481,7 @@ class SellerApi extends ResourceController
 
         $limitSetting = $db->table('system_settings')->where('setting_key', 'seller_rating_period_days')->get()->getRowArray();
         $ratingPeriod = $limitSetting ? (float) $limitSetting['setting_value'] : 7;
-        
+
         if (!empty($offer['accepted_at'])) {
             if (time() > strtotime($offer['accepted_at']) + ($ratingPeriod * 86400)) {
                 return $this->respond(['success' => false, 'message' => 'Rating window has expired'], 400);
@@ -1479,35 +1526,40 @@ class SellerApi extends ResourceController
     {
         $updateData = [];
         $fieldMap = [
-            'times_used'            => 'used_times',
+            'times_used' => 'used_times',
             'condition_description' => 'description',
-            'orignal_brand_id'      => 'brand_id'
+            'orignal_brand_id' => 'brand_id'
         ];
 
         // Resolve names for IDs
         if (!empty($data['category_id'])) {
             $cat = $db->table('categories')->where('id', $data['category_id'])->get()->getRowArray();
-            if ($cat) $updateData['category'] = $cat['category_name'];
+            if ($cat)
+                $updateData['category'] = $cat['category_name'];
         }
         if (!empty($data['sub_category_id'])) {
             $subCat = $db->table('sub_categories')->where('id', $data['sub_category_id'])->get()->getRowArray();
-            if ($subCat) $updateData['sub_category'] = $subCat['name'];
+            if ($subCat)
+                $updateData['sub_category'] = $subCat['name'];
         }
         if (!empty($data['listing_type_category'])) {
             $lt = $db->table('listing_types')->where('id', $data['listing_type_category'])->get()->getRowArray();
-            if ($lt) $updateData['listing_type_category'] = $lt['type_name'];
+            if ($lt)
+                $updateData['listing_type_category'] = $lt['type_name'];
         }
         if (!empty($data['product_type'])) {
             $pt = $db->table('product_types')->where('id', $data['product_type'])->get()->getRowArray();
-            if ($pt) $updateData['product_type'] = $pt['name'];
+            if ($pt)
+                $updateData['product_type'] = $pt['name'];
         }
 
         foreach ($data as $key => $value) {
             // Skip keys we already handled or that shouldn't be in products table
-            if (in_array($key, ['category_id', 'sub_category_id', 'listing_type_category', 'product_type', 'images', 'product_images', 'jwt_user'])) continue;
+            if (in_array($key, ['category_id', 'sub_category_id', 'listing_type_category', 'product_type', 'images', 'product_images', 'jwt_user']))
+                continue;
 
             $dbKey = $fieldMap[$key] ?? $key;
-            
+
             // Handle boolean/checkbox fields
             if ($key === 'has_bill' || $key === 'allow_alter_fitting') {
                 $updateData[$dbKey] = $value ? 1 : 0;
@@ -1515,7 +1567,7 @@ class SellerApi extends ResourceController
                 $updateData[$dbKey] = $value;
             }
         }
-        
+
         return $updateData;
     }
 
@@ -1529,8 +1581,8 @@ class SellerApi extends ResourceController
     public function planCheckoutDetails(int $planId)
     {
         $jwtUser = $this->request->jwt_user;
-        $userId  = $jwtUser['user_id'];
-        $db      = \Config\Database::connect();
+        $userId = $jwtUser['user_id'];
+        $db = \Config\Database::connect();
 
         $plan = $db->table('subscription_plans')
             ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'seller'])
@@ -1540,37 +1592,38 @@ class SellerApi extends ResourceController
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
 
-        $chargeModel  = new \App\Models\PlatformChargeModel();
+        $chargeModel = new \App\Models\PlatformChargeModel();
         $activeCharges = $chargeModel->getActiveCharges();
         $chargeBreakdown = [];
-        $totalCharges    = 0;
+        $totalCharges = 0;
         foreach ($activeCharges as $charge) {
             $amt = $charge['charge_type'] === 'percentage'
                 ? ($plan['price'] * $charge['charge_value']) / 100
                 : (float) $charge['charge_value'];
             $chargeBreakdown[] = [
-                'name'   => $charge['charge_name'],
-                'type'   => $charge['charge_type'],
-                'value'  => $charge['charge_value'],
+                'name' => $charge['charge_name'],
+                'type' => $charge['charge_type'],
+                'value' => $charge['charge_value'],
                 'amount' => $amt,
             ];
             $totalCharges += $amt;
         }
 
         $referralDiscount = 0;
-        $referralBalance  = (float) ($user['referral_balance'] ?? 0);
-        $expiry           = $user['referral_expires_at'] ?? null;
-        
+        $referralBalance = (float) ($user['referral_balance'] ?? 0);
+        $expiry = $user['referral_expires_at'] ?? null;
+
         $settingsRows = $db->table('system_settings')
             ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
             ->get()->getResultArray();
         $cfg = [];
-        foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
-        
+        foreach ($settingsRows as $s)
+            $cfg[$s['setting_key']] = $s['setting_value'];
+
         $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
         $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
 
-        if ($referralBalance > 0 && (float)$plan['price'] >= $minPurchase) {
+        if ($referralBalance > 0 && (float) $plan['price'] >= $minPurchase) {
             if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
                 // Max discount = percentage of the wallet balance that can be used
                 $referralDiscount = round(($referralBalance * $maxPercent) / 100, 2);
@@ -1581,20 +1634,20 @@ class SellerApi extends ResourceController
 
         return $this->respond([
             'success' => true,
-            'data'    => [
-                'plan'             => $plan,
-                'user'             => [
-                    'name'    => $user['name'],
-                    'email'   => $user['email'],
-                    'mobile'  => $user['mobile'] ?? '',
+            'data' => [
+                'plan' => $plan,
+                'user' => [
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'mobile' => $user['mobile'] ?? '',
                     'address' => $user['address'] ?? '',
                 ],
                 'charge_breakdown' => $chargeBreakdown,
-                'total_charges'    => $totalCharges,
-                'referral_discount'=> $referralDiscount,
+                'total_charges' => $totalCharges,
+                'referral_discount' => $referralDiscount,
                 'referral_min_purchase' => $minPurchase,
                 'total_referral_balance' => $referralBalance,
-                'total'            => $total,
+                'total' => $total,
             ],
         ]);
     }
@@ -1605,10 +1658,10 @@ class SellerApi extends ResourceController
     public function applyCoupon()
     {
         $jwtUser = $this->request->jwt_user;
-        $data    = $this->request->getJSON(true);
-        $db      = \Config\Database::connect();
+        $data = $this->request->getJSON(true);
+        $db = \Config\Database::connect();
 
-        $code   = strtoupper(trim($data['code'] ?? ''));
+        $code = strtoupper(trim($data['code'] ?? ''));
         $planId = (int) ($data['plan_id'] ?? 0);
 
         if (!$code)
@@ -1646,7 +1699,7 @@ class SellerApi extends ResourceController
         return $this->respond([
             'success' => true,
             'message' => 'Coupon applied successfully!',
-            'data'    => ['discount' => round($discountValue, 2)],
+            'data' => ['discount' => round($discountValue, 2)],
         ]);
     }
 
@@ -1656,12 +1709,12 @@ class SellerApi extends ResourceController
     public function initiatePayment()
     {
         $jwtUser = $this->request->jwt_user;
-        $userId  = $jwtUser['user_id'];
-        $data    = $this->request->getJSON(true);
-        $db      = \Config\Database::connect();
+        $userId = $jwtUser['user_id'];
+        $data = $this->request->getJSON(true);
+        $db = \Config\Database::connect();
 
-        $planId      = (int) ($data['plan_id'] ?? 0);
-        $couponCode  = strtoupper(trim($data['coupon_code'] ?? ''));
+        $planId = (int) ($data['plan_id'] ?? 0);
+        $couponCode = strtoupper(trim($data['coupon_code'] ?? ''));
         $callbackUrl = trim($data['callback_url'] ?? '');
         $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
 
@@ -1677,22 +1730,24 @@ class SellerApi extends ResourceController
             return $this->respond(['success' => false, 'message' => 'Your account is restricted from purchasing seller subscriptions.'], 403);
         }
 
-        $basePrice    = (float) $plan['price'];
-        $chargeModel  = new \App\Models\PlatformChargeModel();
+        $basePrice = (float) $plan['price'];
+        $chargeModel = new \App\Models\PlatformChargeModel();
         $activeCharges = $chargeModel->getActiveCharges();
-        $totalCharges  = 0;
+        $totalCharges = 0;
         foreach ($activeCharges as $charge) {
             $totalCharges += $charge['charge_type'] === 'percentage'
                 ? ($basePrice * $charge['charge_value']) / 100
                 : (float) $charge['charge_value'];
         }
 
-        $discount  = 0;
-        $couponId  = null;
+        $discount = 0;
+        $couponId = null;
         if ($couponCode) {
             $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
-            if ($coupon && $basePrice >= (float) $coupon['min_order_amount']
-                && (!$coupon['valid_until'] || strtotime($coupon['valid_until']) >= time())) {
+            if (
+                $coupon && $basePrice >= (float) $coupon['min_order_amount']
+                && (!$coupon['valid_until'] || strtotime($coupon['valid_until']) >= time())
+            ) {
                 if ($coupon['discount_type'] === 'percentage') {
                     $discount = ($basePrice * $coupon['discount_value']) / 100;
                     if ($coupon['max_discount'] && $discount > $coupon['max_discount'])
@@ -1711,19 +1766,20 @@ class SellerApi extends ResourceController
         $referralDiscountApplied = 0;
         if ($useReferral) {
             $referralBalance = (float) ($user['referral_balance'] ?? 0);
-            $expiry          = $user['referral_expires_at'] ?? null;
-            
+            $expiry = $user['referral_expires_at'] ?? null;
+
             if ($referralBalance > 0) {
                 if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
                     $settingsRows = $db->table('system_settings')
                         ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
                         ->get()->getResultArray();
                     $cfg = [];
-                    foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+                    foreach ($settingsRows as $s)
+                        $cfg[$s['setting_key']] = $s['setting_value'];
 
                     $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
                     $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
-                    
+
                     if ($basePrice >= $minPurchase) {
                         // Max discount = percentage of the wallet balance that can be used
                         $referralDiscountApplied = round(($referralBalance * $maxPercent) / 100, 2);
@@ -1733,8 +1789,8 @@ class SellerApi extends ResourceController
             }
         }
 
-        $finalAmount     = max(1, $finalAmount);
-        $amountInPaise   = (int) ($finalAmount * 100);
+        $finalAmount = max(1, $finalAmount);
+        $amountInPaise = (int) ($finalAmount * 100);
         $merchantOrderId = 'SUB-SLR-' . $userId . '-' . time();
 
         $redirectUrl = $callbackUrl
@@ -1743,9 +1799,9 @@ class SellerApi extends ResourceController
 
         $payload = [
             'merchantOrderId' => $merchantOrderId,
-            'amount'          => $amountInPaise,
-            'paymentFlow'     => [
-                'type'         => 'PG_CHECKOUT',
+            'amount' => $amountInPaise,
+            'paymentFlow' => [
+                'type' => 'PG_CHECKOUT',
                 'merchantUrls' => ['redirectUrl' => $redirectUrl],
             ],
         ];
@@ -1761,35 +1817,35 @@ class SellerApi extends ResourceController
             ->get()->getRowArray();
 
         $durationHours = (float) $plan['duration_hours'];
-        $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
-        $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+        $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
         $expiresAt = $durationHours > 0
-            ? date('Y-m-d H:i:s', $baseTime + (int)round($durationHours * 3600))
+            ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
             : '2099-12-31 23:59:59';
 
         $db->table('user_subscriptions')->insert([
-            'user_id'                    => $userId,
-            'plan_id'                    => $planId,
-            'starts_at'                  => $startsAt,
-            'expires_at'                 => $expiresAt,
-            'usage_count'                => 0,
-            'is_active'                  => 0,
-            'payment_status'             => 'pending',
-            'amount_paid'                => $finalAmount,
-            'referral_discount_applied'  => $referralDiscountApplied,
-            'merchant_transaction_id'    => $merchantOrderId,
-            'created_at'                 => date('Y-m-d H:i:s'),
-            'updated_at'                 => date('Y-m-d H:i:s'),
+            'user_id' => $userId,
+            'plan_id' => $planId,
+            'starts_at' => $startsAt,
+            'expires_at' => $expiresAt,
+            'usage_count' => 0,
+            'is_active' => 0,
+            'payment_status' => 'pending',
+            'amount_paid' => $finalAmount,
+            'referral_discount_applied' => $referralDiscountApplied,
+            'merchant_transaction_id' => $merchantOrderId,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $phonepe  = new \App\Libraries\PhonePe();
+        $phonepe = new \App\Libraries\PhonePe();
         $response = $phonepe->createPayment($payload);
 
         if (isset($response['redirectUrl'])) {
             return $this->respond([
                 'success' => true,
-                'data'    => [
-                    'redirect_url'      => $response['redirectUrl'],
+                'data' => [
+                    'redirect_url' => $response['redirectUrl'],
                     'merchant_order_id' => $merchantOrderId,
                 ],
             ]);
@@ -1821,12 +1877,12 @@ class SellerApi extends ResourceController
             return $this->respond(['status' => 'success', 'message' => 'Subscription is already active']);
 
         $phonepe = new \App\Libraries\PhonePe();
-        $status  = $phonepe->getOrderStatus($merchantOrderId);
-        $state   = $status['state'] ?? ($status['data']['state'] ?? 'PENDING');
+        $status = $phonepe->getOrderStatus($merchantOrderId);
+        $state = $status['state'] ?? ($status['data']['state'] ?? 'PENDING');
 
         if ($state === 'COMPLETED') {
             if ($dbSub['is_active'] == 0) {
-                $plan          = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
+                $plan = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
 
                 // Stacking Logic: Find the latest expiry among active seller plans
                 $latestActive = $db->table('user_subscriptions us')
@@ -1839,41 +1895,41 @@ class SellerApi extends ResourceController
                     ->get()->getRowArray();
 
                 $durationHours = (float) $plan['duration_hours'];
-                $startsAt      = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
-                $baseTime      = $latestActive ? strtotime($latestActive['expires_at']) : time();
-                $expiresAt     = $durationHours > 0
-                    ? date('Y-m-d H:i:s', $baseTime + (int)round($durationHours * 3600))
+                $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+                $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
+                $expiresAt = $durationHours > 0
+                    ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
                     : '2099-12-31 23:59:59';
 
                 $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
-                    'is_active'      => 1,
+                    'is_active' => 1,
                     'payment_status' => 'paid',
-                    'starts_at'      => $startsAt,
-                    'expires_at'     => $expiresAt,
-                    'updated_at'     => date('Y-m-d H:i:s'),
+                    'starts_at' => $startsAt,
+                    'expires_at' => $expiresAt,
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
                 $db->table('users')->where('id', $dbSub['user_id'])->update([
-                    'subscription_tier'       => $plan['name'],
+                    'subscription_tier' => $plan['name'],
                     'subscription_expires_at' => $expiresAt,
-                    'updated_at'              => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
                 $db->table('transactions')->insert([
-                    'user_id'          => $dbSub['user_id'],
-                    'type'             => 'subscription',
-                    'amount'           => $dbSub['amount_paid'],
-                    'description'      => 'Seller Subscription: ' . $plan['name'],
-                    'payment_method'   => 'online',
-                    'payment_status'   => 'completed',
-                    'transaction_id'   => $merchantOrderId,
-                    'created_at'       => date('Y-m-d H:i:s'),
+                    'user_id' => $dbSub['user_id'],
+                    'type' => 'subscription',
+                    'amount' => $dbSub['amount_paid'],
+                    'description' => 'Seller Subscription: ' . $plan['name'],
+                    'payment_method' => 'online',
+                    'payment_status' => 'completed',
+                    'transaction_id' => $merchantOrderId,
+                    'created_at' => date('Y-m-d H:i:s'),
                 ]);
                 // Deduct used referral balance
                 if ((float) $dbSub['referral_discount_applied'] > 0) {
                     $user = $db->table('users')->where('id', $dbSub['user_id'])->get()->getRowArray();
-                    $newBalance = max(0, (float)$user['referral_balance'] - (float)$dbSub['referral_discount_applied']);
+                    $newBalance = max(0, (float) $user['referral_balance'] - (float) $dbSub['referral_discount_applied']);
                     $db->table('users')->where('id', $dbSub['user_id'])->update([
-                        'referral_balance'  => $newBalance,
-                        'updated_at'        => date('Y-m-d H:i:s'),
+                        'referral_balance' => $newBalance,
+                        'updated_at' => date('Y-m-d H:i:s'),
                     ]);
                 }
 
@@ -1886,29 +1942,30 @@ class SellerApi extends ResourceController
                             ->whereIn('setting_key', ['referral_referrer_reward', 'referral_reward_amount', 'referral_expiry_days', 'referral_enabled', 'referral_min_purchase'])
                             ->get()->getResultArray();
                         $cfg = [];
-                        foreach ($settings as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+                        foreach ($settings as $s)
+                            $cfg[$s['setting_key']] = $s['setting_value'];
 
                         $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
 
-                        if (($cfg['referral_enabled'] ?? '1') === '1' && (float)$plan['price'] >= $minPurchase) {
+                        if (($cfg['referral_enabled'] ?? '1') === '1' && (float) $plan['price'] >= $minPurchase) {
                             $rewardAmount = (float) (
-                                (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '') 
-                                ? $cfg['referral_referrer_reward'] 
+                                (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '')
+                                ? $cfg['referral_referrer_reward']
                                 : (isset($cfg['referral_reward_amount']) && $cfg['referral_reward_amount'] !== '' ? $cfg['referral_reward_amount'] : 50)
                             );
-                            $expiryDays   = (int)   ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
-                            $newBalance   = (float) ($referrer['referral_balance']   ?? 0) + $rewardAmount;
-                            $expiresAt    = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
+                            $expiryDays = (int) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
+                            $newBalance = (float) ($referrer['referral_balance'] ?? 0) + $rewardAmount;
+                            $expiresAt = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
 
                             $db->table('users')->where('id', $referrer['id'])->update([
-                                'referral_balance'    => $newBalance,
+                                'referral_balance' => $newBalance,
                                 'referral_expires_at' => $expiresAt,
-                                'updated_at'          => date('Y-m-d H:i:s'),
+                                'updated_at' => date('Y-m-d H:i:s'),
                             ]);
                             // Mark buyer's referral as processed so referrer isn't credited again for this friend
                             $db->table('users')->where('id', $dbSub['user_id'])->update([
                                 'has_used_referral' => 1,
-                                'updated_at'        => date('Y-m-d H:i:s'),
+                                'updated_at' => date('Y-m-d H:i:s'),
                             ]);
                         }
                     }
@@ -1920,7 +1977,7 @@ class SellerApi extends ResourceController
         if ($state === 'FAILED' || $state === 'CANCELLED') {
             $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
                 'payment_status' => 'failed',
-                'updated_at'     => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
             return $this->respond(['status' => 'failed', 'message' => 'Payment failed or was cancelled.']);
         }
@@ -1934,22 +1991,22 @@ class SellerApi extends ResourceController
     private function validatePricing(array $data)
     {
         helper('price_calculator');
-        
-        $originalPrice = (float)($data['original_price'] ?? 0);
-        $usedTimes = (int)($data['used_times'] ?? 0);
+
+        $originalPrice = (float) ($data['original_price'] ?? 0);
+        $usedTimes = (int) ($data['used_times'] ?? 0);
         $ltId = $data['listing_type_category'] ?? null;
         $cId = $data['category_id'] ?? null;
         $scId = $data['sub_category_id'] ?? null;
 
         if ($data['listing_type'] === 'sell') {
-            $price = (float)($data['price'] ?? 0);
+            $price = (float) ($data['price'] ?? 0);
             if (!validateSalePriceWithRules($originalPrice, $price, $usedTimes, $ltId, $cId, $scId)) {
                 return ['success' => false, 'message' => 'Selling price exceeds the maximum allowed threshold.'];
             }
         } elseif ($data['listing_type'] === 'rent') {
-            $deposit = (float)($data['rental_deposit'] ?? 0);
-            $rentalCost = (float)($data['rental_cost'] ?? 0);
-            
+            $deposit = (float) ($data['rental_deposit'] ?? 0);
+            $rentalCost = (float) ($data['rental_cost'] ?? 0);
+
             if (!validateDepositWithRules($originalPrice, $deposit, $usedTimes, $ltId, $cId, $scId)) {
                 return ['success' => false, 'message' => 'Rental deposit exceeds the maximum allowed threshold.'];
             }
