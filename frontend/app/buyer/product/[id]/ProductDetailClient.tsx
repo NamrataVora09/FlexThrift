@@ -96,6 +96,17 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const [autoPlay, setAutoPlay] = useState(true);
   const [showOffer, setShowOffer] = useState(false);
   const [showFullDesc, setShowFullDesc] = useState(false);
+  const [coords, setCoords] = useState({ lat: '', lng: '' });
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setCoords({ lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) }),
+        () => { }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }, []);
+
   const [offerForm, setOfferForm] = useState({
     offer_price:
       product.listing_type === 'sell'
@@ -295,6 +306,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
       delivery_city: offerForm.delivery_city,
       delivery_state: offerForm.delivery_state,
       delivery_pin_code: offerForm.delivery_pin_code,
+      user_latitude: coords.lat,
+      user_longitude: coords.lng,
     });
     setOfferLoading(false);
     if (res?.success) {

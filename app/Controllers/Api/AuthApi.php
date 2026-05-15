@@ -177,7 +177,7 @@ class AuthApi extends ResourceController
 
         // Zone restriction check — state-based
         helper(['geolocation', 'utilityClass']);
-        $enableZones = getSystemSetting('enable_zone_restriction', '0');
+        $zoneCheck = checkZoneRestriction($data);
 
         $ip = getUserIP();
         $loc = getLocationFromIP($ip);
@@ -186,57 +186,27 @@ class AuthApi extends ResourceController
         $clientLng = $data['user_longitude'] ?? null;
         $clientState = $data['user_state'] ?? null;
 
-        $zoneMatch = false;
-        $detectedZone = null;
-        $detectedState = $clientState ?: ($loc['state'] ?? null);
+        $detectedState = $zoneCheck['state_detected'] ?? $clientState ?: ($loc['state'] ?? null);
 
-        // 3. Last Fallback: Check PIN code (Especially for Localhost/Blocked GPS)
-        if (empty($detectedState) && !empty($data['pin_code'])) {
-            $detectedState = getStateFromPinCode($data['pin_code']);
-        }
+        if (!$zoneCheck['success']) {
+            // Log the blocked attempt
+            logRegistrationAttempt([
+                'name'       => $data['name'],
+                'email'      => $data['email'],
+                'mobile'     => $data['mobile'],
+                'address'    => $data['address'],
+                'pin_code'   => $data['pin_code'],
+                'user_type'  => $data['user_type'],
+                'ip'         => $ip,
+                'country'    => $loc['country'] ?? null,
+                'state'      => $clientState,
+                'city'       => $loc['city'] ?? null,
+                'latitude'   => $clientLat ?: ($loc['latitude'] ?? null),
+                'longitude'  => $clientLng ?: ($loc['longitude'] ?? null),
+                'is_allowed' => 0,
+            ]);
 
-        if ($enableZones === '1') {
-            // 1. Priority: Check GPS coordinates against Polygon zones (Highest accuracy)
-            if (!empty($clientLat) && !empty($clientLng)) {
-                $detectedZone = isLocationAllowed((float)$clientLat, (float)$clientLng);
-                if ($detectedZone) {
-                    $zoneMatch = true;
-                }
-            }
-
-            // 2. Fallback: Check state name (from IP or client)
-            if (!$zoneMatch && !empty($detectedState)) {
-                $detectedZone = isStateAllowed($detectedState);
-                if ($detectedZone) {
-                    $zoneMatch = true;
-                }
-            }
-
-            if (!$zoneMatch) {
-                // Log the blocked attempt
-                logRegistrationAttempt([
-                    'name'       => $data['name'],
-                    'email'      => $data['email'],
-                    'mobile'     => $data['mobile'],
-                    'address'    => $data['address'],
-                    'pin_code'   => $data['pin_code'],
-                    'user_type'  => $data['user_type'],
-                    'ip'         => $ip,
-                    'country'    => $loc['country'] ?? null,
-                    'state'      => $clientState,
-                    'city'       => $loc['city'] ?? null,
-                    'latitude'   => $clientLat ?: ($loc['latitude'] ?? null),
-                    'longitude'  => $clientLng ?: ($loc['longitude'] ?? null),
-                    'is_allowed' => 0,
-                ]);
-
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Sorry, our services are not yet available in ' . ($detectedState ? "\"{$detectedState}\"" : 'your area') . '. Registration is restricted to authorised zones only.',
-                    'state_detected' => $detectedState,
-                    'is_outside_zone' => true
-                ], 403);
-            }
+            return $this->respond($zoneCheck, 403);
         }
 
         // Add detected location to user data for storage
@@ -260,7 +230,7 @@ class AuthApi extends ResourceController
             'latitude'   => $data['latitude'],
             'longitude'  => $data['longitude'],
             'is_allowed' => 1,
-            'zone_id'    => $detectedZone['id'] ?? null,
+            'zone_id'    => $zoneCheck['zone']['id'] ?? null,
         ]);
         // Check existing email
         $existingUser = $this->userModel->getUserByEmail($data['email']);

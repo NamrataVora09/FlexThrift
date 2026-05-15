@@ -268,6 +268,15 @@ class SellerApi extends ResourceController
             return $this->respond(['success' => false, 'message' => 'Your seller role has been blocked by the admin. You cannot upload products.'], 403);
         }
 
+        // Zone restriction check (Same as registration)
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin'])) {
+            helper('geolocation');
+            $zoneCheck = checkZoneRestriction($this->request->getPost());
+            if (!$zoneCheck['success']) {
+                return $this->respond($zoneCheck, 403);
+            }
+        }
+
         // SuperAdmin bypasses subscription check
         if ($jwtUser['role'] !== 'super_admin') {
             $activeSub = $db->table('user_subscriptions us')
