@@ -80,16 +80,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [existingBills, setExistingBills] = useState<string[]>([]);
-  const [coords, setCoords] = useState({ lat: '', lng: '' });
-
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setCoords({ lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) }),
-        () => { }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
-  }, []);
 
   // Images
   const [files, setFiles] = useState<File[]>([]);
@@ -631,10 +621,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
       // Include dynamic attributes
       fd.append('specifications', JSON.stringify(attributeValues));
-
-      // Zone restriction coords
-      if (coords.lat) fd.append('user_latitude', coords.lat);
-      if (coords.lng) fd.append('user_longitude', coords.lng);
 
       let res;
       if (isEditMode && editingProductId) {

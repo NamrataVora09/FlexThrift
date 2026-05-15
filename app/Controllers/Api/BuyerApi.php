@@ -641,15 +641,6 @@ class BuyerApi extends ResourceController
             return $this->respond(['success' => false, 'message' => 'Your account is currently blocked from making offers as a buyer.'], 403);
         }
 
-        // Zone restriction check (Same as registration)
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin'])) {
-            helper('geolocation');
-            $zoneCheck = checkZoneRestriction($data);
-            if (!$zoneCheck['success']) {
-                return $this->respond($zoneCheck, 403);
-            }
-        }
-
         // Check if seller is blocked
         $seller = $db->table('users')->where('id', $product['seller_id'])->get()->getRowArray();
         if ($seller && !empty($seller['blocked_seller'])) {
