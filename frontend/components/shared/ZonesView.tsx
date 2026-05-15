@@ -162,7 +162,19 @@ export default function ZonesView() {
 
     // Auto-fill state/country from Nominatim address details
     if (address) {
-      const detectedState = address.state || address.region || address.province || address.country || address.county || address.city || '';
+      // Prioritize state-level detection, but include city/town for UTs like Delhi
+      const detectedState = 
+        address.state || 
+        address.state_district || 
+        address.city || 
+        address.town || 
+        address.village || 
+        address.suburb ||
+        address.region || 
+        address.province || 
+        address.country || 
+        '';
+
       if (detectedState) {
         // Find best match in INDIAN_STATES for formatting, otherwise use raw
         const matched = INDIAN_STATES.find(
@@ -170,7 +182,18 @@ export default function ZonesView() {
                detectedState.toLowerCase().includes(s.toLowerCase()) ||
                s.toLowerCase().includes(detectedState.toLowerCase())
         );
-        const finalName = matched || detectedState;
+        
+        // Special case for Delhi/New Delhi
+        let finalName = matched || detectedState;
+        if (address.city === 'New Delhi' || address.state === 'Delhi' || detectedState.toLowerCase().includes('delhi')) {
+          finalName = 'Delhi';
+        }
+
+        // Add country if outside India to avoid ambiguity (e.g., Punjab in Pakistan)
+        if (address.country && address.country !== 'India') {
+          finalName = `${finalName}, ${address.country}`;
+        }
+
         setZoneState(finalName);
         setZoneName(`${finalName} Zone`);
         toastSuccess('location_detected_success', 'Location detected: {name}', { name: finalName });
