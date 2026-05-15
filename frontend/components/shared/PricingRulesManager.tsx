@@ -390,7 +390,10 @@ export default function PricingRulesManager() {
             title="Bulk Upload Sale Rules"
             endpoint="/superadmin/bulk-upload-pricing-rules"
             extraData={{ type: 'sale' }}
-            onSuccess={loadPricingRules}
+            onSuccess={async () => {
+              await loadPricingRules();
+              setTimeout(() => window.location.reload(), 1000);
+            }}
             templateCsv="filter_type,filter_label,threshold,min,max,amount\nlisting_type,Traditional,10,0,5,20"
             templateFilename="sale_pricing_rules_template.csv"
             formatGuide="Columns: filter_type (listing_type, category, sub_category), filter_label (Name of item), threshold (Base Deduction %), min (Min Usage), max (Max Usage, 0 for ∞), amount (Depreciation %). Overlaps will be skipped."
@@ -401,7 +404,10 @@ export default function PricingRulesManager() {
             title="Bulk Upload Rental Rules"
             endpoint="/superadmin/bulk-upload-pricing-rules"
             extraData={{ type: 'rental' }}
-            onSuccess={loadPricingRules}
+            onSuccess={async () => {
+              await loadPricingRules();
+              setTimeout(() => window.location.reload(), 1000);
+            }}
             templateCsv="filter_type,filter_label,threshold,min,max,amount,cap\nlisting_type,Traditional,5,0,5,10,14"
             templateFilename="rental_pricing_rules_template.csv"
             formatGuide="Columns: filter_type, filter_label, threshold (Deposit Ded. %), min, max, amount (Depreciation %), cap (Rental Cost Cap %, optional). Overlaps will be skipped."

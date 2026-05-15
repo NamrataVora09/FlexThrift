@@ -42,7 +42,7 @@ export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename,
       setFile(null);
       const input = document.getElementById(`csvInput-${templateFilename}`) as HTMLInputElement;
       if (input) input.value = '';
-      if (onSuccess) onSuccess();
+      if (onSuccess) await onSuccess();
     } else {
       toastError('bulk_upload_failed', res.message || 'Upload failed');
       setResult({ message: res.message || 'Upload failed' });

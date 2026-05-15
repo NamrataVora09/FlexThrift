@@ -259,7 +259,8 @@ export default function ZonesView() {
     if (res.success) {
       toastSuccess('zone_save_success', 'Zone saved successfully!');
       clearDrawing();
-      load();
+      // Auto reload to ensure list is updated and map is cleared correctly
+      setTimeout(() => window.location.reload(), 1000);
     } else {
       toastError('zone_save_failed', res.message || 'Failed to save zone');
     }

@@ -100,7 +100,7 @@ export default function RegisterPage() {
         .role-toggle.active { background: #ffc63a; border-color: #ffc63a; color: #fff; box-shadow: 0 4px 12px rgba(255,198,58,0.3); }
 
         /* Inputs */
-        .input-group { margin-bottom: 24px; }
+        .input-group { margin-bottom: 24px; flex-direction: column; }
         .input-group label { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.9rem; color: #000; margin-bottom: 10px; display: block; }
         .input-field { width: 100%; padding: 14px 18px; border: 1px solid #e0e0e0; border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 0.95rem; transition: border-color 0.2s; outline: none; background: #fff; box-sizing: border-box; }
         .input-field:focus { border-color: #ffc63a; }
@@ -158,7 +158,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="input-group">
-              <label>Mobile Number</label>
+              <label className='block'>Mobile Number</label>
               <div className="mobile-input-wrapper">
                 <div className="country-prefix">
                   <img src="https://flagcdn.com/w20/in.png" className="country-flag" alt="India" />
@@ -190,7 +190,7 @@ export default function RegisterPage() {
             </button>
 
             <div className="footer-text">
-              Already have an account? <Link href="/login">Login here</Link>
+              Already have an account? <Link href="/">Login here</Link>
             </div>
           </div>
         </form>
