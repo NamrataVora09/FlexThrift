@@ -190,7 +190,7 @@ export default function RegisterPage() {
             </button>
 
             <div className="footer-text">
-              Already have an account? <Link href="/">Login here</Link>
+              Already have an account? <Link href="/" className='underline! text-blue-700!'>Login here</Link>
             </div>
           </div>
         </form>
