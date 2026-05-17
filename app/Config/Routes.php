@@ -59,6 +59,7 @@ function register_api_routes($routes)
 
     $routes->get('cms-page/(:any)', 'Api\SharedApi::cmsPage/$1');
     $routes->get('cms-pages', 'Api\SharedApi::cmsPages');
+    $routes->get('seo-settings/(:any)', 'Api\SharedApi::getSeoSettingByPage/$1');
 
     // Auth (protected)
     $routes->group('auth', ['filter' => 'jwt'], function ($routes) {
@@ -330,6 +331,8 @@ function register_api_routes($routes)
         $routes->post('create-cms-page', 'Api\SuperAdminApi::createCmsPage');
         $routes->post('update-cms-page/(:any)', 'Api\SuperAdminApi::updateCmsPage/$1');
         $routes->post('delete-cms-page/(:num)', 'Api\SuperAdminApi::deleteCmsPage/$1');
+        $routes->get('seo-settings', 'Api\SuperAdminApi::getSeoSettings');
+        $routes->post('seo-settings/(:num)', 'Api\SuperAdminApi::updateSeoSetting/$1');
         $routes->get('financial-reports', 'Api\SuperAdminApi::financialReports');
         $routes->get('reports', 'Api\SuperAdminApi::reports');
         // Bulk uploads

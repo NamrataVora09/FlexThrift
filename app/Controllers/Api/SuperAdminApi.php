@@ -3041,4 +3041,54 @@ private function processImage($source, $subDir): ?string
         ]);
     }
 
+    /**
+     * GET /api/v1/superadmin/seo-settings
+     */
+    public function getSeoSettings()
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $seoModel = new \App\Models\SeoSettingModel();
+        $settings = $seoModel->orderBy('page_name', 'ASC')->findAll();
+
+        return $this->respond(['success' => true, 'data' => $settings]);
+    }
+
+    /**
+     * POST /api/v1/superadmin/seo-settings/{id}
+     */
+    public function updateSeoSetting($id)
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $seoModel = new \App\Models\SeoSettingModel();
+        $setting = $seoModel->find($id);
+        if (!$setting) {
+            return $this->respond(['success' => false, 'message' => 'SEO setting not found'], 404);
+        }
+
+        $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
+
+        $updateData = [];
+        if (array_key_exists('title', $data)) $updateData['title'] = $data['title'];
+        if (array_key_exists('meta_description', $data)) $updateData['meta_description'] = $data['meta_description'];
+        if (array_key_exists('meta_keywords', $data)) $updateData['meta_keywords'] = $data['meta_keywords'];
+        if (array_key_exists('og_title', $data)) $updateData['og_title'] = $data['og_title'];
+        if (array_key_exists('og_description', $data)) $updateData['og_description'] = $data['og_description'];
+
+        if (empty($updateData)) {
+            return $this->respond(['success' => false, 'message' => 'No data to update'], 400);
+        }
+
+        $seoModel->update($id, $updateData);
+
+        return $this->respond(['success' => true, 'message' => 'SEO setting updated successfully.']);
+    }
+
 }

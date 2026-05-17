@@ -1522,4 +1522,19 @@ class SharedApi extends ResourceController
             'discount' => array_values(array_map(fn($m) => $m['discount'], $stats))
         ];
     }
+
+    /**
+     * GET /api/v1/shared/seo-settings/(:any)
+     */
+    public function getSeoSettingByPage($pageKey)
+    {
+        $seoModel = new \App\Models\SeoSettingModel();
+        $setting = $seoModel->getByPageKey($pageKey);
+        
+        if (!$setting) {
+            return $this->respond(['success' => false, 'message' => 'SEO settings not found for this page'], 404);
+        }
+
+        return $this->respond(['success' => true, 'data' => $setting]);
+    }
 }

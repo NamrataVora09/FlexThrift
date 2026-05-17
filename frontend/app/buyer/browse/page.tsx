@@ -8,6 +8,7 @@ import { addToCart } from '@/lib/cart';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import Footer from '@/components/layout/Footer';
 import AdBanner from '@/components/shared/AdBanner';
+import SeoManager from '@/components/shared/SeoManager';
 
 interface Product {
   id: number;
@@ -686,6 +687,7 @@ export default function BrowsePage() {
 
   return (
     <>
+      <SeoManager pageKey="browse" />
       <style jsx global>{`
         /* ── Navbar styles (preserved from original) ── */
         :root { --primary-yellow: #ffc63a; --primary-dark: #000; }

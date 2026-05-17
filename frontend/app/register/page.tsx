@@ -7,6 +7,7 @@ import Script from 'next/script';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { useSystem } from '@/lib/system-context';
+import SeoManager from '@/components/shared/SeoManager';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -82,6 +83,7 @@ export default function RegisterPage() {
 
   return (
     <>
+      <SeoManager pageKey="register" />
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />

@@ -7,6 +7,7 @@ import Script from 'next/script';
 import { useAuth } from '@/lib/auth-context';
 import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
+import SeoManager from '@/components/shared/SeoManager';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -75,6 +76,7 @@ export default function LoginPage() {
 
   return (
     <>
+      <SeoManager pageKey="login" />
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
 

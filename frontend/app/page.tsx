@@ -1,5 +1,11 @@
-import HomePageClient from '../components//landing/HomePageClient'
+import HomePageClient from '../components/landing/HomePageClient';
+import SeoManager from '../components/shared/SeoManager';
 
 export default function RootPage() {
-  return <HomePageClient />;
+  return (
+    <>
+      <SeoManager pageKey="home" />
+      <HomePageClient />
+    </>
+  );
 }

@@ -140,6 +140,7 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'System Settings', href: '/superadmin/settings', icon: 'bi bi-gear-fill' },
             { label: 'Error Messages', href: '/superadmin/error-messages', icon: 'bi bi-chat-square-text' },
             { label: 'CMS Pages', href: '/superadmin/cms', icon: 'bi bi-file-earmark-richtext-fill' },
+            { label: 'SEO Settings', href: '/superadmin/seo', icon: 'bi bi-search' },
           ],
         },
         {
