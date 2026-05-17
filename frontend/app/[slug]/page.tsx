@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import Footer from '@/components/layout/Footer';
+import SeoManager from '@/components/shared/SeoManager';
 
 interface CmsPage {
   id: number;
@@ -61,6 +62,7 @@ export default function PublicCmsPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <SeoManager pageKey={`cms_${slug}`} defaultTitle={`${page.title} — FlexMarket`} />
       <LandingNavbar />
       
       <main className="flex-grow">

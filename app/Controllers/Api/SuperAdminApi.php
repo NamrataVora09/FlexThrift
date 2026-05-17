@@ -3051,7 +3051,52 @@ private function processImage($source, $subDir): ?string
             return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
+        $db = \Config\Database::connect();
         $seoModel = new \App\Models\SeoSettingModel();
+        
+        // 1. Fetch current CMS pages
+        $cmsPages = $db->table('cms_pages')->get()->getResultArray();
+        
+        // 2. Register any missing or updated CMS pages in SEO settings
+        foreach ($cmsPages as $cms) {
+            $pageKey = 'cms_' . $cms['slug'];
+            $exists = $seoModel->where('page_key', $pageKey)->first();
+            
+            // Clean up html tags from content preview
+            $plainContent = strip_tags($cms['content']);
+            $plainContent = preg_replace('/\s+/', ' ', $plainContent);
+            $descPreview = trim(substr($plainContent, 0, 150));
+            
+            if (!$exists) {
+                $seoModel->insert([
+                    'page_key' => $pageKey,
+                    'page_name' => 'CMS: ' . $cms['title'],
+                    'route' => '/' . $cms['slug'],
+                    'title' => $cms['title'] . ' — FlexMarket',
+                    'meta_description' => $descPreview ?: ($cms['title'] . ' page on FlexMarket.'),
+                    'meta_keywords' => 'flexmarket, ' . strtolower($cms['title']),
+                    'og_title' => $cms['title'],
+                    'og_description' => $descPreview ?: ($cms['title'] . ' page on FlexMarket.')
+                ]);
+            } else {
+                // Keep the display title in sync with the CMS page
+                if ($exists['page_name'] !== 'CMS: ' . $cms['title']) {
+                    $seoModel->update($exists['id'], ['page_name' => 'CMS: ' . $cms['title']]);
+                }
+            }
+        }
+
+        // 3. Clean up deleted CMS pages from SEO settings
+        $cmsSeoSettings = $seoModel->like('page_key', 'cms_', 'after')->findAll();
+        $cmsSlugs = array_column($cmsPages, 'slug');
+        foreach ($cmsSeoSettings as $s) {
+            $slug = substr($s['page_key'], 4); // strip 'cms_'
+            if (!in_array($slug, $cmsSlugs)) {
+                $seoModel->delete($s['id']);
+            }
+        }
+
+        // 4. Return all updated settings
         $settings = $seoModel->orderBy('page_name', 'ASC')->findAll();
 
         return $this->respond(['success' => true, 'data' => $settings]);
