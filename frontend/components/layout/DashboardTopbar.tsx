@@ -99,7 +99,7 @@ export default function DashboardTopbar({ onToggleSidebar }: Props) {
         onLogout={() =>
           confirmToast('Are you sure you want to log out?', () => {
             logout();
-            window.location.href = '/login';
+            window.location.href = '/';
           }, 'Logout')
         }
       />

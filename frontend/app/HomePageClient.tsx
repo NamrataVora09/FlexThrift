@@ -763,7 +763,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                       <hr style={{ margin: '4px 16px', borderColor: '#f0f0f0' }} />
                       <button
                         className="dd-item text-danger"
-                        onClick={() => { logout(); window.location.href = '/login'; }}
+                        onClick={() => { logout(); window.location.href = '/'; }}
                       >
                         <i className="bi bi-power"></i> Sign Out
                       </button>
@@ -866,7 +866,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                 <button
                   className="mobile-nav-item"
                   style={{ color: '#dc3545' }}
-                  onClick={() => { setMobileNavOpen(false); logout(); window.location.href = '/login'; }}
+                  onClick={() => { setMobileNavOpen(false); logout(); window.location.href = '/'; }}
                 >
                   <i className="bi bi-power" style={{ color: '#dc3545' }}></i>
                   Sign Out

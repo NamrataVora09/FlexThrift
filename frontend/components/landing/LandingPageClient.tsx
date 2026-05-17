@@ -638,7 +638,7 @@ export default function LandingPageClient() {
 
                       <button
                         className="lp-ud-item danger"
-                        onClick={() => { setShowUserDropdown(false); logout(); window.location.href = '/login'; }}
+                        onClick={() => { setShowUserDropdown(false); logout(); window.location.href = '/'; }}
                       >
                         <i className="bi bi-power"></i>
                         <span>Sign Out</span>
@@ -675,7 +675,7 @@ export default function LandingPageClient() {
                 <>
                   <Link href={portalHref} className="lp-m-link" onClick={() => setNavOpen(false)}>My Portal</Link>
                   {!isAdminOrSA && <Link href="/buyer/my-offers" className="lp-m-link" onClick={() => setNavOpen(false)}>My Offers</Link>}
-                  <button className="lp-m-link border-0 bg-transparent w-100 text-start" style={{ color: '#dc3545', cursor: 'pointer' }} onClick={() => { setNavOpen(false); logout(); window.location.href = '/login'; }}>
+                  <button className="lp-m-link border-0 bg-transparent w-100 text-start" style={{ color: '#dc3545', cursor: 'pointer' }} onClick={() => { setNavOpen(false); logout(); window.location.href = '/'; }}>
                     Sign Out
                   </button>
                 </>

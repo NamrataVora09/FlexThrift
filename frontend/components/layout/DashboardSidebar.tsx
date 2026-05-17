@@ -150,7 +150,7 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
 
         <button
           className="nav-link d-flex align-items-center gap-2 w-100 border-0"
-          onClick={() => { logout(); window.location.href = '/login'; }}
+          onClick={() => { logout(); window.location.href = '/'; }}
           style={{
             color: '#ef4444',
             background: 'transparent',
