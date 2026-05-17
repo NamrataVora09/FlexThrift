@@ -647,6 +647,11 @@ export default function HomePageClient() {
       <main className=' sm:pt-10 sm:px-2  xl:px-28 '>
         <LandingNavbar />
 
+        {/* Top Wide Banner Ad */}
+        <div className="w-full my-4">
+          <AdBanner position="top_banner" page="landing" />
+        </div>
+
         {/* Category Cards + Sidebar */}
         <div className='flex lg:flex-row flex-col relative justify-end px-2     py-5 xl:gap-34 gap-10 items-start'>
 
@@ -914,6 +919,12 @@ export default function HomePageClient() {
           />
         )}
       </main>
+
+      {/* Footer Banner Ad */}
+      <div className="container my-5 xl:px-28">
+        <AdBanner position="footer" page="landing" />
+      </div>
+
       <Footer />
 
       {editingCards && (

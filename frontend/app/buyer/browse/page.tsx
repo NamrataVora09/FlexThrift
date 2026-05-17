@@ -995,10 +995,7 @@ export default function BrowsePage() {
                   onTypeChange={handleTypeClick}
                 />
 
-                {/* Sidebar Ad */}
-                <div className="mt-5">
-                  <AdBanner position="sidebar" page="browse" />
-                </div>
+
               </div>
             </aside>
 
@@ -1107,6 +1104,7 @@ export default function BrowsePage() {
                       : <>Showing <strong>0</strong> results</>}
                   </p>
                 )}
+
               </section>
 
               {/* Active filter chips */}
@@ -1223,8 +1221,13 @@ export default function BrowsePage() {
                   </button>
                 </div>
               )}
+              <div className="container mb-5 xl:px-28">
+                <AdBanner position="footer" page="browse" />
+              </div>
             </div>
+
           </div>
+
         </main>
 
 
@@ -1261,6 +1264,9 @@ export default function BrowsePage() {
             onTypeChange={handleTypeClick}
           />
         </div>
+
+        {/* Footer Ad Banner */}
+
 
         <Footer />
       </div>

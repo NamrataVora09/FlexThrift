@@ -248,10 +248,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Footer Ad */}
-        <div className="xl:px-28! lg:px-28! md:px-28 sm:px-8 px-4 mb-8">
-          <AdBanner position="footer" page="all" />
-        </div>
+       
 
         <div className="border-t border-gray-700 py-4 text-center text-gray-500 text-xs">
           &copy; {new Date().getFullYear()} {settings.site_name}. All rights reserved.

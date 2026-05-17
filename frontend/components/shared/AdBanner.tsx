@@ -29,7 +29,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
       if (res.success && res.data && res.data.length > 0) {
         const randomAd = res.data[Math.floor(Math.random() * res.data.length)];
         setAd(randomAd);
-        
+
         if (position === 'popup') {
           const hasSeen = sessionStorage.getItem(`seen_ad_${randomAd.id}`);
           if (!hasSeen) {
@@ -51,21 +51,21 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
   if (position === 'popup') {
     if (!showPopup) return null;
     return (
-      <div 
+      <div
         className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
         onClick={() => setShowPopup(false)}
       >
-        <div 
+        <div
           className="relative bg-white rounded-2xl overflow-hidden max-w-lg w-full shadow-2xl animate-in fade-in zoom-in duration-300"
           onClick={e => e.stopPropagation()}
         >
-          <button 
+          <button
             className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center bg-black/20 hover:bg-black/40 text-white rounded-full transition-colors"
             onClick={() => setShowPopup(false)}
           >
             <i className="bi bi-x-lg"></i>
           </button>
-          
+
           <div className="aspect-video bg-gray-100">
             {ad.ad_type === 'video' ? (
               <video src={mediaUrl} className="w-full h-full object-cover" autoPlay muted loop playsInline />
@@ -73,7 +73,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
               <img src={mediaUrl} alt={ad.title} className="w-full h-full object-cover" />
             )}
           </div>
-          
+
           <div className="p-6 text-center">
             <h3 className="text-xl font-bold text-gray-900 mb-2">{ad.title}</h3>
             {ad.short_description && <p className="text-gray-600 text-sm mb-0">{ad.short_description}</p>}
@@ -86,20 +86,20 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
   return (
     <div className={`ad-banner-container ${className}`} title={ad.title}>
       {ad.ad_type === 'video' ? (
-        <video 
-          src={mediaUrl} 
-          className="img-fluid rounded shadow-sm w-100" 
-          autoPlay 
-          muted 
-          loop 
-          playsInline 
+        <video
+          src={mediaUrl}
+          className="img-fluid rounded shadow-sm w-100"
+          autoPlay
+          muted
+          loop
+          playsInline
           style={{ objectFit: 'cover', maxHeight: position === 'top_banner' ? '300px' : 'auto' }}
         />
       ) : (
-        <img 
-          src={mediaUrl} 
-          alt={ad.title} 
-          className="img-fluid rounded shadow-sm w-100" 
+        <img
+          src={mediaUrl}
+          alt={ad.title}
+          className="img-fluid rounded shadow-sm w-100"
           style={{ objectFit: 'cover', maxHeight: position === 'top_banner' ? '300px' : 'auto' }}
         />
       )}
