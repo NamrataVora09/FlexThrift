@@ -241,7 +241,7 @@ export default function SeoSettingsView() {
                   <button
                     id="filter-btn-all"
                     type="button"
-                    className={`btn btn-sm ${filterType === 'all' ? 'btn-dark' : 'btn-light border'}`}
+                    className={`btn btn-sm ${filterType === 'all' ? 'btn-warning text-white' : 'btn-light border'}`}
                     onClick={() => setFilterType('all')}
                     style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '0.8rem' }}
                   >
@@ -250,7 +250,7 @@ export default function SeoSettingsView() {
                   <button
                     id="filter-btn-needs-opt"
                     type="button"
-                    className={`btn btn-sm ${filterType === 'needs_opt' ? 'btn-dark text-white' : 'btn-light border'}`}
+                    className={`btn btn-sm ${filterType === 'needs_opt' ? 'btn-warning text-white' : 'btn-light border'}`}
                     onClick={() => setFilterType('needs_opt')}
                     style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '0.8rem', color: filterType === 'needs_opt' ? '#fff' : '#ef4444' }}
                   >
@@ -259,7 +259,7 @@ export default function SeoSettingsView() {
                   <button
                     id="filter-btn-optimized"
                     type="button"
-                    className={`btn btn-sm ${filterType === 'optimized' ? 'btn-dark text-white' : 'btn-light border'}`}
+                    className={`btn btn-sm ${filterType === 'optimized' ? 'btn-warning text-white' : 'btn-light border'}`}
                     onClick={() => setFilterType('optimized')}
                     style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '0.8rem', color: filterType === 'optimized' ? '#fff' : '#10b981' }}
                   >
@@ -357,7 +357,7 @@ export default function SeoSettingsView() {
           <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setEditing(null)}>
             <div className="modal-dialog modal-xl modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
               <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
-                <div className="modal-header bg-dark p-3 text-white border-0" style={{ borderBottom: '2px solid #ffc63a !important' }}>
+                <div className="modal-header  p-3 border-0" style={{ borderBottom: '2px solid #ffc63a !important' }}>
                   <h5 className="modal-title fw-bold d-flex align-items-center gap-2"><i className="bi bi-pencil-square" style={{ color: '#ffc63a' }}></i> Configure SEO: <span className="text-warning">{editing.page_name}</span></h5>
                   <button type="button" className="btn-close btn-close-white" onClick={() => setEditing(null)}></button>
                 </div>
@@ -513,7 +513,7 @@ export default function SeoSettingsView() {
                       id="save-seo-btn"
                       className="btn fw-bold"
                       disabled={saving}
-                      style={{ background: '#ffc63a', color: '#212529', fontWeight: 700, borderRadius: '0.5rem', padding: '0.6rem 2rem', border: 'none' }}
+                      style={{ background: '#ffc63a', color: '#fff', fontWeight: 700, borderRadius: '0.5rem', padding: '0.6rem 2rem', border: 'none' }}
                     >
                       {saving ? (
                         <><span className="spinner-border spinner-border-sm me-2"></span>Saving Changes...</>
