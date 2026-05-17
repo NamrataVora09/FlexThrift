@@ -70,6 +70,7 @@ const TABS = [
   { key: 'upgrades', label: 'Subscription Upgrade', icon: 'bi-rocket-takeoff' },
   { key: 'rejection', label: 'Rejection Templates', icon: 'bi-x-circle' },
   { key: 'faqs', label: 'FAQ Management', icon: 'bi-question-circle' },
+  { key: 'terms', label: 'Terms & Conditions', icon: 'bi-file-earmark-text' },
 ];
 
 const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }> = {
@@ -120,6 +121,7 @@ const FIELD_MAP: Record<string, { label: string; hint?: string; type?: string }>
   support_email: { label: 'Support Email' },
   support_phone: { label: 'Support Phone' },
   support_hours: { label: 'Support Hours', hint: 'e.g. 9:00 AM - 6:00 PM (Mon-Sat)' },
+  registration_terms: { label: 'Registration Terms & Conditions Text', type: 'textarea', hint: 'Configure the terms and conditions text displayed to users in the popup during registration.' },
 };
 
 const TAB_FIELDS: Record<string, string[]> = {
@@ -133,6 +135,7 @@ const TAB_FIELDS: Record<string, string[]> = {
   upgrades: [],
   rejection: [],
   faqs: [],
+  terms: ['registration_terms'],
 };
 
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
@@ -478,7 +481,7 @@ export default function BusinessSettingsView() {
     if (field.type === 'textarea') return (
       <div className="col-md-12 mb-3" key={key}>
         <label className="form-label" style={labelStyle}>{field.label}</label>
-        <textarea className="form-control" style={inputStyle} rows={4} value={val} onChange={(e) => update(key, e.target.value)} />
+        <textarea className="form-control" style={inputStyle} rows={key === 'registration_terms' ? 12 : 4} value={val} onChange={(e) => update(key, e.target.value)} />
         {field.hint && <div className="form-text small">{field.hint}</div>}
       </div>
     );

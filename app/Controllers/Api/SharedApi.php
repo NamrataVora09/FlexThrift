@@ -1263,7 +1263,8 @@ class SharedApi extends ResourceController
                 'buyer_dashboard_subtitle',
                 'seller_dashboard_subtitle',
                 'global_system_lock',
-                'site_name'
+                'site_name',
+                'registration_terms'
             ])
             ->get()->getResultArray();
         $content = [];

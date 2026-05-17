@@ -6,10 +6,14 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
+import { useSystem } from '@/lib/system-context';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register, isAuthenticated, user, isLoading } = useAuth();
+  const { settings } = useSystem();
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
@@ -124,6 +128,28 @@ export default function RegisterPage() {
         .footer-text a:hover { text-decoration: underline; }
 
         .alert-error { padding: 14px; background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; border-radius: 12px; margin-bottom: 24px; font-family: 'Inter', sans-serif; font-size: 0.9rem; }
+
+        /* Terms & Conditions Checkbox styling */
+        .terms-group { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 24px; }
+        .terms-checkbox { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #e0e0e0; cursor: pointer; accent-color: #ffc63a; margin-top: 2px; }
+        .terms-text { font-family: 'Inter', sans-serif; font-size: 0.9rem; color: #444; line-height: 1.4; user-select: none; }
+        .terms-link { color: #ffc63a; font-weight: 700; text-decoration: none; cursor: pointer; }
+        .terms-link:hover { text-decoration: underline; }
+
+        /* Terms Modal Overlay & Container */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px; animation: fadeIn 0.2s ease-out; }
+        .modal-container { background: #fff; border-radius: 20px; width: 100%; max-width: 550px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.15); animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
+        .modal-header-tc { padding: 24px 32px 16px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
+        .modal-header-tc h3 { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 1.4rem; color: #000; margin: 0; }
+        .modal-body-tc { padding: 24px 32px; overflow-y: auto; font-family: 'Inter', sans-serif; font-size: 0.95rem; color: #444; line-height: 1.6; white-space: pre-wrap; flex-grow: 1; text-align: left; }
+        .modal-footer-tc { padding: 16px 32px 24px; border-top: 1px solid #f0f0f0; display: flex; justify-content: flex-end; }
+        .modal-close-btn { background: #ffc63a; color: #fff; border: none; padding: 10px 24px; border-radius: 10px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+        .modal-close-btn:hover { background: #e0ae30; }
+        .close-icon-btn { background: none; border: none; font-size: 1.5rem; color: #aaa; cursor: pointer; transition: color 0.2s; display: flex; align-items: center; justify-content: center; }
+        .close-icon-btn:hover { color: #000; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       `}</style>
 
       <div className="reg-page">
@@ -185,7 +211,21 @@ export default function RegisterPage() {
               <input className="input-field" type="text" name="pin_code" placeholder="Enter PIN code" value={formData.pin_code} onChange={handleChange} required />
             </div>
 
-            <button type="submit" className="submit-btn" disabled={loading}>
+            <div className="terms-group">
+              <input 
+                type="checkbox" 
+                id="accept-terms" 
+                className="terms-checkbox" 
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                required
+              />
+              <label htmlFor="accept-terms" className="terms-text">
+                I agree to the <span className="terms-link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTermsModal(true); }}>Terms & Conditions</span>
+              </label>
+            </div>
+
+            <button type="submit" className="submit-btn" disabled={loading || !acceptedTerms}>
               {loading ? 'Creating Account...' : <>Create Account <i className="bi bi-arrow-right"></i></>}
             </button>
 
@@ -195,6 +235,35 @@ export default function RegisterPage() {
           </div>
         </form>
       </div>
+
+      {showTermsModal && (
+        <div className="modal-overlay" onClick={() => setShowTermsModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-tc">
+              <h3>Terms & Conditions</h3>
+              <button className="close-icon-btn" onClick={() => setShowTermsModal(false)}>
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div className="modal-body-tc">
+              {settings?.registration_terms || `Welcome to Flex Market!
+
+By creating an account, you agree to comply with and be bound by the following terms and conditions:
+1. Account Responsibility: You are responsible for keeping your credentials confidential and secure.
+2. User Conduct: You agree not to engage in fraudulent listing, selling, or purchasing behavior on the platform.
+3. Transactions: All offer submissions, acceptances, and payments are final and subject to our platform transaction fees.
+4. Data Privacy: We value your privacy; your registration data is securely stored and processed in accordance with standard safety practices.
+
+Please contact our superadmin or customer support team if you have any questions.`}
+            </div>
+            <div className="modal-footer-tc">
+              <button className="modal-close-btn" onClick={() => setShowTermsModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
