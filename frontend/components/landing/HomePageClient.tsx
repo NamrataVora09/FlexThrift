@@ -357,7 +357,7 @@ const CATEGORY_CARDS = [
 
 
 export default function HomePageClient() {
-  const { user, isLoading, isAuthenticated, login, register, verifyOtp, sendOtp } = useAuth();
+  const { user, isLoading, isAuthenticated, login, register, verifyOtp, sendOtp, forgotPassword, resetPassword } = useAuth();
   const router = useRouter();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -380,11 +380,12 @@ export default function HomePageClient() {
   }, [isLoading, isAuthenticated, user, router]);
 
   const [sidebarMode, setSidebarMode] = useState<'buy' | 'sell'>('buy');
-  const [sidebarView, setSidebarView] = useState<'listing' | 'login' | 'otp'>('listing');
+  const [sidebarView, setSidebarView] = useState<'listing' | 'login' | 'otp' | 'forgot-password' | 'reset-password'>('listing');
   const [sidebarName, setSidebarName] = useState('');
   const [sidebarEmail, setSidebarEmail] = useState('');
   const [sidebarMobile, setSidebarMobile] = useState('');
   const [sidebarPassword, setSidebarPassword] = useState('');
+  const [sidebarConfirmPassword, setSidebarConfirmPassword] = useState('');
   const [sidebarAddress, setSidebarAddress] = useState('');
   const [sidebarPinCode, setSidebarPinCode] = useState('');
   const [sidebarOtp, setSidebarOtp] = useState('');
@@ -484,6 +485,56 @@ export default function HomePageClient() {
     else if (role === 'seller') router.push('/seller');
     else if (sidebarMode === 'sell' && role !== 'buyer') router.push('/seller');
     else router.push('/buyer/browse');
+  };
+
+  const handleSidebarForgot = async () => {
+    setSidebarError('');
+    if (!sidebarEmail) {
+      setSidebarError('Email is required');
+      return;
+    }
+    setSidebarLoading(true);
+    const res = await forgotPassword(sidebarEmail);
+    setSidebarLoading(false);
+    if (res.success) {
+      setSidebarView('reset-password');
+      setSidebarPassword('');
+      setSidebarConfirmPassword('');
+      startCooldown();
+    } else {
+      setSidebarError(res.message || 'Failed to send reset code');
+    }
+  };
+
+  const handleSidebarReset = async () => {
+    setSidebarError('');
+    if (!sidebarOtp) {
+      setSidebarError('OTP verification code is required');
+      return;
+    }
+    if (!sidebarPassword) {
+      setSidebarError('New password is required');
+      return;
+    }
+    if (sidebarPassword !== sidebarConfirmPassword) {
+      setSidebarError('Passwords do not match');
+      return;
+    }
+    if (sidebarPassword.length < 6) {
+      setSidebarError('Password must be at least 6 characters long');
+      return;
+    }
+    setSidebarLoading(true);
+    const res = await resetPassword(sidebarEmail, sidebarOtp, sidebarPassword);
+    setSidebarLoading(false);
+    if (res.success) {
+      setSidebarView('login');
+      alert('Password reset successfully! Please log in with your new password.');
+      setSidebarPassword('');
+      setSidebarOtp('');
+    } else {
+      setSidebarError(res.message || 'Failed to reset password');
+    }
   };
   const [catImgIdx, setCatImgIdx] = useState<number[]>(CATEGORY_CARDS.map(() => 0));
   const [categoryCards, setCategoryCards] = useState<CategoryCard[]>(CATEGORY_CARDS);
@@ -780,7 +831,7 @@ export default function HomePageClient() {
                   onChange={e => setSidebarEmail(e.target.value)}
                   style={{ width: '100%', borderRadius: 8, padding: '0 12px', border: '1px solid #ddd', fontSize: 13, height: 40, marginBottom: 18, outline: 'none', fontFamily: 'Segoe UI, sans-serif', boxSizing: 'border-box' }}
                 />
-                <div style={{ position: 'relative', marginBottom: 24 }}>
+                <div style={{ position: 'relative', marginBottom: 12 }}>
                   <input
                     type={showRegisterPassword ? 'text' : 'password'}
                     placeholder="Password"
@@ -799,6 +850,15 @@ export default function HomePageClient() {
                       ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
                       : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                     }
+                  </button>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -6, marginBottom: 18 }}>
+                  <button
+                    type="button"
+                    onClick={() => { setSidebarError(''); setSidebarView('forgot-password'); }}
+                    style={{ background: 'none', border: 'none', color: '#ffc63a', fontSize: 13, cursor: 'pointer', fontWeight: 500, fontFamily: 'Segoe UI, sans-serif', textDecoration: 'underline', padding: 0 }}
+                  >
+                    Forgot Password?
                   </button>
                 </div>
 
@@ -854,12 +914,18 @@ export default function HomePageClient() {
                       )}
                     </button>
                   </div>
+                  <div className='flex justify-end' style={{ marginTop: 4 }}>
+                    <button type="button" onClick={() => { setSidebarError(''); setSidebarView('forgot-password'); }}
+                      className='text-xs text-[#ffc63a] font-semibold hover:underline bg-transparent border-none cursor-pointer p-0'>
+                      Forgot Password?
+                    </button>
+                  </div>
                 </div>
 
                 {sidebarError && <p className='text-red-500 text-xs mt-2'>{sidebarError}</p>}
 
                 <button
-                  className='bg-[#ffc63a] rounded-lg! text-white px-4 py-2.5 text-[14px]! hover:bg-black mt-4 mb-3 disabled:opacity-60'
+                  className='bg-[#ffc63a] rounded-lg! text-white px-4 py-2.5 text-[14px] mt-4 mb-3 disabled:opacity-60'
                   onClick={handleLogin}
                   disabled={sidebarLoading}
                 >
@@ -869,6 +935,94 @@ export default function HomePageClient() {
                   New here?{' '}
                   <button className='font-bold bg-transparent border-none cursor-pointer underline text-sm'
                     onClick={() => { setSidebarError(''); setSidebarView('listing'); }}>Register</button>
+                </p>
+              </>
+            )}
+
+            {/* ── Forgot Password form ── */}
+            {sidebarView === 'forgot-password' && (
+              <>
+                <h5 className='font-semibold mb-1' style={{ fontSize: 18, fontFamily: 'Segoe UI' }}>Reset Password</h5>
+                <p style={{ fontSize: 13, fontFamily: 'Segoe UI', color: '#666' }} className='mb-4'>
+                  Enter your email address and we&apos;ll send you a verification code.
+                </p>
+                <div className='flex flex-col gap-3'>
+                  <input type="email" placeholder="Email Address *" value={sidebarEmail}
+                    className='border rounded-md! px-3 py-2 text-sm placeholder:text-[13px] outline-none focus:border-[#ffc63a]'
+                    onChange={e => setSidebarEmail(e.target.value)} />
+                </div>
+
+                {sidebarError && <p className='text-red-500 text-xs mt-2'>{sidebarError}</p>}
+
+                <button
+                  className='bg-[#ffc63a] rounded-lg! text-white px-4 py-2.5 text-[14px]! mt-4 mb-3 disabled:opacity-60 font-semibold'
+                  onClick={handleSidebarForgot}
+                  disabled={sidebarLoading}
+                >
+                  {sidebarLoading ? 'Sending...' : 'Send Verification Code'}
+                </button>
+                <p className='text-center text-sm'>
+                  <button className='font-bold bg-transparent border-none cursor-pointer underline text-xs text-gray-500 hover:text-black'
+                    onClick={() => { setSidebarError(''); setSidebarView('login'); }}>Back to Login</button>
+                </p>
+              </>
+            )}
+
+            {/* ── Reset Password form ── */}
+            {sidebarView === 'reset-password' && (
+              <>
+                <h5 className='font-semibold mb-1' style={{ fontSize: 18, fontFamily: 'Segoe UI' }}>Verify Code</h5>
+                <p style={{ fontSize: 13, fontFamily: 'Segoe UI', color: '#666' }} className='mb-4'>
+                  A 6-digit OTP code has been sent to your email.
+                </p>
+                <div className='flex flex-col gap-3'>
+                  <input type="text" placeholder="6-digit Verification Code *" value={sidebarOtp} maxLength={6}
+                    className='border rounded-md! px-3 py-2 text-sm placeholder:text-[13px] outline-none focus:border-[#ffc63a]'
+                    onChange={e => setSidebarOtp(e.target.value.replace(/[^0-9]/g, ''))} />
+                  
+                  <div className='relative'>
+                    <input type={showLoginPassword ? 'text' : 'password'} placeholder="New Password *" value={sidebarPassword}
+                      className='border rounded-md! px-3 py-2 text-sm placeholder:text-[13px] w-full outline-none focus:border-[#ffc63a] pr-10'
+                      onChange={e => setSidebarPassword(e.target.value)} />
+                    <button type='button' tabIndex={-1} onClick={() => setShowLoginPassword(v => !v)}
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#666', display: 'flex', alignItems: 'center' }}>
+                      {showLoginPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                      )}
+                    </button>
+                  </div>
+
+                  <input type={showLoginPassword ? 'text' : 'password'} placeholder="Confirm Password *" value={sidebarConfirmPassword}
+                    className='border rounded-md! px-3 py-2 text-sm placeholder:text-[13px] outline-none focus:border-[#ffc63a]'
+                    onChange={e => setSidebarConfirmPassword(e.target.value)} />
+                </div>
+
+                <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
+                  <span>Didn&apos;t get code?</span>
+                  {resendCooldown > 0 ? (
+                    <span className="font-semibold text-gray-700">Resend in {resendCooldown}s</span>
+                  ) : (
+                    <button type="button" className="text-[#ffc63a] font-bold hover:underline bg-transparent border-none cursor-pointer p-0"
+                      onClick={handleResendOtp} disabled={resendLoading}>
+                      {resendLoading ? 'Sending...' : 'Resend Code'}
+                    </button>
+                  )}
+                </div>
+
+                {sidebarError && <p className='text-red-500 text-xs mt-2'>{sidebarError}</p>}
+
+                <button
+                  className='bg-[#ffc63a] rounded-lg! text-white px-4 py-2.5 text-[14px]! mt-4 mb-3 disabled:opacity-60 font-semibold'
+                  onClick={handleSidebarReset}
+                  disabled={sidebarLoading}
+                >
+                  {sidebarLoading ? 'Updating...' : 'Update Password'}
+                </button>
+                <p className='text-center text-sm'>
+                  <button className='font-bold bg-transparent border-none cursor-pointer underline text-xs text-gray-500 hover:text-black'
+                    onClick={() => { setSidebarError(''); setSidebarView('forgot-password'); }}>Back to Pervious Step </button>
                 </p>
               </>
             )}

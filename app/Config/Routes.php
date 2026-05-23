@@ -33,6 +33,8 @@ function register_api_routes($routes)
     $routes->post('auth/verify-otp', 'Api\AuthApi::verifyOtp');
     $routes->post('auth/register', 'Api\AuthApi::register');
     $routes->post('auth/google-login', 'Api\AuthApi::googleLogin');
+    $routes->post('auth/forgot-password', 'Api\AuthApi::forgotPassword');
+    $routes->post('auth/reset-password', 'Api\AuthApi::resetPassword');
 
     // Public landing page content
     $routes->get('landing-content', 'Api\SharedApi::landingContent');

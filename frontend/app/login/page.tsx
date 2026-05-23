@@ -158,6 +158,11 @@ export default function LoginPage() {
                     <i className={`bi bi-eye${showPassword ? '-slash' : ''}`}></i>
                   </button>
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                  <Link href="/forgot-password" style={{ color: '#ffc63a', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', fontFamily: "'Inter', sans-serif" }} onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'} onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+                    Forgot Password?
+                  </Link>
+                </div>
               </div>
               <button type="submit" className="submit-btn" disabled={loading}>
                 {loading ? 'Logging in...' : <>Login <i className="bi bi-arrow-right"></i></>}

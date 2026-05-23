@@ -151,6 +151,145 @@ class AuthApi extends ResourceController
     }
 
     /**
+     * POST /api/v1/auth/forgot-password
+     */
+    public function forgotPassword()
+    {
+        $email = $this->request->getJsonVar('email');
+
+        if (!$email) {
+            return $this->respond(['success' => false, 'message' => 'Email is required'], 400);
+        }
+
+        $user = $this->userModel->getUserByEmail($email);
+
+        if (!$user) {
+            return $this->respond(['success' => false, 'message' => 'No account found with this email'], 404);
+        }
+
+        if (!empty($user['is_blocked'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+        }
+
+        $otp = $this->userModel->generateOTP($user['id']);
+
+        if ($otp) {
+            $this->sendPasswordResetEmail($email, $user['name'], $otp);
+        }
+
+        return $this->respond([
+            'success' => true,
+            'message' => 'Password reset OTP sent to your email',
+        ]);
+    }
+
+    /**
+     * POST /api/v1/auth/reset-password
+     */
+    public function resetPassword()
+    {
+        $email    = $this->request->getJsonVar('email');
+        $otp      = $this->request->getJsonVar('otp');
+        $password = $this->request->getJsonVar('password');
+
+        if (!$email || !$otp || !$password) {
+            return $this->respond([
+                'success' => false,
+                'message' => 'Email, OTP, and new password are required'
+            ], 400);
+        }
+
+        if (strlen($password) < 6) {
+            return $this->respond([
+                'success' => false,
+                'message' => 'Password must be at least 6 characters long'
+            ], 400);
+        }
+
+        $user = $this->userModel->getUserByEmail($email);
+
+        if (!$user) {
+            return $this->respond(['success' => false, 'message' => 'No account found with this email'], 404);
+        }
+
+        if (!empty($user['is_blocked'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+        }
+
+        // Verify OTP matches and is not expired
+        if ($user['otp'] == $otp && strtotime($user['otp_expires_at']) > time()) {
+            // Update password, clear OTP, and mark user as verified
+            $updateSuccess = $this->userModel->update($user['id'], [
+                'password'       => password_hash($password, PASSWORD_DEFAULT),
+                'otp'            => null,
+                'otp_expires_at' => null,
+                'is_verified'    => 1
+            ]);
+
+            if ($updateSuccess) {
+                return $this->respond([
+                    'success' => true,
+                    'message' => 'Password reset successfully. You can now login with your new password.',
+                ]);
+            }
+
+            return $this->respond(['success' => false, 'message' => 'Failed to update password. Please try again.'], 500);
+        }
+
+        return $this->respond(['success' => false, 'message' => 'Invalid or expired OTP'], 401);
+    }
+
+    /**
+     * Send password reset email
+     */
+    private function sendPasswordResetEmail(string $to, string $name, string $otp): void
+    {
+        $db = \Config\Database::connect();
+        $rows = $db->table('system_settings')->get()->getResultArray();
+        $cfg = [];
+        foreach ($rows as $s) {
+            $cfg[$s['setting_key']] = $s['setting_value'];
+        }
+
+        $emailConfig = [
+            'protocol'    => 'smtp',
+            'SMTPHost'    => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
+            'SMTPPort'    => !empty($cfg['smtp_port']) ? (int)$cfg['smtp_port'] : 587,
+            'SMTPUser'    => $cfg['smtp_username'] ?? '',
+            'SMTPPass'    => $cfg['smtp_password'] ?? '',
+            'SMTPCrypto'  => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
+            'mailType'    => 'html',
+            'charset'     => 'utf-8',
+            'newline'     => "\r\n",
+            'CRLF'        => "\r\n",
+            'SMTPTimeout' => 30,
+        ];
+
+        $email = \Config\Services::email();
+        $email->initialize($emailConfig);
+        $email->setFrom($cfg['smtp_from_email'] ?? 'info@flexmarket.com', $cfg['smtp_from_name'] ?? 'Flex Market');
+        $email->setTo($to);
+        $email->setSubject('Reset Your Flex Market Password');
+        $email->setMessage("
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;'>
+                <h2 style='color: #000; font-weight: 600;'>Hello {$name},</h2>
+                <p style='font-size: 16px; color: #333;'>You have requested to reset your password on Flex Market. Please use the verification code below to complete the process:</p>
+                <div style='background: #fffbeb; border: 1px solid #fef3c7; padding: 15px 25px; border-radius: 12px; display: inline-block; margin: 20px 0;'>
+                    <strong style='font-size: 28px; color: #ffc63a; letter-spacing: 2px;'>{$otp}</strong>
+                </div>
+                <p style='font-size: 14px; color: #666;'>This OTP is valid for 10 minutes. If you did not request this password reset, please ignore this email or contact support.</p>
+                <hr style='border: 0; border-top: 1px solid #eee; margin: 30px 0;'>
+                <p style='font-size: 12px; color: #999; text-align: center;'>— Flex Market Team</p>
+            </div>
+        ");
+
+        if (!$email->send(false)) {
+            log_message('error', 'Password reset email failed to send to: ' . $to);
+            log_message('error', 'Email Debugger: ' . $email->printDebugger(['headers', 'subject', 'body']));
+        }
+    }
+
+    /**
      * POST /api/v1/auth/register
      */
     public function register()

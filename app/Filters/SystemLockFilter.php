@@ -33,10 +33,14 @@ class SystemLockFilter implements FilterInterface
             'api/v1/auth/login',
             'api/v1/auth/verify-otp',
             'api/v1/auth/send-otp',
+            'api/v1/auth/forgot-password',
+            'api/v1/auth/reset-password',
             'api/v1/landing-content',
             'api/auth/login',
             'api/auth/verify-otp',
             'api/auth/send-otp',
+            'api/auth/forgot-password',
+            'api/auth/reset-password',
             'api/landing-content'
         ];
 

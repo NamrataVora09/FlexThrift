@@ -230,7 +230,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                     {showAuth && (
                       <>
                         <Link
-                          href="/login"
+                          href="/"
                           className="flex items-center gap-3 px-5 py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
                           onClick={() => setShowAuthDropdown(false)}
                         >

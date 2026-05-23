@@ -26,6 +26,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   sendOtp: (email: string) => Promise<{ success: boolean; message?: string }>;
   verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
+  resetPassword: (email: string, otp: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   switchRole: (role: string) => Promise<{ success: boolean; message?: string }>;
@@ -116,6 +118,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: res.success, message: res.message };
   }, []);
 
+  const forgotPassword = useCallback(async (email: string) => {
+    const res = await api.post('/auth/forgot-password', { email });
+    return { success: res.success, message: res.message };
+  }, []);
+
+  const resetPassword = useCallback(async (email: string, otp: string, password: string) => {
+    const res = await api.post('/auth/reset-password', { email, otp, password });
+    return { success: res.success, message: res.message };
+  }, []);
+
   const verifyOtp = useCallback(async (email: string, otp: string) => {
     const res = await api.post<{ user: User; token: string }>('/auth/verify-otp', { email, otp });
     if (res.success && res.data) {
@@ -157,6 +169,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         sendOtp,
         verifyOtp,
+        forgotPassword,
+        resetPassword,
         register,
         logout,
         switchRole,
