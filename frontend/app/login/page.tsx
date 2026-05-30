@@ -159,7 +159,7 @@ export default function LoginPage() {
                   </button>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                  <Link href="/forgot-password" style={{ color: '#ffc63a', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', fontFamily: "'Inter', sans-serif" }} onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'} onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}>
+                  <Link href="/forgot-password" style={{ color: '#1d4ed8', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'underline', fontFamily: "'Inter', sans-serif" }} onMouseEnter={e => e.currentTarget.style.opacity = '0.8'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
                     Forgot Password?
                   </Link>
                 </div>

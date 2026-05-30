@@ -303,6 +303,8 @@ class AuthApi extends ResourceController
             'password'  => 'required|min_length[6]',
             'address'   => 'required',
             'pin_code'  => 'required',
+            'state'     => 'required',
+            'city'      => 'required',
             'user_type' => 'required|in_list[seller,buyer,both]',
         ];
 
@@ -323,7 +325,7 @@ class AuthApi extends ResourceController
         
         $clientLat = $data['user_latitude'] ?? null;
         $clientLng = $data['user_longitude'] ?? null;
-        $clientState = $data['user_state'] ?? null;
+        $clientState = $data['state'] ?? $data['user_state'] ?? null;
 
         $zoneMatch = false;
         $detectedZone = null;
@@ -378,9 +380,9 @@ class AuthApi extends ResourceController
             }
         }
 
-        // Add detected location to user data for storage
-        $data['state'] = $detectedState;
-        $data['city'] = $loc['city'] ?? null;
+        // Add detected location to user data for storage if missing
+        $data['state'] = $data['state'] ?? $detectedState;
+        $data['city'] = $data['city'] ?? ($loc['city'] ?? null);
         $data['latitude'] = $clientLat ?: ($loc['latitude'] ?? null);
         $data['longitude'] = $clientLng ?: ($loc['longitude'] ?? null);
 
@@ -463,6 +465,8 @@ class AuthApi extends ResourceController
             'password'         => password_hash($data['password'], PASSWORD_DEFAULT),
             'address'          => $data['address'],
             'pin_code'         => $data['pin_code'],
+            'state'            => $data['state'],
+            'city'             => $data['city'],
             'user_type'        => $data['user_type'],
             'role'             => ($data['user_type'] === 'both') ? 'buyer' : $data['user_type'],
             'referral_code'    => $referralCode,

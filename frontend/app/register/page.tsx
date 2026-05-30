@@ -35,7 +35,7 @@ export default function RegisterPage() {
   }, []);
 
   const [formData, setFormData] = useState({
-    name: '', email: '', mobile: '', password: '', address: '', pin_code: '', user_type: 'buyer', referred_by: '',
+    name: '', email: '', mobile: '', password: '', address: '', pin_code: '', state: '', city: '', user_type: 'buyer', referred_by: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -213,6 +213,16 @@ export default function RegisterPage() {
               <input className="input-field" type="text" name="pin_code" placeholder="Enter PIN code" value={formData.pin_code} onChange={handleChange} required />
             </div>
 
+            <div className="input-group">
+              <label>City</label>
+              <input className="input-field" type="text" name="city" placeholder="Enter City" value={formData.city} onChange={handleChange} required />
+            </div>
+
+            <div className="input-group">
+              <label>State</label>
+              <input className="input-field" type="text" name="state" placeholder="Enter State" value={formData.state} onChange={handleChange} required />
+            </div>
+
             <div className="terms-group">
               <input 
                 type="checkbox" 
@@ -223,7 +233,7 @@ export default function RegisterPage() {
                 required
               />
               <label htmlFor="accept-terms" className="terms-text">
-                I agree to the <span className="terms-link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTermsModal(true); }}>Terms & Conditions</span>
+                I agree to the <span className="terms-link underline! text-blue-700!" style={{ color: '#1d4ed8', textDecoration: 'underline' }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowTermsModal(true); }}>Terms & Conditions</span>
               </label>
             </div>
 

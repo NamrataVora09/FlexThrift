@@ -856,7 +856,7 @@ export default function HomePageClient() {
                   <button
                     type="button"
                     onClick={() => { setSidebarError(''); setSidebarView('forgot-password'); }}
-                    style={{ background: 'none', border: 'none', color: '#ffc63a', fontSize: 13, cursor: 'pointer', fontWeight: 500, fontFamily: 'Segoe UI, sans-serif', textDecoration: 'underline', padding: 0 }}
+                    style={{ background: 'none', border: 'none', color: '#1d4ed8', fontSize: 13, cursor: 'pointer', fontWeight: 500, fontFamily: 'Segoe UI, sans-serif', textDecoration: 'underline', padding: 0 }}
                   >
                     Forgot Password?
                   </button>
@@ -916,7 +916,7 @@ export default function HomePageClient() {
                   </div>
                   <div className='flex justify-end' style={{ marginTop: 4 }}>
                     <button type="button" onClick={() => { setSidebarError(''); setSidebarView('forgot-password'); }}
-                      className='text-xs text-[#ffc63a] font-semibold hover:underline bg-transparent border-none cursor-pointer p-0'>
+                      className='text-xs text-blue-700 underline font-semibold hover:underline bg-transparent border-none cursor-pointer p-0'>
                       Forgot Password?
                     </button>
                   </div>
