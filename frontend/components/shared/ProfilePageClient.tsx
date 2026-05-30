@@ -396,7 +396,10 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                 <i className="fa-solid fa-circle-check me-2" />{success}
               </div>
             )}
-
+            {/* Top Banner Ad */}
+            <div className="mb-4">
+              <AdBanner position="top_banner" page={user.role === 'seller' ? 'portal_seller_profile' : 'portal_buyer_profile'} />
+            </div>
             {/* ── Profile Header ── */}
             <div className="prof-header">
               <div className="d-flex align-items-center gap-4 flex-wrap">
@@ -452,10 +455,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
 
 
 
-            {/* Top Banner Ad */}
-            <div className="mb-4">
-              <AdBanner position="top_banner" page={user.role === 'seller' ? 'portal_seller_profile' : 'portal_buyer_profile'} />
-            </div>
+
 
             {/* ── Main Grid ── */}
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">

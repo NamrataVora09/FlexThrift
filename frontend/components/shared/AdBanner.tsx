@@ -93,14 +93,14 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
           muted
           loop
           playsInline
-          style={{ objectFit: 'cover', maxHeight: position === 'top_banner' ? '300px' : 'auto' }}
+          style={{ objectFit: 'cover', maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : 'auto' }}
         />
       ) : (
         <img
           src={mediaUrl}
           alt={ad.title}
           className="img-fluid rounded shadow-sm w-100"
-          style={{ objectFit: 'cover', maxHeight: position === 'top_banner' ? '300px' : 'auto' }}
+          style={{ objectFit: 'cover', maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : 'auto' }}
         />
       )}
       {ad.short_description && (

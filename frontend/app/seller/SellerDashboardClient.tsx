@@ -268,6 +268,10 @@ export default function SellerDashboardClient() {
           </div>
         ) : (
           <>
+            {/* Top Banner Ad */}
+            <div className="mb-4">
+              <AdBanner position="top_banner" page="portal_seller_dashboard" />
+            </div>
             {/* Welcome */}
             <div className="row mb-4 align-items-center">
               <div className="col-md-8">
@@ -281,10 +285,7 @@ export default function SellerDashboardClient() {
             </div>
 
 
-            {/* Top Banner Ad */}
-            <div className="mb-4">
-              <AdBanner position="top_banner" page="portal_seller_dashboard" />
-            </div>
+
 
             {/* Analytics Cards */}
             <div className="row g-3 mb-4">

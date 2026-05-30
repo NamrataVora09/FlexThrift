@@ -959,8 +959,18 @@ class SharedApi extends ResourceController
     public function advertisements()
     {
         $db = \Config\Database::connect();
+        $today = date('Y-m-d');
+
         $builder = $db->table('advertisements')
             ->where('is_active', 1)
+            ->groupStart()
+                ->where('start_date IS NULL')
+                ->orWhere('start_date <=', $today)
+            ->groupEnd()
+            ->groupStart()
+                ->where('end_date IS NULL')
+                ->orWhere('end_date >=', $today)
+            ->groupEnd()
             ->orderBy('created_at', 'DESC');
 
         $position = $this->request->getGet('position');

@@ -218,7 +218,7 @@ export default function AdvertisementsClient() {
                     <div onClick={() => fileRef.current?.click()} style={{ border: '2px dashed #ffc63a', background: 'rgba(255,198,58,0.05)', borderRadius: 12, padding: '1.5rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s' }}>
                       <i className="bi bi-cloud-arrow-up" style={{ fontSize: '1.8rem', color: '#ffc63a' }}></i>
                       <p className="mb-0 mt-1 fw-bold small">Click to upload file</p>
-                      <p className="text-muted mb-0" style={{ fontSize: '0.7rem' }}>MP4, JPG, PNG or WEBP (Max 20MB)</p>
+                      <p className="text-muted mb-0" style={{ fontSize: '0.7rem' }}>MP4, JPG, PNG or WEBP (Max 100MB)</p>
                       <input type="file" ref={fileRef} className="d-none" accept="image/*,video/*" onChange={handleFileChange} />
                     </div>
                     {selectedFile && <div className="mt-2 small fw-bold" style={{ color: '#ffc63a' }}>Selected: {selectedFile.name}</div>}

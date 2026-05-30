@@ -299,6 +299,9 @@ export default function BuyerDashboardPage() {
           </div>
         ) : (
           <>
+            <div className="mb-4">
+              <AdBanner position="top_banner" page="portal_buyer_dashboard" />
+            </div>
             {/* Welcome */}
             <div className="mb-4">
               <h1 style={{ fontWeight: 500, fontSize: 26, color: '#1a1a1a', marginBottom: 4, fontFamily: 'Poppins' }}>
@@ -308,9 +311,7 @@ export default function BuyerDashboardPage() {
             </div>
 
             {/* Top Banner Ad */}
-            <div className="mb-4">
-              <AdBanner position="top_banner" page="portal_buyer_dashboard" />
-            </div>
+
 
             {/* Analytics Cards */}
             <div className="g-3 grid gap-3 grid-cols-1 sm:grid-cols-2  lg:grid-cols-3! xl:grid-cols-4! mb-4">

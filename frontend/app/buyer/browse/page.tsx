@@ -1726,6 +1726,10 @@ function EliteSidebar({
 
   return (
     <div>
+        {/* Sidebar Ad */}
+      <div className="mt-4 pt-3 border-top">
+        <AdBanner position="sidebar" page="browse" />
+      </div>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #acadad', paddingBottom: 16, marginBottom: 8 }}>
         <strong className="em-heading" style={{ fontFamily: "'Maven Pro', sans-serif", fontSize: '16px', fontWeight: 800, letterSpacing: '0.1em', color: '#0c0f0f', textTransform: 'uppercase' }}>
@@ -2091,10 +2095,7 @@ function EliteSidebar({
           return null;
         })}
 
-      {/* Sidebar Ad */}
-      <div className="mt-4 pt-3 border-top">
-        <AdBanner position="sidebar" page="browse" />
-      </div>
+    
 
     </div>
   );
