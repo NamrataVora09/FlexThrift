@@ -123,10 +123,10 @@ export default function BrandsClient() {
   };
 
   const handleUnblock = (id: number) => {
-    confirmToast('Unblock this brand?', async () => {
+    confirmToast('Unblock this brand? Rejected products tagged to this brand will be restored to Pending for re-review.', async () => {
       const res = await api.post(`/superadmin/unblock-brand/${id}`);
       if (res.success) {
-        toastSuccess('brand_unblocked', 'Brand unblocked successfully.');
+        toastSuccess('brand_unblocked', 'Brand unblocked — products restored to pending review.');
         load();
       } else {
         toastError('brand_update_failed', res.message || 'Action failed.');
@@ -174,10 +174,13 @@ export default function BrandsClient() {
 
   const toggleDeactivate = (id: number, isActive: boolean) => {
     const action = isActive ? 'Deactivate' : 'Activate';
-    confirmToast(`${action} this brand?${isActive ? ' Products remain visible without brand name.' : ''}`, async () => {
+    const confirmMsg = isActive
+      ? 'Deactivate this brand? It will be removed from all tagged products. This cannot be undone automatically.'
+      : 'Activate this brand?';
+    confirmToast(confirmMsg, async () => {
       const res = await api.post(`/superadmin/${isActive ? 'deactivate' : 'activate'}-brand/${id}`);
       if (res.success) {
-        toastSuccess('brand_update_success', `Brand ${action === 'Deactivate' ? 'deactivated' : 'activated'} successfully.`);
+        toastSuccess('brand_update_success', isActive ? 'Brand deactivated and untagged from all products.' : 'Brand activated successfully.');
         load();
       } else {
         toastError('brand_update_failed', res.message || 'Action failed.');

@@ -1016,7 +1016,13 @@ class SuperAdminApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $db->table('orignal_brands')->where('id', $id)->update(['is_active' => 0]);
-        return $this->respond(['success' => true, 'message' => 'Original brand deactivated.']);
+
+        // Remove this brand tag from all products that reference it
+        $db->table('products')
+            ->where('orignal_brand_id', $id)
+            ->update(['orignal_brand_id' => null]);
+
+        return $this->respond(['success' => true, 'message' => 'Original brand deactivated and removed from all tagged products.']);
     }
 
     public function activateOriginalBrand($id)
@@ -1052,7 +1058,17 @@ class SuperAdminApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $db->table('orignal_brands')->where('id', $id)->update(['is_blocked' => 0, 'rejection_reason' => null]);
-        return $this->respond(['success' => true, 'message' => 'Original brand unblocked.']);
+
+        // Restore products that were rejected solely because this brand was blocked
+        $db->table('products')
+            ->where('orignal_brand_id', $id)
+            ->like('admin_remarks', 'Original Brand Blocked:', 'after')
+            ->update([
+                'status'       => 'pending',
+                'admin_remarks' => null,
+            ]);
+
+        return $this->respond(['success' => true, 'message' => 'Original brand unblocked and products restored to pending.']);
     }
 
     // ── Seller Brand Actions ─────────────────────────────
@@ -1061,7 +1077,13 @@ class SuperAdminApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $db->table('brands')->where('id', $id)->update(['is_active' => 0]);
-        return $this->respond(['success' => true, 'message' => 'Seller brand deactivated.']);
+
+        // Remove this brand tag from all products that reference it
+        $db->table('products')
+            ->where('brand_id', $id)
+            ->update(['brand_id' => null]);
+
+        return $this->respond(['success' => true, 'message' => 'Seller brand deactivated and removed from all tagged products.']);
     }
 
     public function activateSellerBrand($id)
@@ -1097,7 +1119,17 @@ class SuperAdminApi extends ResourceController
     {
         $db = \Config\Database::connect();
         $db->table('brands')->where('id', $id)->update(['is_blocked' => 0, 'rejection_reason' => null]);
-        return $this->respond(['success' => true, 'message' => 'Seller brand unblocked.']);
+
+        // Restore products that were rejected solely because this seller brand was blocked
+        $db->table('products')
+            ->where('brand_id', $id)
+            ->like('admin_remarks', 'Seller Brand Blocked:', 'after')
+            ->update([
+                'status'        => 'pending',
+                'admin_remarks' => null,
+            ]);
+
+        return $this->respond(['success' => true, 'message' => 'Seller brand unblocked and products restored to pending.']);
     }
 
     public function sellersList()
