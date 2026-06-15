@@ -6,6 +6,7 @@ import { useSystem } from '@/lib/system-context';
 import { getDashboardPath } from '@/lib/navigation';
 import { confirmToast } from '@/lib/toast-utils';
 import ProfileDropdown from '@/components/shared/ProfileDropdown';
+import { showToast } from '@/lib/toast';
 
 interface Props {
   onToggleSidebar: () => void;
@@ -30,6 +31,14 @@ export default function DashboardTopbar({ onToggleSidebar }: Props) {
           user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile';
 
   const handleSwitch = async (role: string) => {
+    if (role === 'seller' && user && user.role !== 'super_admin' && Number(user.blocked_seller) === 1) {
+      showToast.error("Your seller privileges have been restricted by the administrator.");
+      return;
+    }
+    if (role === 'buyer' && user && user.role !== 'super_admin' && Number(user.blocked_buyer) === 1) {
+      showToast.error("Your buyer privileges have been restricted by the administrator.");
+      return;
+    }
     const res = await switchRole(role);
     if (res.success) window.location.href = getDashboardPath(role);
   };

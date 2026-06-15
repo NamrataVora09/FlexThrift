@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import DashboardTopbar from './DashboardTopbar';
 import DashboardSidebar from './DashboardSidebar';
 import { getDashboardPath } from '@/lib/navigation';
+import { showToast } from '@/lib/toast';
 
 interface Props {
   children: ReactNode;
@@ -20,6 +21,22 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  const isSellerPage = pathname.startsWith('/seller') && !['/seller/profile', '/seller/help', '/seller/notifications'].some(p => pathname.startsWith(p));
+  const isAdminSellerPage = pathname.startsWith('/admin/upload-product') || pathname.startsWith('/admin/my-products') || pathname.startsWith('/admin/analytics') || pathname.startsWith('/admin/offers');
+  const isSellerRestricted = !!((isSellerPage || isAdminSellerPage) && user && user.role !== 'super_admin' && Number(user.blocked_seller) === 1);
+
+  const isBuyerPage = pathname.startsWith('/buyer') && !['/buyer/profile', '/buyer/help', '/buyer/notifications'].some(p => pathname.startsWith(p));
+  const isBuyerRestricted = !!(isBuyerPage && user && user.role !== 'super_admin' && Number(user.blocked_buyer) === 1);
+
+  useEffect(() => {
+    if (isSellerRestricted) {
+      showToast.error("Your seller privileges have been restricted by the administrator.");
+    }
+    if (isBuyerRestricted) {
+      showToast.error("Your buyer privileges have been restricted by the administrator.");
+    }
+  }, [isSellerRestricted, isBuyerRestricted]);
   
   // Initialize from global variable if it exists, otherwise default to true
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -86,17 +103,6 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && requiredRoles && user) {
-      // Role-based blocking for admins
-      if (user.role === 'admin') {
-        const isBlockedBuyer = requiredRoles.includes('buyer') && Number(user.blocked_buyer) === 1;
-        const isBlockedSeller = requiredRoles.includes('seller') && Number(user.blocked_seller) === 1;
-
-        if (isBlockedBuyer || isBlockedSeller) {
-          router.push('/admin');
-          return;
-        }
-      }
-      
       if (user.role !== 'super_admin' && !requiredRoles.includes(user.role)) {
         router.push(getDashboardPath(user.role));
       }
@@ -121,6 +127,8 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
     || (user.role === 'super_admin' && pathname.startsWith('/admin') ? 'admin' : undefined)
     || (user.role === 'super_admin' && pathname.startsWith('/delivery') ? 'delivery' : undefined);
 
+
+
   return (
     <div>
       <DashboardTopbar onToggleSidebar={toggleSidebar} />
@@ -133,7 +141,55 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
       <DashboardSidebar isOpen={sidebarOpen} viewAs={resolvedViewAs} />
 
       <div className={`main-content ${!sidebarOpen ? 'sidebar-collapsed' : ''}`}>
-        {children}
+        {isSellerRestricted ? (
+          <div className="container-fluid p-4 p-md-5 d-flex align-items-center justify-content-center" style={{ minHeight: '70vh' }}>
+            <div className="text-center p-5 shadow-sm" style={{ maxWidth: 500, background: '#fff', borderRadius: 24, border: '1px solid #fee2e2', margin: 'auto' }}>
+              <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
+              </div>
+              <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Seller Access Restricted</h3>
+              <p className="text-muted mb-4" style={{ lineHeight: 1.6 }}>
+                Your seller privileges have been restricted by the administrator. You are currently unable to upload new products or manage existing listings.
+              </p>
+              <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem' }}>
+                <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
+                Please contact platform support for more information or to request a review of your account status.
+              </div>
+              <button
+                onClick={() => router.push(user.role === 'admin' ? '/admin' : '/buyer/dashboard')}
+                className="btn btn-dark px-4 py-2"
+                style={{ borderRadius: 10, fontWeight: 600 }}
+              >
+                Return to Dashboard
+              </button>
+            </div>
+          </div>
+        ) : isBuyerRestricted ? (
+          <div className="container-fluid p-4 p-md-5 d-flex align-items-center justify-content-center" style={{ minHeight: '70vh' }}>
+            <div className="text-center p-5 shadow-sm" style={{ maxWidth: 500, background: '#fff', borderRadius: 24, border: '1px solid #fee2e2', margin: 'auto' }}>
+              <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
+              </div>
+              <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Buyer Access Restricted</h3>
+              <p className="text-muted mb-4" style={{ lineHeight: 1.6 }}>
+                Your buyer privileges have been restricted by the administrator. You are currently unable to make purchases or view transactions.
+              </p>
+              <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem' }}>
+                <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
+                Please contact platform support for more information or to request a review of your account status.
+              </div>
+              <button
+                onClick={() => router.push(user.role === 'admin' ? '/admin' : (user.user_type === 'both' ? '/seller' : '/buyer/dashboard'))}
+                className="btn btn-dark px-4 py-2"
+                style={{ borderRadius: 10, fontWeight: 600 }}
+              >
+                Return to Dashboard
+              </button>
+            </div>
+          </div>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );

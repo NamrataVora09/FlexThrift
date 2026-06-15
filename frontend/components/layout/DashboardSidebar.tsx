@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getNavigation } from '@/lib/navigation';
 import AdBanner from '@/components/shared/AdBanner';
+import { showToast } from '@/lib/toast';
 
 interface Props {
   isOpen: boolean;
@@ -106,6 +107,25 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
                       className="nav-link d-flex align-items-center gap-2"
                       href={item.href}
                       target={item.target}
+                      onClick={(e) => {
+                        const isBuyerHref = (item.href.startsWith('/buyer') && !['/buyer/profile', '/buyer/help', '/buyer/notifications'].includes(item.href)) || item.label === 'Browse Market';
+                        const isSellerHref = (item.href.startsWith('/seller') && !['/seller/profile', '/seller/help', '/seller/notifications'].includes(item.href)) || 
+                                             item.href.startsWith('/admin/upload-product') ||
+                                             item.href.startsWith('/admin/my-products') ||
+                                             item.href.startsWith('/admin/analytics') ||
+                                             item.href.startsWith('/admin/offers');
+
+                        if (isBuyerHref && user && user.role !== 'super_admin' && Number(user.blocked_buyer) === 1) {
+                          e.preventDefault();
+                          showToast.error("Your buyer privileges have been restricted by the administrator.");
+                          return;
+                        }
+                        if (isSellerHref && user && user.role !== 'super_admin' && Number(user.blocked_seller) === 1) {
+                          e.preventDefault();
+                          showToast.error("Your seller privileges have been restricted by the administrator.");
+                          return;
+                        }
+                      }}
                       style={{
                         color: isActive ? activeText : linkColor,
                         background: isActive ? activeColor : 'transparent',

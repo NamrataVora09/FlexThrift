@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'rea
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { showToast } from '@/lib/toast';
 import { addToCart } from '@/lib/cart';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import Footer from '@/components/layout/Footer';
@@ -253,10 +254,6 @@ export default function BrowsePage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.role === 'admin' && Number(user.blocked_buyer) === 1) {
-        router.replace('/admin');
-        return;
-      }
       if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) {
         router.replace('/seller');
         return;
@@ -670,7 +667,6 @@ export default function BrowsePage() {
   };
 
   if (isAuthenticated && user) {
-    if (user.role === 'admin' && Number(user.blocked_buyer) === 1) return null;
     if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) return null;
   }
 
@@ -684,6 +680,45 @@ export default function BrowsePage() {
     return prods;
   }, [data?.products, sortBy]);
 
+  const isBuyerBlocked = isAuthenticated && user && user.role !== 'super_admin' && Number(user.blocked_buyer) === 1;
+
+  useEffect(() => {
+    if (isBuyerBlocked) {
+      showToast.error("Your buyer privileges have been restricted by the administrator.");
+    }
+  }, [isBuyerBlocked]);
+
+  if (isBuyerBlocked) {
+    return (
+      <>
+        <SeoManager pageKey="browse" />
+        <LandingNavbar />
+        <div className="container-fluid p-4 p-md-5 d-flex align-items-center justify-content-center animate-fade-in" style={{ minHeight: '80vh', paddingTop: '120px', backgroundColor: '#f9fafb' }}>
+          <div className="text-center p-5 shadow-lg" style={{ maxWidth: 500, background: '#fff', borderRadius: 24, border: '1px solid #fee2e2' }}>
+            <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
+            </div>
+            <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15, fontFamily: 'Manrope, sans-serif' }}>Buyer Access Restricted</h3>
+            <p className="text-muted mb-4" style={{ lineHeight: 1.6, fontSize: '0.95rem' }}>
+              Your buyer privileges have been restricted by the administrator. You are currently unable to browse the marketplace or view product listings.
+            </p>
+            <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #f3f4f6', fontSize: '0.9rem' }}>
+              <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
+              Please contact platform support for more information or to request a review of your account status.
+            </div>
+            <button
+              onClick={() => router.push(user.role === 'admin' ? '/admin' : (user.user_type === 'both' ? '/seller' : '/buyer/dashboard'))}
+              className="btn btn-dark w-100 py-3"
+              style={{ borderRadius: 12, fontWeight: 700, background: '#000', color: '#fff', border: 'none', transition: 'all 0.2s' }}
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>

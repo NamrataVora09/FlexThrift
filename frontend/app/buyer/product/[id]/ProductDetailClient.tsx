@@ -318,7 +318,6 @@ export default function ProductDetailClient({ product, images, similarProducts =
         setContactError(contactRes.message || 'Offer sent! Contact could not be retrieved.');
       }
     } else {
-      toastError('offer_send_failed', res?.message || 'Failed to submit offer');
       setOfferError(res?.message || 'Failed to submit offer');
     }
   };
@@ -656,20 +655,20 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       <i className={`bi ${inWishlist ? 'bi-heart-fill' : 'bi-heart'}`} style={{ fontSize: '1.3rem', color: '#ef4444' }}></i>
                     </button>
                     <button
-                      onClick={() => { 
-                        if (!isPreview && Number(user?.blocked_buyer) !== 1) { 
-                          setShowOffer(true); 
-                          setOfferError(null); 
-                        } 
+                      onClick={() => {
+                        if (!isPreview && Number(user?.blocked_buyer) !== 1) {
+                          setShowOffer(true);
+                          setOfferError(null);
+                        }
                       }}
                       disabled={isPreview || Number(user?.blocked_buyer) === 1}
-                      style={{ 
-                        flex: 1, padding: '16px 24px', borderRadius: 8, fontSize: 17, fontWeight: 600, 
-                        fontFamily: "'Maven Pro', sans-serif", cursor: (isPreview || Number(user?.blocked_buyer) === 1) ? 'not-allowed' : 'pointer', 
-                        transition: 'all 0.3s', border: 'none', 
-                        background: (isPreview || Number(user?.blocked_buyer) === 1) ? '#e5e7eb' : '#FFC63A', 
-                        color: (isPreview || Number(user?.blocked_buyer) === 1) ? '#9ca3af' : '#fff', 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 
+                      style={{
+                        flex: 1, padding: '16px 24px', borderRadius: 8, fontSize: 17, fontWeight: 600,
+                        fontFamily: "'Maven Pro', sans-serif", cursor: (isPreview || Number(user?.blocked_buyer) === 1) ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.3s', border: 'none',
+                        background: (isPreview || Number(user?.blocked_buyer) === 1) ? '#e5e7eb' : '#FFC63A',
+                        color: (isPreview || Number(user?.blocked_buyer) === 1) ? '#9ca3af' : '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
                       }}
                       onMouseEnter={e => { if (!isPreview && Number(user?.blocked_buyer) !== 1) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; } }}
                       onMouseLeave={e => { if (!isPreview && Number(user?.blocked_buyer) !== 1) { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; } }}
@@ -679,7 +678,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     </button>
 
                   </div>
-               
+
                 </>
               )}
             </div>
@@ -1192,7 +1191,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     <i className={`bi ${offerError.toLowerCase().includes('subscription') ? 'bi-star-fill text-warning' : 'bi-exclamation-circle-fill'} me-2`}></i>
                     {offerError}
                     {offerError.toLowerCase().includes('subscription') && (
-                      <a href="/buyer/subscriptions" className="btn btn-sm btn-warning ms-2 fw-bold rounded-3" style={{ fontSize: '0.75rem' }}>
+                      <a href="/buyer/subscriptions" className="btn btn-sm  ms-2 fw-bold rounded-3" style={{ fontSize: '0.75rem', backgroundColor: "rgb(0, 128, 128)", color: "white" }}>
                         Subscribe Now
                       </a>
                     )}
