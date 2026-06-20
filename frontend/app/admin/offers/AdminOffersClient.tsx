@@ -7,10 +7,15 @@ import { useAuth } from '@/lib/auth-context';
 
 export default function AdminOffersClient() {
   const { user } = useAuth();
-  const [perspective, setPerspective] = useState<'buyer' | 'seller' | 'combined'>('seller');
 
   const isBlockedBuyer = Number(user?.blocked_buyer) === 1;
   const isBlockedSeller = Number(user?.blocked_seller) === 1;
+
+  // Start on buyer perspective if seller is blocked, and vice versa
+  const [perspective, setPerspective] = useState<'buyer' | 'seller' | 'combined'>(() => {
+    if (Number(user?.blocked_seller) === 1) return 'buyer';
+    return 'seller';
+  });
 
   // Auto-switch away from blocked perspective if it somehow gets set
   useEffect(() => {
@@ -33,7 +38,6 @@ export default function AdminOffersClient() {
               value={perspective}
               onChange={(e) => setPerspective(e.target.value as 'buyer' | 'seller')}
             >
-              <option value="combined">Combined</option>
               {!isBlockedSeller && <option value="seller">Seller</option>}
               {!isBlockedBuyer && <option value="buyer">Buyer</option>}
             </select>

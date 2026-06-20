@@ -23,7 +23,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
   const pathname = usePathname();
 
   const isSellerPage = pathname.startsWith('/seller') && !['/seller/profile', '/seller/help', '/seller/notifications'].some(p => pathname.startsWith(p));
-  const isAdminSellerPage = pathname.startsWith('/admin/upload-product') || pathname.startsWith('/admin/my-products') || pathname.startsWith('/admin/analytics') || pathname.startsWith('/admin/offers');
+  const isAdminSellerPage = pathname.startsWith('/admin/upload-product') || pathname.startsWith('/admin/my-products') || pathname.startsWith('/admin/analytics');
   const isSellerRestricted = !!((isSellerPage || isAdminSellerPage) && user && user.role !== 'super_admin' && Number(user.blocked_seller) === 1);
 
   const isBuyerPage = pathname.startsWith('/buyer') && !['/buyer/profile', '/buyer/help', '/buyer/notifications'].some(p => pathname.startsWith(p));

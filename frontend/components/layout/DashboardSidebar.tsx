@@ -112,8 +112,7 @@ export default function DashboardSidebar({ isOpen, viewAs }: Props) {
                         const isSellerHref = (item.href.startsWith('/seller') && !['/seller/profile', '/seller/help', '/seller/notifications'].includes(item.href)) || 
                                              item.href.startsWith('/admin/upload-product') ||
                                              item.href.startsWith('/admin/my-products') ||
-                                             item.href.startsWith('/admin/analytics') ||
-                                             item.href.startsWith('/admin/offers');
+                                             item.href.startsWith('/admin/analytics');
 
                         if (isBuyerHref && user && user.role !== 'super_admin' && Number(user.blocked_buyer) === 1) {
                           e.preventDefault();
