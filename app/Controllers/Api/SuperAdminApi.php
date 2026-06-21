@@ -1015,14 +1015,12 @@ class SuperAdminApi extends ResourceController
     public function deactivateOriginalBrand($id)
     {
         $db = \Config\Database::connect();
+        // Only mark the brand as inactive — do NOT detag products.
+        // The SQL JOINs use `AND ob.is_active = 1` so the brand name
+        // will silently disappear from all UI without touching products.
         $db->table('orignal_brands')->where('id', $id)->update(['is_active' => 0]);
 
-        // Remove this brand tag from all products that reference it
-        $db->table('products')
-            ->where('orignal_brand_id', $id)
-            ->update(['orignal_brand_id' => null]);
-
-        return $this->respond(['success' => true, 'message' => 'Original brand deactivated and removed from all tagged products.']);
+        return $this->respond(['success' => true, 'message' => 'Original brand deactivated. Brand name hidden from all products (products are NOT detagged).']);
     }
 
     public function activateOriginalBrand($id)
@@ -1037,21 +1035,28 @@ class SuperAdminApi extends ResourceController
         $db = \Config\Database::connect();
         $reason = trim($this->request->getPost('reason') ?? '');
         if (!$reason) $reason = 'Brand Blocked';
-        
+
         $db->table('orignal_brands')->where('id', $id)->update([
-            'is_blocked' => 1,
-            'rejection_reason' => $reason
+            'is_blocked'       => 1,
+            'rejection_reason' => $reason,
         ]);
-        
-        // Reject all products of that original brand
-        $db->table('products')
+
+        // Reject all products of that original brand, but save their pre-block status
+        // so unblock can restore the exact original status.
+        $products = $db->table('products')
             ->where('orignal_brand_id', $id)
-            ->update([
-                'status' => 'rejected', 
-                'admin_remarks' => 'Original Brand Blocked: ' . $reason
+            ->whereNotIn('status', ['rejected'])   // skip already-rejected ones
+            ->get()->getResultArray();
+
+        foreach ($products as $product) {
+            $preStatus = $product['status'];
+            $db->table('products')->where('id', $product['id'])->update([
+                'status'       => 'rejected',
+                'admin_remarks' => 'Original Brand Blocked: ' . $reason . ' [pre_status:' . $preStatus . ']',
             ]);
-            
-        return $this->respond(['success' => true, 'message' => 'Original brand blocked.']);
+        }
+
+        return $this->respond(['success' => true, 'message' => 'Original brand blocked and products rejected.']);
     }
 
     public function unblockOriginalBrand($id)
@@ -1059,16 +1064,25 @@ class SuperAdminApi extends ResourceController
         $db = \Config\Database::connect();
         $db->table('orignal_brands')->where('id', $id)->update(['is_blocked' => 0, 'rejection_reason' => null]);
 
-        // Restore products that were rejected solely because this brand was blocked
-        $db->table('products')
+        // Restore each product to its pre-block status (not always 'pending')
+        $products = $db->table('products')
             ->where('orignal_brand_id', $id)
             ->like('admin_remarks', 'Original Brand Blocked:', 'after')
-            ->update([
-                'status'       => 'pending',
+            ->get()->getResultArray();
+
+        foreach ($products as $product) {
+            // Parse pre_status from admin_remarks: "Original Brand Blocked: reason [pre_status:approved]"
+            $preStatus = 'pending'; // fallback
+            if (preg_match('/\[pre_status:([a-z]+)\]/', $product['admin_remarks'] ?? '', $m)) {
+                $preStatus = $m[1];
+            }
+            $db->table('products')->where('id', $product['id'])->update([
+                'status'        => $preStatus,
                 'admin_remarks' => null,
             ]);
+        }
 
-        return $this->respond(['success' => true, 'message' => 'Original brand unblocked and products restored to pending.']);
+        return $this->respond(['success' => true, 'message' => 'Original brand unblocked. Products restored to their original statuses.']);
     }
 
     // ── Seller Brand Actions ─────────────────────────────
@@ -1076,14 +1090,12 @@ class SuperAdminApi extends ResourceController
     public function deactivateSellerBrand($id)
     {
         $db = \Config\Database::connect();
+        // Only mark the brand as inactive — do NOT detag products.
+        // The SQL JOINs use `AND b.is_active = 1` so the brand name
+        // will silently disappear from all UI without touching products.
         $db->table('brands')->where('id', $id)->update(['is_active' => 0]);
 
-        // Remove this brand tag from all products that reference it
-        $db->table('products')
-            ->where('brand_id', $id)
-            ->update(['brand_id' => null]);
-
-        return $this->respond(['success' => true, 'message' => 'Seller brand deactivated and removed from all tagged products.']);
+        return $this->respond(['success' => true, 'message' => 'Seller brand deactivated. Brand name hidden from all products (products are NOT detagged).']);
     }
 
     public function activateSellerBrand($id)
@@ -1098,20 +1110,26 @@ class SuperAdminApi extends ResourceController
         $db = \Config\Database::connect();
         $reason = trim($this->request->getPost('reason') ?? '');
         if (!$reason) $reason = 'Brand Blocked';
-        
+
         $db->table('brands')->where('id', $id)->update([
-            'is_blocked' => 1,
-            'rejection_reason' => $reason
+            'is_blocked'       => 1,
+            'rejection_reason' => $reason,
         ]);
-        
-        // Reject all products of that seller brand
-        $db->table('products')
+
+        // Reject all products of that seller brand, but save their pre-block status
+        $products = $db->table('products')
             ->where('brand_id', $id)
-            ->update([
-                'status' => 'rejected', 
-                'admin_remarks' => 'Seller Brand Blocked: ' . $reason
+            ->whereNotIn('status', ['rejected'])
+            ->get()->getResultArray();
+
+        foreach ($products as $product) {
+            $preStatus = $product['status'];
+            $db->table('products')->where('id', $product['id'])->update([
+                'status'        => 'rejected',
+                'admin_remarks' => 'Seller Brand Blocked: ' . $reason . ' [pre_status:' . $preStatus . ']',
             ]);
-            
+        }
+
         return $this->respond(['success' => true, 'message' => 'Seller brand blocked and products rejected.']);
     }
 
@@ -1120,16 +1138,25 @@ class SuperAdminApi extends ResourceController
         $db = \Config\Database::connect();
         $db->table('brands')->where('id', $id)->update(['is_blocked' => 0, 'rejection_reason' => null]);
 
-        // Restore products that were rejected solely because this seller brand was blocked
-        $db->table('products')
+        // Restore each product to its pre-block status (not always 'pending')
+        $products = $db->table('products')
             ->where('brand_id', $id)
             ->like('admin_remarks', 'Seller Brand Blocked:', 'after')
-            ->update([
-                'status'        => 'pending',
+            ->get()->getResultArray();
+
+        foreach ($products as $product) {
+            // Parse pre_status from admin_remarks: "Seller Brand Blocked: reason [pre_status:approved]"
+            $preStatus = 'pending'; // fallback
+            if (preg_match('/\[pre_status:([a-z]+)\]/', $product['admin_remarks'] ?? '', $m)) {
+                $preStatus = $m[1];
+            }
+            $db->table('products')->where('id', $product['id'])->update([
+                'status'        => $preStatus,
                 'admin_remarks' => null,
             ]);
+        }
 
-        return $this->respond(['success' => true, 'message' => 'Seller brand unblocked and products restored to pending.']);
+        return $this->respond(['success' => true, 'message' => 'Seller brand unblocked. Products restored to their original statuses.']);
     }
 
     public function sellersList()
@@ -1301,6 +1328,9 @@ class SuperAdminApi extends ResourceController
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
         $updatedData = json_decode($request['updated_data'], true) ?: [];
+        // Force status back to approved after merging edit
+        $updatedData['status'] = 'approved';
+        $updatedData['updated_at'] = date('Y-m-d H:i:s');
         $db->table('products')->where('id', $request['product_id'])->update($updatedData);
 
         // Handle new temp images
@@ -1316,13 +1346,49 @@ class SuperAdminApi extends ResourceController
         }
 
         $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => date('Y-m-d H:i:s')]);
+
+        // Notify the seller
+        $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+        if ($product) {
+            $db->table('notifications')->insert([
+                'user_id' => $request['seller_id'],
+                'title' => 'Edit Request Approved',
+                'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" has been approved and applied.',
+                'type' => 'product_edit',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
         return $this->respond(['success' => true, 'message' => 'Edit request approved and merged.']);
     }
 
     public function rejectEditRequest($id)
     {
         $db = \Config\Database::connect();
+        $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
         $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => date('Y-m-d H:i:s')]);
+
+        // Restore product status to approved (it was set to pending when edit was submitted)
+        if ($request) {
+            $db->table('products')->where('id', $request['product_id'])->update([
+                'status' => 'approved',
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            // Notify the seller
+            $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+            if ($product) {
+                $db->table('notifications')->insert([
+                    'user_id' => $request['seller_id'],
+                    'title' => 'Edit Request Rejected',
+                    'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" was rejected. The product has been restored to its previous approved state.',
+                    'type' => 'product_edit',
+                    'is_read' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+        }
+
         return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
     }
 

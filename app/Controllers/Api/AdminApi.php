@@ -339,6 +339,9 @@ class AdminApi extends ResourceController
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
         $updatedData = json_decode($request['updated_data'], true) ?: [];
+        // Force status back to approved after merging edit
+        $updatedData['status'] = 'approved';
+        $updatedData['updated_at'] = date('Y-m-d H:i:s');
         $db->table('products')->where('id', $request['product_id'])->update($updatedData);
 
         // Handle new temp images
@@ -354,6 +357,20 @@ class AdminApi extends ResourceController
         }
 
         $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => date('Y-m-d H:i:s')]);
+
+        // Notify the seller
+        $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+        if ($product) {
+            $db->table('notifications')->insert([
+                'user_id' => $request['seller_id'],
+                'title' => 'Edit Request Approved',
+                'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" has been approved and applied.',
+                'type' => 'product_edit',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
         return $this->respond(['success' => true, 'message' => 'Edit request approved and merged.']);
     }
 
@@ -364,7 +381,29 @@ class AdminApi extends ResourceController
     public function rejectEditRequest($id)
     {
         $db = \Config\Database::connect();
+        $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
         $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => date('Y-m-d H:i:s')]);
+
+        // Restore product status to approved (it was set to pending when edit was submitted)
+        if ($request) {
+            $db->table('products')->where('id', $request['product_id'])->update([
+                'status' => 'approved',
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            // Notify the seller
+            $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+            if ($product) {
+                $db->table('notifications')->insert([
+                    'user_id' => $request['seller_id'],
+                    'title' => 'Edit Request Rejected',
+                    'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" was rejected. The product has been restored to its previous approved state.',
+                    'type' => 'product_edit',
+                    'is_read' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+        }
+
         return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
     }
 

@@ -31,12 +31,17 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
 
   useEffect(() => {
     if (isSellerRestricted) {
-      showToast.error("Your seller privileges have been restricted by the administrator.");
+      if (user && user.user_type === 'both') {
+        showToast.error("Your seller privileges have been restricted. Redirecting to browse market.");
+        router.push('/buyer/browse');
+      } else {
+        showToast.error("Your seller privileges have been restricted by the administrator.");
+      }
     }
     if (isBuyerRestricted) {
       showToast.error("Your buyer privileges have been restricted by the administrator.");
     }
-  }, [isSellerRestricted, isBuyerRestricted]);
+  }, [isSellerRestricted, isBuyerRestricted, user, router]);
   
   // Initialize from global variable if it exists, otherwise default to true
   const [sidebarOpen, setSidebarOpen] = useState(() => {

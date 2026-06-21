@@ -255,11 +255,6 @@ export default function SettingsClient() {
                 <small className="text-muted">Base deduction for deposit calculation.</small>
               </div>
               <div className="col-md-3">
-                <label className="form-label fw-semibold">Min Rental Days</label>
-                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.min_rental_days || '3'} onChange={(e) => update('min_rental_days', e.target.value)} />
-                <small className="text-muted">Min days a buyer must rent a product.</small>
-              </div>
-              <div className="col-md-3">
                 <label className="form-label fw-semibold">Max Rental Cost Cap (%)</label>
                 <input type="number" step="0.1" className="form-control" style={inputStyle} value={settings.rental_max_cost_cap_per_day || '14'} onChange={(e) => update('rental_max_cost_cap_per_day', e.target.value)} />
                 <small className="text-muted">Max rental cost allowed as % of deposit.</small>

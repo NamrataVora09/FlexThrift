@@ -97,6 +97,9 @@ export function getNavigation(role: string): NavSection[] {
           items: [
             { label: 'Dashboard', href: '/superadmin', icon: 'bi bi-grid-fill' },
             { label: 'Offers', href: '/superadmin/personal-offers', icon: 'bi bi-tags' },
+            { label: 'Profile', href: '/superadmin/profile', icon: 'fa fa-user' },
+
+
           ],
         },
         {

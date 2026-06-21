@@ -21,14 +21,14 @@ function saveCart(items: CartItem[]) {
 
 export function addToCart(item: CartItem): boolean {
   const cart = getCart();
-  if (cart.some((c) => c.id === item.id)) return false;
+  if (cart.some((c) => Number(c.id) === Number(item.id))) return false;
   cart.push(item);
   saveCart(cart);
   return true;
 }
 
-export function removeFromCart(id: number) {
-  saveCart(getCart().filter((c) => c.id !== id));
+export function removeFromCart(id: number | string) {
+  saveCart(getCart().filter((c) => Number(c.id) !== Number(id)));
 }
 
 export function getCartItems(): CartItem[] {
@@ -39,8 +39,8 @@ export function getCartCount(): number {
   return getCart().length;
 }
 
-export function isInCart(id: number): boolean {
-  return getCart().some((c) => c.id === id);
+export function isInCart(id: number | string): boolean {
+  return getCart().some((c) => Number(c.id) === Number(id));
 }
 
 export function clearCart() {

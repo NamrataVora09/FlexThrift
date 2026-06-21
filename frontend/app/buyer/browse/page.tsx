@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { showToast } from '@/lib/toast';
 import { addToCart } from '@/lib/cart';
+import { addToWishlist, removeFromWishlist } from '@/lib/wishlist';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import Footer from '@/components/layout/Footer';
 import AdBanner from '@/components/shared/AdBanner';
@@ -168,8 +169,13 @@ export default function BrowsePage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [cartUpdated, setCartUpdated] = useState(0);
-  const [wishlist, setWishlist] = useState<number[]>(() => {
-    try { return JSON.parse(localStorage.getItem('flex_wishlist') || '[]'); } catch { return []; }
+  const [wishlist, setWishlist] = useState<(number | string)[]>(() => {
+    try {
+      const items = JSON.parse(localStorage.getItem('flex_wishlist') || '[]');
+      return items.map((item: any) => typeof item === 'object' && item !== null ? item.id : item);
+    } catch {
+      return [];
+    }
   });
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -656,14 +662,43 @@ export default function BrowsePage() {
     vals.forEach(v => activeChips.push({ label: `${k}: ${v}`, key: `spec:${k}`, val: v }));
   });
 
+  // Listen to wishlist updates to keep browse page in sync
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const items = JSON.parse(localStorage.getItem('flex_wishlist') || '[]');
+        setWishlist(items.map((item: any) => typeof item === 'object' && item !== null ? item.id : item));
+      } catch {
+        setWishlist([]);
+      }
+    };
+    window.addEventListener('wishlist-updated', handleUpdate);
+    return () => window.removeEventListener('wishlist-updated', handleUpdate);
+  }, []);
+
   const handleWishlist = (p: Product, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setWishlist(prev => {
-      const next = prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id];
-      try { localStorage.setItem('flex_wishlist', JSON.stringify(next)); } catch { }
-      return next;
-    });
+    
+    const isCurrentlyWishlisted = wishlist.some(id => Number(id) === Number(p.id));
+    
+    if (isCurrentlyWishlisted) {
+      removeFromWishlist(p.id);
+      setWishlist(prev => prev.filter(id => Number(id) !== Number(p.id)));
+    } else {
+      const priceVal = getProductPrice(p).toString();
+      const imagesArr = parseImages(p);
+      const mainImage = imagesArr?.[0] || '';
+      addToWishlist({
+        id: p.id,
+        title: p.title,
+        listing_type: p.listing_type,
+        price: priceVal,
+        image: mainImage,
+        seller_name: p.seller_name || 'Seller',
+      });
+      setWishlist(prev => [...prev, p.id]);
+    }
   };
 
   if (isAuthenticated && user) {
@@ -1201,7 +1236,7 @@ export default function BrowsePage() {
                   <Fragment key={p.id}>
                     <ProductCard
                       p={p}
-                      wishlisted={wishlist.includes(p.id)}
+                      wishlisted={wishlist.some(id => Number(id) === Number(p.id))}
                       onWishlist={handleWishlist}
                     />
                     {(index + 1) % 6 === 0 && (
@@ -1499,11 +1534,11 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
               key={i}
               src={resolveImg(img)}
               alt={p.title}
-              className="card-img w-full aspect-[4/5] object-cover rounded-2xl transition-[opacity,transform] duration-700"
+              className="card-img w-full   aspect-[4/5] object-cover rounded-2xl transition-[opacity,transform] duration-700"
               style={{ opacity: i === imgIdx ? 1 : 0, position: i === 0 ? 'relative' : 'absolute', top: 0, left: 0 }}
             />
           )) : (
-            <div className="w-full aspect-[4/5] rounded-2xl bg-[#f0f1f1] flex items-center justify-center">
+            <div className="w-full  rounded-2xl  aspect-[4/5] bg-[#f0f1f1] flex items-center justify-center">
               <i className="bi bi-image text-5xl text-[#acadad]"></i>
             </div>
           )}
@@ -1761,7 +1796,7 @@ function EliteSidebar({
 
   return (
     <div>
-        {/* Sidebar Ad */}
+      {/* Sidebar Ad */}
       <div className="mt-4 pt-3 border-top">
         <AdBanner position="sidebar" page="browse" />
       </div>
@@ -2130,7 +2165,7 @@ function EliteSidebar({
           return null;
         })}
 
-    
+
 
     </div>
   );

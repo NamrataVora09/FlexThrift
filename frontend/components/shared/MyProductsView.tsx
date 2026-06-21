@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
+import { useAuth } from '@/lib/auth-context';
 
 interface Product {
   id: number; title: string; product_number: string; listing_type: string; category: string;
@@ -43,22 +44,27 @@ function getImageUrl(path?: string) {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  pending: { bg: '#fff3cd', color: '#856404' },
-  approved: { bg: '#d1e7dd', color: '#0f5132' },
-  rejected: { bg: '#f8d7da', color: '#842029' },
-  sold: { bg: '#e2e3e5', color: '#41464b' },
-  inactive: { bg: '#e9ecef', color: '#6c757d' },
+  pending:  { bg: '#fef3c7', color: '#92400e' },
+  approved: { bg: '#dcfce7', color: '#15803d' },
+  rejected: { bg: '#fee2e2', color: '#dc2626' },
+  sold:     { bg: '#ede9fe', color: '#5b21b6' },
+  rented:   { bg: '#cffafe', color: '#0e7490' },
+  active:   { bg: '#dcfce7', color: '#15803d' },
+  inactive: { bg: '#f3f4f6', color: '#6b7280' },
 };
 
-const TABS = ['all', 'pending', 'approved', 'rejected'];
+const TABS = ['all', 'pending', 'approved', 'rejected', 'inactive'];
 
 export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
   const { toastSuccess, toastError } = useToast();
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const isBlockedSeller = user && user.role !== 'super_admin' && Number(user.blocked_seller) === 1;
 
   const load = () => {
     setLoading(true);
@@ -70,10 +76,16 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
 
   useEffect(() => { load(); }, [apiPath]);
 
+  const getDeletePath = (id: number) => {
+    if (role === 'super_admin') return `/superadmin/delete-product/${id}`;
+    if (role === 'admin') return `/superadmin/delete-product/${id}`;
+    return `/seller/delete-product/${id}`;
+  };
+
   const handleDelete = (id: number) => {
     confirmToast('Are you sure you want to delete this product? This action cannot be undone.', async () => {
       setActionLoading(true);
-      const res = await api.post(`/seller/delete-product/${id}`);
+      const res = await api.post(getDeletePath(id));
       setActionLoading(false);
       if (res?.success) {
         toastSuccess('product_delete_success', 'Product deleted successfully.');
@@ -92,9 +104,10 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: products.length };
-    c.pending = products.filter(p => p.status === 'pending').length;
+    c.pending  = products.filter(p => p.status === 'pending').length;
     c.approved = products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status)).length;
     c.rejected = products.filter(p => p.status === 'rejected').length;
+    c.inactive = products.filter(p => p.status === 'inactive').length;
     return c;
   }, [products]);
 
@@ -110,29 +123,51 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
             <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: '0.75rem' }}>Manage all your uploaded products.</p>
           </div>
           <div className="d-flex gap-2">
-            <Link href={uploadPath} className="btn sa-filter-btn d-flex align-items-center gap-2" style={btnGold}>
-              <i className="bi bi-plus-circle"></i> Upload New Product
-            </Link>
+            {isBlockedSeller ? (
+              <button
+                className="btn sa-filter-btn d-flex align-items-center gap-2"
+                style={{ ...btnGold, background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed' }}
+                disabled
+                title="Your seller role is blocked"
+              >
+                <i className="bi bi-plus-circle"></i> Upload New Product
+              </button>
+            ) : (
+              <Link href={uploadPath} className="btn sa-filter-btn d-flex align-items-center gap-2" style={btnGold}>
+                <i className="bi bi-plus-circle"></i> Upload New Product
+              </Link>
+            )}
           </div>
         </div>
 
         {/* Filter Tabs */}
         <div className="d-flex gap-2 mb-4" style={{ overflowX: 'auto', paddingBottom: 5 }}>
-          {TABS.map((t) => (
-            <button key={t} className="btn" onClick={() => setFilter(t)}
-              style={{
-                border: 'none', padding: '0.5rem 1rem', borderRadius: '0.5rem', fontWeight: 500,
-                whiteSpace: 'nowrap', fontSize: '0.85rem',
-                background: filter === t ? '#ffc63a' : '#fff',
-                color: filter === t ? '#fff' : '#677788',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
-              }}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-              <span className="badge rounded-pill ms-2" style={{ background: filter === t ? 'rgba(0,0,0,0.15)' : '#f1f2f4', color: filter === t ? '#fff' : '#677788', fontSize: '0.7rem' }}>
-                {counts[t] || 0}
-              </span>
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const tabLabel = t === 'approved' ? 'Live / Approved' : t.charAt(0).toUpperCase() + t.slice(1);
+            const tabColor = t === 'pending' ? '#92400e' : t === 'rejected' ? '#dc2626' : t === 'inactive' ? '#6b7280' : undefined;
+            const isActive = filter === t;
+            return (
+              <button key={t} className="btn" onClick={() => setFilter(t)}
+                style={{
+                  border: isActive ? 'none' : '1px solid #f0f0f0',
+                  padding: '0.5rem 1.1rem', borderRadius: '0.5rem', fontWeight: 500,
+                  whiteSpace: 'nowrap', fontSize: '0.85rem',
+                  background: isActive ? (tabColor ? 'transparent' : '#ffc63a') : '#fff',
+                  color: isActive ? (tabColor || '#fff') : '#677788',
+                  boxShadow: isActive ? `0 0 0 2px ${tabColor || '#ffc63a'}` : '0 1px 3px rgba(0,0,0,0.05)',
+                  transition: 'all 0.15s',
+                }}>
+                {tabLabel}
+                <span className="badge rounded-pill ms-2" style={{
+                  background: isActive ? (tabColor ? `${tabColor}22` : 'rgba(0,0,0,0.15)') : '#f1f2f4',
+                  color: isActive ? (tabColor || '#fff') : '#677788',
+                  fontSize: '0.7rem'
+                }}>
+                  {counts[t] || 0}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Table */}
@@ -201,25 +236,25 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                           <td style={tdStyle}>
                             {(() => {
                               const rawStatus = p.status?.trim() || '';
-                              const displayStatus = ['sold', 'rented', 'active'].includes(rawStatus) ? 'approved' : rawStatus;
-                              const statusStyle =
-                                displayStatus === 'approved'
-                                  ? { background: '#dcfce7', color: '#15803d' }
-                                  : displayStatus === 'rejected'
-                                    ? { background: '#fee2e2', color: '#dc2626' }
-                                    : { background: '#f3f4f6', color: '#6b7280' };
+                              const statusStyle = STATUS_COLORS[rawStatus] || { bg: '#f3f4f6', color: '#6b7280' };
 
-                              const label = !displayStatus
-                                ? 'UNKNOWN'
-                                : displayStatus.toUpperCase();
+                              const statusLabel = rawStatus
+                                ? rawStatus.toUpperCase()
+                                : 'UNKNOWN';
+
                               return (
                                 <>
-                                  <span className="badge" style={{ ...statusStyle, fontWeight: 700, padding: '3px 11px', borderRadius: '9999px', fontSize: '0.6rem', textTransform: 'uppercase' }}>
-                                    {label}
+                                  <span className="badge" style={{ background: statusStyle.bg, color: statusStyle.color, fontWeight: 700, padding: '3px 11px', borderRadius: '9999px', fontSize: '0.6rem', textTransform: 'uppercase' }}>
+                                    {statusLabel}
                                   </span>
                                   {rawStatus === 'rejected' && p.admin_remarks && (
                                     <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: 4, maxWidth: 150 }}>
                                       <i className="bi bi-info-circle me-1"></i>{p.admin_remarks}
+                                    </div>
+                                  )}
+                                  {rawStatus === 'pending' && (
+                                    <div style={{ fontSize: '0.65rem', color: '#92400e', marginTop: 3 }}>
+                                      <i className="bi bi-hourglass-split me-1"></i>Awaiting approval
                                     </div>
                                   )}
                                 </>
@@ -258,9 +293,15 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                               >
                                 <i className="bi bi-eye"></i> View
                               </Link>
-                              <Link href={`/${role === 'super_admin' ? 'superadmin' : role}/upload-product?edit=${p.id}`} className="btn btn-sm border-[#008080]! text-[#008080]! hover:bg-[#008080]! hover:text-white!" style={{ borderRadius: 8 }}>
-                                <i className="bi bi-pencil me-1"></i> Edit
-                              </Link>
+                              {isBlockedSeller ? (
+                                <button className="btn btn-sm" style={{ borderRadius: 8, background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed', border: 'none' }} disabled title="Your seller role is blocked">
+                                  <i className="bi bi-pencil me-1"></i> Edit
+                                </button>
+                              ) : (
+                                <Link href={`/${role === 'super_admin' ? 'superadmin' : role}/upload-product?edit=${p.id}`} className="btn btn-sm border-[#008080]! text-[#008080]! hover:bg-[#008080]! hover:text-white!" style={{ borderRadius: 8 }}>
+                                  <i className="bi bi-pencil me-1"></i> Edit
+                                </Link>
+                              )}
                               <button className="btn btn-sm border-[#ef4444]! text-[#ef4444]! hover:bg-[#ef4444]! hover:text-white!" style={{ borderRadius: 8 }} onClick={() => handleDelete(p.id)}>
                                 <i className="bi bi-trash me-1"></i> Delete
                               </button>
@@ -278,9 +319,20 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                 <h5 className="mt-3 text-muted">
                   {filter !== 'all' ? `No ${filter} products found` : 'No products uploaded yet'}
                 </h5>
-                <Link href={uploadPath} className="btn mt-3 sa-filter-btn" style={btnGold}>
-                  <i className="bi bi-upload me-2"></i> Upload Your First Product
-                </Link>
+                {isBlockedSeller ? (
+                  <button
+                    className="btn mt-3 sa-filter-btn"
+                    style={{ ...btnGold, background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed' }}
+                    disabled
+                    title="Your seller role is blocked"
+                  >
+                    <i className="bi bi-upload me-2"></i> Upload Your First Product
+                  </button>
+                ) : (
+                  <Link href={uploadPath} className="btn mt-3 sa-filter-btn" style={btnGold}>
+                    <i className="bi bi-upload me-2"></i> Upload Your First Product
+                  </Link>
+                )}
               </div>
             )}
           </div>

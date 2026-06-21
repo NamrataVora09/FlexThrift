@@ -25,14 +25,14 @@ function saveWishlist(items: WishlistItem[]) {
 
 export function addToWishlist(item: WishlistItem): boolean {
   const wishlist = getWishlist();
-  if (wishlist.some((i) => i.id === item.id)) return false;
+  if (wishlist.some((i) => Number(i.id) === Number(item.id))) return false;
   wishlist.push(item);
   saveWishlist(wishlist);
   return true;
 }
 
-export function removeFromWishlist(id: number) {
-  saveWishlist(getWishlist().filter((i) => i.id !== id));
+export function removeFromWishlist(id: number | string) {
+  saveWishlist(getWishlist().filter((i) => Number(i.id) !== Number(id)));
 }
 
 export function getWishlistItems(): WishlistItem[] {
@@ -43,8 +43,8 @@ export function getWishlistCount(): number {
   return getWishlist().length;
 }
 
-export function isInWishlist(id: number): boolean {
-  return getWishlist().some((i) => i.id === id);
+export function isInWishlist(id: number | string): boolean {
+  return getWishlist().some((i) => Number(i.id) === Number(id));
 }
 
 export function clearWishlist() {

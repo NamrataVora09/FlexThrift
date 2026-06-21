@@ -49,14 +49,14 @@ export default function NotificationsView({ role, apiPath }: Props) {
                   let color = '#adb5bd';
                   let bg = '#f8f9fa';
 
-                  if (title.includes('accepted') || title.includes('finalized') || title.includes('confirmed')) {
-                    icon = 'bi bi-chat-left-dots-fill';
-                    color = '#2e7d32'; // Green
-                    bg = '#e8f5e9';
-                  } else if (title.includes('rejected') || title.includes('not accepted')) {
+                  if (title.includes('rejected') || title.includes('not accepted') || title.includes('retracted')) {
                     icon = 'bi bi-chat-left-dots-fill';
                     color = '#d32f2f'; // Red
                     bg = '#ffebee';
+                  } else if (title.includes('accepted') || title.includes('finalized') || title.includes('confirmed')) {
+                    icon = 'bi bi-chat-left-dots-fill';
+                    color = '#2e7d32'; // Green
+                    bg = '#e8f5e9';
                   } else if (title.includes('suggested') || title.includes('proposed') || msg.includes('suggested') || msg.includes('proposed')) {
                     icon = 'fa-solid fa-calendar-days';
                     color = '#1976d2';

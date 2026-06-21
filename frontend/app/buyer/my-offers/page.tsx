@@ -22,8 +22,9 @@ function RentalCalendar({ bookedRanges, startDate, endDate, onRangeChange }: {
 
   const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const parse = (s: string) => { if (!s) return null; const [y, m, day] = s.split('-').map(Number); return new Date(y, m - 1, day); };
+  const dateOnly = (s: string) => s ? s.split(' ')[0] : s;
 
-  const isBooked = (d: Date) => { const ds = fmt(d); return bookedRanges.some(r => ds >= r.start && ds <= r.end); };
+  const isBooked = (d: Date) => { const ds = fmt(d); return bookedRanges.some(r => ds >= dateOnly(r.start) && ds <= dateOnly(r.end)); };
   const sD = parse(startDate), eD = parse(endDate);
   const inRange = (d: Date) => {
     if (!sD) return false;

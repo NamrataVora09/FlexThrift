@@ -257,6 +257,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
       router.push('/login');
       return;
     }
+    if (Number(user.blocked_buyer) === 1) {
+      setOfferError('Your account has been restricted from making offers by the administrator.');
+      return;
+    }
     if (product.listing_type === 'rent' && (!offerForm.rental_start_date || !offerForm.rental_end_date)) {
       setOfferError('Please select your rental dates on the calendar first.');
       return;
@@ -531,14 +535,18 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
             {/* Brand info after price */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
-              <div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Original Brand</div>
-                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#3b404a' }}>{product.orignal_brand || 'Premium Listing'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Brand</div>
-                <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#3b404a' }}>{product.seller_brand || '—'}</div>
-              </div>
+              {product.orignal_brand && (
+                <div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Original Brand</div>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#3b404a' }}>{product.orignal_brand}</div>
+                </div>
+              )}
+              {product.seller_brand && (
+                <div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Brand</div>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem', color: '#3b404a' }}>{product.seller_brand}</div>
+                </div>
+              )}
             </div>
 
 
@@ -617,6 +625,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
                   <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'stretch' }}>
                     <button
+                      disabled={isPreview || Number(user?.blocked_buyer) === 1}
                       onClick={() => {
                         if (inWishlist) {
                           removeFromWishlist(Number(product.id));

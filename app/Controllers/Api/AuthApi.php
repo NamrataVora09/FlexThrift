@@ -48,6 +48,13 @@ class AuthApi extends ResourceController
             ], 403);
         }
 
+        if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
+            return $this->respond([
+                'success' => false,
+                'message' => 'Your buyer role has been blocked by admin',
+            ], 403);
+        }
+
         if (!password_verify($password, $user['password'])) {
             log_message('warning', 'Failed login attempt for: ' . $email);
             return $this->respond([
@@ -130,6 +137,13 @@ class AuthApi extends ResourceController
 
         if (!empty($user['is_blocked'])) {
             return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+        }
+
+        if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
+            return $this->respond([
+                'success' => false,
+                'message' => 'Your buyer role has been blocked by admin',
+            ], 403);
         }
 
         $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
@@ -679,6 +693,12 @@ class AuthApi extends ResourceController
             // Existing user — login
             if (!empty($user['is_blocked'])) {
                 return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+            }
+            if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'Your buyer role has been blocked by admin',
+                ], 403);
             }
             $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
         } else {

@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import React from 'react';
 import ProfileDropdown from '@/components/shared/ProfileDropdown';
 import { useSystem } from '@/lib/system-context';
+import { showToast } from '@/lib/toast';
 
 interface Category { id: number; category_name?: string; name?: string; product_type_id: number; }
 interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
@@ -20,6 +21,15 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
   const { settings } = useSystem();
+
+  const handleBuyerLinkClick = (e: React.MouseEvent, callback?: () => void) => {
+    if (user && user.role !== 'super_admin' && Number(user.blocked_buyer) === 1) {
+      e.preventDefault();
+      showToast.error("Your buyer privileges have been restricted by the administrator.");
+      return;
+    }
+    if (callback) callback();
+  };
 
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
   const [showMegaMenu, setShowMegaMenu] = useState(false);
@@ -150,7 +160,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                               <Link
                                 href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
                                 className="text-[11px] font-bold uppercase tracking-[0.15em] text-red-500 hover:text-red-600 transition-colors"
-                                onClick={() => { setShowMegaMenu(false); setMegaSearch(''); }}
+                                onClick={(e) => handleBuyerLinkClick(e, () => { setShowMegaMenu(false); setMegaSearch(''); })}
                               >
                                 {lt.type_name}
                               </Link>
@@ -160,7 +170,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                                     key={pt.id}
                                     href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}&product_type_id=${pt.id}`}
                                     className="text-[13px] text-gray-600 hover:text-black transition-colors"
-                                    onClick={() => { setShowMegaMenu(false); setMegaSearch(''); }}
+                                    onClick={(e) => handleBuyerLinkClick(e, () => { setShowMegaMenu(false); setMegaSearch(''); })}
                                   >
                                     {pt.name}
                                   </Link>
@@ -182,6 +192,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                 <Link
                   href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
                   className="hover:text-gold transition-colors whitespace-nowrap"
+                  onClick={handleBuyerLinkClick}
                 >
                   {lt.type_name}
                 </Link>
@@ -304,7 +315,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
             <div>
               <p className="text-[10px] uppercase tracking-widest text-gray-400 font-black mb-4">Marketplace</p>
               <div className="space-y-4">
-                <Link href="/buyer/browse" className="block text-lg font-bold hover:text-gold transition-colors" onClick={() => setMobileNavOpen(false)}>
+                <Link href="/buyer/browse" className="block text-lg font-bold hover:text-gold transition-colors" onClick={(e) => handleBuyerLinkClick(e, () => setMobileNavOpen(false))}>
                   All Products
                 </Link>
                 {listingTypes.map(lt => (
@@ -312,7 +323,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                     key={lt.id}
                     href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
                     className="block text-lg font-bold hover:text-gold transition-colors"
-                    onClick={() => setMobileNavOpen(false)}
+                    onClick={(e) => handleBuyerLinkClick(e, () => setMobileNavOpen(false))}
                   >
                     {lt.type_name}
                   </Link>

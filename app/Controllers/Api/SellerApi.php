@@ -222,7 +222,7 @@ class SellerApi extends ResourceController
             $config[$s['setting_key']] = $s['setting_value'];
 
         $defaults = [
-            'sale_base_discount' => 0, 
+            'sale_base_discount' => 0,
             'rental_base_deposit_deduction' => 0,
             'rental_max_cost_cap_per_day' => 14,
             'fallback_rental_cost_per_day' => 10,
@@ -1235,6 +1235,28 @@ class SellerApi extends ResourceController
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
         $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
 
+        // Set product status to pending so admins/superadmin see it in review queue
+        $db->table('products')->where('id', $id)->update([
+            'status' => 'pending',
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // Notify all admins and super_admins about the pending edit request
+        $admins = $db->table('users')
+            ->whereIn('role', ['admin', 'super_admin'])
+            ->where('is_blocked', 0)
+            ->get()->getResultArray();
+        foreach ($admins as $admin) {
+            $db->table('notifications')->insert([
+                'user_id' => $admin['id'],
+                'title' => 'Product Edit Request',
+                'message' => 'A seller has submitted an edit request for product "' . ($product['title'] ?? 'ID:' . $id) . '" and it is pending your review.',
+                'type' => 'product_edit',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
         return $this->respond([
             'success' => true,
             'message' => $reviewRequired ? 'Edit request submitted for admin approval' : 'Product updated successfully'
@@ -2010,9 +2032,9 @@ class SellerApi extends ResourceController
             if (!validateDepositWithRules($originalPrice, $deposit, $usedTimes, $ltId, $cId, $scId)) {
                 return ['success' => false, 'message' => 'Rental deposit exceeds the maximum allowed threshold.'];
             }
-            if (!validateRentalCostWithRules($deposit, $rentalCost, $usedTimes, $ltId, $cId, $scId)) {
-                return ['success' => false, 'message' => 'Daily rental cost exceeds the maximum allowed daily cap.'];
-            }
+            // if (!validateRentalCostWithRules($deposit, $rentalCost, $usedTimes, $ltId, $cId, $scId)) {
+            //     return ['success' => false, 'message' => 'Daily rental cost exceeds the maximum allowed daily cap.'];
+            // }
         }
 
         return ['success' => true];

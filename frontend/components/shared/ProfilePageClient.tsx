@@ -133,9 +133,9 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
     return new Date(d).toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' });
   };
 
-  const isBuyer = user?.user_type === 'buyer' || user?.user_type === 'both';
-  const isSeller = user?.user_type === 'seller' || user?.user_type === 'both' || user?.role === 'seller';
-  const subsHref = isSeller && user?.role === 'seller' ? '/seller/subscriptions' : '/buyer/subscriptions';
+  const isBuyer = user?.user_type === 'buyer' || user?.user_type === 'both' || user?.role === 'admin' || user?.role === 'super_admin';
+  const isSeller = user?.user_type === 'seller' || user?.user_type === 'both' || user?.role === 'admin' || user?.role === 'super_admin';
+  const subsHref = isSeller && user?.role === 'admin' || user?.role === 'super_admin' ? '/seller/subscriptions' : '/buyer/subscriptions';
 
   return (
     <DashboardLayout requiredRoles={requiredRoles}>
@@ -505,7 +505,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                         Buyer Points
                       </div>
                       <div className="rating-circle">
-                        {user.reliability_score ?? 0}
+                        {user.buyer_rating_count ?? 0}
                       </div>
                       <div className="rating-title">Total Points Earned</div>
                       <div className="rating-desc">
@@ -522,7 +522,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                         Seller Points
                       </div>
                       <div className="rating-circle">
-                        {user.seller_reliability_score ?? 0}
+                        {user.seller_rating_count ?? 0}
                       </div>
                       <div className="rating-title">Total Points Earned</div>
                       <div className="rating-desc">

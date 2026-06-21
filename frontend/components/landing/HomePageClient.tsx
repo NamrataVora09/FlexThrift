@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
+import { showToast } from '@/lib/toast';
 import LandingNavbar from '../layout/LandingNavbar';
 import Footer from '../layout/Footer';
 import AdBanner from '../shared/AdBanner';
@@ -373,6 +374,8 @@ export default function HomePageClient() {
         router.replace('/delivery');
       } else if (user.user_type === 'seller') {
         router.replace('/seller');
+      } else if (user.user_type === 'both' && Number(user.blocked_buyer) === 1) {
+        router.replace('/seller');
       } else {
         router.replace('/buyer/browse');
       }
@@ -459,10 +462,11 @@ export default function HomePageClient() {
     if (!res.success) { setSidebarError(res.message || 'Login failed'); return; }
     try {
       const u = JSON.parse(localStorage.getItem('flex_user') || '{}');
-      const role = u.role || u.user_type || '';
-      if (role === 'seller') router.push('/seller');
-      else if (role === 'admin') router.push('/admin');
-      else if (role === 'super_admin') router.push('/superadmin');
+      if (u.role === 'super_admin') router.push('/superadmin');
+      else if (u.role === 'admin') router.push('/admin');
+      else if (u.role === 'delivery') router.push('/delivery');
+      else if (u.user_type === 'seller') router.push('/seller');
+      else if (u.user_type === 'both' && Number(u.blocked_buyer) === 1) router.push('/seller');
       else router.push('/buyer/browse');
     } catch {
       router.push('/buyer/browse');
@@ -478,13 +482,26 @@ export default function HomePageClient() {
     if (!res.success) { setSidebarError(res.message || 'Login failed'); return; }
     
     const u = JSON.parse(localStorage.getItem('flex_user') || '{}');
-    const role = u.role || u.user_type || '';
-    if (role === 'super_admin') router.push('/superadmin');
-    else if (role === 'admin') router.push('/admin');
-    else if (role === 'delivery') router.push('/delivery');
-    else if (role === 'seller') router.push('/seller');
-    else if (sidebarMode === 'sell' && role !== 'buyer') router.push('/seller');
+    if (u.role === 'super_admin') router.push('/superadmin');
+    else if (u.role === 'admin') router.push('/admin');
+    else if (u.role === 'delivery') router.push('/delivery');
+    else if (u.user_type === 'seller') router.push('/seller');
+    else if (u.user_type === 'both' && Number(u.blocked_buyer) === 1) router.push('/seller');
+    else if (sidebarMode === 'sell' && u.user_type !== 'buyer') {
+      if (u.user_type === 'both' && Number(u.blocked_seller) === 1) {
+        router.push('/buyer/browse');
+      } else {
+        router.push('/seller');
+      }
+    }
     else router.push('/buyer/browse');
+  };
+
+  const handleBuyerLinkClick = (e: React.MouseEvent) => {
+    if (user && user.role !== 'super_admin' && Number(user.blocked_buyer) === 1) {
+      e.preventDefault();
+      showToast.error("Your buyer privileges have been restricted by the administrator.");
+    }
   };
 
   const handleSidebarForgot = async () => {
@@ -721,6 +738,7 @@ export default function HomePageClient() {
               <Fragment key={cat.name}>
                 <Link
                   href={`/buyer/browse?listing_type=${cat.slug}`}
+                  onClick={handleBuyerLinkClick}
                   className={`flex sm:flex-row flex-col  ${i % 2 == 1 ? 'sm:flex-row-reverse flex-col' : ''} h-[390px] rounded-lg overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.1)] group relative`}
                 >
                   {/* Left: category name — centered vertically & horizontally */}

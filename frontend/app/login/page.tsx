@@ -20,6 +20,7 @@ export default function LoginPage() {
       else if (user.role === 'admin') router.replace('/admin');
       else if (user.role === 'delivery') router.replace('/delivery');
       else if (user.user_type === 'seller') router.replace('/seller');
+      else if (user.user_type === 'both' && Number(user.blocked_buyer) === 1) router.replace('/seller');
       else router.replace('/buyer/browse');
     }
   }, [isLoading, isAuthenticated, user, router]);
@@ -31,18 +32,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const redirectByRole = (role: string) => {
+  const redirectByRole = (u: any) => {
     const pendingRedirect = typeof window !== 'undefined' ? sessionStorage.getItem('redirect_after_login') : null;
     if (pendingRedirect) {
       sessionStorage.removeItem('redirect_after_login');
       router.push(pendingRedirect);
       return;
     }
-    if (role === 'super_admin') router.push('/superadmin');
-    else if (role === 'admin') router.push('/admin');
-    else if (role === 'delivery') router.push('/delivery');
-    else if (role === 'seller') router.push('/seller');
-    else router.push('/');
+    if (u.role === 'super_admin') router.push('/superadmin');
+    else if (u.role === 'admin') router.push('/admin');
+    else if (u.role === 'delivery') router.push('/delivery');
+    else if (u.user_type === 'seller') router.push('/seller');
+    else if (u.user_type === 'both' && Number(u.blocked_buyer) === 1) router.push('/seller');
+    else router.push('/buyer/browse');
   };
 
   const handlePasswordLogin = async (e: FormEvent) => {
@@ -53,7 +55,7 @@ export default function LoginPage() {
     setLoading(false);
     if (result.success) {
       const user = JSON.parse(localStorage.getItem('flex_user') || '{}');
-      redirectByRole(user.role);
+      redirectByRole(user);
     } else {
       setError(result.message || getMsg('login_failed', 'Login failed'));
     }
