@@ -451,7 +451,22 @@ export default function HomePageClient() {
     setSidebarLoading(true);
     const res = await verifyOtp(sidebarEmail, sidebarOtp);
     setSidebarLoading(false);
-    if (!res.success) setSidebarError(res.message || 'Invalid OTP');
+    if (res.success) {
+      try {
+        const u = JSON.parse(localStorage.getItem('flex_user') || '{}');
+        if (u.role === 'super_admin') router.push('/superadmin');
+        else if (u.role === 'admin') router.push('/admin');
+        else if (u.role === 'delivery') router.push('/delivery');
+        else if (u.user_type === 'seller') router.push('/seller');
+        else if (u.user_type === 'both' && Number(u.blocked_buyer) === 1) router.push('/seller');
+        else if (u.user_type === 'both' && Number(u.blocked_seller) === 1) router.push('/buyer/dashboard');
+        else router.push('/buyer/browse');
+      } catch {
+        router.push('/buyer/browse');
+      }
+    } else {
+      setSidebarError(res.message || 'Invalid OTP');
+    }
   };
 
   const handleLogin = async () => {
@@ -467,6 +482,7 @@ export default function HomePageClient() {
       else if (u.role === 'delivery') router.push('/delivery');
       else if (u.user_type === 'seller') router.push('/seller');
       else if (u.user_type === 'both' && Number(u.blocked_buyer) === 1) router.push('/seller');
+      else if (u.user_type === 'both' && Number(u.blocked_seller) === 1) router.push('/buyer/dashboard');
       else router.push('/buyer/browse');
     } catch {
       router.push('/buyer/browse');
@@ -487,12 +503,9 @@ export default function HomePageClient() {
     else if (u.role === 'delivery') router.push('/delivery');
     else if (u.user_type === 'seller') router.push('/seller');
     else if (u.user_type === 'both' && Number(u.blocked_buyer) === 1) router.push('/seller');
+    else if (u.user_type === 'both' && Number(u.blocked_seller) === 1) router.push('/buyer/dashboard');
     else if (sidebarMode === 'sell' && u.user_type !== 'buyer') {
-      if (u.user_type === 'both' && Number(u.blocked_seller) === 1) {
-        router.push('/buyer/browse');
-      } else {
-        router.push('/seller');
-      }
+      router.push('/seller');
     }
     else router.push('/buyer/browse');
   };

@@ -61,13 +61,16 @@ export default function VerifyOtpPage() {
       sessionStorage.removeItem('otp_type');
       const user = JSON.parse(localStorage.getItem('flex_user') || '{}');
       const role = user.role;
+      const userType = user.user_type;
       const pendingRedirect = sessionStorage.getItem('redirect_after_login');
       if (pendingRedirect) { sessionStorage.removeItem('redirect_after_login'); router.push(pendingRedirect); }
       else if (role === 'super_admin') router.push('/superadmin');
       else if (role === 'admin') router.push('/admin');
       else if (role === 'delivery') router.push('/delivery');
-      else if (role === 'seller') router.push('/seller');
-      else router.push('/');
+      else if (userType === 'seller' || role === 'seller') router.push('/seller');
+      else if (userType === 'both' && Number(user.blocked_buyer) === 1) router.push('/seller');
+      else if (userType === 'both' && Number(user.blocked_seller) === 1) router.push('/buyer/dashboard');
+      else router.push('/buyer/browse');
     } else {
       setError(result.message || 'Invalid OTP');
     }

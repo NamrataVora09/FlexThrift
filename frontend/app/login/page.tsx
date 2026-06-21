@@ -21,6 +21,7 @@ export default function LoginPage() {
       else if (user.role === 'delivery') router.replace('/delivery');
       else if (user.user_type === 'seller') router.replace('/seller');
       else if (user.user_type === 'both' && Number(user.blocked_buyer) === 1) router.replace('/seller');
+      else if (user.user_type === 'both' && Number(user.blocked_seller) === 1) router.replace('/buyer/dashboard');
       else router.replace('/buyer/browse');
     }
   }, [isLoading, isAuthenticated, user, router]);
@@ -44,6 +45,7 @@ export default function LoginPage() {
     else if (u.role === 'delivery') router.push('/delivery');
     else if (u.user_type === 'seller') router.push('/seller');
     else if (u.user_type === 'both' && Number(u.blocked_buyer) === 1) router.push('/seller');
+    else if (u.user_type === 'both' && Number(u.blocked_seller) === 1) router.push('/buyer/dashboard');
     else router.push('/buyer/browse');
   };
 

@@ -742,7 +742,7 @@ export default function BrowsePage() {
               Please contact platform support for more information or to request a review of your account status.
             </div>
             <button
-              onClick={() => router.push(user.role === 'admin' ? '/admin' : (user.user_type === 'both' ? '/seller' : '/buyer/dashboard'))}
+              onClick={() => router.push(user?.role === 'admin' ? '/admin' : (user?.user_type === 'both' && Number(user?.blocked_seller) !== 1 ? '/seller' : '/buyer/dashboard'))}
               className="btn btn-dark w-100 py-3"
               style={{ borderRadius: 12, fontWeight: 700, background: '#000', color: '#fff', border: 'none', transition: 'all 0.2s' }}
             >
