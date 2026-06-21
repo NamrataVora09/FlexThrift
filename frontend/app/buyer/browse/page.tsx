@@ -679,9 +679,9 @@ export default function BrowsePage() {
   const handleWishlist = (p: Product, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const isCurrentlyWishlisted = wishlist.some(id => Number(id) === Number(p.id));
-    
+
     if (isCurrentlyWishlisted) {
       removeFromWishlist(p.id);
       setWishlist(prev => prev.filter(id => Number(id) !== Number(p.id)));
@@ -785,6 +785,9 @@ export default function BrowsePage() {
         .em-heading { font-family: 'Manrope', sans-serif !important; }
 
         /* Product card wish button hover */
+        .product-card{
+        width:300px;
+        }
         .product-card .wish-btn {
           opacity: 0;
           transform: translateX(-50%) translateY(12px);
@@ -1216,7 +1219,7 @@ export default function BrowsePage() {
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '70px 45px',
+                  gap: '0px 45px',
                   position: 'relative',
                   minHeight: 200,
                   opacity: loading ? 0.5 : 1,
@@ -1528,7 +1531,7 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
       <Link href={`/buyer/product/${slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}>
 
         {/* ── Image wrapper ── */}
-        <div className="relative w-full overflow-hidden rounded-2xl mb-3">
+        <div className="relative w-[300px] overflow-hidden rounded-2xl mb-3">
           {images.length > 0 ? images.map((img, i) => (
             <img
               key={i}
