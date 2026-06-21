@@ -2154,11 +2154,19 @@ class SuperAdminApi extends ResourceController
             return $this->respond(['success' => false, 'message' => 'Invalid status.'], 422);
         }
 
-        $db->table('products')->where('id', $id)->update([
-            'status' => $newStatus,
+        $updateFields = [
+            'status'       => $newStatus,
             'admin_remarks' => $remarks,
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+            'updated_at'   => date('Y-m-d H:i:s'),
+        ];
+
+        // Clear pending_reason and previous_data when status moves away from pending
+        if (in_array($newStatus, ['approved', 'rejected'])) {
+            $updateFields['pending_reason'] = null;
+            $updateFields['previous_data'] = null;
+        }
+
+        $db->table('products')->where('id', $id)->update($updateFields);
 
         return $this->respond(['success' => true, 'message' => "Product status changed to {$newStatus}."]);
     }

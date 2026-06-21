@@ -1337,9 +1337,36 @@ class SellerApi extends ResourceController
             }
         }
 
-        // If review is not required, ensure the product is approved
-        if (!$reviewRequired || in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin'])) {
+        // Status logic:
+        // - super_admin: always auto-approved (clear pending_reason)
+        // - admin: always goes to pending with reason 'admin_edit' (shown separately from new uploads)
+        // - regular seller: approved only if review is not required
+        if (in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $updateData['status'] = 'approved';
+            $updateData['pending_reason'] = null;
+            $updateData['previous_data'] = null;
+        } elseif ($jwtUser['role'] === 'admin') {
+            $updateData['status'] = 'pending';
+            $updateData['pending_reason'] = 'admin_edit';
+            // Snapshot the key fields BEFORE overwriting, so super_admin can see what changed
+            $snapshotFields = [
+                'title', 'description', 'listing_type', 'listing_type_category',
+                'product_type', 'category', 'sub_category', 'color', 'gender',
+                'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
+                'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
+                'has_bill', 'allow_alter_fitting',
+            ];
+            $snapshot = [];
+            foreach ($snapshotFields as $field) {
+                if (isset($product[$field])) {
+                    $snapshot[$field] = $product[$field];
+                }
+            }
+            $updateData['previous_data'] = json_encode($snapshot);
+        } elseif (!$reviewRequired) {
+            $updateData['status'] = 'approved';
+            $updateData['pending_reason'] = null;
+            $updateData['previous_data'] = null;
         }
 
         // Update product

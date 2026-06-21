@@ -13,6 +13,8 @@ interface Product {
   dispatch_address: string; dispatch_city: string; dispatch_state: string; dispatch_pin_code: string;
   seller_name: string; seller_email: string; seller_mobile: string;
   seller_rating_avg?: string; seller_rating_count?: string; status: string; created_at: string;
+  pending_reason?: string | null;
+  previous_data?: string | null;
   images?: Array<{ id: number; image_path: string }>;
 }
 
@@ -51,18 +53,18 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<RejectionTemplate[]>([]);
 
-function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
-  return (
-    <div className="mb-3">
-      <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">{title}</h6>
-      <div className="ps-2" style={{ borderLeft: '3px solid #e2e8f0' }}>
-        {items.map((item, i) => (
-          <div className="mb-2" key={i}><small className="text-muted d-block">{item.l}</small><div className="fw-bold">{item.v}</div></div>
-        ))}
+  function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
+    return (
+      <div className="mb-3">
+        <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">{title}</h6>
+        <div className="ps-2" style={{ borderLeft: '3px solid #e2e8f0' }}>
+          {items.map((item, i) => (
+            <div className="mb-2" key={i}><small className="text-muted d-block">{item.l}</small><div className="fw-bold">{item.v}</div></div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   // Reject modal
   const [rejectModal, setRejectModal] = useState<{ id: number; title: string; type: 'product' | 'edit' } | null>(null);
@@ -81,8 +83,11 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
   const [inspectImages, setInspectImages] = useState<Array<{ id: number; image_path: string }>>([]);
   const [imgIdx, setImgIdx] = useState(0);
 
-  // Comparison modal
+  // Comparison modal (edit requests)
   const [comparison, setComparison] = useState<{ request: any; original: any; original_images: any[] } | null>(null);
+
+  // Admin edit diff modal
+  const [adminEditDiff, setAdminEditDiff] = useState<Product | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -118,7 +123,7 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
     const res = await api.post(`/shared/approve-product/${approveModal.id}`, { remarks: approveRemarks });
     if (res.success) {
       toastSuccess('product_approve_success', 'Product approved!');
-      setApproveModal(null); 
+      setApproveModal(null);
       setApproveRemarks('');
       load();
     } else {
@@ -141,8 +146,8 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
     }
     if (res.success) {
       toastSuccess(rejectModal.type === 'product' ? 'product_reject_success' : 'edit_request_reject_success', rejectModal.type === 'product' ? 'Product rejected' : 'Edit request rejected');
-      setRejectModal(null); 
-      setRejectReason(''); 
+      setRejectModal(null);
+      setRejectReason('');
       setSelectedTemplateId(null);
       setTemplateSearchInput('');
       load();
@@ -189,7 +194,7 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
       const res = await api.post(`${baseApiPath}/approve-edit-request/${id}`);
       if (res.success) {
         toastSuccess('edit_request_approve_success', 'Edit request approved and merged!');
-        setComparison(null); 
+        setComparison(null);
         load();
       } else {
         toastError('edit_request_approve_failed', res.message || 'Failed to approve');
@@ -210,7 +215,9 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
     </DashboardLayout>
   );
 
-  const totalItems = products.length + editRequests.length;
+  const newUploads = products.filter(p => !p.pending_reason || p.pending_reason !== 'admin_edit');
+  const adminEdits = products.filter(p => p.pending_reason === 'admin_edit');
+  const totalItems = newUploads.length + adminEdits.length + editRequests.length;
 
   return (
     <DashboardLayout requiredRoles={[role]}>
@@ -229,14 +236,14 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
         {totalItems > 0 ? (
           <>
             {/* ── New Uploads ── */}
-            {products.length > 0 && (
+            {newUploads.length > 0 && (
               <>
                 <div className="mb-4 d-flex align-items-center gap-2">
                   <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#212529', fontWeight: 600 }}>New Uploads</span>
                   <hr className="flex-grow-1 opacity-25" />
                 </div>
                 <div className="row g-4 mb-5">
-                  {products.map((p) => (
+                  {newUploads.map((p) => (
                     <div className="col-md-6 col-xxl-4" key={p.id}>
                       <div style={{ border: 'none', borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.3s', height: '100%', display: 'flex', flexDirection: 'column' }}
                         onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
@@ -299,39 +306,43 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
               </>
             )}
 
-            {/* ── Edit Requests ── */}
-            {editRequests.length > 0 && (
+            {/* ── Admin Edits Pending ── */}
+            {adminEdits.length > 0 && (
               <>
                 <div className="mb-4 d-flex align-items-center gap-2 mt-5">
-                  <span className="badge bg-warning text-dark rounded-pill" style={{ fontWeight: 600 }}>Edit Requests (Side-by-Side Review)</span>
+                  <span className="badge bg-warning text-dark rounded-pill" style={{ fontWeight: 600 }}>Admin Edits Pending (Approve / Reject)</span>
                   <hr className="flex-grow-1 opacity-25" />
                 </div>
-                <div className="row g-4">
-                  {editRequests.map((r) => (
-                    <div className="col-md-6 col-xxl-4" key={r.id}>
+                <div className="row g-4 mb-5">
+                  {adminEdits.map((p) => (
+                    <div className="col-md-6 col-xxl-4" key={p.id}>
                       <div style={{ borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', border: '2px dashed rgba(255,193,7,0.4)', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ height: 160, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <i className="bi bi-pencil-square" style={{ fontSize: '2.5rem', color: '#94a3b8' }}></i>
-                          <div style={{ position: 'absolute', top: 10, right: 10 }}>
+                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          {p.images && p.images.length > 0 ? (
+                            <img src={resolveUrl(p.images[0].image_path)} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <i className="bi bi-pencil-square" style={{ fontSize: '2.5rem', color: '#94a3b8' }}></i>
+                          )}
+                          <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
                             <span className="badge bg-warning text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
                           </div>
                         </div>
                         <div style={{ padding: '1.5rem', flexGrow: 1 }}>
-                          <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem' }}>Product ID: {r.product_id}</small>
-                          <h5 className="fw-bold mb-3">{r.original_title}</h5>
+                          <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem' }}>Product ID: {p.id}</small>
+                          <h5 className="fw-bold mb-3">{p.title}</h5>
                           <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1rem' }}>
                             <div className="d-flex align-items-center gap-2">
-                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,193,7,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#f59e0b' }}>{r.seller_name?.charAt(0).toUpperCase()}</div>
+                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,193,7,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#f59e0b' }}>{p.seller_name?.charAt(0).toUpperCase()}</div>
                               <div>
-                                <div className="fw-bold small">{r.seller_name}</div>
-                                <div className="small text-muted">Reliability: {r.reliability_score}%</div>
+                                <div className="fw-bold small">{p.seller_name}</div>
+                                <div className="small text-muted">{p.seller_email}</div>
                               </div>
                             </div>
                           </div>
-                          <p className="small text-muted mb-0"><i className="bi bi-clock-history me-1"></i>Requested: {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}, {new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                          <p className="small text-muted mb-0"><i className="bi bi-clock-history me-1"></i>Edited: {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}, {new Date(p.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
-                        <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }}>
-                          <button className="btn w-100 py-3 rounded-3 fw-bold sa-filter-btn" style={{ background: '#ffc63a', color: '#212529', border: 'none' }} onClick={() => openComparison(r.id)}>
+                        <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
+                          <button className="btn w-100 py-3 rounded-3 fw-bold sa-filter-btn" style={{ background: '#ffc63a', color: '#212529', border: 'none' }} onClick={() => setAdminEditDiff(p)}>
                             <i className="bi bi-arrow-left-right me-2"></i>Review Changes & Act
                           </button>
                         </div>
@@ -341,6 +352,8 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
                 </div>
               </>
             )}
+            {/* ── Edit Requests ── */}
+
           </>
         ) : (
           <div className="text-center py-5 bg-white rounded-4 shadow-sm">
@@ -366,7 +379,7 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
                 <div className="mb-3">
                   <label className="form-label fw-bold small">Rejection Template (Optional)</label>
                   <div style={{ position: 'relative' }} ref={templateDropdownRef}>
-                    <div 
+                    <div
                       onClick={() => setTemplateDropdownOpen(!templateDropdownOpen)}
                       style={{
                         background: '#f8f9fa',
@@ -632,8 +645,8 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
                     ])}
                     {renderCompSection('Pricing', [
                       { l: 'Original Price', v: '₹' + Number(comparison.original?.original_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
-                      { 
-                        l: comparison.original?.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price', 
+                      {
+                        l: comparison.original?.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price',
                         v: '₹' + Number(comparison.original?.listing_type === 'rent' ? (comparison.original?.rental_cost || 0) : (comparison.original?.price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 }) + (comparison.original?.listing_type === 'rent' ? ' /day' : '')
                       },
                       comparison.original?.listing_type === 'rent' && { l: 'Security Deposit', v: '₹' + Number(comparison.original?.rental_deposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }
@@ -646,15 +659,15 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
                       <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Original Images ({(comparison.original_images || []).length})</h6>
                       <div className="row g-2">
                         {(comparison.original_images || []).map((img: any, i: number) => {
-                        const deletedIds = JSON.parse(comparison.request?.deleted_images_ids || '[]');
-                        const isDeleted = deletedIds.includes(String(img.id)) || deletedIds.includes(Number(img.id));
-                        return (
-                          <div className="col-4" key={i} style={{ position: 'relative' }}>
-                            <img src={resolveUrl(img.image_path)} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover', opacity: isDeleted ? 0.25 : 1 }} alt="" />
-                            {isDeleted && <span className="badge bg-danger position-absolute top-50 start-50 translate-middle" style={{ fontSize: '0.6rem' }}>DELETING</span>}
-                          </div>
-                        );
-                      })}
+                          const deletedIds = JSON.parse(comparison.request?.deleted_images_ids || '[]');
+                          const isDeleted = deletedIds.includes(String(img.id)) || deletedIds.includes(Number(img.id));
+                          return (
+                            <div className="col-4" key={i} style={{ position: 'relative' }}>
+                              <img src={resolveUrl(img.image_path)} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover', opacity: isDeleted ? 0.25 : 1 }} alt="" />
+                              {isDeleted && <span className="badge bg-danger position-absolute top-50 start-50 translate-middle" style={{ fontSize: '0.6rem' }}>DELETING</span>}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -681,12 +694,12 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
                           ])}
                           {renderCompSection('Pricing', [
                             { l: 'Original Price', v: diff('₹' + Number(orig.original_price || 0), '₹' + Number(updated.original_price || 0)) },
-                            { 
-                              l: updated.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price', 
+                            {
+                              l: updated.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price',
                               v: diff(
                                 '₹' + Number(orig.listing_type === 'rent' ? (orig.rental_cost || 0) : (orig.price || 0)) + (orig.listing_type === 'rent' ? ' /day' : ''),
                                 '₹' + Number(updated.listing_type === 'rent' ? (updated.rental_cost || 0) : (updated.price || 0)) + (updated.listing_type === 'rent' ? ' /day' : '')
-                              ) 
+                              )
                             },
                             updated.listing_type === 'rent' && { l: 'Security Deposit', v: diff('₹' + Number(orig.rental_deposit || 0), '₹' + Number(updated.rental_deposit || 0)) }
                           ].filter((item): item is { l: string; v: any } => !!item))}
@@ -731,6 +744,99 @@ function renderCompSection(title: string, items: Array<{ l: string; v: any }>) {
           </div>
         </div>
       )}
+      {/* ══ Admin Edit Diff Modal ══ */}
+      {adminEditDiff && (() => {
+        const prev = adminEditDiff.previous_data ? (() => { try { return JSON.parse(adminEditDiff.previous_data!); } catch { return {}; } })() : {};
+        const curr = adminEditDiff as any;
+        const fields: Array<{ label: string; prevKey: string; currKey: string; format?: (v: any) => string }> = [
+          { label: 'Title', prevKey: 'title', currKey: 'title' },
+          { label: 'Listing Type', prevKey: 'listing_type', currKey: 'listing_type' },
+          { label: 'Category', prevKey: 'listing_type_category', currKey: 'listing_type_category' },
+          { label: 'Product Type', prevKey: 'product_type', currKey: 'product_type' },
+          { label: 'Category', prevKey: 'category', currKey: 'category' },
+          { label: 'Sub-Category', prevKey: 'sub_category', currKey: 'sub_category' },
+          { label: 'Color', prevKey: 'color', currKey: 'color' },
+          { label: 'Gender', prevKey: 'gender', currKey: 'gender' },
+          { label: 'Times Used', prevKey: 'used_times', currKey: 'used_times' },
+          { label: 'Original Price', prevKey: 'original_price', currKey: 'original_price', format: (v) => v ? `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—' },
+          { label: 'Sale Price', prevKey: 'price', currKey: 'price', format: (v) => v ? `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—' },
+          { label: 'Rental Cost/day', prevKey: 'rental_cost', currKey: 'rental_cost', format: (v) => v ? `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—' },
+          { label: 'Rental Deposit', prevKey: 'rental_deposit', currKey: 'rental_deposit', format: (v) => v ? `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—' },
+          { label: 'Description', prevKey: 'description', currKey: 'description' },
+          { label: 'Dispatch Address', prevKey: 'dispatch_address', currKey: 'dispatch_address' },
+          { label: 'City', prevKey: 'dispatch_city', currKey: 'dispatch_city' },
+          { label: 'State', prevKey: 'dispatch_state', currKey: 'dispatch_state' },
+          { label: 'Pin Code', prevKey: 'dispatch_pin_code', currKey: 'dispatch_pin_code' },
+        ];
+        const changedFields = fields.filter(f => {
+          const p = prev[f.prevKey] ?? '';
+          const c = curr[f.currKey] ?? '';
+          return String(p).trim() !== String(c).trim();
+        });
+        const fmt = (f: typeof fields[0], val: any) => f.format ? f.format(val) : (val ?? '—');
+        return (
+          <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.6)', zIndex: 9999 }} onClick={() => setAdminEditDiff(null)}>
+            <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1.25rem', overflow: 'hidden' }}>
+                <div className="modal-header" style={{ background: 'linear-gradient(135deg,#ffc63a,#f59e0b)', border: 'none', padding: '1.25rem 1.5rem' }}>
+                  <div>
+                    <h5 className="modal-title fw-bold mb-0 text-white!"><i className="bi bi-arrow-left-right me-2"></i>Admin Edit Changes</h5>
+                    <small className="opacity-75">Product ID: {adminEditDiff.id} — {adminEditDiff.title}</small>
+                  </div>
+                  <button type="button" className="btn-close" onClick={() => setAdminEditDiff(null)}></button>
+                </div>
+                <div className="modal-body p-4">
+                  {!adminEditDiff.previous_data ? (
+                    <div className="text-center py-4 text-muted">
+                      <i className="bi bi-info-circle" style={{ fontSize: '2rem' }}></i>
+                      <p className="mt-2">No previous data snapshot available (product was edited before this feature was added).</p>
+                    </div>
+                  ) : changedFields.length === 0 ? (
+                    <div className="text-center py-4 text-muted">
+                      <i className="bi bi-check-circle text-success" style={{ fontSize: '2rem' }}></i>
+                      <p className="mt-2">No field changes detected. Only images may have changed.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="alert alert-warning py-2 mb-4 small"><i className="bi bi-exclamation-triangle me-1"></i><strong>{changedFields.length} field{changedFields.length > 1 ? 's' : ''} changed</strong> by admin. Review and approve or reject below.</div>
+                      <div className="row g-0 mb-3">
+                        <div className="col-6 text-center fw-bold py-2 rounded-start" style={{ background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem', letterSpacing: 0.5 }}><i className="bi bi-dash-circle me-1"></i>BEFORE (Previous)</div>
+                        <div className="col-6 text-center fw-bold py-2 rounded-end" style={{ background: '#ecfdf5', color: '#059669', fontSize: '0.8rem', letterSpacing: 0.5 }}><i className="bi bi-plus-circle me-1"></i>AFTER (Admin Edit)</div>
+                      </div>
+                      {changedFields.map((f, i) => (
+                        <div key={i} className="row g-0 mb-2 rounded overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
+                          <div className="col-12 px-3 py-1" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                            <small className="fw-bold text-muted text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>{f.label}</small>
+                          </div>
+                          <div className="col-6 px-3 py-2" style={{ background: '#fff5f5', borderRight: '1px solid #e2e8f0' }}>
+                            <div className="small" style={{ color: '#dc2626', wordBreak: 'break-word' }}>{fmt(f, prev[f.prevKey]) || <span className="text-muted fst-italic">empty</span>}</div>
+                          </div>
+                          <div className="col-6 px-3 py-2" style={{ background: '#f0fdf4' }}>
+                            <div className="small fw-bold" style={{ color: '#059669', wordBreak: 'break-word' }}>{fmt(f, curr[f.currKey]) || <span className="text-muted fst-italic">empty</span>}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+                <div className="modal-footer border-top p-4 d-flex justify-content-between">
+                  <div className="d-flex gap-2">
+                    <button className="btn px-4 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: adminEditDiff.id, title: adminEditDiff.title, type: 'product' }); setRejectReason(''); setAdminEditDiff(null); }}>
+                      <i className="bi bi-x-lg me-1"></i>Reject Changes
+                    </button>
+                    <button className="btn px-4 fw-bold" style={btnApprove} onClick={() => { setApproveModal({ id: adminEditDiff.id, title: adminEditDiff.title }); setAdminEditDiff(null); }}>
+                      <i className="bi bi-check-lg me-1"></i>Approve Changes
+                    </button>
+                  </div>
+                  <button className="btn btn-outline-secondary px-4 fw-bold" onClick={() => { openInspector(adminEditDiff.id); setAdminEditDiff(null); }}>
+                    <i className="bi bi-eye me-1"></i>Inspect Images
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </DashboardLayout>
   );
 }

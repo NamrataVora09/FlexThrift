@@ -632,11 +632,15 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
           fd.append('deleted_images_ids', JSON.stringify(deletedImageIds));
         }
 
-        // For sellers, use update-product directly if review is not required
-        if (['super_admin', 'admin', 'superadmin'].includes(user?.role || '') || meta?.config.product_approval_required !== '1') {
+        // Admin and super_admin use update-product directly.
+        // Backend handles status: super_admin => approved, admin => pending, seller (no review) => approved.
+        if (['super_admin', 'admin', 'superadmin'].includes(user?.role || '')) {
+          res = await api.upload(`${apiBasePath}/update-product/${editingProductId}`, fd);
+        } else if (meta?.config.product_approval_required !== '1') {
+          // Seller with no review required: direct update
           res = await api.upload(`${apiBasePath}/update-product/${editingProductId}`, fd);
         } else {
-          // Otherwise, create an edit request
+          // Seller with review required: create an edit request
           res = await api.upload(`${apiBasePath}/edit-product/${editingProductId}`, fd);
         }
       } else {
@@ -650,18 +654,21 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         const isAdmin = role === 'admin';
         const reviewRequired = meta?.config.product_approval_required === '1' || meta?.config.product_approval_required === 'true';
 
+        // Auto-approved only for super_admin.
+        // Admin edits always go to pending for super_admin review.
+        // Regular sellers: auto-approved only if review is not required.
         let isAutoApproved = false;
         if (isSuperAdmin) {
           isAutoApproved = true;
         } else if (isAdmin) {
-          isAutoApproved = !reviewRequired;
+          isAutoApproved = false; // admin edits always go to pending
         } else {
-          isAutoApproved = false;
+          isAutoApproved = !reviewRequired;
         }
 
         const successMessage = isEditMode
-          ? (isAutoApproved ? 'Product updated successfully!' : 'Edit request submitted for admin approval!')
-          : (isAutoApproved ? 'Product uploaded!' : 'Product uploaded and pending admin approval!');
+          ? (isAutoApproved ? 'Product updated successfully!' : 'Product edit submitted and pending approval!')
+          : (isAutoApproved ? 'Product uploaded!' : 'Product uploaded and pending approval!');
 
         toastSuccess('product_upload_success', res.message || successMessage);
         setSuccess(res.message || successMessage);
