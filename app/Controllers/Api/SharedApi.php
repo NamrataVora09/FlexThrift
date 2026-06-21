@@ -80,6 +80,8 @@ class SharedApi extends ResourceController
         $db->table('products')->where('id', $id)->update([
             'status' => 'approved',
             'admin_remarks' => $remarks,
+            'pending_reason' => null,
+            'previous_data' => null,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -118,6 +120,8 @@ class SharedApi extends ResourceController
 
         $db->table('products')->where('id', $id)->update([
             'status' => 'rejected',
+            'pending_reason' => null,
+            'previous_data' => null,
             'admin_remarks' => $remarks,
         ]);
 

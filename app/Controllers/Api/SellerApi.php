@@ -1284,12 +1284,7 @@ class SellerApi extends ResourceController
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
         $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
 
-        // For regular sellers, create edit request instead of direct update ONLY if review is required
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $reviewRequired) {
-            return $this->editProduct($id);
-        }
-
-        // Direct update for admins
+        // Direct update for all users (status and snapshotting is handled below)
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
         $updateData = $this->cleanProductData($data, $db);
 
@@ -1340,7 +1335,8 @@ class SellerApi extends ResourceController
         // Status logic:
         // - super_admin: always auto-approved (clear pending_reason)
         // - admin: always goes to pending with reason 'admin_edit' (shown separately from new uploads)
-        // - regular seller: approved only if review is not required
+        // - seller / both / regular seller: goes to pending with reason 'seller_edit' or 'both_edit' if review is required, otherwise auto-approved.
+        $isPendingEdit = false;
         if (in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $updateData['status'] = 'approved';
             $updateData['pending_reason'] = null;
@@ -1348,7 +1344,20 @@ class SellerApi extends ResourceController
         } elseif ($jwtUser['role'] === 'admin') {
             $updateData['status'] = 'pending';
             $updateData['pending_reason'] = 'admin_edit';
-            // Snapshot the key fields BEFORE overwriting, so super_admin can see what changed
+            $isPendingEdit = true;
+        } elseif ($reviewRequired) {
+            $updateData['status'] = 'pending';
+            $roleReason = ($jwtUser['role'] === 'both') ? 'both_edit' : 'seller_edit';
+            $updateData['pending_reason'] = $roleReason;
+            $isPendingEdit = true;
+        } else {
+            $updateData['status'] = 'approved';
+            $updateData['pending_reason'] = null;
+            $updateData['previous_data'] = null;
+        }
+
+        if ($isPendingEdit) {
+            // Snapshot the key fields BEFORE overwriting, so admins can see what changed
             $snapshotFields = [
                 'title', 'description', 'listing_type', 'listing_type_category',
                 'product_type', 'category', 'sub_category', 'color', 'gender',
@@ -1363,16 +1372,29 @@ class SellerApi extends ResourceController
                 }
             }
             $updateData['previous_data'] = json_encode($snapshot);
-        } elseif (!$reviewRequired) {
-            $updateData['status'] = 'approved';
-            $updateData['pending_reason'] = null;
-            $updateData['previous_data'] = null;
+
+            // Notify all admins and super_admins about the pending edit request
+            $admins = $db->table('users')
+                ->whereIn('role', ['admin', 'super_admin'])
+                ->where('is_blocked', 0)
+                ->get()->getResultArray();
+            foreach ($admins as $admin) {
+                $db->table('notifications')->insert([
+                    'user_id' => $admin['id'],
+                    'title' => 'Product Edit Request',
+                    'message' => 'A user has submitted an edit request for product "' . ($product['title'] ?? 'ID:' . $id) . '" and it is pending your review.',
+                    'type' => 'product_edit',
+                    'is_read' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
         }
 
         // Update product
         $db->table('products')->where('id', $id)->update($updateData);
 
-        return $this->respond(['success' => true, 'message' => 'Product updated successfully']);
+        $message = $isPendingEdit ? 'Edit request submitted for admin approval' : 'Product updated successfully';
+        return $this->respond(['success' => true, 'message' => $message]);
     }
 
     /**

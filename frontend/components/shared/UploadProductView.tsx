@@ -632,17 +632,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
           fd.append('deleted_images_ids', JSON.stringify(deletedImageIds));
         }
 
-        // Admin and super_admin use update-product directly.
-        // Backend handles status: super_admin => approved, admin => pending, seller (no review) => approved.
-        if (['super_admin', 'admin', 'superadmin'].includes(user?.role || '')) {
-          res = await api.upload(`${apiBasePath}/update-product/${editingProductId}`, fd);
-        } else if (meta?.config.product_approval_required !== '1') {
-          // Seller with no review required: direct update
-          res = await api.upload(`${apiBasePath}/update-product/${editingProductId}`, fd);
-        } else {
-          // Seller with review required: create an edit request
-          res = await api.upload(`${apiBasePath}/edit-product/${editingProductId}`, fd);
-        }
+        // Direct update for all roles.
+        // Backend handles status and snapshotting for admins, sellers, and both users.
+        res = await api.upload(`${apiBasePath}/update-product/${editingProductId}`, fd);
       } else {
         // Create new product
         res = await api.upload(`${apiBasePath}/upload-product`, fd);

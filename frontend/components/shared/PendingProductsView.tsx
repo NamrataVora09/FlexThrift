@@ -215,9 +215,11 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
     </DashboardLayout>
   );
 
-  const newUploads = products.filter(p => !p.pending_reason || p.pending_reason !== 'admin_edit');
+  const newUploads = products.filter(p => !p.pending_reason || !['admin_edit', 'seller_edit', 'both_edit'].includes(p.pending_reason));
   const adminEdits = products.filter(p => p.pending_reason === 'admin_edit');
-  const totalItems = newUploads.length + adminEdits.length + editRequests.length;
+  const sellerEdits = products.filter(p => p.pending_reason === 'seller_edit');
+  const bothEdits = products.filter(p => p.pending_reason === 'both_edit');
+  const totalItems = newUploads.length + adminEdits.length + sellerEdits.length + bothEdits.length + editRequests.length;
 
   return (
     <DashboardLayout requiredRoles={[role]}>
@@ -343,6 +345,100 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         </div>
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
                           <button className="btn w-100 py-3 rounded-3 fw-bold sa-filter-btn" style={{ background: '#ffc63a', color: '#212529', border: 'none' }} onClick={() => setAdminEditDiff(p)}>
+                            <i className="bi bi-arrow-left-right me-2"></i>Review Changes & Act
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* ── Seller Edits Pending ── */}
+            {sellerEdits.length > 0 && (
+              <>
+                <div className="mb-4 d-flex align-items-center gap-2 mt-5">
+                  <span className="badge bg-info text-dark rounded-pill" style={{ fontWeight: 600 }}>Seller Edits Pending (Approve / Reject)</span>
+                  <hr className="flex-grow-1 opacity-25" />
+                </div>
+                <div className="row g-4 mb-5">
+                  {sellerEdits.map((p) => (
+                    <div className="col-md-6 col-xxl-4" key={p.id}>
+                      <div style={{ borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', border: '2px dashed rgba(23,162,184,0.4)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          {p.images && p.images.length > 0 ? (
+                            <img src={resolveUrl(p.images[0].image_path)} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <i className="bi bi-pencil-square" style={{ fontSize: '2.5rem', color: '#94a3b8' }}></i>
+                          )}
+                          <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
+                            <span className="badge bg-info text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
+                          </div>
+                        </div>
+                        <div style={{ padding: '1.5rem', flexGrow: 1 }}>
+                          <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem' }}>Product ID: {p.id}</small>
+                          <h5 className="fw-bold mb-3">{p.title}</h5>
+                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1rem' }}>
+                            <div className="d-flex align-items-center gap-2">
+                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(23,162,184,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#17a2b8' }}>{p.seller_name?.charAt(0).toUpperCase()}</div>
+                              <div>
+                                <div className="fw-bold small">{p.seller_name}</div>
+                                <div className="small text-muted">{p.seller_email}</div>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="small text-muted mb-0"><i className="bi bi-clock-history me-1"></i>Edited: {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}, {new Date(p.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
+                          <button className="btn w-100 py-3 rounded-3 fw-bold sa-filter-btn" style={{ background: '#17a2b8', color: '#fff', border: 'none' }} onClick={() => setAdminEditDiff(p)}>
+                            <i className="bi bi-arrow-left-right me-2"></i>Review Changes & Act
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* ── Both User Edits Pending ── */}
+            {bothEdits.length > 0 && (
+              <>
+                <div className="mb-4 d-flex align-items-center gap-2 mt-5">
+                  <span className="badge bg-secondary text-white rounded-pill" style={{ fontWeight: 600 }}>Both User Edits Pending (Approve / Reject)</span>
+                  <hr className="flex-grow-1 opacity-25" />
+                </div>
+                <div className="row g-4 mb-5">
+                  {bothEdits.map((p) => (
+                    <div className="col-md-6 col-xxl-4" key={p.id}>
+                      <div style={{ borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', border: '2px dashed rgba(108,117,125,0.4)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          {p.images && p.images.length > 0 ? (
+                            <img src={resolveUrl(p.images[0].image_path)} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <i className="bi bi-pencil-square" style={{ fontSize: '2.5rem', color: '#94a3b8' }}></i>
+                          )}
+                          <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
+                            <span className="badge bg-secondary text-white shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
+                          </div>
+                        </div>
+                        <div style={{ padding: '1.5rem', flexGrow: 1 }}>
+                          <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem' }}>Product ID: {p.id}</small>
+                          <h5 className="fw-bold mb-3">{p.title}</h5>
+                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1rem' }}>
+                            <div className="d-flex align-items-center gap-2">
+                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(108,117,125,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#6c757d' }}>{p.seller_name?.charAt(0).toUpperCase()}</div>
+                              <div>
+                                <div className="fw-bold small">{p.seller_name}</div>
+                                <div className="small text-muted">{p.seller_email}</div>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="small text-muted mb-0"><i className="bi bi-clock-history me-1"></i>Edited: {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}, {new Date(p.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
+                          <button className="btn w-100 py-3 rounded-3 fw-bold sa-filter-btn" style={{ background: '#6c757d', color: '#fff', border: 'none' }} onClick={() => setAdminEditDiff(p)}>
                             <i className="bi bi-arrow-left-right me-2"></i>Review Changes & Act
                           </button>
                         </div>
@@ -748,6 +844,16 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
       {adminEditDiff && (() => {
         const prev = adminEditDiff.previous_data ? (() => { try { return JSON.parse(adminEditDiff.previous_data!); } catch { return {}; } })() : {};
         const curr = adminEditDiff as any;
+        const editorRole = 
+          adminEditDiff.pending_reason === 'admin_edit' ? 'Admin' :
+          adminEditDiff.pending_reason === 'both_edit' ? 'Both User' :
+          adminEditDiff.pending_reason === 'seller_edit' ? 'Seller' : 'User';
+          
+        const headerGradient = 
+          adminEditDiff.pending_reason === 'admin_edit' ? 'linear-gradient(135deg,#ffc63a,#f59e0b)' :
+          adminEditDiff.pending_reason === 'both_edit' ? 'linear-gradient(135deg,#6c757d,#495057)' :
+          'linear-gradient(135deg,#17a2b8,#117a8b)';
+
         const fields: Array<{ label: string; prevKey: string; currKey: string; format?: (v: any) => string }> = [
           { label: 'Title', prevKey: 'title', currKey: 'title' },
           { label: 'Listing Type', prevKey: 'listing_type', currKey: 'listing_type' },
@@ -778,12 +884,12 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
           <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.6)', zIndex: 9999 }} onClick={() => setAdminEditDiff(null)}>
             <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" onClick={(e) => e.stopPropagation()}>
               <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1.25rem', overflow: 'hidden' }}>
-                <div className="modal-header" style={{ background: 'linear-gradient(135deg,#ffc63a,#f59e0b)', border: 'none', padding: '1.25rem 1.5rem' }}>
+                <div className="modal-header" style={{ background: headerGradient, border: 'none', padding: '1.25rem 1.5rem' }}>
                   <div>
-                    <h5 className="modal-title fw-bold mb-0 text-white!"><i className="bi bi-arrow-left-right me-2"></i>Admin Edit Changes</h5>
-                    <small className="opacity-75">Product ID: {adminEditDiff.id} — {adminEditDiff.title}</small>
+                    <h5 className="modal-title fw-bold mb-0 text-white"><i className="bi bi-arrow-left-right me-2"></i>{editorRole} Edit Changes</h5>
+                    <small className="text-white opacity-75">Product ID: {adminEditDiff.id} — {adminEditDiff.title}</small>
                   </div>
-                  <button type="button" className="btn-close" onClick={() => setAdminEditDiff(null)}></button>
+                  <button type="button" className="btn-close btn-close-white" onClick={() => setAdminEditDiff(null)}></button>
                 </div>
                 <div className="modal-body p-4">
                   {!adminEditDiff.previous_data ? (
@@ -798,10 +904,10 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                     </div>
                   ) : (
                     <>
-                      <div className="alert alert-warning py-2 mb-4 small"><i className="bi bi-exclamation-triangle me-1"></i><strong>{changedFields.length} field{changedFields.length > 1 ? 's' : ''} changed</strong> by admin. Review and approve or reject below.</div>
+                      <div className="alert alert-warning py-2 mb-4 small"><i className="bi bi-exclamation-triangle me-1"></i><strong>{changedFields.length} field{changedFields.length > 1 ? 's' : ''} changed</strong> by {editorRole.toLowerCase()}. Review and approve or reject below.</div>
                       <div className="row g-0 mb-3">
                         <div className="col-6 text-center fw-bold py-2 rounded-start" style={{ background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem', letterSpacing: 0.5 }}><i className="bi bi-dash-circle me-1"></i>BEFORE (Previous)</div>
-                        <div className="col-6 text-center fw-bold py-2 rounded-end" style={{ background: '#ecfdf5', color: '#059669', fontSize: '0.8rem', letterSpacing: 0.5 }}><i className="bi bi-plus-circle me-1"></i>AFTER (Admin Edit)</div>
+                        <div className="col-6 text-center fw-bold py-2 rounded-end" style={{ background: '#ecfdf5', color: '#059669', fontSize: '0.8rem', letterSpacing: 0.5 }}><i className="bi bi-plus-circle me-1"></i>AFTER ({editorRole} Edit)</div>
                       </div>
                       {changedFields.map((f, i) => (
                         <div key={i} className="row g-0 mb-2 rounded overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
