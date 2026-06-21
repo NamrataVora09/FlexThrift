@@ -77,6 +77,23 @@ class SharedApi extends ResourceController
 
         $remarks = $this->request->getJsonVar('remarks') ?? '';
 
+        // Clean up physically deleted images on the disk now that the edit is approved
+        if (!empty($product['previous_data'])) {
+            $prev = json_decode($product['previous_data'], true);
+            if (isset($prev['_images']) && is_array($prev['_images'])) {
+                $currImages = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+                $currPaths = array_column($currImages, 'image_path');
+                foreach ($prev['_images'] as $oldPath) {
+                    if (!in_array($oldPath, $currPaths)) {
+                        $fullPath = FCPATH . $oldPath;
+                        if (is_file($fullPath)) {
+                            unlink($fullPath);
+                        }
+                    }
+                }
+            }
+        }
+
         $db->table('products')->where('id', $id)->update([
             'status' => 'approved',
             'admin_remarks' => $remarks,

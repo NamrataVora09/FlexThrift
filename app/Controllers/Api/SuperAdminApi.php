@@ -2162,6 +2162,21 @@ class SuperAdminApi extends ResourceController
 
         // Clear pending_reason and previous_data when status moves away from pending
         if (in_array($newStatus, ['approved', 'rejected'])) {
+            if ($newStatus === 'approved' && !empty($product['previous_data'])) {
+                $prev = json_decode($product['previous_data'], true);
+                if (isset($prev['_images']) && is_array($prev['_images'])) {
+                    $currImages = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+                    $currPaths = array_column($currImages, 'image_path');
+                    foreach ($prev['_images'] as $oldPath) {
+                        if (!in_array($oldPath, $currPaths)) {
+                            $fullPath = FCPATH . $oldPath;
+                            if (is_file($fullPath)) {
+                                unlink($fullPath);
+                            }
+                        }
+                    }
+                }
+            }
             $updateFields['pending_reason'] = null;
             $updateFields['previous_data'] = null;
         }

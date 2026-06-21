@@ -63,7 +63,15 @@ class AuthApi extends ResourceController
             ], 401);
         }
 
+        // Determine effective role — for 'both' users, redirect based on which role is blocked
         $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
+        if ($user['user_type'] === 'both') {
+            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+                $role = 'seller';
+            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+                $role = 'buyer';
+            }
+        }
 
         log_message('info', 'API Login successful for: ' . $email . ', Role: ' . $role);
 
@@ -146,7 +154,15 @@ class AuthApi extends ResourceController
             ], 403);
         }
 
+        // Determine effective role — for 'both' users, redirect based on which role is blocked
         $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
+        if ($user['user_type'] === 'both') {
+            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+                $role = 'seller';
+            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+                $role = 'buyer';
+            }
+        }
 
         $token = JWT::encode([
             'user_id' => $user['id'],
@@ -658,9 +674,19 @@ class AuthApi extends ResourceController
             return $this->respond(['success' => false, 'message' => 'User not found'], 404);
         }
 
+        // Compute effective role from live DB block flags (not stale JWT)
+        $effectiveRole = $jwtUser['role'];
+        if ($user['user_type'] === 'both') {
+            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+                $effectiveRole = 'seller';
+            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+                $effectiveRole = 'buyer';
+            }
+        }
+
         return $this->respond([
             'success' => true,
-            'data'    => $this->sanitizeUser($user, $jwtUser['role']),
+            'data'    => $this->sanitizeUser($user, $effectiveRole),
         ]);
     }
 
@@ -701,6 +727,13 @@ class AuthApi extends ResourceController
                 ], 403);
             }
             $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
+            if ($user['user_type'] === 'both') {
+                if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+                    $role = 'seller';
+                } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+                    $role = 'buyer';
+                }
+            }
         } else {
             // New user — auto-register as buyer
             $db = \Config\Database::connect();

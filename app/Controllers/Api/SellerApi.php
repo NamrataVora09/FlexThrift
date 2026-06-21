@@ -52,6 +52,16 @@ class SellerApi extends ResourceController
         $orderRevenue = $db->table('orders')->where('seller_id', $userId)->selectSum('final_price')->get()->getRowArray()['final_price'] ?? 0;
         $offerRevenue = $db->table('offers')->where('seller_id', $userId)->where('status', 'accepted')->selectSum('offer_price')->get()->getRowArray()['offer_price'] ?? 0;
 
+        // For 'both' users, resolve effective role based on which role is blocked
+        $effectiveRole = $jwtUser['role'];
+        if ($user['user_type'] === 'both') {
+            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+                $effectiveRole = 'seller';
+            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+                $effectiveRole = 'buyer';
+            }
+        }
+
         return $this->respond([
             'success' => true,
             'data' => [
@@ -60,7 +70,7 @@ class SellerApi extends ResourceController
                     'name' => $user['name'],
                     'email' => $user['email'],
                     'user_type' => $user['user_type'],
-                    'role' => $jwtUser['role'],
+                    'role' => $effectiveRole,
                     'reliability_score' => (int) ($user['reliability_score'] ?? 100),
                     'seller_rating_avg' => (float) ($user['seller_rating_avg'] ?? 0),
                     'seller_rating_count' => (int) ($user['seller_rating_count'] ?? 0),
@@ -1294,6 +1304,10 @@ class SellerApi extends ResourceController
             return $this->respond($v, 422);
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
+        // Snapshot current images BEFORE any deletions/uploads so previous_data can include them
+        $existingImages = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
+        $previousImagePaths = array_column($existingImages, 'image_path');
+
         // Handle file uploads
         $files = $this->request->getFiles();
         $imageFiles = $files['product_images'] ?? $files['images'] ?? null;
@@ -1317,6 +1331,14 @@ class SellerApi extends ResourceController
             }
         }
 
+        // Determine if this edit request will be pending review
+        $isPendingEdit = false;
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+            if ($jwtUser['role'] === 'admin' || $reviewRequired) {
+                $isPendingEdit = true;
+            }
+        }
+
         // Handle image deletions
         $deletedIds = $this->request->getPost('deleted_images_ids');
         if ($deletedIds && is_string($deletedIds)) {
@@ -1324,9 +1346,14 @@ class SellerApi extends ResourceController
             if (!empty($deletedIdsArr)) {
                 $imagesToDelete = $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->get()->getResultArray();
                 foreach ($imagesToDelete as $img) {
-                    $fullPath = FCPATH . $img['image_path'];
-                    if (is_file($fullPath))
-                        unlink($fullPath);
+                    // Do not delete files physically from disk if this is a pending edit request
+                    // so the admin/superadmin can still review the before/after images in the comparison queue.
+                    if (!$isPendingEdit) {
+                        $fullPath = FCPATH . $img['image_path'];
+                        if (is_file($fullPath)) {
+                            unlink($fullPath);
+                        }
+                    }
                 }
                 $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->delete();
             }
@@ -1336,7 +1363,6 @@ class SellerApi extends ResourceController
         // - super_admin: always auto-approved (clear pending_reason)
         // - admin: always goes to pending with reason 'admin_edit' (shown separately from new uploads)
         // - seller / both / regular seller: goes to pending with reason 'seller_edit' or 'both_edit' if review is required, otherwise auto-approved.
-        $isPendingEdit = false;
         if (in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $updateData['status'] = 'approved';
             $updateData['pending_reason'] = null;
@@ -1344,12 +1370,10 @@ class SellerApi extends ResourceController
         } elseif ($jwtUser['role'] === 'admin') {
             $updateData['status'] = 'pending';
             $updateData['pending_reason'] = 'admin_edit';
-            $isPendingEdit = true;
         } elseif ($reviewRequired) {
             $updateData['status'] = 'pending';
             $roleReason = ($jwtUser['role'] === 'both') ? 'both_edit' : 'seller_edit';
             $updateData['pending_reason'] = $roleReason;
-            $isPendingEdit = true;
         } else {
             $updateData['status'] = 'approved';
             $updateData['pending_reason'] = null;
@@ -1371,6 +1395,8 @@ class SellerApi extends ResourceController
                     $snapshot[$field] = $product[$field];
                 }
             }
+            // Include previous images in snapshot so admin can compare before/after
+            $snapshot['_images'] = $previousImagePaths;
             $updateData['previous_data'] = json_encode($snapshot);
 
             // Notify all admins and super_admins about the pending edit request
@@ -1626,7 +1652,7 @@ class SellerApi extends ResourceController
 
         foreach ($data as $key => $value) {
             // Skip keys we already handled or that shouldn't be in products table
-            if (in_array($key, ['category_id', 'sub_category_id', 'listing_type_category', 'product_type', 'images', 'product_images', 'jwt_user']))
+            if (in_array($key, ['category_id', 'sub_category_id', 'listing_type_category', 'product_type', 'images', 'product_images', 'jwt_user', 'deleted_images_ids', 'temp_images', 'bill_images']))
                 continue;
 
             $dbKey = $fieldMap[$key] ?? $key;

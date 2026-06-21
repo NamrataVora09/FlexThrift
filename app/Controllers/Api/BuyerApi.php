@@ -42,6 +42,16 @@ class BuyerApi extends ResourceController
             ->limit(5)
             ->get()->getResultArray();
 
+        // For 'both' users, resolve effective role based on which role is blocked
+        $effectiveRole = $jwtUser['role'];
+        if ($user['user_type'] === 'both') {
+            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+                $effectiveRole = 'seller';
+            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+                $effectiveRole = 'buyer';
+            }
+        }
+
         return $this->respond([
             'success' => true,
             'data' => [
@@ -50,7 +60,7 @@ class BuyerApi extends ResourceController
                     'name' => $user['name'],
                     'email' => $user['email'],
                     'user_type' => $user['user_type'],
-                    'role' => $jwtUser['role'],
+                    'role' => $effectiveRole,
                     'reliability_score' => (int) ($user['reliability_score'] ?? 100),
                     'referral_code' => $user['referral_code'] ?? '',
                 ],

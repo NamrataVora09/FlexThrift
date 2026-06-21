@@ -1401,12 +1401,13 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
               {productOffers.map(offer => {
                 const isBlockedRental = isRentalBlocked?.(offer);
 
-                // expiry logic (matching PHP exactly)
+                // expiry logic: window starts from when the offer was created,
+                // NOT contact_viewed_at (buyer may have viewed contact long before making the offer)
                 let isExpired = false;
                 let expiryDate: string | null = null;
-                if (offer.status === 'pending' && offer.contact_viewed_at) {
-                  const viewedTime = new Date(offer.contact_viewed_at).getTime();
-                  const expiryTime = viewedTime + settings.acceptanceLimitDays * 86400000;
+                if (offer.status === 'pending' && offer.created_at) {
+                  const offerTime = new Date(offer.created_at).getTime();
+                  const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
                   isExpired = Date.now() > expiryTime;
                   expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
                 }
