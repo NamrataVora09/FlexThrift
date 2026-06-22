@@ -8,6 +8,7 @@ import React from 'react';
 import ProfileDropdown from '@/components/shared/ProfileDropdown';
 import { useSystem } from '@/lib/system-context';
 import { showToast } from '@/lib/toast';
+import { getDashboardPath } from '@/lib/navigation';
 
 interface Category { id: number; category_name?: string; name?: string; product_type_id: number; }
 interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
@@ -19,7 +20,7 @@ const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:80
 
 export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean }) {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, switchRole } = useAuth();
   const { settings } = useSystem();
 
   const handleBuyerLinkClick = (e: React.MouseEvent, callback?: () => void) => {
@@ -29,6 +30,19 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
       return;
     }
     if (callback) callback();
+  };
+
+  const handleSwitch = async (role: string) => {
+    if (role === 'seller' && user && user.role !== 'super_admin' && Number(user.blocked_seller) === 1) {
+      showToast.error("Your seller privileges have been restricted by the administrator.");
+      return;
+    }
+    if (role === 'buyer' && user && user.role !== 'super_admin' && Number(user.blocked_buyer) === 1) {
+      showToast.error("Your buyer privileges have been restricted by the administrator.");
+      return;
+    }
+    const res = await switchRole(role);
+    if (res.success) window.location.href = getDashboardPath(role);
   };
 
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
@@ -213,13 +227,33 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                 }
                 profileLabel={user.name}
                 extraItems={
-                  <Link
-                    href="/wishlist"
-                    className="flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-gold transition-colors"
-                  >
-                    <i className="bi bi-heart-fill text-sm" />
-                    <span className="text-xs font-semibold whitespace-nowrap">Wishlist</span>
-                  </Link>
+                  <>
+                    {user.user_type === 'both' && user.role === 'buyer' && (
+                      <button
+                        onClick={() => handleSwitch('seller')}
+                        className="w-full flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                      >
+                        <i className="bi bi-arrow-left-right text-sm" />
+                        <span className="text-xs font-semibold whitespace-nowrap">Switch to Seller</span>
+                      </button>
+                    )}
+                    {user.user_type === 'both' && user.role === 'seller' && (
+                      <button
+                        onClick={() => handleSwitch('buyer')}
+                        className="w-full flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-[#008080] transition-colors"
+                      >
+                        <i className="bi bi-arrow-left-right text-sm" />
+                        <span className="text-xs font-semibold whitespace-nowrap">Switch to Buyer</span>
+                      </button>
+                    )}
+                    <Link
+                      href="/wishlist"
+                      className="flex items-center gap-3  py-2.5 text-gray-700 hover:bg-gray-50 hover:text-gold transition-colors"
+                    >
+                      <i className="bi bi-heart-fill text-sm" />
+                      <span className="text-xs font-semibold whitespace-nowrap">Wishlist</span>
+                    </Link>
+                  </>
                 }
                 onLogout={() => { logout(); router.push('/'); }}
               />
@@ -349,6 +383,24 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-gray-400 font-black mb-4">Navigation</p>
                 <div className="space-y-4">
+                  {user && user.user_type === 'both' && user.role === 'buyer' && (
+                    <button
+                      onClick={() => { setMobileNavOpen(false); handleSwitch('seller'); }}
+                      className="flex items-center gap-3 text-lg font-bold hover:text-gold transition-colors text-left w-full font-bold"
+                    >
+                      <i className="bi bi-arrow-left-right" />
+                      Switch to Seller
+                    </button>
+                  )}
+                  {user && user.user_type === 'both' && user.role === 'seller' && (
+                    <button
+                      onClick={() => { setMobileNavOpen(false); handleSwitch('buyer'); }}
+                      className="flex items-center gap-3 text-lg font-bold hover:text-gold transition-colors text-left w-full font-bold"
+                    >
+                      <i className="bi bi-arrow-left-right" />
+                      Switch to Buyer
+                    </button>
+                  )}
                   <Link href="/wishlist" className="flex items-center gap-3 text-lg font-bold hover:text-gold transition-colors" onClick={() => setMobileNavOpen(false)}>
                     <i className="bi bi-heart" />
                     My Wishlist

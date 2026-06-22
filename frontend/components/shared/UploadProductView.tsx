@@ -376,7 +376,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
     // Suggested = original × (1 - (deductionThreshold + depreciationAmount) / 100)
     const suggested = (origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
-    setF(prev => ({ ...prev, price: String(suggested > 0 ? suggested : 1) }));
+    setF(prev => ({ ...prev, price: suggested > 0 ? suggested.toFixed(2) : '1.00' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f.original_price, f.used_times, f.listing_type, f.sub_category_id, f.category_id, f.listing_type_category, meta, isEditMode]);
 
@@ -415,15 +415,22 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
     setF(prev => ({
       ...prev,
-      rental_deposit: String(deposit > 0 ? deposit : ''),
-      rental_cost: String(rental > 0 ? rental : ''),
+      rental_deposit: deposit > 0 ? deposit.toFixed(2) : '',
+      rental_cost: rental > 0 ? rental.toFixed(2) : '',
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f.original_price, f.used_times, f.listing_type, f.sub_category_id, f.category_id, f.listing_type_category, meta, isEditMode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    let val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+
+    if (['original_price', 'price', 'rental_deposit', 'rental_cost'].includes(name) && typeof val === 'string') {
+      const parts = val.split('.');
+      if (parts[1] && parts[1].length > 2) {
+        val = `${parts[0]}.${parts[1].slice(0, 2)}`;
+      }
+    }
 
     setF(prev => {
       const next = { ...prev, [name]: val };
@@ -999,7 +1006,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                         <div className="d-flex justify-content-between align-items-center">
                           <div>
                             <small>Suggested Sale Price</small>
-                            <h4 className="mb-0">₹{salePriceSuggestion.suggestedPrice.toLocaleString('en-IN')}</h4>
+                            <h4 className="mb-0">₹{salePriceSuggestion.suggestedPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h4>
                             {salePriceSuggestion.ruleLabel && (
                               <div className="mt-2 small" style={{ opacity: 0.9 }}>
                                 <i className="bi bi-info-circle me-1"></i>
@@ -1016,7 +1023,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                     <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="price" step="0.01" value={f.price} onChange={handleChange} /></div>
                     <small className={parseFloat(f.price) > (salePriceSuggestion?.maxAllowedPrice || 0) ? "text-danger fw-bold" : "text-muted"}>
                       Must be at least {salePriceSuggestion ? salePriceSuggestion.deductionThreshold : (cfg.sale_base_discount || '0')}% less than original price
-                      {salePriceSuggestion && ` (Max: ₹${salePriceSuggestion.maxAllowedPrice.toLocaleString('en-IN')})`}
+                      {salePriceSuggestion && ` (Max: ₹${salePriceSuggestion.maxAllowedPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                     </small>
                   </div>
                 </div>
@@ -1034,11 +1041,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                         <div className="row">
                           <div className="col-md-6 mb-3 mb-md-0">
                             <div className="text-dark opacity-75 small fw-semibold mb-1">Suggested (Deposit + Rent/Day)</div>
-                            <div className="h4 mb-0 fw-bold">₹{rentalPriceSuggestion.suggestedDeposit.toLocaleString('en-IN')} + ₹{rentalPriceSuggestion.suggestedRental.toLocaleString('en-IN')}</div>
+                            <div className="h4 mb-0 fw-bold">₹{rentalPriceSuggestion.suggestedDeposit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ₹{rentalPriceSuggestion.suggestedRental.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                           </div>
                           <div className="col-md-6">
                             <div className="text-dark opacity-75 small fw-semibold mb-1">Maximum (Deposit + Rent/Day)</div>
-                            <div className="h4 mb-0 fw-bold">₹{rentalPriceSuggestion.maxDeposit.toLocaleString('en-IN')} + ₹{rentalPriceSuggestion.maxRental.toLocaleString('en-IN')}</div>
+                            <div className="h4 mb-0 fw-bold">₹{rentalPriceSuggestion.maxDeposit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + ₹{rentalPriceSuggestion.maxRental.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                           </div>
                           <div className="col-12 mt-3 pt-3 border-top border-dark border-opacity-10 d-flex align-items-center gap-2 small">
                             <i className="bi bi-info-circle"></i>
@@ -1057,7 +1064,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                     <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="rental_deposit" step="0.01" value={f.rental_deposit} onChange={handleChange} /></div>
                     <small className={(parseFloat(f.rental_deposit) > (origPrice - (origPrice * (rentalPriceSuggestion?.deductionThreshold ?? 0) / 100))) ? "text-danger fw-bold" : "text-muted"}>
                       {rentalPriceSuggestion?.deductionThreshold ? `At least ${rentalPriceSuggestion.deductionThreshold}% less than original` : 'Maximum allowed is original price'}
-                      {origPrice > 0 && ` (Max: ₹${Math.round(origPrice - (origPrice * (rentalPriceSuggestion?.deductionThreshold ?? 0) / 100)).toLocaleString('en-IN')})`}
+                      {origPrice > 0 && ` (Max: ₹${(origPrice - (origPrice * (rentalPriceSuggestion?.deductionThreshold ?? 0) / 100)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                     </small>
                   </div>
                   <div className="col-md-4">

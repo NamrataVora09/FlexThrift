@@ -262,11 +262,19 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                                     }
                                     {statusLabel}
                                   </span>
-                                  {rawStatus === 'rejected' && p.admin_remarks && (
-                                    <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: 4, maxWidth: 150 }}>
-                                      <i className="bi bi-info-circle me-1"></i>{p.admin_remarks}
-                                    </div>
-                                  )}
+                                  {rawStatus === 'rejected' && p.admin_remarks && (() => {
+                                    // Strip internal metadata: remove [pre_status:...] tag and system prefixes
+                                    let remark = p.admin_remarks
+                                      .replace(/\[pre_status:[a-z_]+\]/gi, '')
+                                      .replace(/^(Original Brand Blocked|Seller Brand Blocked):\s*/i, '')
+                                      .trim();
+                                    if (!remark) return null;
+                                    return (
+                                      <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: 4, maxWidth: 150 }}>
+                                        <i className="bi bi-info-circle me-1"></i>{remark}
+                                      </div>
+                                    );
+                                  })()}
                                 
                                 </>
                               );
