@@ -1408,6 +1408,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                 if (offer.status === 'pending' && offer.created_at) {
                   const offerTime = new Date(offer.created_at).getTime();
                   const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
+
                   isExpired = Date.now() > expiryTime;
                   expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
                 }

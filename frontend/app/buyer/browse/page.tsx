@@ -1646,11 +1646,18 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
               ) : (
                 <div className="flex flex-col items-end">
                   <span className="font-bold text-[#FFC107] whitespace-nowrap">₹{sellingPrice.toLocaleString('en-IN')}</span>
-                  <div className="px-2 py-0.5 rounded-full bg-[#d6b06b] max-w-[100px]">
-                    <p className="text-[10px] font-bold text-white m-0! truncate uppercase">
-                      {p.orignal_brand || 'Premium'}
-                    </p>
-                  </div>
+                  {
+                    p.orignal_brand && (
+                      <div className="px-2 py-0.5 rounded-full bg-[#d6b06b] max-w-[100px]">
+
+                        <p className="text-[10px] font-bold text-white m-0! truncate uppercase">
+                          {p.orignal_brand}
+                        </p>
+
+
+                      </div>
+                    )
+                  }
                 </div>
               )}
             </div>

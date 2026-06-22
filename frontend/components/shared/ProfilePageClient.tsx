@@ -48,7 +48,8 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
   const [error, setError] = useState('');
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalDeals, setTotalDeals] = useState(0);
-  const [activePlanName, setActivePlanName] = useState<string | null>(null);
+  const [activeBuyerPlan, setActiveBuyerPlan] = useState<string | null>(null);
+  const [activeSellerPlan, setActiveSellerPlan] = useState<string | null>(null);
   const [imgUploading, setImgUploading] = useState(false);
   const [form, setForm] = useState({
     name: '', mobile: '', alternate_mobile: '', gender: '',
@@ -81,13 +82,31 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
           });
         }
 
-        // Fetch active subscription plan name
-        const subType = (u.user_type === 'seller' || u.role === 'seller') ? 'seller' : 'buyer';
-        api.get<{ active: { plan_name: string; is_active: string; expires_at: string } | null }>(`/shared/subscriptions/${subType}`).then((r) => {
-          if (r.success && r.data?.active) {
-            const a = r.data.active;
-            if (String(a.is_active) === '1' && new Date(a.expires_at) > new Date()) {
-              setActivePlanName(a.plan_name);
+        // Fetch active subscription plan name(s)
+        const isAdmin = u.role === 'admin' || u.role === 'super_admin';
+        const isBoth = u.user_type === 'both';
+        const subType = (u.user_type === 'seller' && !isAdmin) ? 'seller' : 'buyer';
+
+        // For admin/super_admin or 'both' users, fetch seller endpoint which returns active_seller + active_buyer
+        const fetchType = (isAdmin || isBoth) ? 'seller' : subType;
+
+        api.get<{
+          active: { plan_name: string; is_active: string; expires_at: string } | null;
+          active_seller: { plan_name: string; is_active: string; expires_at: string } | null;
+          active_buyer: { plan_name: string; is_active: string; expires_at: string } | null;
+        }>(`/shared/subscriptions/${fetchType}`).then((r) => {
+          if (r.success && r.data) {
+            const now = new Date();
+            const isValid = (p: { plan_name: string; is_active: string; expires_at: string } | null) =>
+              !!p && String(p.is_active) === '1' && new Date(p.expires_at) > now;
+
+            if (isAdmin || isBoth) {
+              if (isValid(r.data.active_seller)) setActiveSellerPlan(r.data.active_seller!.plan_name);
+              if (isValid(r.data.active_buyer)) setActiveBuyerPlan(r.data.active_buyer!.plan_name);
+            } else if (fetchType === 'seller') {
+              if (isValid(r.data.active)) setActiveSellerPlan(r.data.active!.plan_name);
+            } else {
+              if (isValid(r.data.active)) setActiveBuyerPlan(r.data.active!.plan_name);
             }
           }
         });
@@ -440,10 +459,27 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                   <div style={{ fontSize: '0.9rem', color: '#1f2937', fontWeight: 600 }}>
                     {formatDate(user.created_at)}
                   </div>
-                  <span className="plan-badge">
-                    <i className="fa-solid fa-gem" />
-                    {activePlanName ?? 'No Active Plan'}
-                  </span>
+                  {/* Plan badges */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                    {activeSellerPlan && (
+                      <span className="plan-badge" style={{ background: '#008080' }}>
+                        <i className="fa-solid fa-gem" />
+                        Seller: {activeSellerPlan}
+                      </span>
+                    )}
+                    {activeBuyerPlan && (
+                      <span className="plan-badge" style={{ background: '#D7B467' }}>
+                        <i className="fa-solid fa-gem" />
+                        Buyer: {activeBuyerPlan}
+                      </span>
+                    )}
+                    {!activeBuyerPlan && !activeSellerPlan && (
+                      <span className="plan-badge" style={{ background: '#9ca3af' }}>
+                        <i className="fa-solid fa-gem" />
+                        No Active Plan
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <Link href={subsHref} className="upgrade-btn" style={{ background: '#008080', color: '#fff ', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'none !important', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'opacity 0.2s', whiteSpace: 'nowrap' }}>

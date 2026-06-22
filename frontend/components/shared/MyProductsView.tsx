@@ -44,12 +44,12 @@ function getImageUrl(path?: string) {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  pending:  { bg: '#fef3c7', color: '#92400e' },
+  pending: { bg: '#fef3c7', color: '#92400e' },
   approved: { bg: '#dcfce7', color: '#15803d' },
   rejected: { bg: '#fee2e2', color: '#dc2626' },
-  sold:     { bg: '#ede9fe', color: '#5b21b6' },
-  rented:   { bg: '#cffafe', color: '#0e7490' },
-  active:   { bg: '#dcfce7', color: '#15803d' },
+  sold: { bg: '#ede9fe', color: '#5b21b6' },
+  rented: { bg: '#cffafe', color: '#0e7490' },
+  active: { bg: '#dcfce7', color: '#15803d' },
   inactive: { bg: '#f3f4f6', color: '#6b7280' },
 };
 
@@ -104,7 +104,7 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: products.length };
-    c.pending  = products.filter(p => p.status === 'pending').length;
+    c.pending = products.filter(p => p.status === 'pending').length;
     c.approved = products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status)).length;
     c.rejected = products.filter(p => p.status === 'rejected').length;
     c.inactive = products.filter(p => p.status === 'inactive').length;
@@ -245,6 +245,21 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                               return (
                                 <>
                                   <span className="badge" style={{ background: statusStyle.bg, color: statusStyle.color, fontWeight: 700, padding: '3px 11px', borderRadius: '9999px', fontSize: '0.6rem', textTransform: 'uppercase' }}>
+                                    {
+                                      rawStatus === 'pending' && (
+                                        <i className="bi bi-hourglass-split me-1"></i>
+                                      )
+                                    }
+                                    {
+                                      rawStatus === 'approved' && (
+                                        <i className="bi bi-check-circle me-1"></i>
+                                      )
+                                    }
+                                    {
+                                      rawStatus === 'rejected' && (
+                                        <i className="bi bi-x-circle me-1"></i>
+                                      )
+                                    }
                                     {statusLabel}
                                   </span>
                                   {rawStatus === 'rejected' && p.admin_remarks && (
@@ -252,11 +267,7 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                                       <i className="bi bi-info-circle me-1"></i>{p.admin_remarks}
                                     </div>
                                   )}
-                                  {rawStatus === 'pending' && (
-                                    <div style={{ fontSize: '0.65rem', color: '#92400e', marginTop: 3 }}>
-                                      <i className="bi bi-hourglass-split me-1"></i>Awaiting approval
-                                    </div>
-                                  )}
+                                
                                 </>
                               );
                             })()}
