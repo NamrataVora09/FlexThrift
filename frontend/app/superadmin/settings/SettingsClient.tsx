@@ -198,7 +198,7 @@ export default function SettingsClient() {
           </Section>
 
           {/* ── Offer & Rating Rules ── */}
-          <Section title="Offer & Rating Rules" icon="bi-handshake">
+          {/* <Section title="Offer & Rating Rules" icon="bi-handshake">
             <div className="row g-3">
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Offer Acceptance Limit (days)</label>
@@ -221,10 +221,10 @@ export default function SettingsClient() {
                 <small className="text-muted">Days a buyer has to rate the seller</small>
               </div>
             </div>
-          </Section>
+          </Section> */}
 
           {/* ── Pricing & Rental Defaults ── */}
-          <Section title="Pricing & Rental Defaults" icon="bi-currency-dollar">
+          {/* <Section title="Pricing & Rental Defaults" icon="bi-currency-dollar">
             <div className="row g-3">
               <div className="col-12"><h6 className="fw-bold mb-0 text-muted small uppercase">Global Sale Defaults</h6></div>
               <div className="col-md-3">
@@ -268,7 +268,7 @@ export default function SettingsClient() {
                 </small>
               </div>
             </div>
-          </Section>
+          </Section> */}
 
 
           {/* ── PhonePe Payment ── */}
