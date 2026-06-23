@@ -125,8 +125,8 @@ if (!function_exists('calculateSalePriceWithRules')) {
             return round(min(max($suggestedPrice, 0), $maxPrice), 2);
         }
 
-        // Fallback to legacy tier-based calculation
-        return calculateSalePrice($originalPrice, $usedTimes);
+        // If no pricing rules match, suggested price is original price (no deduction)
+        return $originalPrice;
     }
 }
 
@@ -154,9 +154,13 @@ if (!function_exists('calculateRentalPricesWithRules')) {
             $deposit = $depreciatedValue * ($depositPercent / 100);
 
             $globalMaxCapPct = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
-            $maxCapPct = (float) ($ruleResult['max_cost_cap_per_day'] > 0 ? $ruleResult['max_cost_cap_per_day'] : $globalMaxCapPct);
+            $maxCapPct = (float) ($ruleResult['max_cost_cap_per_day']);
 
-            $rentalCost = $deposit * ($maxCapPct / 100);
+            if ($maxCapPct == 0) {
+                $rentalCost = $deposit;
+            } else {
+                $rentalCost = $deposit * ($maxCapPct / 100);
+            }
 
             return [
                 'deposit' => round($deposit, 2),
@@ -184,8 +188,8 @@ if (!function_exists('validateSalePriceWithRules')) {
             return $salePrice <= ($maxAllowed + 0.01);
         }
 
-        // Fallback
-        return validateSalePrice($originalPrice, $salePrice);
+        // If no rules matched, validation allows up to originalPrice (no deduction)
+        return $salePrice <= ($originalPrice + 0.01);
     }
 }
 
@@ -220,9 +224,12 @@ if (!function_exists('validateRentalCostWithRules')) {
         $ruleResult = getRentalPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, $usedTimes);
 
         if ($ruleResult['matched_rules'] > 0) {
-            $globalMaxCap = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
-            $maxCap = (float) ($ruleResult['max_cost_cap_per_day'] > 0 ? $ruleResult['max_cost_cap_per_day'] : $globalMaxCap);
-            $maxAllowed = $deposit * ($maxCap / 100);
+            $maxCap = (float) $ruleResult['max_cost_cap_per_day'];
+            if ($maxCap == 0) {
+                $maxAllowed = $deposit;
+            } else {
+                $maxAllowed = $deposit * ($maxCap / 100);
+            }
             return $rentalCost <= ($maxAllowed + 0.01);
         }
 
@@ -273,7 +280,11 @@ if (!function_exists('calculateRentalPrices')) {
 
         // Rental cost calculation using Global Max Cost Cap
         $maxCapPct = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
-        $rentalCost = $deposit * ($maxCapPct / 100);
+        if ($maxCapPct == 0) {
+            $rentalCost = $deposit;
+        } else {
+            $rentalCost = $deposit * ($maxCapPct / 100);
+        }
         $depreciatedValue = $deposit; 
 
         return [
@@ -317,7 +328,11 @@ if (!function_exists('validateRentalCost')) {
     function validateRentalCost(float $deposit, float $rentalCost): bool
     {
         $maxCap = (float) getSystemSetting('rental_max_cost_cap_per_day', 0);
-        $maxAllowed = $deposit * ($maxCap / 100);
+        if ($maxCap == 0) {
+            $maxAllowed = $deposit;
+        } else {
+            $maxAllowed = $deposit * ($maxCap / 100);
+        }
         return $rentalCost <= ($maxAllowed + 0.01);
     }
 }

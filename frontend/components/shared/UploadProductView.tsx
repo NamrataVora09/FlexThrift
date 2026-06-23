@@ -367,7 +367,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     const usedTimes = parseInt(f.used_times || '0');
     const found = findPricingRule(meta.pricing_rules || [], usedTimes);
 
-    let deductionThreshold = parseFloat(meta.config.sale_base_discount || '0');
+    let deductionThreshold = 0;
     let depreciationAmount = 0;
     if (found) {
       deductionThreshold = Number(found.rule.deduction_threshold);
@@ -402,15 +402,17 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? 10);
       const depreciationAmount = Number(found.rule.depreciation_amount ?? 0);
       const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
-      const maxCapPct = Number(found.rule.max_cost_cap_per_day) > 0 ? Number(found.rule.max_cost_cap_per_day) : globalMaxCap;
+      const maxCapPct = (found.rule.max_cost_cap_per_day !== undefined && found.rule.max_cost_cap_per_day !== null)
+        ? Number(found.rule.max_cost_cap_per_day)
+        : globalMaxCap;
 
       deposit = (origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
-      rental = (deposit * (maxCapPct / 100));
+      rental = maxCapPct === 0 ? deposit : (deposit * (maxCapPct / 100));
     } else {
       // Use fallback settings: Deposit = Original Price, Rental = Deposit * (FallbackMaxCap%)
       const fallbackMaxCap = parseFloat(meta.config.fallback_rental_cost_per_day || '0');
       deposit = origPrice;
-      rental = (deposit * (fallbackMaxCap / 100));
+      rental = fallbackMaxCap === 0 ? deposit : (deposit * (fallbackMaxCap / 100));
     }
 
     setF(prev => ({
@@ -569,12 +571,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const origPrice = parseFloat(f.original_price);
       const usedTimes = parseInt(f.used_times || '0');
       const found = findPricingRule(meta.pricing_rules || [], usedTimes);
-      const deductionThreshold = found ? Number(found.rule.deduction_threshold) : parseFloat(meta.config.sale_base_discount || '0');
+      const deductionThreshold = found ? Number(found.rule.deduction_threshold) : 0;
       // Maximum Allowed Price = original × (1 - deductionThreshold / 100)
       const maxPrice = (origPrice * (1 - deductionThreshold / 100));
       if (parseFloat(f.price) > maxPrice) {
-        const src = found ? found.source : 'Global';
-        setError(`Sale price cannot exceed ₹${maxPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (Original ₹${origPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })} minus ${deductionThreshold}% deduction threshold — ${src} rule)`);
+        const src = found ? found.source : 'Default';
+        setError(`Sale price cannot exceed ₹${maxPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (Original ₹${origPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}${deductionThreshold > 0 ? ` minus ${deductionThreshold}% deduction threshold — ${src} rule` : ''})`);
         setSubmitting(false);
         return;
       }
@@ -603,13 +605,23 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       }
 
       // 2. Validate Rental Cost based on ENTERED deposit
-      const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
-      const maxCapPct = (found && Number(found.rule.max_cost_cap_per_day) > 0) ? Number(found.rule.max_cost_cap_per_day) : globalMaxCap;
-      const maxRentalAllowed = (enteredDeposit * maxCapPct / 100);
+      // When a rule exists and max_cost_cap_per_day === 0, it means rental cost = deposit (no percentage cap)
+      // Only fall back to global setting if NO rule was found at all
+      let maxCapPct: number;
+      if (found && found.rule.max_cost_cap_per_day !== undefined && found.rule.max_cost_cap_per_day !== null) {
+        maxCapPct = Number(found.rule.max_cost_cap_per_day);
+      } else if (!found) {
+        // No rule found — use global fallback (0 = no cap, rental = deposit)
+        maxCapPct = parseFloat(meta.config.rental_max_cost_cap_per_day || '0');
+      } else {
+        maxCapPct = 0;
+      }
+      const maxRentalAllowed = maxCapPct === 0 ? enteredDeposit : (enteredDeposit * maxCapPct / 100);
 
-      if (parseFloat(f.rental_cost) > maxRentalAllowed) {
+      if (parseFloat(f.rental_cost) > maxRentalAllowed + 0.01) {
         const src = found ? found.source : 'Global Default';
-        setError(`Rental cost cannot exceed ₹${maxRentalAllowed.toLocaleString('en-IN', { minimumFractionDigits: 2 })} per day (${maxCapPct}% cap based on ${src})`);
+        const capDesc = maxCapPct === 0 ? 'equals deposit (0% cap)' : `${maxCapPct}% cap based on ${src}`;
+        setError(`Rental cost cannot exceed ₹${maxRentalAllowed.toLocaleString('en-IN', { minimumFractionDigits: 2 })} per day (${capDesc})`);
         setSubmitting(false);
         return;
       }
@@ -700,7 +712,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     const usedTimes = parseInt(f.used_times || '0');
     const found = findPricingRule(meta.pricing_rules || [], usedTimes);
 
-    const deductionThreshold = found ? Number(found.rule.deduction_threshold) : parseFloat(cfg.sale_base_discount || '0');
+    const deductionThreshold = found ? Number(found.rule.deduction_threshold) : 0;
     const depreciationAmount = found ? Number(found.rule.depreciation_amount) : 0;
     const source = found ? found.source : 'Default';
 
@@ -738,9 +750,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const maxDeposit = (origPrice * (1 - deductionThreshold / 100));
 
       const globalMaxCap = parseFloat(cfg.rental_max_cost_cap_per_day || '0');
-      const maxCapPct = Number(found.rule.max_cost_cap_per_day) > 0 ? Number(found.rule.max_cost_cap_per_day) : globalMaxCap;
-      const suggestedRental = (suggestedDeposit * (maxCapPct / 100));
-      const maxRental = (maxDeposit * (maxCapPct / 100));
+      const maxCapPct = (found.rule.max_cost_cap_per_day !== undefined && found.rule.max_cost_cap_per_day !== null)
+        ? Number(found.rule.max_cost_cap_per_day)
+        : globalMaxCap;
+      const suggestedRental = maxCapPct === 0 ? suggestedDeposit : (suggestedDeposit * (maxCapPct / 100));
+      const maxRental = maxCapPct === 0 ? maxDeposit : (maxDeposit * (maxCapPct / 100));
 
       return {
         deductionThreshold,
@@ -762,8 +776,8 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
       const suggestedDeposit = (origPrice * (1 - baseDedPct / 100));
       const maxDeposit = suggestedDeposit;
-      const suggestedRental = (suggestedDeposit * (fallbackPct / 100));
-      const maxRental = (suggestedDeposit * (maxCapPct / 100));
+      const suggestedRental = fallbackPct === 0 ? suggestedDeposit : (suggestedDeposit * (fallbackPct / 100));
+      const maxRental = maxCapPct === 0 ? suggestedDeposit : (suggestedDeposit * (maxCapPct / 100));
 
       return {
         deductionThreshold: baseDedPct,
@@ -1070,8 +1084,18 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   <div className="col-md-4">
                     <label className="form-label" style={labelStyle}>Rental Cost (per day)</label>
                     <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="rental_cost" step="0.01" value={f.rental_cost} onChange={handleChange} /></div>
-                    <small className={(parseFloat(f.rental_cost) > Math.round(parseFloat(f.rental_deposit || '0') * (rentalPriceSuggestion?.maxCapPct || 0) / 100)) ? "text-danger fw-bold" : "text-muted"}>
-                      {rentalPriceSuggestion?.source === 'System Fallback' ? 'Recommended daily rate' : `Max ${rentalPriceSuggestion?.maxCapPct || '0'}% of deposit per day`}
+                    <small className={(() => {
+                      const dep = parseFloat(f.rental_deposit || '0');
+                      const cap = rentalPriceSuggestion?.maxCapPct;
+                      const maxAllowed = (cap === 0 || cap === null || cap === undefined) ? dep : (dep * (cap ?? 0) / 100);
+                      return parseFloat(f.rental_cost || '0') > maxAllowed + 0.01 ? 'text-danger fw-bold' : 'text-muted';
+                    })()}>
+                      {(() => {
+                        const cap = rentalPriceSuggestion?.maxCapPct;
+                        if (cap === 0) return 'Max: Deposit Amount (0% cap = full deposit)';
+                        if (cap == null) return 'Recommended daily rate';
+                        return `Max ${cap}% of deposit per day`;
+                      })()}
                     </small>
                   </div>
                   <div className="col-md-12">
