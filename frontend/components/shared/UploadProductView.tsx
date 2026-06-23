@@ -401,7 +401,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (found) {
       const deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? 10);
       const depreciationAmount = Number(found.rule.depreciation_amount ?? 0);
-      const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '14');
+      const globalMaxCap = parseFloat(meta.config.rental_max_cost_cap_per_day || '0');
       const maxCapPct = (found.rule.max_cost_cap_per_day !== undefined && found.rule.max_cost_cap_per_day !== null)
         ? Number(found.rule.max_cost_cap_per_day)
         : globalMaxCap;
