@@ -409,10 +409,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       deposit = (origPrice * (1 - (deductionThreshold + depreciationAmount) / 100));
       rental = maxCapPct === 0 ? deposit : (deposit * (maxCapPct / 100));
     } else {
-      // Use fallback settings: Deposit = Original Price, Rental = Deposit * (FallbackMaxCap%)
-      const fallbackMaxCap = parseFloat(meta.config.fallback_rental_cost_per_day || '0');
+      // No rule found: Deposit = Original Price, Rental = same as Deposit (no percentage cap)
       deposit = origPrice;
-      rental = fallbackMaxCap === 0 ? deposit : (deposit * (fallbackMaxCap / 100));
+      rental = deposit;
     }
 
     setF(prev => ({
@@ -750,7 +749,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     let depreciationAmount = 0;
 
     let suggestedRental = 0;
-    let source = found ? found.source || 'System Fallback';
+    let source = found ? found.source : '';
 
     if (found) {
       deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? deductionThreshold);
@@ -779,27 +778,23 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         ruleLabel: found.rule.filter_label || ''
       };
     } else {
-      // Use Global Defaults (when no specific rule matches)
-      const baseDedPct = parseFloat(cfg.rental_base_deposit_deduction || '0');
-      const maxCapPct = parseFloat(cfg.rental_max_cost_cap_per_day || '14');
-      const fallbackPct = parseFloat(cfg.fallback_rental_cost_per_day || '10');
-
-      const suggestedDeposit = (origPrice * (1 - baseDedPct / 100));
-      const maxDeposit = suggestedDeposit;
-      const suggestedRental = fallbackPct === 0 ? suggestedDeposit : (suggestedDeposit * (fallbackPct / 100));
-      const maxRental = maxCapPct === 0 ? suggestedDeposit : (suggestedDeposit * (maxCapPct / 100));
+      // No specific rule matches — Deposit = Original Price, Rental = same as Deposit
+      const suggestedDeposit = origPrice;
+      const maxDeposit = origPrice;
+      const suggestedRental = suggestedDeposit;
+      const maxRental = maxDeposit;
 
       return {
-        deductionThreshold: baseDedPct,
+        deductionThreshold: 0,
         depreciationAmount: 0,
         depositPct: 100,
         suggestedDeposit,
         maxDeposit,
         suggestedRental,
         maxRental,
-        maxCapPct,
-        source: 'Global Default',
-        ruleLabel: 'Global Default'
+        maxCapPct: 0,
+        source: 'No Rule',
+        ruleLabel: 'No Pricing Rule'
       };
     }
   })();

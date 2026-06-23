@@ -476,10 +476,11 @@ class BuyerApi extends ResourceController
             ->select('o.*, o.offer_price as offered_price,
                 p.title as product_title, p.listing_type, p.original_price,
                 p.rental_cost as rental_cost,
+                p.dispatch_city, p.dispatch_state, p.dispatch_pin_code,
                 (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image,
                 (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND id != o.id AND status = \'accepted\' AND listing_type = \'sell\') as is_product_sold,
                 (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND id != o.id AND status = \'accepted\' AND listing_type = \'rent\' AND rental_start_date <= o.rental_end_date AND rental_end_date >= o.rental_start_date AND p.listing_type = \'rent\') as is_rental_blocked,
-                u.name as seller_name, u.seller_rating_avg, u.seller_rating_count,
+                u.name as seller_name, u.mobile as seller_mobile, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count,
                 \'sent\' as perspective')
             ->join('products p', 'p.id = o.product_id', 'left')
             ->join('users u', 'u.id = o.seller_id', 'left')
