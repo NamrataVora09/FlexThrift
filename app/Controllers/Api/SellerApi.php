@@ -238,8 +238,10 @@ class SellerApi extends ResourceController
             'fallback_rental_cost_per_day' => 10,
             'min_rental_days' => 3,
             'max_product_images' => 7,
+            'max_original_price' => 10000000, // 1 Crore (platform ceiling)
         ];
         $config = array_merge($defaults, $config);
+
 
         $pricingRules = $db->table('pricing_rules')->where('is_active', 1)->orderBy('filter_type', 'ASC')->get()->getResultArray();
         $rentalPricingRules = $db->table('rental_pricing_rules')->where('is_active', 1)->orderBy('filter_type', 'ASC')->get()->getResultArray();
@@ -2094,6 +2096,16 @@ class SellerApi extends ResourceController
         $ltId = $data['listing_type_category'] ?? null;
         $cId = $data['category_id'] ?? null;
         $scId = $data['sub_category_id'] ?? null;
+
+        // Validate original price doesn't exceed configured maximum
+        $maxOriginalPrice = (float) getSystemSetting('max_original_price', 10000000); // default 1 Crore
+        $maxOriginalPrice = min($maxOriginalPrice, 10000000); // enforce absolute ceiling at 1 Crore
+        if ($originalPrice > $maxOriginalPrice) {
+            return [
+                'success' => false,
+                'message' => 'Original price cannot exceed ₹' . number_format($maxOriginalPrice, 2) . ' (platform limit).',
+            ];
+        }
 
         if ($data['listing_type'] === 'sell') {
             $price = (float) ($data['price'] ?? 0);

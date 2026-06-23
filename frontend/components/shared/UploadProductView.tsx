@@ -566,6 +566,16 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     const configs = getFieldConfigs();
     if (configs.gender === 'mandatory' && !f.gender) { setError('Gender is required'); setSubmitting(false); return; }
 
+    // Validate original price doesn't exceed configured max
+    if (f.original_price && meta) {
+      const maxOrig = parseFloat(meta.config?.max_original_price || '10000000');
+      if (parseFloat(f.original_price) > maxOrig) {
+        setError(`Original price cannot exceed ₹${maxOrig.toLocaleString('en-IN')} (platform limit).`);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     // Validate sale price doesn't exceed max allowed (based on pricing rule)
     if (f.listing_type === 'sell' && f.original_price && f.price && meta) {
       const origPrice = parseFloat(f.original_price);
@@ -740,7 +750,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     let depreciationAmount = 0;
 
     let suggestedRental = 0;
-    let source = found ? found.source : 'System Fallback';
+    let source = found ? found.source || 'System Fallback';
 
     if (found) {
       deductionThreshold = Number(found.rule.deposit_deduction_threshold ?? found.rule.deduction_threshold ?? deductionThreshold);
@@ -975,7 +985,15 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   <small className="text-muted">Enter 0 if brand new</small>
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Original Price <span className="text-danger">*</span></label>
-                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="original_price" step="0.01" value={f.original_price} onChange={handleChange} required /></div>
+                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="original_price" step="0.01" min="1" max={meta?.config?.max_original_price || '10000000'} value={f.original_price} onChange={handleChange} required /></div>
+                  {(() => {
+                    const maxOrig = parseFloat(meta?.config?.max_original_price || '10000000');
+                    const entered = parseFloat(f.original_price || '0');
+                    return entered > maxOrig
+                      ? <small className="text-danger fw-bold">Exceeds max: ₹{maxOrig.toLocaleString('en-IN')}</small>
+                      : <small className="text-muted">Max: ₹{maxOrig.toLocaleString('en-IN')}</small>;
+                  })()
+                  }
                 </div>
 
                 {/* Dynamic taxonomy attributes */}

@@ -167,6 +167,25 @@ export default function SettingsClient() {
                 <input type="number" min="1" className="form-control" style={inputStyle} value={settings.blocked_from_approvals_days || '30'} onChange={(e) => update('blocked_from_approvals_days', e.target.value)} />
                 <small className="text-muted">Days a seller stays blocked from approvals after violations</small>
               </div>
+              <div className="col-md-4">
+                <label className="form-label fw-semibold">Max Original Price (₹)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10000000"
+                  step="1"
+                  className="form-control"
+                  style={inputStyle}
+                  value={settings.max_original_price || '10000000'}
+                  onChange={(e) => {
+                    const val = Math.min(10000000, Math.max(1, parseInt(e.target.value) || 1));
+                    update('max_original_price', String(val));
+                  }}
+                />
+                <small className="text-muted">
+                  Maximum allowed original price per product. Platform ceiling: <strong>₹1 Crore</strong>.
+                </small>
+              </div>
               <div className="col-12">
                 <Toggle
                   label="Admin Review Required for New Products"

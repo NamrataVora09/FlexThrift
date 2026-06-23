@@ -1463,7 +1463,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                         <div className="buyer-contact-item mt-2">
                           <i className="bi bi-geo-alt text-danger"></i>
                           <span style={{ fontSize: '0.78rem', lineHeight: '1.2', display: 'block' }}>
-                            {offer.delivery_address && <>{offer.delivery_address}<br /></>}
+                            {/* {offer.delivery_address && <>{offer.delivery_address}<br /></>} */}
                             {offer.delivery_city || 'N/A'}, {offer.delivery_state || ''} {offer.delivery_pin_code}
                           </span>
                         </div>
