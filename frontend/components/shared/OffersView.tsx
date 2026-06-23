@@ -1699,301 +1699,298 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
         const endFormatted = o.rental_end_date ? new Date(o.rental_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
         return (
-          <div key={o.id} className="luxury-item-card shadow-sm" style={{ padding: 24, borderRadius: 20, background: '#fff', border: '1px solid #eee', marginBottom: 20 }}>
-            <div className="row align-items-start g-4">
+          <div key={o.id} className="luxury-item-card shadow-sm" style={{ padding: 24, borderRadius: 20, background: '#fff', border: '1px solid #eee', marginBottom: 20, display: "grid", gridTemplateColumns: " 20% 80%", columnGap: "30px" }}>
 
-              {/* LEFT COLUMN — Seller Profile Details */}
-              <div className="col-12 col-md-4 col-lg-3.5 pr-md-4" style={{ borderRight: '1px solid #f0f0f0' }}>
-                {/* Product Image */}
-                <img
-                  src={getImageUrl(o.product_image) || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=120&h=120&fit=crop'}
-                  alt={o.product_title || 'Product'}
-                  onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=120&h=120&fit=crop'; }}
-                  style={{ width: '100%', height: 260, objectFit: 'contain', borderRadius: 12, marginBottom: 14 }}
-                />
-                <div className="d-flex align-items-center mb-3">
-                  <div style={{
-                    width: 50, height: 50, borderRadius: '50%',
-                    border: '2px solid #ffc63a', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 'bold', color: '#ffc63a', fontSize: '1.4rem',
-                    background: '#fff', flexShrink: 0, marginRight: 12
-                  }}>
-                    {avatarLetter}
-                  </div>
-                  <div>
-                    <div className="fw-bold fs-6 text-dark">{sellerName}</div>
-                    <div className="d-flex align-items-center" style={{ fontSize: '0.85rem', color: '#888' }}>
-                      <span className="fw-semibold text-dark">{sellerRating}</span>
-                      <i className="bi bi-star-fill ms-1" style={{ color: '#ffc63a', fontSize: '0.8rem' }}></i>
-                    </div>
-                  </div>
+            {/* LEFT COLUMN — Seller Profile Details */}
+            <div className=" w-full  ">
+              {/* Product Image */}
+              <img
+                src={getImageUrl(o.product_image) || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=120&h=120&fit=crop'}
+                alt={o.product_title || 'Product'}
+                onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=120&h=120&fit=crop'; }}
+                style={{ width: '100%', height: 260, objectFit: 'cover', borderRadius: 12, marginBottom: 20 }}
+              />
+              <div className="d-flex align-items-center mb-3">
+                <div style={{
+                  width: 30, height: 30, borderRadius: '50%',
+                  border: '2px solid #ffc63a', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 'bold', color: '#ffc63a', fontSize: '1rem',
+                  background: '#fff', flexShrink: 0, marginRight: 12
+                }}>
+                  {avatarLetter}
                 </div>
-
-                <hr style={{ borderTop: '1px solid #f0f0f0', margin: '12px 0' }} />
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.85rem', color: '#555' }}>
-                  {o.seller_mobile && (
-                    <div className="d-flex align-items-center gap-2">
-                      <i className="bi bi-telephone text-primary" style={{ fontSize: '1rem', color: '#0d6efd' }}></i>
-                      <span>{o.seller_mobile}</span>
-                    </div>
-                  )}
-                  {o.seller_email && (
-                    <div className="d-flex align-items-center gap-2" style={{ wordBreak: 'break-all' }}>
-                      <i className="bi bi-envelope text-primary" style={{ fontSize: '1rem', color: '#0d6efd' }}></i>
-                      <span>{o.seller_email}</span>
-                    </div>
-                  )}
-                  {sellerAddress && (
-                    <div className="d-flex align-items-start gap-2">
-                      <i className="bi bi-geo-alt text-danger" style={{ fontSize: '1.1rem', color: '#dc3545', marginTop: 1 }}></i>
-                      <span>{sellerAddress}</span>
-                    </div>
-                  )}
+                <div>
+                  <div className="fw-bold  text-dark" style={{ fontSize: '0.85rem' }}>{sellerName}</div>
+                  <div className="d-flex align-items-center" style={{ fontSize: '0.85rem', color: '#888' }}>
+                    <span className="fw-semibold text-dark">{sellerRating}</span>
+                    <i className="bi bi-star-fill ms-1" style={{ color: '#ffc63a', fontSize: '0.8rem' }}></i>
+                  </div>
                 </div>
               </div>
 
-              {/* RIGHT COLUMN — Offer Price, Box, Logs, and Buttons */}
-              <div className="col-12 col-md-8 col-lg-8.5 ps-md-4">
-                {/* Top Bar inside Right Pane */}
-                <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                  <div>
-                    <div className="d-flex align-items-center gap-2">
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>OFFERED PRICE</span>
-                      <span className="status-pill" style={pillStyles[o.status] || pillStyles.pending}>
-                        {statusLabel}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#ffc63a', marginTop: 4 }}>
-                      ₹{Number(offeredPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </div>
-                    <div className="mt-2">
-                      <h6 className="fw-bold mb-0 text-dark" style={{ fontSize: '1rem' }}>{o.product_title}</h6>
-                      <div className="d-flex flex-wrap gap-2 align-items-center mt-1">
-                        <small className="text-muted">#REF-{o.id} &bull; {offerType.charAt(0).toUpperCase() + offerType.slice(1)}</small>
-                        {isAdmin && (
-                          <>
-                            <span className="badge bg-light text-dark border fw-bold" style={{ fontSize: '0.65rem' }}>
-                              Buyer: {o.buyer_name || 'N/A'}
-                            </span>
-                            <span className="badge bg-light text-dark border fw-bold" style={{ fontSize: '0.65rem' }}>
-                              Seller: {o.seller_name || 'N/A'}
-                            </span>
-                          </>
-                        )}
-                      </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.85rem', color: '#555' }}>
+                {o.seller_mobile && (
+                  <div className="d-flex align-items-center gap-2">
+                    <i className="bi bi-telephone text-primary" style={{ fontSize: '1rem', color: '#0d6efd' }}></i>
+                    <span>{o.seller_mobile}</span>
+                  </div>
+                )}
+                {o.seller_email && (
+                  <div className="d-flex align-items-center gap-2" style={{ wordBreak: 'break-all' }}>
+                    <i className="bi bi-envelope text-primary" style={{ fontSize: '1rem', color: '#0d6efd' }}></i>
+                    <span>{o.seller_email}</span>
+                  </div>
+                )}
+                {sellerAddress && (
+                  <div className="d-flex align-items-start gap-2">
+                    <i className="bi bi-geo-alt text-danger" style={{ fontSize: '1.1rem', color: '#dc3545', marginTop: 1 }}></i>
+                    <span>{sellerAddress}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN — Offer Price, Box, Logs, and Buttons */}
+            <div className="">
+              {/* Top Bar inside Right Pane */}
+              <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                  <div className="d-flex align-items-center gap-2">
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>OFFERED PRICE</span>
+                    <span className="status-pill" style={pillStyles[o.status] || pillStyles.pending}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#ffc63a', marginTop: 4 }}>
+                    ₹{Number(offeredPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
+                  <div className="mt-2">
+                    <h6 className="fw-bold mb-0 text-dark" style={{ fontSize: '1rem' }}>{o.product_title}</h6>
+                    <div className="d-flex flex-wrap gap-2 align-items-center mt-1">
+                      <small className="text-muted">#REF-{o.id} &bull; {offerType.charAt(0).toUpperCase() + offerType.slice(1)}</small>
+                      {isAdmin && (
+                        <>
+                          <span className="badge bg-light text-dark border fw-bold" style={{ fontSize: '0.65rem' }}>
+                            Buyer: {o.buyer_name || 'N/A'}
+                          </span>
+                          <span className="badge bg-light text-dark border fw-bold" style={{ fontSize: '0.65rem' }}>
+                            Seller: {o.seller_name || 'N/A'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
+                </div>
 
-                  {/* Action Buttons styled like Accept/Reject */}
-                  <div className="d-flex gap-2 align-items-center flex-wrap">
-                    {isAdmin && o.status === 'pending' && (
-                      <>
-                        <button
-                          className="btn px-4 py-2 rounded-pill fw-bold text-white"
-                          style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
-                          onClick={() => onAccept?.(o)}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
-                          style={{ fontSize: '0.82rem' }}
-                          onClick={() => onReject?.(o)}
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-                    {o.status === 'negotiating' && (
-                      <>
-                        <button
-                          className="btn px-4 py-2 rounded-pill fw-bold text-white"
-                          style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
-                          onClick={() => onAcceptDates?.(o)}
-                        >
-                          Accept Dates
-                        </button>
-                        <button
-                          className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
-                          style={{ fontSize: '0.82rem' }}
-                          onClick={() => onCancel?.(o)}
-                        >
-                          Decline
-                        </button>
-                      </>
-                    )}
-                    {(o.status === 'pending' || o.status === 'rejected' || o.status === 'negotiating') && !isAdmin && (
-                      <>
-                        {o.status === 'rejected' ? (
-                          <button
-                            className="btn px-4 py-2 rounded-pill fw-bold text-white"
-                            style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
-                            onClick={() => onUpdateDates?.(o)}
-                          >
-                            Make Offer
-                          </button>
-                        ) : (o.offer_type ?? o.listing_type) === 'rent' && (
-                          <button
-                            className="btn btn-outline-primary px-3 py-2 rounded-pill fw-bold"
-                            style={{ fontSize: '0.82rem' }}
-                            onClick={() => onUpdateDates?.(o)}
-                          >
-                            Change Dates
-                          </button>
-                        )}
-                        <button
-                          className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
-                          style={{ fontSize: '0.82rem' }}
-                          onClick={() => onCancel?.(o)}
-                        >
-                          {o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}
-                        </button>
-                      </>
-                    )}
-                    {canRate && !isAdmin && (
+                {/* Action Buttons styled like Accept/Reject */}
+                <div className="d-flex gap-2 align-items-center flex-wrap">
+                  {isAdmin && o.status === 'pending' && (
+                    <>
                       <button
                         className="btn px-4 py-2 rounded-pill fw-bold text-white"
                         style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
-                        onClick={() => onRate?.(o)}
+                        onClick={() => onAccept?.(o)}
                       >
-                        <i className="bi bi-star-fill me-1"></i> Rate Seller
+                        Accept
                       </button>
-                    )}
-                    {o.status === 'accepted' && Number(o.buyer_rated_seller) === 1 && !isAdmin && (
-                      <span className="badge bg-light text-success border py-2 px-3 rounded-pill fw-bold" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem' }}>
-                        <i className="bi bi-check-circle-fill me-1"></i> Rated
-                      </span>
-                    )}
-                    <a
-                      href={`/buyer/product/${o.product_id}`}
-                      className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
-                      style={{ fontSize: '0.82rem' }}
+                      <button
+                        className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
+                        style={{ fontSize: '0.82rem' }}
+                        onClick={() => onReject?.(o)}
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                  {o.status === 'negotiating' && (
+                    <>
+                      <button
+                        className="btn px-4 py-2 rounded-pill fw-bold text-white"
+                        style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
+                        onClick={() => onAcceptDates?.(o)}
+                      >
+                        Accept Dates
+                      </button>
+                      <button
+                        className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
+                        style={{ fontSize: '0.82rem' }}
+                        onClick={() => onCancel?.(o)}
+                      >
+                        Decline
+                      </button>
+                    </>
+                  )}
+                  {(o.status === 'pending' || o.status === 'rejected' || o.status === 'negotiating') && !isAdmin && (
+                    <>
+                      {o.status === 'rejected' ? (
+                        <button
+                          className="btn px-4 py-2 rounded-pill fw-bold text-white"
+                          style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
+                          onClick={() => onUpdateDates?.(o)}
+                        >
+                          Make Offer
+                        </button>
+                      ) : (o.offer_type ?? o.listing_type) === 'rent' && (
+                        <button
+                          className="btn btn-outline-primary px-3 py-2 rounded-pill fw-bold"
+                          style={{ fontSize: '0.82rem' }}
+                          onClick={() => onUpdateDates?.(o)}
+                        >
+                          Change Dates
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
+                        style={{ fontSize: '0.82rem' }}
+                        onClick={() => onCancel?.(o)}
+                      >
+                        {o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}
+                      </button>
+                    </>
+                  )}
+                  {canRate && !isAdmin && (
+                    <button
+                      className="btn px-4 py-2 rounded-pill fw-bold text-white"
+                      style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
+                      onClick={() => onRate?.(o)}
                     >
-                      View Item
-                    </a>
-                  </div>
+                      <i className="bi bi-star-fill me-1"></i> Rate Seller
+                    </button>
+                  )}
+                  {o.status === 'accepted' && Number(o.buyer_rated_seller) === 1 && !isAdmin && (
+                    <span className="badge bg-light text-success border py-2 px-3 rounded-pill fw-bold" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem' }}>
+                      <i className="bi bi-check-circle-fill me-1"></i> Rated
+                    </span>
+                  )}
+                  <a
+                    href={`/buyer/product/${o.product_id}`}
+                    className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
+                    style={{ fontSize: '0.82rem' }}
+                  >
+                    View Item
+                  </a>
                 </div>
-
-                {/* Rent Info Box */}
-                {offerType === 'rent' && o.rental_start_date && (
-                  <div style={{
-                    border: '1px solid #e9ecef', background: '#f8f9fa',
-                    borderRadius: 16, padding: '16px 20px', marginBottom: 20
-                  }}>
-                    <div className="d-flex justify-content-between align-items-center py-1">
-                      <span className="text-muted" style={{ fontSize: '0.9rem' }}>Product Rental:</span>
-                      <span className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>₹{Number(o.product_rental_cost ?? o.rental_cost ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}/day</span>
-                    </div>
-                    <div className="d-flex justify-content-between align-items-center py-1">
-                      <span className="text-muted" style={{ fontSize: '0.9rem' }}>Security Deposit:</span>
-                      <span className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>₹{Number(o.deposit_amount ?? o.product_rental_deposit ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <hr style={{ margin: '12px 0', borderColor: '#e9ecef' }} />
-                    <div className="d-flex align-items-center flex-wrap gap-2 text-dark font-medium" style={{ fontSize: '0.9rem' }}>
-                      <i className="bi bi-calendar3 text-primary me-1" style={{ fontSize: '1rem', color: '#0d6efd' }}></i>
-                      <span className="fw-semibold">{fmtShort(o.rental_start_date)} - {fmtFull(o.rental_end_date)}</span>
-                      <span className="badge text-white px-3 py-1.5 rounded-pill" style={{ background: '#6c757d', fontSize: '0.75rem', fontWeight: 600 }}>{days} days</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Message & Alerts */}
-                {o.status === 'negotiating' && o.message && (
-                  <div className="alert alert-info py-2 px-3 mt-2 rounded-3 border-0 small mb-3">
-                    <i className="bi bi-info-circle-fill me-2"></i>
-                    <strong>Action Required:</strong> {o.message}
-                  </div>
-                )}
-                {o.message && o.status !== 'negotiating' && (
-                  <p className="mb-3 small text-muted fst-italic">
-                    <i className="bi bi-chat-left-dots me-1"></i>
-                    {o.message}
-                  </p>
-                )}
-                {o.seller_remarks && (
-                  <div className="mb-3 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
-                    <i className="bi bi-reply-fill me-1"></i>
-                    Seller: {o.seller_remarks}
-                  </div>
-                )}
-
-                {/* Conflict Alert */}
-                {conflict && (
-                  <div className="conflict-alert mb-3">
-                    <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: '1.2rem' }}></i>
-                    <div>
-                      {(() => {
-                        const c = getRentalConflict?.(o);
-                        if (!c) return null;
-                        return `Rental Conflict: These dates overlap with an existing booking (${fmtShort(c.start)} - ${fmtShort(c.end)} ${c.source === 'offer' ? `#${c.id}` : ''}).`;
-                      })()}
-                      <br />
-                      <small style={{ fontWeight: 400, opacity: 0.75 }}>
-                        Please select different dates to proceed.
-                      </small>
-                    </div>
-                  </div>
-                )}
-                {soldOut && o.status === 'pending' && (
-                  <div className="conflict-alert mb-3">
-                    <i className="bi bi-slash-circle-fill" style={{ fontSize: '1.2rem' }}></i>
-                    <div>This product has been sold to another buyer.</div>
-                  </div>
-                )}
-
-                {/* Logs Section */}
-                {(() => {
-                  const sortedHistory = [...(o.history || [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-                  const steps = [
-                    ...sortedHistory.map(h => ({
-                      label: historyLabel(h.action),
-                      date: fmtDateTime(h.created_at) + (h.new_start_date && h.new_end_date ? ` • ${fmtShort(h.new_start_date)} – ${fmtShort(h.new_end_date)}` : ''),
-                      icon: historyIcon(h.action),
-                    })),
-                    {
-                      label: 'Offer Initiated',
-                      date: fmtDateTime(o.created_at),
-                      icon: 'fa-solid fa-tag',
-                    },
-                  ];
-                  return (
-                    <div style={{ background: '', padding: '0 8px', marginTop: '1rem' }}>
-                      <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
-                        <i className="bi bi-clock-history" style={{ color: '#D7B467', fontSize: '1.1rem' }}></i> Date/Time Logs
-                      </div>
-                      {steps.map((step, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
-                          {/* number + line */}
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                            <div style={{
-                              width: 28, height: 28, background: '#D7B467', color: '#fff',
-                              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontWeight: 700, fontSize: 13,
-                            }}>
-                              {idx + 1}
-                            </div>
-                            {idx < steps.length - 1 && (
-                              <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />
-                            )}
-                          </div>
-                          {/* content */}
-                          <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
-                            </div>
-                            <div style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: 2 }}>{step.date}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-
               </div>
 
+              {/* Rent Info Box */}
+              {offerType === 'rent' && o.rental_start_date && (
+                <div style={{
+                  border: '1px solid #e9ecef', background: '#f8f9fa',
+                  borderRadius: 16, padding: '16px 20px', marginBottom: 20
+                }}>
+                  <div className="d-flex justify-content-between align-items-center py-1">
+                    <span className="text-muted" style={{ fontSize: '0.9rem' }}>Product Rental:</span>
+                    <span className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>₹{Number(o.product_rental_cost ?? o.rental_cost ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}/day</span>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center py-1">
+                    <span className="text-muted" style={{ fontSize: '0.9rem' }}>Security Deposit:</span>
+                    <span className="fw-bold text-dark" style={{ fontSize: '0.95rem' }}>₹{Number(o.deposit_amount ?? o.product_rental_deposit ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <hr style={{ margin: '12px 0', borderColor: '#e9ecef' }} />
+                  <div className="d-flex align-items-center flex-wrap gap-2 text-dark font-medium" style={{ fontSize: '0.9rem' }}>
+                    <i className="bi bi-calendar3 text-primary me-1" style={{ fontSize: '1rem', color: '#0d6efd' }}></i>
+                    <span className="fw-semibold">{fmtShort(o.rental_start_date)} - {fmtFull(o.rental_end_date)}</span>
+                    <span className="badge text-white px-3 py-1.5 rounded-pill" style={{ background: '#6c757d', fontSize: '0.75rem', fontWeight: 600 }}>{days} days</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Message & Alerts */}
+              {o.status === 'negotiating' && o.message && (
+                <div className="alert alert-info py-2 px-3 mt-2 rounded-3 border-0 small mb-3">
+                  <i className="bi bi-info-circle-fill me-2"></i>
+                  <strong>Action Required:</strong> {o.message}
+                </div>
+              )}
+              {o.message && o.status !== 'negotiating' && (
+                <p className="mb-3 small text-muted fst-italic">
+                  <i className="bi bi-chat-left-dots me-1"></i>
+                  {o.message}
+                </p>
+              )}
+              {o.seller_remarks && (
+                <div className="mb-3 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
+                  <i className="bi bi-reply-fill me-1"></i>
+                  Seller: {o.seller_remarks}
+                </div>
+              )}
+
+              {/* Conflict Alert */}
+              {conflict && (
+                <div className="conflict-alert mb-3">
+                  <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: '1.2rem' }}></i>
+                  <div>
+                    {(() => {
+                      const c = getRentalConflict?.(o);
+                      if (!c) return null;
+                      return `Rental Conflict: These dates overlap with an existing booking (${fmtShort(c.start)} - ${fmtShort(c.end)} ${c.source === 'offer' ? `#${c.id}` : ''}).`;
+                    })()}
+                    <br />
+                    <small style={{ fontWeight: 400, opacity: 0.75 }}>
+                      Please select different dates to proceed.
+                    </small>
+                  </div>
+                </div>
+              )}
+              {soldOut && o.status === 'pending' && (
+                <div className="conflict-alert mb-3">
+                  <i className="bi bi-slash-circle-fill" style={{ fontSize: '1.2rem' }}></i>
+                  <div>This product has been sold to another buyer.</div>
+                </div>
+              )}
+
+              {/* Logs Section */}
+              {(() => {
+                const sortedHistory = [...(o.history || [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                const steps = [
+                  ...sortedHistory.map(h => ({
+                    label: historyLabel(h.action),
+                    date: fmtDateTime(h.created_at) + (h.new_start_date && h.new_end_date ? ` • ${fmtShort(h.new_start_date)} – ${fmtShort(h.new_end_date)}` : ''),
+                    icon: historyIcon(h.action),
+                  })),
+                  {
+                    label: 'Offer Initiated',
+                    date: fmtDateTime(o.created_at),
+                    icon: 'fa-solid fa-tag',
+                  },
+                ];
+                return (
+                  <div style={{ background: '', padding: '0 8px', marginTop: '1rem' }}>
+                    <div style={{ fontWeight: 600, color: '#1F2937', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                      <i className="bi bi-clock-history" style={{ color: '#D7B467', fontSize: '1.1rem' }}></i> Date/Time Logs
+                    </div>
+                    {steps.map((step, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '0.75rem' }}>
+                        {/* number + line */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                          <div style={{
+                            width: 28, height: 28, background: '#D7B467', color: '#fff',
+                            borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontWeight: 700, fontSize: 13,
+                          }}>
+                            {idx + 1}
+                          </div>
+                          {idx < steps.length - 1 && (
+                            <div style={{ width: 2, flex: 1, background: '#ccc', minHeight: 22, marginTop: 3 }} />
+                          )}
+                        </div>
+                        {/* content */}
+                        <div style={{ paddingBottom: idx < steps.length - 1 ? '0.85rem' : 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#1F2937' }}>{step.label}</span>
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#6B7280', marginTop: 2 }}>{step.date}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
             </div>
+
           </div>
         );
       })}

@@ -122,8 +122,61 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const [showContactModal, setShowContactModal] = useState(false);
   const [previousOffer, setPreviousOffer] = useState<any | null>(null);
   const [rentalExpired, setRentalExpired] = useState(false);
+  const [activeOffers, setActiveOffers] = useState<any[]>([]);
 
   const datesSelected = product.listing_type !== 'rent' || (!!offerForm.rental_start_date && !!offerForm.rental_end_date);
+
+  const fetchOfferStatus = async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('flex_token') : null;
+    if (!token) return;
+    try {
+      const res = await api.get<{ has_offer: boolean, offer: any, rental_period_ended: boolean, active_offers?: any[] }>(`/buyer/offer-status/${product.id}`);
+      if (res.success) {
+        const hasActive = !!res.data?.active_offers && res.data.active_offers.length > 0;
+        setOfferSuccess(hasActive);
+        if (res.data?.active_offers) {
+          setActiveOffers(res.data.active_offers);
+        }
+
+        if (res.data?.has_offer) {
+          const off = res.data.offer;
+          setPreviousOffer(off);
+
+          if (off.status === 'rejected' && !hasActive) {
+            setOfferForm(f => ({
+              ...f,
+              offer_price: off.offer_price,
+              delivery_state: off.delivery_state || '',
+              delivery_city: off.delivery_city || '',
+              delivery_pin_code: off.delivery_pin_code || '',
+              delivery_address: off.delivery_address || '',
+            }));
+          } else if (res.data.rental_period_ended && !hasActive) {
+            setRentalExpired(true);
+            setOfferForm(f => ({
+              ...f,
+              delivery_state: off.delivery_state || '',
+              delivery_city: off.delivery_city || '',
+              delivery_pin_code: off.delivery_pin_code || '',
+              delivery_address: off.delivery_address || '',
+            }));
+          }
+        }
+
+        if (hasActive) {
+          setContactLoading(true);
+          api.post<{ seller_name: string; seller_email: string; seller_mobile: string; seller_city: string; seller_state: string; seller_pincode: string; already_viewed: boolean }>(
+            `/buyer/view-seller-contact/${product.id}`
+          ).then(cres => {
+            setContactLoading(false);
+            if (cres.success && cres.data) setContactInfo(cres.data);
+          }).catch(() => setContactLoading(false));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -153,48 +206,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
   // Check if buyer already has an active offer on this product (persists across refreshes)
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('flex_token') : null;
-    if (!token) return;
-    api.get<{ has_offer: boolean, offer: any, rental_period_ended: boolean }>(`/buyer/offer-status/${product.id}`)
-      .then(res => {
-        if (res.success && res.data?.has_offer) {
-          const off = res.data.offer;
-          setPreviousOffer(off);
-
-          if (off.status === 'rejected') {
-            // Offer was rejected — pre-fill delivery info so buyer can re-submit easily
-            setOfferForm(f => ({
-              ...f,
-              offer_price: off.offer_price,
-              delivery_state: off.delivery_state || '',
-              delivery_city: off.delivery_city || '',
-              delivery_pin_code: off.delivery_pin_code || '',
-              delivery_address: off.delivery_address || '',
-            }));
-          } else if (res.data.rental_period_ended) {
-            // Accepted rental offer whose period has ended — allow a fresh offer
-            setRentalExpired(true);
-            setOfferForm(f => ({
-              ...f,
-              delivery_state: off.delivery_state || '',
-              delivery_city: off.delivery_city || '',
-              delivery_pin_code: off.delivery_pin_code || '',
-              delivery_address: off.delivery_address || '',
-            }));
-          } else {
-            setOfferSuccess(true);
-            // Also fetch seller contact so "View Seller Contact" button is visible after refresh
-            setContactLoading(true);
-            api.post<{ seller_name: string; seller_email: string; seller_mobile: string; seller_city: string; seller_state: string; seller_pincode: string; already_viewed: boolean }>(
-              `/buyer/view-seller-contact/${product.id}`
-            ).then(cres => {
-              setContactLoading(false);
-              if (cres.success && cres.data) setContactInfo(cres.data);
-            }).catch(() => setContactLoading(false));
-          }
-        }
-      })
-      .catch(() => { });
+    fetchOfferStatus();
   }, [product.id]);
 
   // Prevent rendering if blocked
@@ -261,9 +273,23 @@ export default function ProductDetailClient({ product, images, similarProducts =
       setOfferError('Your account has been restricted from making offers by the administrator.');
       return;
     }
-    if (product.listing_type === 'rent' && (!offerForm.rental_start_date || !offerForm.rental_end_date)) {
-      setOfferError('Please select your rental dates on the calendar first.');
-      return;
+    if (product.listing_type === 'rent') {
+      if (!offerForm.rental_start_date || !offerForm.rental_end_date) {
+        setOfferError('Please select your rental dates on the calendar first.');
+        return;
+      }
+      const start = new Date(offerForm.rental_start_date);
+      const end = new Date(offerForm.rental_end_date);
+      const hasOverlap = activeOffers.some(o => {
+        if (!o.rental_start_date || !o.rental_end_date) return false;
+        const oStart = new Date(o.rental_start_date);
+        const oEnd = new Date(o.rental_end_date);
+        return start <= oEnd && end >= oStart;
+      });
+      if (hasOverlap) {
+        setOfferError('You have already made an active offer overlapping with the selected dates.');
+        return;
+      }
     }
     if (!offerForm.delivery_state.trim()) {
       setOfferError('State is mandatory.');
@@ -321,6 +347,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
         toastWarning('offer_sent_no_contact', contactRes.message || 'Offer sent! Contact could not be retrieved.');
         setContactError(contactRes.message || 'Offer sent! Contact could not be retrieved.');
       }
+      await fetchOfferStatus();
     } else {
       setOfferError(res?.message || 'Failed to submit offer');
     }
@@ -398,9 +425,14 @@ export default function ProductDetailClient({ product, images, similarProducts =
   };
 
 
-  const discountPct = product.listing_type === 'sell' && product.original_price && parseFloat(product.original_price) > parseFloat(product.selling_price || '0')
-    ? Math.round((1 - parseFloat(product.selling_price || '0') / parseFloat(product.original_price)) * 100)
-    : 0;
+  const userOfferRanges = activeOffers
+    .filter(o => o.rental_start_date && o.rental_end_date)
+    .map(o => ({
+      start: o.rental_start_date,
+      end: o.rental_end_date
+    }));
+
+  const allBlockedRanges = [...bookedRanges, ...userOfferRanges];
 
   return (
     <div style={{ fontFamily: "'Maven Pro', sans-serif", backgroundColor: '#fff', color: '#111827', minHeight: '100vh' }}>
@@ -562,6 +594,23 @@ export default function ProductDetailClient({ product, images, similarProducts =
                     <hr style={{ border: 'none', borderTop: '1px solid #E5E7EB', margin: '0 -2rem 1.5rem', opacity: 0.4 }} />
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: 24 }}>
+                      {product.listing_type === 'rent' && (
+                        <button
+                          onClick={() => {
+                            if (!isPreview && Number(user?.blocked_buyer) !== 1) {
+                              setOfferForm(f => ({ ...f, rental_start_date: '', rental_end_date: '', offer_price: product.rental_cost || '' }));
+                              setShowOffer(true);
+                              setOfferError(null);
+                            }
+                          }}
+                          disabled={isPreview || Number(user?.blocked_buyer) === 1}
+                          style={{ width: '100%', padding: '1rem', borderRadius: 10, border: 'none', background: '#FFC63A', color: '#fff', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', cursor: 'pointer' }}
+                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          Make Another Offer
+                        </button>
+                      )}
                       <button
                         onClick={() => setShowContactModal(true)}
                         style={{ width: '100%', padding: '1rem', borderRadius: 10, background: '#ffc63a', color: '#fff', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.8px', textTransform: 'uppercase', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
@@ -578,6 +627,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       >
                         View Offer
                       </button>
+
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                       <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#d6b06b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1094,12 +1144,16 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       </span>
                     </div>
                     <RentalCalendar
-                      bookedRanges={bookedRanges}
+                      bookedRanges={allBlockedRanges}
                       startDate={offerForm.rental_start_date}
                       endDate={offerForm.rental_end_date}
                       onRangeChange={(start, end) => setOfferForm(f => ({ ...f, rental_start_date: start, rental_end_date: end }))}
                       minRentalDays={minRentalDays}
                     />
+                    <div className="mt-2 small text-muted">
+                      <i className="bi bi-info-circle me-1"></i>
+                      Dates you have already offered or rented are blocked on the calendar.
+                    </div>
                     <div className="mt-3 mb-3">
                       <label className="form-label fw-bold small">Deposit Amount (&#8377;)</label>
                       <input

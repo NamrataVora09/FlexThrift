@@ -116,6 +116,13 @@ interface ActiveFilters {
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || `${BACKEND_URL}/api/v1`).replace(/\/$/, '');
 
+// Returns Authorization header if logged in, otherwise empty object
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem('flex_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 const emptyFilters: ActiveFilters = {
   minPrice: '', maxPrice: '', productTypeIds: [], categoryIds: [], subCategoryIds: [],
   brandIds: [], originalBrandIds: [], colors: [], sizes: [], genders: [], condition: '', specs: {},
@@ -216,7 +223,7 @@ export default function BrowsePage() {
     if (!query || query.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
     suggestTimer.current = setTimeout(() => {
       setSuggestLoading(true);
-      fetch(`${API_BASE}/browse?search=${encodeURIComponent(query)}&page=1`)
+      fetch(`${API_BASE}/browse?search=${encodeURIComponent(query)}&page=1`, { headers: getAuthHeaders() })
         .then(r => r.json())
         .then(res => {
           if (res.success && res.data?.products) {
@@ -502,7 +509,7 @@ export default function BrowsePage() {
       // If taxonomy not loaded yet, product_type_id stays in params as-is
     }
 
-    fetch(`${API_BASE}/browse?${apiParams}`)
+    fetch(`${API_BASE}/browse?${apiParams}`, { headers: getAuthHeaders() })
       .then(r => r.json())
       .then(res => {
         if (res.success && res.data) {

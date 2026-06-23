@@ -79,8 +79,18 @@ class BuyerApi extends ResourceController
 
     public function browse()
     {
-        $jwtUser = isset($this->request->jwt_user) ? $this->request->jwt_user : null;
-        $buyerId = $jwtUser ? (int) $jwtUser['user_id'] : null;
+        // Public route — JwtFilter is not applied, so manually decode the token if present.
+        // This allows us to exclude the logged-in user's own products without breaking
+        // unauthenticated access.
+        $buyerId = null;
+        $authHeader = $this->request->getHeaderLine('Authorization');
+        if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
+            $token = substr($authHeader, 7);
+            $payload = \App\Libraries\JWT::decode($token);
+            if ($payload && isset($payload['user_id'])) {
+                $buyerId = (int) $payload['user_id'];
+            }
+        }
         $db = \Config\Database::connect();
         $page = (int) ($this->request->getGet('page') ?? 1);
         $perPage = 12;
@@ -112,6 +122,8 @@ class BuyerApi extends ResourceController
 
         // Exclude blocked sellers if user is authenticated
         if ($buyerId) {
+            $builder->where('p.seller_id !=', $buyerId);
+
             $blocked = $db->table('buyer_blocked_sellers')
                 ->select('blocked_seller_id')
                 ->where('buyer_id', $buyerId)
@@ -623,12 +635,19 @@ class BuyerApi extends ResourceController
             }
         }
 
+        $activeOffers = $db->table('offers')
+            ->where('product_id', $productId)
+            ->where('buyer_id', $jwtUser['user_id'])
+            ->whereIn('status', ['pending', 'accepted'])
+            ->get()->getResultArray();
+
         return $this->respond([
             'success' => true,
             'data' => [
                 'has_offer' => !empty($offer),
                 'offer' => $offer ?: null,
                 'rental_period_ended' => $rentalPeriodEnded,
+                'active_offers' => $activeOffers,
             ],
         ]);
     }
@@ -661,22 +680,39 @@ class BuyerApi extends ResourceController
         if ($product['seller_id'] == $jwtUser['user_id'])
             return $this->respond(['success' => false, 'message' => 'Cannot make offer on your own product'], 400);
 
-        // Prevent duplicate active offers from the same buyer on the same product
-        $existingOffer = $db->table('offers')
-            ->where('product_id', $data['product_id'])
-            ->where('buyer_id', $jwtUser['user_id'])
-            ->whereIn('status', ['pending', 'accepted'])
-            ->orderBy('created_at', 'DESC')
-            ->limit(1)
-            ->get()->getRowArray();
-        if ($existingOffer) {
-            // Allow a new offer if the accepted rent offer's rental period has ended
-            $isExpiredRental = $existingOffer['status'] === 'accepted'
-                && ($existingOffer['offer_type'] ?? '') === 'rent'
-                && !empty($existingOffer['rental_end_date'])
-                && $existingOffer['rental_end_date'] < date('Y-m-d');
+        $offerType = $data['offer_type'] ?? $product['listing_type'];
 
-            if (!$isExpiredRental) {
+        // Prevent duplicate active offers from the same buyer on the same product
+        if ($offerType === 'rent') {
+            if (empty($data['rental_start_date']) || empty($data['rental_end_date'])) {
+                return $this->respond(['success' => false, 'message' => 'Rental start and end dates are required'], 400);
+            }
+
+            $overlappingUserOffer = $db->table('offers')
+                ->where('product_id', $data['product_id'])
+                ->where('buyer_id', $jwtUser['user_id'])
+                ->whereIn('status', ['pending', 'accepted'])
+                ->where('rental_start_date <=', $data['rental_end_date'])
+                ->where('rental_end_date >=', $data['rental_start_date'])
+                ->get()->getRowArray();
+
+            if ($overlappingUserOffer) {
+                $isExpired = $overlappingUserOffer['status'] === 'accepted'
+                    && !empty($overlappingUserOffer['rental_end_date'])
+                    && $overlappingUserOffer['rental_end_date'] < date('Y-m-d');
+                if (!$isExpired) {
+                    return $this->respond(['success' => false, 'message' => 'You already have an active offer overlapping with these dates.'], 409);
+                }
+            }
+        } else {
+            $existingOffer = $db->table('offers')
+                ->where('product_id', $data['product_id'])
+                ->where('buyer_id', $jwtUser['user_id'])
+                ->whereIn('status', ['pending', 'accepted'])
+                ->orderBy('created_at', 'DESC')
+                ->limit(1)
+                ->get()->getRowArray();
+            if ($existingOffer) {
                 return $this->respond(['success' => false, 'message' => 'You already have an active offer on this product.'], 409);
             }
         }
