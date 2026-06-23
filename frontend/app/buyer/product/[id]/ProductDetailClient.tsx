@@ -1228,7 +1228,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
         <AdBanner position="footer" page="product_detail" />
       </div>
 
-      {!isPreview && <Footer />}
+      {<Footer />}
     </div>
   );
 }
