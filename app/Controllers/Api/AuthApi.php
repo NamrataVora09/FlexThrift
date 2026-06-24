@@ -4,9 +4,9 @@ namespace App\Controllers\Api;
 
 use App\Libraries\JWT;
 use App\Models\UserModel;
-use CodeIgniter\RESTful\ResourceController;
+use App\Controllers\Api\BaseApiController;
 
-class AuthApi extends ResourceController
+class AuthApi extends BaseApiController
 {
     protected $format = 'json';
     private UserModel $userModel;

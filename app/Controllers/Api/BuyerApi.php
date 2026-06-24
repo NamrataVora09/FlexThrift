@@ -2,9 +2,9 @@
 
 namespace App\Controllers\Api;
 
-use CodeIgniter\RESTful\ResourceController;
+use App\Controllers\Api\BaseApiController;
 
-class BuyerApi extends ResourceController
+class BuyerApi extends BaseApiController
 {
     protected $format = 'json';
 

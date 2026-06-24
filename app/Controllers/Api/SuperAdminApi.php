@@ -2,9 +2,9 @@
 
 namespace App\Controllers\Api;
 
-use CodeIgniter\RESTful\ResourceController;
+use App\Controllers\Api\BaseApiController;
 
-class SuperAdminApi extends ResourceController
+class SuperAdminApi extends BaseApiController
 {
     protected $format = 'json';
 
