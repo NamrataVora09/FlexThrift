@@ -1250,18 +1250,8 @@ class SellerApi extends BaseApiController
             $existingDeletedIds = json_decode($existingRequest['deleted_images_ids'] ?? '[]', true);
             $mergedDeletedIds = array_unique(array_merge($existingDeletedIds, $deletedIdsArr));
 
-            // NEW APPROACH: Compare new data with ORIGINAL product state (from previous_data)
-            // Only store fields that are different from the original product
-            $originalData = json_decode($existingRequest['previous_data'] ?? '{}', true);
-            
-            $accumulatedChanges = $existingData; // Start with existing changes
-            foreach ($processedData as $key => $value) {
-                // Only add/update if different from original product
-                if (!isset($originalData[$key]) || $originalData[$key] != $value) {
-                    $accumulatedChanges[$key] = $value;
-                }
-            }
-            $mergedData = $accumulatedChanges;
+            // Merge new changes with existing changes - new values take precedence
+            $mergedData = array_merge($existingData, $processedData);
 
             // Also merge temp images if there are new ones
             $existingTempImages = json_decode($existingRequest['temp_images'] ?? '[]', true);
