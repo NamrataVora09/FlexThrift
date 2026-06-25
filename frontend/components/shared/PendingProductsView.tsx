@@ -22,6 +22,18 @@ interface EditRequest {
   id: number; product_id: number; original_title: string; listing_type: string;
   seller_name: string; reliability_score: string; created_at: string;
   updated_data: string; temp_images: string; deleted_images_ids: string;
+  editor_role?: string;
+  seller_rating_avg?: string; seller_rating_count?: string;
+  images?: Array<{ id: number; image_path: string }>;
+  description?: string;
+  category?: string;
+  color?: string;
+  used_times?: string;
+  usage_label?: string;
+  rental_cost?: string;
+  rental_deposit?: string;
+  price?: string;
+  original_price?: string;
 }
 
 interface RejectionTemplate {
@@ -527,23 +539,28 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
             )}
 
             {/* ── Edit Requests (Seller Edits via product_edit_requests table) ── */}
-            {editRequests.length > 0 && (
+            {sellerEditRequests.length > 0 && (
               <>
                 <div className="mb-4 d-flex align-items-center gap-2 mt-5">
                   <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#212529', fontWeight: 600 }}>Seller Edit Requests</span>
                   <hr className="flex-grow-1 opacity-25" />
                 </div>
                 <div className="row g-4 mb-5">
-                  {editRequests.map((r) => (
+                  {sellerEditRequests.map((r) => (
                     <div className="col-md-6 col-xxl-4" key={r.id}>
                       <div style={{ border: 'none', borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.3s', height: '100%', display: 'flex', flexDirection: 'column' }}
                         onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
                         onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                         {/* Thumbnail */}
                         <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <i className="bi bi-pencil-square" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
+                          {r.images && r.images.length > 0 ? (
+                            <img src={resolveUrl(r.images[0].image_path)} alt={r.original_title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
+                          )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">EDIT REQUEST</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{r.listing_type?.charAt(0).toUpperCase() + r.listing_type?.slice(1)}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">SELLER EDIT</span>
                           </div>
                         </div>
                         {/* Body */}
@@ -551,8 +568,17 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                           <div className="d-flex justify-content-between align-items-start mb-3">
                             <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{r.original_title}</h5>
                             <div className="text-end">
-                              <small className="text-muted d-block" style={{ fontSize: '0.65rem' }}>Request ID: {r.id}</small>
+                              <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>
+                                ₹{Number(r.listing_type === 'rent' ? (r.rental_cost || 0) : (r.price || r.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                {r.listing_type === 'rent' && <small className="ms-1" style={{ fontSize: '0.65rem', textTransform: 'lowercase' }}>/day</small>}
+                              </div>
+                              {r.listing_type === 'rent' && r.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(r.rental_deposit).toLocaleString('en-IN', { minimumFractionDigits: 2 })} deposit</small>}
                             </div>
+                          </div>
+                          <div className="mb-3 d-flex flex-wrap gap-2">
+                            {r.category && <span style={tagBadge}><i className="bi bi-tag small me-1"></i>{r.category}</span>}
+                            {r.color && <span style={tagBadge}><i className="bi bi-palette small me-1"></i>{r.color}</span>}
+                            {r.used_times && <span style={tagBadge}>{r.used_times} {r.usage_label || 'Uses'}</span>}
                           </div>
                           <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1.25rem' }}>
                             <div className="small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>Seller Profile</div>
@@ -560,11 +586,11 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                               <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#3b82f6', border: '1px solid #e2e8f0' }}>{r.seller_name?.charAt(0).toUpperCase()}</div>
                               <div className="flex-grow-1">
                                 <div className="fw-bold small">{r.seller_name}</div>
-                                <div className="small text-muted">Reliability: {r.reliability_score || 'N/A'}</div>
+                                {showRatings && renderStars(Number(r.seller_rating_avg || 0), Number(r.seller_rating_count || 0))}
                               </div>
                             </div>
                           </div>
-                          <p className="small text-muted mb-0"><i className="bi bi-clock-history me-1"></i>Submitted: {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}, {new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                          {r.description && <p className="small text-muted mb-0" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.description}</p>}
                         </div>
                         {/* Actions */}
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">

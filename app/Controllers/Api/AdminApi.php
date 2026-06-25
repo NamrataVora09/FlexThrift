@@ -261,7 +261,7 @@ class AdminApi extends BaseApiController
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->where('r.status', 'pending');
 
-        if ($jwtUser['role'] === 'admin') {
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $builder->where('u.role !=', 'admin');
         }
 

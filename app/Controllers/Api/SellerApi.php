@@ -1406,7 +1406,12 @@ class SellerApi extends BaseApiController
                 }
                 $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->delete();
             }
+        } else {
+            $deletedIdsArr = [];
         }
+
+        // Initialize tempImages for admin edit request workflow
+        $tempImages = [];
 
         // Status logic:
         // - super_admin: always auto-approved (clear pending_reason)
@@ -1417,43 +1422,80 @@ class SellerApi extends BaseApiController
             $updateData['pending_reason'] = null;
             $updateData['previous_data'] = null;
         } elseif ($jwtUser['role'] === 'admin') {
-            // Admin edits: create product_edit_requests entry instead of using pending_reason
-            $updateData['status'] = 'approved'; // Keep product approved, edit request is separate
+            // Admin edits: use same flow as seller - create product_edit_requests entry
+            // and set product edit_request to pending (keep product approved)
             
-            // Snapshot the key fields BEFORE overwriting, so superadmin can see what changed
-            $snapshotFields = [
-                'title', 'description', 'listing_type', 'listing_type_category',
-                'product_type', 'category', 'sub_category', 'color', 'gender',
-                'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
-                'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                'has_bill', 'allow_alter_fitting',
-            ];
-            $snapshot = [];
-            foreach ($snapshotFields as $field) {
-                if (isset($product[$field])) {
-                    $snapshot[$field] = $product[$field];
-                }
+            // Check if there's already a pending edit request for this product
+            $existingRequest = $db->table('product_edit_requests')
+                ->where('product_id', $id)
+                ->where('status', 'pending')
+                ->where('editor_role', 'admin')
+                ->get()->getRowArray();
+
+            if ($existingRequest) {
+                // Update existing pending request instead of creating a new one
+                $existingData = json_decode($existingRequest['updated_data'] ?? '{}', true);
+                $existingDeletedIds = json_decode($existingRequest['deleted_images_ids'] ?? '[]', true);
+                $mergedDeletedIds = array_unique(array_merge($existingDeletedIds, $deletedIdsArr));
+
+                // Merge the new data with existing data (new data takes precedence)
+                $mergedData = array_merge($existingData, $updateData);
+
+                // Also merge temp images if there are new ones
+                $existingTempImages = json_decode($existingRequest['temp_images'] ?? '[]', true);
+                $mergedTempImages = array_unique(array_merge($existingTempImages, $tempImages));
+
+                $db->table('product_edit_requests')->where('id', $existingRequest['id'])->update([
+                    'updated_data' => json_encode($mergedData),
+                    'temp_images' => json_encode($mergedTempImages),
+                    'deleted_images_ids' => json_encode($mergedDeletedIds),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+            } else {
+                // Create new edit request
+                $db->table('product_edit_requests')->insert([
+                    'product_id' => $id,
+                    'seller_id' => $product['seller_id'],
+                    'updated_data' => json_encode($updateData),
+                    'temp_images' => json_encode($tempImages),
+                    'deleted_images_ids' => json_encode($deletedIdsArr),
+                    'editor_role' => 'admin',
+                    'editor_id' => $jwtUser['user_id'],
+                    'status' => 'pending',
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
             }
-            // Include previous images in snapshot so admin can compare before/after
-            $snapshot['_images'] = $previousImagePaths;
-            
-            // Create product_edit_requests entry for admin edit
-            $db->table('product_edit_requests')->insert([
-                'product_id' => $id,
-                'seller_id' => $product['seller_id'],
-                'updated_data' => json_encode($processedData),
-                'temp_images' => json_encode($tempImages),
-                'deleted_images_ids' => json_encode($deletedIdsArr),
-                'previous_data' => json_encode($snapshot),
-                'editor_role' => 'admin',
-                'editor_id' => $jwtUser['user_id'],
-                'status' => 'pending',
-                'created_at' => date('Y-m-d H:i:s'),
+
+            // Set product edit_request to pending so superadmin sees it in review queue
+            // Also clear admin_remarks and ensure status is approved
+            $updateData = [
+                'edit_request' => 'pending',
+                'admin_remarks' => null,
+                'status' => 'approved',
                 'updated_at' => date('Y-m-d H:i:s'),
-            ]);
-            
-            // Don't update product yet - wait for superadmin approval
-            return $this->respond(['success' => true, 'message' => 'Product edit submitted for approval']);
+            ];
+
+            // Notify all super_admins about the pending edit request
+            $superAdmins = $db->table('users')
+                ->whereIn('role', ['super_admin'])
+                ->where('is_blocked', 0)
+                ->get()->getResultArray();
+            foreach ($superAdmins as $admin) {
+                $db->table('notifications')->insert([
+                    'user_id' => $admin['id'],
+                    'title' => 'Product Edit Request',
+                    'message' => 'An admin has submitted an edit request for product "' . ($product['title'] ?? 'ID:' . $id) . '" and it is pending your review.',
+                    'type' => 'product_edit',
+                    'is_read' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            // Update product with edit_request = pending
+            $db->table('products')->where('id', $id)->update($updateData);
+
+            return $this->respond(['success' => true, 'message' => 'Edit request submitted for approval']);
         } elseif ($reviewRequired) {
             $updateData['status'] = 'pending';
             $roleReason = ($jwtUser['role'] === 'both') ? 'both_edit' : 'seller_edit';

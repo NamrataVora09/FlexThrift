@@ -1297,7 +1297,7 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $requests = $db->table('product_edit_requests r')
-            ->select('r.*, p.title as original_title, p.listing_type, p.category, p.color, p.used_times, p.price, p.original_price, p.rental_cost, p.rental_deposit, p.description, p.images, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.usage_label')
+            ->select('r.*, p.title as original_title, p.listing_type, p.category, p.color, p.used_times, p.price, p.original_price, p.rental_cost, p.rental_deposit, p.description, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.usage_label')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
