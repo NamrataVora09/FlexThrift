@@ -244,7 +244,7 @@ class SellerApi extends BaseApiController
             'fallback_rental_cost_per_day' => 10,
             'min_rental_days' => 3,
             'max_product_images' => 7,
-            'max_original_price' => 10000000, // 1 Crore (platform ceiling)
+            'max_original_price' => 1000000000, // 100 Crore (platform ceiling)
         ];
         $config = array_merge($defaults, $config);
 
@@ -1250,9 +1250,18 @@ class SellerApi extends BaseApiController
             $existingDeletedIds = json_decode($existingRequest['deleted_images_ids'] ?? '[]', true);
             $mergedDeletedIds = array_unique(array_merge($existingDeletedIds, $deletedIdsArr));
 
-            // Merge the new data with existing data (new data takes precedence)
-            // This ensures all changes are accumulated
-            $mergedData = array_merge($existingData, $processedData);
+            // NEW APPROACH: Compare new data with ORIGINAL product state (from previous_data)
+            // Only store fields that are different from the original product
+            $originalData = json_decode($existingRequest['previous_data'] ?? '{}', true);
+            
+            $accumulatedChanges = $existingData; // Start with existing changes
+            foreach ($processedData as $key => $value) {
+                // Only add/update if different from original product
+                if (!isset($originalData[$key]) || $originalData[$key] != $value) {
+                    $accumulatedChanges[$key] = $value;
+                }
+            }
+            $mergedData = $accumulatedChanges;
 
             // Also merge temp images if there are new ones
             $existingTempImages = json_decode($existingRequest['temp_images'] ?? '[]', true);
@@ -1265,13 +1274,31 @@ class SellerApi extends BaseApiController
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
         } else {
-            // Create new edit request
+            // Create new edit request with snapshot of original product data
+            $snapshotFields = [
+                'title', 'description', 'listing_type', 'listing_type_category',
+                'product_type', 'category', 'sub_category', 'color', 'gender',
+                'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
+                'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
+                'has_bill', 'allow_alter_fitting', 'brand_id', 'orignal_brand_id',
+            ];
+            $snapshot = [];
+            foreach ($snapshotFields as $field) {
+                if (isset($product[$field])) {
+                    $snapshot[$field] = $product[$field];
+                }
+            }
+            // Include current images in snapshot
+            $currentImages = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
+            $snapshot['_images'] = array_column($currentImages, 'image_path');
+            
             $db->table('product_edit_requests')->insert([
                 'product_id' => $id,
                 'seller_id' => $jwtUser['user_id'],
                 'updated_data' => json_encode($processedData),
                 'temp_images' => json_encode($tempImages),
                 'deleted_images_ids' => json_encode($deletedIdsArr),
+                'previous_data' => json_encode($snapshot),
                 'status' => 'pending',
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
@@ -1438,8 +1465,17 @@ class SellerApi extends BaseApiController
                 $existingDeletedIds = json_decode($existingRequest['deleted_images_ids'] ?? '[]', true);
                 $mergedDeletedIds = array_unique(array_merge($existingDeletedIds, $deletedIdsArr));
 
-                // Merge the new data with existing data (new data takes precedence)
-                $mergedData = array_merge($existingData, $updateData);
+                // NEW APPROACH: Compare new data with ORIGINAL product state (from previous_data)
+                $originalData = json_decode($existingRequest['previous_data'] ?? '{}', true);
+                
+                $accumulatedChanges = $existingData; // Start with existing changes
+                foreach ($updateData as $key => $value) {
+                    // Only add/update if different from original product
+                    if (!isset($originalData[$key]) || $originalData[$key] != $value) {
+                        $accumulatedChanges[$key] = $value;
+                    }
+                }
+                $mergedData = $accumulatedChanges;
 
                 // Also merge temp images if there are new ones
                 $existingTempImages = json_decode($existingRequest['temp_images'] ?? '[]', true);
@@ -1452,13 +1488,29 @@ class SellerApi extends BaseApiController
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
             } else {
-                // Create new edit request
+                // Create new edit request with snapshot of original product data
+                $snapshotFields = [
+                    'title', 'description', 'listing_type', 'listing_type_category',
+                    'product_type', 'category', 'sub_category', 'color', 'gender',
+                    'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
+                    'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
+                    'has_bill', 'allow_alter_fitting', 'brand_id', 'orignal_brand_id',
+                ];
+                $snapshot = [];
+                foreach ($snapshotFields as $field) {
+                    if (isset($product[$field])) {
+                        $snapshot[$field] = $product[$field];
+                    }
+                }
+                $snapshot['_images'] = $previousImagePaths;
+                
                 $db->table('product_edit_requests')->insert([
                     'product_id' => $id,
                     'seller_id' => $product['seller_id'],
                     'updated_data' => json_encode($updateData),
                     'temp_images' => json_encode($tempImages),
                     'deleted_images_ids' => json_encode($deletedIdsArr),
+                    'previous_data' => json_encode($snapshot),
                     'editor_role' => 'admin',
                     'editor_id' => $jwtUser['user_id'],
                     'status' => 'pending',
@@ -1769,7 +1821,6 @@ class SellerApi extends BaseApiController
         $fieldMap = [
             'times_used' => 'used_times',
             'condition_description' => 'description',
-            'orignal_brand_id' => 'brand_id'
         ];
 
         // Resolve names for IDs
@@ -2240,8 +2291,8 @@ class SellerApi extends BaseApiController
         $scId = $data['sub_category_id'] ?? null;
 
         // Validate original price doesn't exceed configured maximum
-        $maxOriginalPrice = (float) getSystemSetting('max_original_price', 10000000); // default 1 Crore
-        $maxOriginalPrice = min($maxOriginalPrice, 10000000); // enforce absolute ceiling at 1 Crore
+        $maxOriginalPrice = (float) getSystemSetting('max_original_price', 1000000000); // default 100 Crore
+        $maxOriginalPrice = min($maxOriginalPrice, 1000000000); // enforce absolute ceiling at 100 Crore
         if ($originalPrice > $maxOriginalPrice) {
             return [
                 'success' => false,

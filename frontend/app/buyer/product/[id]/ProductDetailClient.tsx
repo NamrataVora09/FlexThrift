@@ -186,12 +186,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
           const u = JSON.parse(stored);
           setUser(u);
 
-          // 2. Strictly seller check (not 'both' and not 'admin/super_admin')
-          // Allow if they are the owner of THIS product
-          if (u.user_type === 'seller' && Number(u.id) !== Number(product.seller_id)) {
-            router.replace('/seller');
-            return;
-          }
+          // 2. Allow sellers to browse but they cannot make offers
+          // No redirect needed - sellers can view the marketplace
           // 3. Owner must use preview mode
           if (Number(u.id) === Number(product.seller_id) && !isPreview) {
             router.replace('/seller');
@@ -211,7 +207,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
   // Prevent rendering if blocked
   if (user) {
-    if (user.user_type === 'seller' && Number(user.id) !== Number(product.seller_id)) return null;
+    // Allow sellers to browse but they cannot make offers
+    // No render blocking needed - sellers can view the marketplace
   }
 
   // Recalculate rental price when dates change
@@ -267,6 +264,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
     if (!user || !localStorage.getItem('flex_token')) {
       sessionStorage.setItem('redirect_after_login', `/buyer/product/${product.id}`);
       router.push('/login');
+      return;
+    }
+    if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role || '')) {
+      setOfferError('Sellers cannot make offers on products. Please use your buyer account to make offers.');
       return;
     }
     if (Number(user.blocked_buyer) === 1) {
@@ -409,7 +410,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const formatPrice = (val: string | number) => {
     const num = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(num)) return '0';
-    return num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const ratingCount = parseInt(product.seller_rating_count || '0', 10);

@@ -33,7 +33,7 @@ function getImageUrl(path?: string) {
 function formatPrice(val: string | number) {
   const num = typeof val === 'string' ? parseFloat(val) : val;
   if (isNaN(num)) return '0';
-  return num.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export default function ProductCard({ product }: { product: Product }) {

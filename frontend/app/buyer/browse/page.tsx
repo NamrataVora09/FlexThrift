@@ -267,10 +267,8 @@ export default function BrowsePage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) {
-        router.replace('/seller');
-        return;
-      }
+      // Allow sellers to browse but they cannot make offers
+      // No redirect needed - sellers can view the marketplace
     }
   }, [isAuthenticated, user, router]);
 
@@ -709,7 +707,8 @@ export default function BrowsePage() {
   };
 
   if (isAuthenticated && user) {
-    if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role)) return null;
+    // Allow sellers to browse but they cannot make offers
+    // No render blocking needed - sellers can view the marketplace
   }
 
   const sortedProducts = useMemo(() => {
@@ -1023,10 +1022,10 @@ export default function BrowsePage() {
         @media (max-width: 768px) {
           .em-hero-title { font-size: 2.5rem !important; }
           .em-layout { flex-direction: column !important; }
-          .em-grid { grid-template-columns: repeat(2,1fr) !important; gap: 16px 16px !important; }
+          .em-grid { grid-template-columns: repeat(2,1fr) !important; gap: 16px 16px !important; justify-content: center !important; }
           .em-type-bar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; }
         }
-        @media (max-width: 480px) { .em-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 480px) { .em-grid { grid-template-columns: 1fr !important; justify-content: center !important; } }
       `}</style>
 
       <link
@@ -1645,14 +1644,14 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
               {isRent ? (
                 <div className="flex flex-col items-end">
                   <span className="font-bold text-[#FFC107] whitespace-nowrap">
-                    ₹{rentalPrice.toLocaleString('en-IN')}<span className="text-[10px] ml-1 text-[#5a5c5c] font-medium uppercase">/day</span>
+                    ₹{rentalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-[10px] ml-1 text-[#5a5c5c] font-medium uppercase">/day</span>
                   </span>
                   {/* Empty space to match sale badge height */}
                   <div className="h-[18px]" />
                 </div>
               ) : (
                 <div className="flex flex-col items-end">
-                  <span className="font-bold text-[#FFC107] whitespace-nowrap">₹{sellingPrice.toLocaleString('en-IN')}</span>
+                  <span className="font-bold text-[#FFC107] whitespace-nowrap">₹{sellingPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   {
                     p.orignal_brand && (
                       <div className="px-2 py-0.5 rounded-full bg-[#d6b06b] max-w-[100px]">
@@ -2007,8 +2006,8 @@ function EliteSidebar({
               </div>
               {/* Price labels above inputs */}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#5a5c5c', marginBottom: 8, fontWeight: 600 }}>
-                <span>₹{curMin.toLocaleString('en-IN')}</span>
-                <span>₹{curMax.toLocaleString('en-IN')}</span>
+                <span>₹{curMin.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>₹{curMax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               {/* Min / Max number inputs */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

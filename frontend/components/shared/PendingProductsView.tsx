@@ -896,6 +896,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       { l: 'Color', v: comparison.original?.color || 'N/A' },
                       { l: 'Size', v: comparison.original?.size || 'N/A' },
                       { l: 'Gender', v: comparison.original?.gender || 'N/A' },
+                      { l: 'Original Brand', v: comparison.original?.orignal_brand || 'N/A' },
                       { l: 'Used Times', v: comparison.original?.used_times ?? 'N/A' },
                     ])}
                     {renderCompSection('Pricing', [
@@ -945,6 +946,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             { l: 'Color', v: diff(orig.color || 'N/A', updated.color || 'N/A') },
                             { l: 'Size', v: diff(orig.size || 'N/A', updated.size || 'N/A') },
                             { l: 'Gender', v: diff(orig.gender || 'N/A', updated.gender || 'N/A') },
+                            { l: 'Original Brand', v: diff(orig.orignal_brand || 'N/A', updated.orignal_brand || 'N/A') },
                             { l: 'Used Times', v: diff(String(orig.used_times ?? ''), String(updated.used_times ?? '')) },
                           ])}
                           {renderCompSection('Pricing', [

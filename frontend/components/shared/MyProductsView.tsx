@@ -234,8 +234,8 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                           <td style={tdStyle}>
                             <span style={priceValStyle}>
                               {p.listing_type === 'rent'
-                                ? `₹${Number(p.rental_cost || 0).toFixed(0)}/day`
-                                : `₹${Number(p.price || p.selling_price || p.original_price || 0).toFixed(0)}`
+                                ? `₹${Number(p.rental_cost || 0).toFixed(2)}/day`
+                                : `₹${Number(p.price || p.selling_price || p.original_price || 0).toFixed(2)}`
                               }
                             </span>
                           </td>

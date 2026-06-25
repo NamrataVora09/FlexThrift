@@ -1322,8 +1322,22 @@ class SuperAdminApi extends BaseApiController
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
-        $original = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+        $original = $db->table('products p')
+            ->select('p.*, ob.brand_name as orignal_brand')
+            ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->where('p.id', $request['product_id'])
+            ->get()->getRowArray();
         $originalImages = $db->table('product_images')->where('product_id', $request['product_id'])->get()->getResultArray();
+
+        // Resolve brand name in updated_data if orignal_brand_id is present
+        $updatedData = json_decode($request['updated_data'], true) ?: [];
+        if (!empty($updatedData['orignal_brand_id'])) {
+            $brand = $db->table('orignal_brands')->where('id', $updatedData['orignal_brand_id'])->get()->getRowArray();
+            if ($brand) {
+                $updatedData['orignal_brand'] = $brand['brand_name'];
+            }
+        }
+        $request['updated_data'] = json_encode($updatedData);
 
         return $this->respond([
             'success' => true,

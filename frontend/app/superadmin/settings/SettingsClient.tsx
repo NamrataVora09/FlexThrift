@@ -172,18 +172,18 @@ export default function SettingsClient() {
                 <input
                   type="number"
                   min="1"
-                  max="10000000"
+                  max="1000000000"
                   step="1"
                   className="form-control"
                   style={inputStyle}
-                  value={settings.max_original_price || '10000000'}
+                  value={settings.max_original_price || '1000000000'}
                   onChange={(e) => {
-                    const val = Math.min(10000000, Math.max(1, parseInt(e.target.value) || 1));
+                    const val = Math.min(1000000000, Math.max(1, parseInt(e.target.value) || 1));
                     update('max_original_price', String(val));
                   }}
                 />
                 <small className="text-muted">
-                  Maximum allowed original price per product. Platform ceiling: <strong>₹1 Crore</strong>.
+                  Maximum allowed original price per product. Platform ceiling: <strong>₹100 Crore</strong>.
                 </small>
               </div>
               <div className="col-12">

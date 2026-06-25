@@ -542,12 +542,15 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     }
     if (ids !== null) return ids.includes(ltId);
     if (b.listing_type_id != null && b.listing_type_id !== '') return Number(b.listing_type_id) === ltId;
-    return true;
+    return true; // If no listing type restriction, show for all
   };
 
   const filteredOriginalBrands = (meta?.original_brands || []).filter(b => {
     if (obSearch && !b.brand_name.toLowerCase().includes(obSearch.toLowerCase())) return false;
-    if (f.listing_type_category) return filterBrandByListingType(b, Number(f.listing_type_category));
+    // Only filter by listing type if a listing type is selected AND the brand has listing type restrictions
+    if (f.listing_type_category && (b.listing_type_ids || b.listing_type_id)) {
+      return filterBrandByListingType(b, Number(f.listing_type_category));
+    }
     return true;
   });
 
@@ -567,7 +570,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
     // Validate original price doesn't exceed configured max
     if (f.original_price && meta) {
-      const maxOrig = parseFloat(meta.config?.max_original_price || '10000000');
+      const maxOrig = parseFloat(meta.config?.max_original_price || '1000000000');
       if (parseFloat(f.original_price) > maxOrig) {
         setError(`Original price cannot exceed ₹${maxOrig.toLocaleString('en-IN')} (platform limit).`);
         setSubmitting(false);
@@ -980,9 +983,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   <small className="text-muted">Enter 0 if brand new</small>
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Original Price <span className="text-danger">*</span></label>
-                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="original_price" step="0.01" min="1" max={meta?.config?.max_original_price || '10000000'} value={f.original_price} onChange={handleChange} required /></div>
+                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="original_price" step="0.01" min="1" max={meta?.config?.max_original_price || '1000000000'} value={f.original_price} onChange={handleChange} required /></div>
                   {(() => {
-                    const maxOrig = parseFloat(meta?.config?.max_original_price || '10000000');
+                    const maxOrig = parseFloat(meta?.config?.max_original_price || '1000000000');
                     const entered = parseFloat(f.original_price || '0');
                     return entered > maxOrig
                       ? <small className="text-danger fw-bold">Exceeds max: ₹{maxOrig.toLocaleString('en-IN')}</small>

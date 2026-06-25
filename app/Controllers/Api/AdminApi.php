@@ -315,8 +315,22 @@ class AdminApi extends BaseApiController
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
-        $original = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+        $original = $db->table('products p')
+            ->select('p.*, ob.brand_name as orignal_brand')
+            ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->where('p.id', $request['product_id'])
+            ->get()->getRowArray();
         $originalImages = $db->table('product_images')->where('product_id', $request['product_id'])->get()->getResultArray();
+
+        // Resolve brand name in updated_data if orignal_brand_id is present
+        $updatedData = json_decode($request['updated_data'], true) ?: [];
+        if (!empty($updatedData['orignal_brand_id'])) {
+            $brand = $db->table('orignal_brands')->where('id', $updatedData['orignal_brand_id'])->get()->getRowArray();
+            if ($brand) {
+                $updatedData['orignal_brand'] = $brand['brand_name'];
+            }
+        }
+        $request['updated_data'] = json_encode($updatedData);
 
         return $this->respond([
             'success' => true,
@@ -338,12 +352,24 @@ class AdminApi extends BaseApiController
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
-        $updatedData = json_decode($request['updated_data'], true) ?: [];
-        // Force status back to approved after merging edit
-        $updatedData['status'] = 'approved';
-        $updatedData['updated_at'] = date('Y-m-d H:i:s');
-        $updatedData['edit_request'] = null;
-        $db->table('products')->where('id', $request['product_id'])->update($updatedData);
+        // Get current product data
+        $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+        if (!$currentProduct) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+
+        $editData = json_decode($request['updated_data'], true) ?: [];
+        
+        // Merge edit data with current product data (edit data takes precedence for changed fields)
+        $mergedData = array_merge($currentProduct, $editData);
+        
+        // Force status back to approvedAfter merging edit
+        $mergedData['status'] = 'approved';
+        $mergedData['updated_at'] = date('Y-m-d H:i:s');
+        $mergedData['edit_request'] = null;
+        
+        // Remove fields that shouldn't be updated
+        unset($mergedData['id'], $mergedData['created_at']);
+        
+        $db->table('products')->where('id', $request['product_id'])->update($mergedData);
 
         // Handle new temp images
         $tempImages = json_decode($request['temp_images'] ?? '[]', true);
