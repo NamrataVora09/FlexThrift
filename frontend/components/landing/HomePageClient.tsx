@@ -738,7 +738,7 @@ export default function HomePageClient() {
 
           {/* Left: Category Cards */}
 
-          <div className="w-full lg:w-2/3   flex flex-col gap-16 relative">
+          <div className="w-full lg:w-2/3   flex flex-col gap-10 relative">
             {isSuperAdmin && (
               <button
                 onClick={() => setEditingCards(true)}
@@ -793,13 +793,15 @@ export default function HomePageClient() {
                     </button>
                   </div>
                 </Link>
-                {i === 1 && (
-                  <div className="w-full my-8">
+               
+              </Fragment>
+            ))}
+
+             { (
+                  <div className="w-full ">
                     <AdBanner position="rows" page="landing" />
                   </div>
                 )}
-              </Fragment>
-            ))}
           </div>
 
 
