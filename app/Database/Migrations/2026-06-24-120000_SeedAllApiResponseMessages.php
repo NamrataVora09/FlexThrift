@@ -57,7 +57,7 @@ class SeedAllApiResponseMessages extends Migration
         ['message_key' => 'overlap_dates_offer_exists',   'message_value' => 'You already have an active offer overlapping with these dates.','category' => 'error'],
         ['message_key' => 'active_offer_already_exists',  'message_value' => 'You already have an active offer on this product.',             'category' => 'error'],
         ['message_key' => 'buyer_subscription_required',  'message_value' => 'You need an active buyer subscription to make offers. Please subscribe to a buyer plan.', 'category' => 'error'],
-        ['message_key' => 'min_rental_duration',          'message_value' => 'Minimum rental period is 3 days.',                             'category' => 'error'],
+        ['message_key' => 'rental_min_days_error',        'message_value' => 'Minimum rental period is {min} days. You selected {selected} day(s).', 'category' => 'error'],
         ['message_key' => 'booking_conflict',             'message_value' => 'This product already has an active offer for the selected dates. Please choose different dates.', 'category' => 'error'],
         ['message_key' => 'booking_dates_conflict',       'message_value' => 'The selected dates conflict with an existing booking.',         'category' => 'error'],
         ['message_key' => 'offer_sent_success',           'message_value' => 'Offer submitted successfully',                                  'category' => 'success'],

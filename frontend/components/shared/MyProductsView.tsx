@@ -11,8 +11,10 @@ import { useAuth } from '@/lib/auth-context';
 interface Product {
   id: number; title: string; product_number: string; listing_type: string; category: string;
   original_price: string; price: string; selling_price: string; status: string;
-  admin_remarks: string; views_count: string; offer_count: string; image_count: string;
+  admin_remarks: string | null; views_count: string; offer_count: string; image_count: string;
   image: string; created_at: string; rental_cost: string;
+  pending_reason?: string;
+  edit_request?: 'pending' | 'approved' | 'rejected' | null;
 }
 
 interface Props { role: string; apiPath: string; uploadPath: string; }
@@ -47,6 +49,10 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   pending: { bg: '#fef3c7', color: '#92400e' },
   approved: { bg: '#dcfce7', color: '#15803d' },
   rejected: { bg: '#fee2e2', color: '#dc2626' },
+  rejected_changes: { bg: '#fee2e2', color: '#dc2626' },
+  edit_pending: { bg: '#fef3c7', color: '#92400e' },
+  edit_rejected: { bg: '#fee2e2', color: '#dc2626' },
+  edit_approved: { bg: '#dcfce7', color: '#15803d' },
   sold: { bg: '#ede9fe', color: '#5b21b6' },
   rented: { bg: '#cffafe', color: '#0e7490' },
   active: { bg: '#dcfce7', color: '#15803d' },
@@ -98,15 +104,17 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
 
   const filtered = useMemo(() => {
     if (filter === 'all') return products;
-    if (filter === 'approved') return products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status));
+    if (filter === 'approved') return products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status) && p.edit_request !== 'pending');
+    if (filter === 'rejected') return products.filter(p => ['rejected', 'rejected_changes'].includes(p.status) || p.edit_request === 'rejected');
+    if (filter === 'pending') return products.filter(p => p.status === 'pending' || p.edit_request === 'pending');
     return products.filter((p) => p.status === filter);
   }, [products, filter]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: products.length };
-    c.pending = products.filter(p => p.status === 'pending').length;
-    c.approved = products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status)).length;
-    c.rejected = products.filter(p => p.status === 'rejected').length;
+    c.pending = products.filter(p => p.status === 'pending' || p.edit_request === 'pending').length;
+    c.approved = products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status) && p.edit_request !== 'pending').length;
+    c.rejected = products.filter(p => ['rejected', 'rejected_changes'].includes(p.status) || p.edit_request === 'rejected').length;
     c.inactive = products.filter(p => p.status === 'inactive').length;
     return c;
   }, [products]);
@@ -236,46 +244,63 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                           <td style={tdStyle}>
                             {(() => {
                               const rawStatus = p.status?.trim() || '';
-                              const statusStyle = STATUS_COLORS[rawStatus] || { bg: '#f3f4f6', color: '#6b7280' };
+                              const editRequest = p.edit_request?.trim() || '';
 
-                              const statusLabel = rawStatus
+                              // Determine display status based on edit_request field
+                              // Only show edit_request status if it's pending or rejected
+                              // If it's approved or null, show the normal product status
+                              let displayStatus = rawStatus;
+                              let displayLabel = rawStatus
                                 ? rawStatus.toUpperCase()
                                 : 'UNKNOWN';
+
+                              if (editRequest === 'pending') {
+                                displayStatus = 'edit_pending';
+                                displayLabel = 'PENDING EDIT';
+                              } else if (editRequest === 'rejected') {
+                                displayStatus = 'edit_rejected';
+                                displayLabel = 'REJECTED CHANGES';
+                              }
+                              // edit_request === 'approved' or null or empty: use normal status
+
+                              const statusStyle = STATUS_COLORS[displayStatus] || { bg: '#f3f4f6', color: '#6b7280' };
 
                               return (
                                 <>
                                   <span className="badge" style={{ background: statusStyle.bg, color: statusStyle.color, fontWeight: 700, padding: '3px 11px', borderRadius: '9999px', fontSize: '0.6rem', textTransform: 'uppercase' }}>
                                     {
-                                      rawStatus === 'pending' && (
+                                      (displayStatus === 'pending' || displayStatus === 'edit_pending') && (
                                         <i className="bi bi-hourglass-split me-1"></i>
                                       )
                                     }
                                     {
-                                      rawStatus === 'approved' && (
+                                      (displayStatus === 'approved' || displayStatus === 'edit_approved') && (
                                         <i className="bi bi-check-circle me-1"></i>
                                       )
                                     }
                                     {
-                                      rawStatus === 'rejected' && (
+                                      (displayStatus === 'rejected' || displayStatus === 'edit_rejected' || displayStatus === 'rejected_changes') && (
                                         <i className="bi bi-x-circle me-1"></i>
                                       )
                                     }
-                                    {statusLabel}
+                                    {displayLabel}
                                   </span>
-                                  {rawStatus === 'rejected' && p.admin_remarks && (() => {
+                                  {p.admin_remarks && (() => {
+                                    // Only show remarks if edit was rejected or product is rejected
+                                    if (editRequest !== 'rejected' && rawStatus !== 'rejected' && rawStatus !== 'rejected_changes') return null;
                                     // Strip internal metadata: remove [pre_status:...] tag and system prefixes
-                                    let remark = p.admin_remarks
+                                    let remark = String(p.admin_remarks || '')
                                       .replace(/\[pre_status:[a-z_]+\]/gi, '')
                                       .replace(/^(Original Brand Blocked|Seller Brand Blocked):\s*/i, '')
                                       .trim();
                                     if (!remark) return null;
                                     return (
-                                      <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: 4, maxWidth: 150 }}>
+                                      <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: 4, maxWidth: 150, wordBreak: 'break-word' }}>
                                         <i className="bi bi-info-circle me-1"></i>{remark}
                                       </div>
                                     );
                                   })()}
-                                
+
                                 </>
                               );
                             })()}

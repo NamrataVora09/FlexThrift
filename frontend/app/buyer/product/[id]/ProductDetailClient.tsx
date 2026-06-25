@@ -380,7 +380,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
 
   const usedTimes = product.used_times || product.times_used || '0';
-  const brandName = product.orignal_brand || product.brand_name || product.brand || 'Premium Listing';
+  const brandName = product.orignal_brand || product.brand_name || product.brand || '';
   const price =
     product.listing_type === 'sell'
       ? product.selling_price || product.price || product.original_price

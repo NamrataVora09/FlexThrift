@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminPendingProductsPage() {
-  return <PendingProductsView role="admin" apiPath="/admin/pending-products" />;
+  return <PendingProductsView role="admin" apiPath="/admin/pending-products" showRatings />;
 }

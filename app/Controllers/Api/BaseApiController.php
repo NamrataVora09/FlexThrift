@@ -81,7 +81,7 @@ class BaseApiController extends ResourceController
         'You already have an active offer overlapping with these dates.'          => 'overlap_dates_offer_exists',
         'You already have an active offer on this product.'                       => 'active_offer_already_exists',
         'You need an active buyer subscription to make offers. Please subscribe to a buyer plan.' => 'buyer_subscription_required',
-        'Minimum rental period is 3 days.'                                        => 'min_rental_duration',
+        'Minimum rental period is {min} days. You selected {selected} day(s).' => 'rental_min_days_error',
         'This product already has an active offer for the selected dates. Please choose different dates.' => 'booking_conflict',
         'The selected dates conflict with an existing booking.'                   => 'booking_dates_conflict',
         'Offer submitted successfully'                                            => 'offer_sent_success',

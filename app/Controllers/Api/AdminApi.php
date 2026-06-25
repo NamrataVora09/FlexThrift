@@ -342,6 +342,7 @@ class AdminApi extends BaseApiController
         // Force status back to approved after merging edit
         $updatedData['status'] = 'approved';
         $updatedData['updated_at'] = date('Y-m-d H:i:s');
+        $updatedData['edit_request'] = null;
         $db->table('products')->where('id', $request['product_id'])->update($updatedData);
 
         // Handle new temp images
@@ -381,13 +382,98 @@ class AdminApi extends BaseApiController
     public function rejectEditRequest($id)
     {
         $db = \Config\Database::connect();
-        $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-        $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => date('Y-m-d H:i:s')]);
+        $remarks = $this->request->getJsonVar('remarks') ?? '';
 
-        // Restore product status to approved (it was set to pending when edit was submitted)
+        // First check if this is a product ID (for seller edits) - check this first since seller edits use product ID
+        $product = $db->table('products')->where('id', $id)->get()->getRowArray();
+        if ($product && in_array($product['pending_reason'] ?? '', ['seller_edit', 'both_edit'])) {
+            // Restore product from previous_data snapshot
+            if (!empty($product['previous_data'])) {
+                $previousData = json_decode($product['previous_data'], true);
+                if (is_array($previousData)) {
+                    // Restore the fields from previous_data
+                    $restoreFields = [
+                        'title', 'description', 'listing_type', 'listing_type_category',
+                        'product_type', 'category', 'sub_category', 'color', 'gender',
+                        'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
+                        'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
+                        'has_bill', 'allow_alter_fitting',
+                    ];
+                    $updateData = [];
+                    foreach ($restoreFields as $field) {
+                        if (isset($previousData[$field])) {
+                            $updateData[$field] = $previousData[$field];
+                        }
+                    }
+                    // Restore images from snapshot
+                    if (isset($previousData['_images']) && is_array($previousData['_images'])) {
+                        // Delete current images
+                        $db->table('product_images')->where('product_id', $id)->delete();
+                        // Restore previous images
+                        foreach ($previousData['_images'] as $idx => $imgPath) {
+                            $db->table('product_images')->insert([
+                                'product_id' => $id,
+                                'image_path' => $imgPath,
+                                'display_order' => $idx,
+                                'created_at' => date('Y-m-d H:i:s'),
+                            ]);
+                        }
+                    }
+                    $updateData['status'] = 'approved';
+                    $updateData['edit_request'] = 'rejected';
+                    $updateData['pending_reason'] = null;
+                    $updateData['previous_data'] = null;
+                    $updateData['admin_remarks'] = $remarks;
+                    $updateData['updated_at'] = date('Y-m-d H:i:s');
+                    $db->table('products')->where('id', $id)->update($updateData);
+                } else {
+                    // If previous_data is invalid, just clear pending status
+                    $db->table('products')->where('id', $id)->update([
+                        'status' => 'approved',
+                        'edit_request' => 'rejected',
+                        'pending_reason' => null,
+                        'previous_data' => null,
+                        'admin_remarks' => $remarks,
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            } else {
+                // No previous_data, just clear pending status
+                $db->table('products')->where('id', $id)->update([
+                    'status' => 'approved',
+                    'edit_request' => 'rejected',
+                    'pending_reason' => null,
+                    'previous_data' => null,
+                    'admin_remarks' => $remarks,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            // Notify the seller
+            $db->table('notifications')->insert([
+                'user_id' => $product['seller_id'],
+                'title' => 'Product Edit Rejected',
+                'message' => "Your edit request for product \"" . ($product['title'] ?? 'ID:' . $id) . "\" was rejected by Admin. Reason: " . ($remarks ?: 'No reason provided'),
+                'type' => 'product_edit',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            return $this->respond(['success' => true, 'message' => 'Product edit rejected and restored.']);
+        }
+
+        // If not found as product with pending_reason, check if this is a product_edit_request ID (for seller edits)
+        $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
         if ($request) {
+            $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => date('Y-m-d H:i:s')]);
+
+            // Restore product to its original approved state (it was set to pending when edit was submitted)
             $db->table('products')->where('id', $request['product_id'])->update([
                 'status' => 'approved',
+                'edit_request' => 'rejected',
+                'pending_reason' => null,
+                'previous_data' => null,
+                'admin_remarks' => $remarks,
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
             // Notify the seller
@@ -396,15 +482,17 @@ class AdminApi extends BaseApiController
                 $db->table('notifications')->insert([
                     'user_id' => $request['seller_id'],
                     'title' => 'Edit Request Rejected',
-                    'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" was rejected. The product has been restored to its previous approved state.',
+                    'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" was rejected. Reason: ' . ($remarks ?: 'No reason provided'),
                     'type' => 'product_edit',
                     'is_read' => 0,
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
             }
+
+            return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
+        return $this->respond(['success' => false, 'message' => 'Edit request or product not found'], 404);
     }
 
     /**
@@ -474,8 +562,10 @@ class AdminApi extends BaseApiController
         foreach ($sent as &$o)     { $o['history'] = $historyModel->getHistoryByOffer($o['id']); }
         unset($o);
 
-        // Booked dates for rental conflict detection (sent offers)
-        $productIds = array_unique(array_column($sent, 'product_id'));
+        // Booked dates for rental conflict detection (both sent and received offers)
+        $sentProductIds = array_unique(array_column($sent, 'product_id'));
+        $receivedProductIds = array_unique(array_column($received, 'product_id'));
+        $productIds = array_unique(array_merge($sentProductIds, $receivedProductIds));
         $bookedDates = [];
         if (!empty($productIds)) {
             $bookedDates = $db->table('orders')
@@ -496,6 +586,7 @@ class AdminApi extends BaseApiController
             'acceptanceLimitDays'  => (float) getSystemSetting('offer_acceptance_limit_days', 7),
             'ratingPeriod'         => (float) getSystemSetting('seller_rating_period_days', 7),
             'rejectionWindowHours' => (float) getSystemSetting('seller_rejection_window_hours', 24),
+            'minRentalDays'        => (int) getSystemSetting('min_rental_days', 3),
         ]);
     }
     public function toggleUserStatus($userId)

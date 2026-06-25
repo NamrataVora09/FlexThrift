@@ -14,6 +14,7 @@ class ProductModel extends Model
     protected $protectFields = true;
     protected $allowedFields = [
         'product_number',
+        'edit_request',
         'seller_id',
         'subscription_id',
         'brand_id',

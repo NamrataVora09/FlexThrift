@@ -595,6 +595,7 @@ class BuyerApi extends BaseApiController
             return $this->respond(['success' => true, 'data' => ['booked_ranges' => []]], 200);
         }
 
+        // Get booked dates from accepted offers
         $offers = $db->table('offers')
             ->select('rental_start_date, rental_end_date')
             ->where('product_id', $productId)
@@ -603,10 +604,32 @@ class BuyerApi extends BaseApiController
             ->where('rental_end_date IS NOT NULL', null, false)
             ->get()->getResultArray();
 
-        $bookedRanges = array_map(fn($o) => [
-            'start' => $o['rental_start_date'],
-            'end' => $o['rental_end_date'],
-        ], $offers);
+        // Get booked dates from confirmed orders
+        $orders = $db->table('orders')
+            ->select('rental_start_date, rental_end_date')
+            ->where('product_id', $productId)
+            ->where('order_type', 'rent')
+            ->whereNotIn('status', ['cancelled', 'returned'])
+            ->where('rental_start_date IS NOT NULL', null, false)
+            ->where('rental_end_date IS NOT NULL', null, false)
+            ->get()->getResultArray();
+
+        // Merge both sources
+        $bookedRanges = [];
+        
+        foreach ($offers as $o) {
+            $bookedRanges[] = [
+                'start' => $o['rental_start_date'],
+                'end' => $o['rental_end_date'],
+            ];
+        }
+        
+        foreach ($orders as $o) {
+            $bookedRanges[] = [
+                'start' => $o['rental_start_date'],
+                'end' => $o['rental_end_date'],
+            ];
+        }
 
         return $this->respond(['success' => true, 'data' => ['booked_ranges' => $bookedRanges]], 200);
     }
@@ -742,8 +765,9 @@ class BuyerApi extends BaseApiController
             $start = new \DateTime($data['rental_start_date']);
             $end   = new \DateTime($data['rental_end_date']);
             $days  = (int) $start->diff($end)->days + 1;
-            if ($days < 3) {
-                return $this->respond(['success' => false, 'message' => 'Minimum rental period is 3 days.'], 400);
+            $minDays = (int) getSystemSetting('min_rental_days', 3);
+            if ($days < $minDays) {
+                return $this->respond(['success' => false, 'message_key' => 'rental_min_days_error', 'message_params' => ['min' => $minDays, 'selected' => $days]], 400);
             }
 
             $overlapping = $db->table('offers')
@@ -844,7 +868,7 @@ class BuyerApi extends BaseApiController
             $minDays = (int) getSystemSetting('min_rental_days', 3);
             $days = (int)ceil((strtotime($endDate) - strtotime($startDate)) / 86400) + 1; // inclusive
             if ($days < $minDays) {
-                return $this->respond(['success' => false, 'message' => "Minimum rental period is {$minDays} days. You selected {$days} day(s)."], 400);
+                return $this->respond(['success' => false, 'message_key' => 'rental_min_days_error', 'message_params' => ['min' => $minDays, 'selected' => $days]], 400);
             }
 
             // Recalculate price based on new duration

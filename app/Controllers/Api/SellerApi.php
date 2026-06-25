@@ -96,7 +96,7 @@ class SellerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         $products = $db->table('products p')
-            ->select('p.id, p.seller_id, p.title, p.product_number, p.listing_type, p.listing_type_category, p.category, p.description, p.original_price, p.price, p.rental_cost, p.rental_deposit, p.dispatch_city, p.dispatch_state, p.views_count, p.is_featured, p.admin_remarks, p.created_at, p.updated_at, p.status AS status, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as image, lt.usage_label')
+            ->select('p.id, p.seller_id, p.title, p.product_number, p.listing_type, p.listing_type_category, p.category, p.description, p.original_price, p.price, p.rental_cost, p.rental_deposit, p.dispatch_city, p.dispatch_state, p.views_count, p.is_featured, p.admin_remarks, p.pending_reason, p.edit_request, p.created_at, p.updated_at, p.status AS status, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as image, lt.usage_label')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.seller_id', $jwtUser['user_id'])
             ->orderBy('p.created_at', 'DESC')
@@ -109,6 +109,10 @@ class SellerApi extends BaseApiController
             // Normalize status: if NULL or empty (legacy data), treat as 'pending'
             if (empty($p['status'])) {
                 $p['status'] = 'pending';
+            }
+            // Ensure admin_remarks is set even if null
+            if (!isset($p['admin_remarks'])) {
+                $p['admin_remarks'] = '';
             }
         }
         unset($p);
@@ -159,6 +163,7 @@ class SellerApi extends BaseApiController
         $acceptanceLimitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
         $ratingPeriod = (float) getSystemSetting('seller_rating_period_days', 7);
         $rejectionWindowHours = (float) getSystemSetting('seller_rejection_window_hours', 24);
+        $minRentalDays = (int) getSystemSetting('min_rental_days', 3);
 
         return $this->respond([
             'success' => true,
@@ -167,6 +172,7 @@ class SellerApi extends BaseApiController
             'acceptanceLimitDays' => $acceptanceLimitDays,
             'ratingPeriod' => $ratingPeriod,
             'rejectionWindowHours' => $rejectionWindowHours,
+            'minRentalDays' => $minRentalDays,
         ]);
     }
 
@@ -698,7 +704,7 @@ class SellerApi extends BaseApiController
         $minDays = (int) getSystemSetting('min_rental_days', 3);
         $days = (int) ceil((strtotime($newEnd) - strtotime($newStart)) / 86400) + 1; // inclusive
         if ($days < $minDays) {
-            return $this->respond(['success' => false, 'message' => "Minimum rental period is {$minDays} days. You selected {$days} day(s)."], 400);
+            return $this->respond(['success' => false, 'message_key' => 'rental_min_days_error', 'message_params' => ['min' => $minDays, 'selected' => $days]], 400);
         }
 
         // Check for conflicts with already accepted offers
@@ -1200,7 +1206,7 @@ class SellerApi extends BaseApiController
         if (!$product)
             return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
-        $data = $this->request->getPost();
+        $data = $this->request->getPost() ?: $this->request->getJSON(true);
         $processedData = $this->cleanProductData($data, $db);
 
         // Pricing Validation
@@ -1232,26 +1238,59 @@ class SellerApi extends BaseApiController
             $deletedIdsArr = [];
         }
 
-        $db->table('product_edit_requests')->insert([
-            'product_id' => $id,
-            'seller_id' => $jwtUser['user_id'],
-            'updated_data' => json_encode($processedData),
-            'temp_images' => json_encode($tempImages),
-            'deleted_images_ids' => json_encode($deletedIdsArr),
-            'status' => 'pending',
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        // Check if there's already a pending edit request for this product
+        $existingRequest = $db->table('product_edit_requests')
+            ->where('product_id', $id)
+            ->where('status', 'pending')
+            ->get()->getRowArray();
+
+        if ($existingRequest) {
+            // Update existing pending request instead of creating a new one
+            $existingData = json_decode($existingRequest['updated_data'] ?? '{}', true);
+            $existingDeletedIds = json_decode($existingRequest['deleted_images_ids'] ?? '[]', true);
+            $mergedDeletedIds = array_unique(array_merge($existingDeletedIds, $deletedIdsArr));
+
+            // Merge the new data with existing data (new data takes precedence)
+            // This ensures all changes are accumulated
+            $mergedData = array_merge($existingData, $processedData);
+
+            // Also merge temp images if there are new ones
+            $existingTempImages = json_decode($existingRequest['temp_images'] ?? '[]', true);
+            $mergedTempImages = array_unique(array_merge($existingTempImages, $tempImages));
+
+            $db->table('product_edit_requests')->where('id', $existingRequest['id'])->update([
+                'updated_data' => json_encode($mergedData),
+                'temp_images' => json_encode($mergedTempImages),
+                'deleted_images_ids' => json_encode($mergedDeletedIds),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        } else {
+            // Create new edit request
+            $db->table('product_edit_requests')->insert([
+                'product_id' => $id,
+                'seller_id' => $jwtUser['user_id'],
+                'updated_data' => json_encode($processedData),
+                'temp_images' => json_encode($tempImages),
+                'deleted_images_ids' => json_encode($deletedIdsArr),
+                'status' => 'pending',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
 
         // Check if admin review is required
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
         $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
 
-        // Set product status to pending so admins/superadmin see it in review queue
-        $db->table('products')->where('id', $id)->update([
-            'status' => 'pending',
+        // Set product edit_request to pending so admins/superadmin see it in review queue
+        // Also clear admin_remarks and ensure status is approved (not pending) so it doesn't appear in new uploads
+        $updateData = [
+            'edit_request' => 'pending',
+            'admin_remarks' => null,
+            'status' => 'approved',
             'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
+        $db->table('products')->where('id', $id)->update($updateData);
 
         // Notify all admins and super_admins about the pending edit request
         $admins = $db->table('users')
@@ -1299,6 +1338,14 @@ class SellerApi extends BaseApiController
         // Direct update for all users (status and snapshotting is handled below)
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
         $updateData = $this->cleanProductData($data, $db);
+
+        // If this is a seller (not admin/superadmin) and review is required, use edit request workflow
+        // to keep old values visible in browse until approved
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $reviewRequired) {
+            // Use the editProduct workflow instead - create edit request, don't modify actual product
+            // The editProduct method will handle the data from the request directly
+            return $this->editProduct($id);
+        }
 
         // Pricing Validation
         $v = $this->validatePricing($data);
@@ -1363,27 +1410,17 @@ class SellerApi extends BaseApiController
 
         // Status logic:
         // - super_admin: always auto-approved (clear pending_reason)
-        // - admin: always goes to pending with reason 'admin_edit' (shown separately from new uploads)
+        // - admin: create product_edit_requests entry (shown separately from new uploads)
         // - seller / both / regular seller: goes to pending with reason 'seller_edit' or 'both_edit' if review is required, otherwise auto-approved.
         if (in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $updateData['status'] = 'approved';
             $updateData['pending_reason'] = null;
             $updateData['previous_data'] = null;
         } elseif ($jwtUser['role'] === 'admin') {
-            $updateData['status'] = 'pending';
-            $updateData['pending_reason'] = 'admin_edit';
-        } elseif ($reviewRequired) {
-            $updateData['status'] = 'pending';
-            $roleReason = ($jwtUser['role'] === 'both') ? 'both_edit' : 'seller_edit';
-            $updateData['pending_reason'] = $roleReason;
-        } else {
-            $updateData['status'] = 'approved';
-            $updateData['pending_reason'] = null;
-            $updateData['previous_data'] = null;
-        }
-
-        if ($isPendingEdit) {
-            // Snapshot the key fields BEFORE overwriting, so admins can see what changed
+            // Admin edits: create product_edit_requests entry instead of using pending_reason
+            $updateData['status'] = 'approved'; // Keep product approved, edit request is separate
+            
+            // Snapshot the key fields BEFORE overwriting, so superadmin can see what changed
             $snapshotFields = [
                 'title', 'description', 'listing_type', 'listing_type_category',
                 'product_type', 'category', 'sub_category', 'color', 'gender',
@@ -1399,7 +1436,67 @@ class SellerApi extends BaseApiController
             }
             // Include previous images in snapshot so admin can compare before/after
             $snapshot['_images'] = $previousImagePaths;
-            $updateData['previous_data'] = json_encode($snapshot);
+            
+            // Create product_edit_requests entry for admin edit
+            $db->table('product_edit_requests')->insert([
+                'product_id' => $id,
+                'seller_id' => $product['seller_id'],
+                'updated_data' => json_encode($processedData),
+                'temp_images' => json_encode($tempImages),
+                'deleted_images_ids' => json_encode($deletedIdsArr),
+                'previous_data' => json_encode($snapshot),
+                'editor_role' => 'admin',
+                'editor_id' => $jwtUser['user_id'],
+                'status' => 'pending',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            
+            // Don't update product yet - wait for superadmin approval
+            return $this->respond(['success' => true, 'message' => 'Product edit submitted for approval']);
+        } elseif ($reviewRequired) {
+            $updateData['status'] = 'pending';
+            $roleReason = ($jwtUser['role'] === 'both') ? 'both_edit' : 'seller_edit';
+            $updateData['pending_reason'] = $roleReason;
+        } else {
+            $updateData['status'] = 'approved';
+            $updateData['pending_reason'] = null;
+            $updateData['previous_data'] = null;
+        }
+
+        if ($isPendingEdit && $jwtUser['role'] !== 'admin') {
+            // Preserve existing previous_data if it exists (from a previous pending edit)
+            // This ensures superadmin sees comparison with original state, not just the most recent edit
+            if (!empty($product['previous_data'])) {
+                $updateData['previous_data'] = $product['previous_data'];
+            } else {
+                // Snapshot the key fields BEFORE overwriting, so admins can see what changed
+                $snapshotFields = [
+                    'title', 'description', 'listing_type', 'listing_type_category',
+                    'product_type', 'category', 'sub_category', 'color', 'gender',
+                    'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
+                    'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
+                    'has_bill', 'allow_alter_fitting',
+                ];
+                $snapshot = [];
+                foreach ($snapshotFields as $field) {
+                    if (isset($product[$field])) {
+                        $snapshot[$field] = $product[$field];
+                    }
+                }
+                // Include previous images in snapshot so admin can compare before/after
+                $snapshot['_images'] = $previousImagePaths;
+                $updateData['previous_data'] = json_encode($snapshot);
+            }
+
+            // Set edit_request to pending
+            $updateData['edit_request'] = 'pending';
+            // Clear admin_remarks when submitting new edit
+            $updateData['admin_remarks'] = null;
+            // Reset status to approved if it was rejected_changes from old logic
+            if ($product['status'] === 'rejected_changes') {
+                $updateData['status'] = 'approved';
+            }
 
             // Notify all admins and super_admins about the pending edit request
             $admins = $db->table('users')
@@ -1416,6 +1513,9 @@ class SellerApi extends BaseApiController
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
             }
+        } else {
+            // Not a pending edit, clear edit_request
+            $updateData['edit_request'] = null;
         }
 
         // Update product

@@ -219,6 +219,11 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
   const adminEdits = products.filter(p => p.pending_reason === 'admin_edit');
   const sellerEdits = products.filter(p => p.pending_reason === 'seller_edit');
   const bothEdits = products.filter(p => p.pending_reason === 'both_edit');
+  
+  // Filter edit requests by editor_role
+  const adminEditRequests = editRequests.filter(r => r.editor_role === 'admin');
+  const sellerEditRequests = editRequests.filter(r => r.editor_role === 'seller' || !r.editor_role);
+  
   const totalItems = newUploads.length + adminEdits.length + sellerEdits.length + bothEdits.length + editRequests.length;
 
   return (
@@ -309,43 +314,67 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
             )}
 
             {/* ── Admin Edits Pending ── */}
-            {adminEdits.length > 0 && (
+            {adminEditRequests.length > 0 && (
               <>
                 <div className="mb-4 d-flex align-items-center gap-2 mt-5">
-                  <span className="badge bg-warning text-dark rounded-pill" style={{ fontWeight: 600 }}>Admin Edits Pending (Approve / Reject)</span>
+                  <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#212529', fontWeight: 600 }}>Admin Edits Pending</span>
                   <hr className="flex-grow-1 opacity-25" />
                 </div>
                 <div className="row g-4 mb-5">
-                  {adminEdits.map((p) => (
-                    <div className="col-md-6 col-xxl-4" key={p.id}>
-                      <div style={{ borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', border: '2px dashed rgba(255,193,7,0.4)', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                          {p.images && p.images.length > 0 ? (
-                            <img src={resolveUrl(p.images[0].image_path)} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {adminEditRequests.map((r) => (
+                    <div className="col-md-6 col-xxl-4" key={r.id}>
+                      <div style={{ border: 'none', borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.3s', height: '100%', display: 'flex', flexDirection: 'column' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                        {/* Thumbnail */}
+                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {r.images && r.images.length > 0 ? (
+                            <img src={resolveUrl(r.images[0].image_path)} alt={r.original_title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
-                            <i className="bi bi-pencil-square" style={{ fontSize: '2.5rem', color: '#94a3b8' }}></i>
+                            <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-warning text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{r.listing_type?.charAt(0).toUpperCase() + r.listing_type?.slice(1)}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">ADMIN EDIT</span>
                           </div>
                         </div>
+                        {/* Body */}
                         <div style={{ padding: '1.5rem', flexGrow: 1 }}>
-                          <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem' }}>Product ID: {p.id}</small>
-                          <h5 className="fw-bold mb-3">{p.title}</h5>
-                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1rem' }}>
+                          <div className="d-flex justify-content-between align-items-start mb-3">
+                            <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{r.original_title}</h5>
+                            <div className="text-end">
+                              <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>
+                                ₹{Number(r.listing_type === 'rent' ? (r.rental_cost || 0) : (r.price || r.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                {r.listing_type === 'rent' && <small className="ms-1" style={{ fontSize: '0.65rem', textTransform: 'lowercase' }}>/day</small>}
+                              </div>
+                              {r.listing_type === 'rent' && r.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(r.rental_deposit).toLocaleString('en-IN', { minimumFractionDigits: 2 })} deposit</small>}
+                            </div>
+                          </div>
+                          <div className="mb-3 d-flex flex-wrap gap-2">
+                            {r.category && <span style={tagBadge}><i className="bi bi-tag small me-1"></i>{r.category}</span>}
+                            {r.color && <span style={tagBadge}><i className="bi bi-palette small me-1"></i>{r.color}</span>}
+                            {r.used_times && <span style={tagBadge}>{r.used_times} {r.usage_label || 'Uses'}</span>}
+                          </div>
+                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1.25rem' }}>
+                            <div className="small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>Seller Profile</div>
                             <div className="d-flex align-items-center gap-2">
-                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,193,7,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#f59e0b' }}>{p.seller_name?.charAt(0).toUpperCase()}</div>
-                              <div>
-                                <div className="fw-bold small">{p.seller_name}</div>
-                                <div className="small text-muted">{p.seller_email}</div>
+                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#3b82f6', border: '1px solid #e2e8f0' }}>{r.seller_name?.charAt(0).toUpperCase()}</div>
+                              <div className="flex-grow-1">
+                                <div className="fw-bold small">{r.seller_name}</div>
+                                {showRatings && renderStars(Number(r.seller_rating_avg || 0), Number(r.seller_rating_count || 0))}
                               </div>
                             </div>
                           </div>
-                          <p className="small text-muted mb-0"><i className="bi bi-clock-history me-1"></i>Edited: {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}, {new Date(p.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                          {r.description && <p className="small text-muted mb-0" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.description}</p>}
                         </div>
+                        {/* Actions */}
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
-                          <button className="btn w-100 py-3 rounded-3 fw-bold sa-filter-btn" style={{ background: '#ffc63a', color: '#212529', border: 'none' }} onClick={() => setAdminEditDiff(p)}>
-                            <i className="bi bi-arrow-left-right me-2"></i>Review Changes & Act
+                          <div className="row g-2">
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => openComparison(r.id)}><i className="bi bi-eye me-1"></i>Review</button></div>
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: r.id, title: r.original_title, type: 'edit' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                          </div>
+                          <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => openComparison(r.id)}>
+                            <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
                           </button>
                         </div>
                       </div>
@@ -359,40 +388,64 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
             {sellerEdits.length > 0 && (
               <>
                 <div className="mb-4 d-flex align-items-center gap-2 mt-5">
-                  <span className="badge bg-info text-dark rounded-pill" style={{ fontWeight: 600 }}>Seller Edits Pending (Approve / Reject)</span>
+                  <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#212529', fontWeight: 600 }}>Seller Edits Pending</span>
                   <hr className="flex-grow-1 opacity-25" />
                 </div>
                 <div className="row g-4 mb-5">
                   {sellerEdits.map((p) => (
                     <div className="col-md-6 col-xxl-4" key={p.id}>
-                      <div style={{ borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', border: '2px dashed rgba(23,162,184,0.4)', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      <div style={{ border: 'none', borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.3s', height: '100%', display: 'flex', flexDirection: 'column' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                        {/* Thumbnail */}
+                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {p.images && p.images.length > 0 ? (
                             <img src={resolveUrl(p.images[0].image_path)} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
-                            <i className="bi bi-pencil-square" style={{ fontSize: '2.5rem', color: '#94a3b8' }}></i>
+                            <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-info text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1)}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
                           </div>
                         </div>
+                        {/* Body */}
                         <div style={{ padding: '1.5rem', flexGrow: 1 }}>
-                          <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem' }}>Product ID: {p.id}</small>
-                          <h5 className="fw-bold mb-3">{p.title}</h5>
-                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1rem' }}>
+                          <div className="d-flex justify-content-between align-items-start mb-3">
+                            <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{p.title}</h5>
+                            <div className="text-end">
+                              <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>
+                                ₹{Number(p.listing_type === 'rent' ? (p.rental_cost || 0) : (p.price || p.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                {p.listing_type === 'rent' && <small className="ms-1" style={{ fontSize: '0.65rem', textTransform: 'lowercase' }}>/day</small>}
+                              </div>
+                              {p.listing_type === 'rent' && p.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(p.rental_deposit).toLocaleString('en-IN', { minimumFractionDigits: 2 })} deposit</small>}
+                            </div>
+                          </div>
+                          <div className="mb-3 d-flex flex-wrap gap-2">
+                            {p.category && <span style={tagBadge}><i className="bi bi-tag small me-1"></i>{p.category}</span>}
+                            {p.color && <span style={tagBadge}><i className="bi bi-palette small me-1"></i>{p.color}</span>}
+                            {p.used_times && <span style={tagBadge}>{p.used_times} {p.usage_label || 'Uses'}</span>}
+                          </div>
+                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1.25rem' }}>
+                            <div className="small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>Seller Profile</div>
                             <div className="d-flex align-items-center gap-2">
-                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(23,162,184,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#17a2b8' }}>{p.seller_name?.charAt(0).toUpperCase()}</div>
-                              <div>
+                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#3b82f6', border: '1px solid #e2e8f0' }}>{p.seller_name?.charAt(0).toUpperCase()}</div>
+                              <div className="flex-grow-1">
                                 <div className="fw-bold small">{p.seller_name}</div>
-                                <div className="small text-muted">{p.seller_email}</div>
+                                {showRatings && renderStars(Number(p.seller_rating_avg || 0), Number(p.seller_rating_count || 0))}
                               </div>
                             </div>
                           </div>
-                          <p className="small text-muted mb-0"><i className="bi bi-clock-history me-1"></i>Edited: {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}, {new Date(p.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                          {p.description && <p className="small text-muted mb-0" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>}
                         </div>
+                        {/* Actions */}
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
-                          <button className="btn w-100 py-3 rounded-3 fw-bold sa-filter-btn" style={{ background: '#17a2b8', color: '#fff', border: 'none' }} onClick={() => setAdminEditDiff(p)}>
-                            <i className="bi bi-arrow-left-right me-2"></i>Review Changes & Act
+                          <div className="row g-2">
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => setApproveModal({ id: p.id, title: p.title })}><i className="bi bi-check-lg me-1"></i>Approve</button></div>
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: p.id, title: p.title, type: 'product' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                          </div>
+                          <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => setAdminEditDiff(p)}>
+                            <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
                           </button>
                         </div>
                       </div>
@@ -406,40 +459,64 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
             {bothEdits.length > 0 && (
               <>
                 <div className="mb-4 d-flex align-items-center gap-2 mt-5">
-                  <span className="badge bg-secondary text-white rounded-pill" style={{ fontWeight: 600 }}>Both User Edits Pending (Approve / Reject)</span>
+                  <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#212529', fontWeight: 600 }}>Both User Edits Pending</span>
                   <hr className="flex-grow-1 opacity-25" />
                 </div>
                 <div className="row g-4 mb-5">
                   {bothEdits.map((p) => (
                     <div className="col-md-6 col-xxl-4" key={p.id}>
-                      <div style={{ borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', border: '2px dashed rgba(108,117,125,0.4)', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      <div style={{ border: 'none', borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.3s', height: '100%', display: 'flex', flexDirection: 'column' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                        {/* Thumbnail */}
+                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {p.images && p.images.length > 0 ? (
                             <img src={resolveUrl(p.images[0].image_path)} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
-                            <i className="bi bi-pencil-square" style={{ fontSize: '2.5rem', color: '#94a3b8' }}></i>
+                            <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-secondary text-white shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1)}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
                           </div>
                         </div>
+                        {/* Body */}
                         <div style={{ padding: '1.5rem', flexGrow: 1 }}>
-                          <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.65rem' }}>Product ID: {p.id}</small>
-                          <h5 className="fw-bold mb-3">{p.title}</h5>
-                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1rem' }}>
+                          <div className="d-flex justify-content-between align-items-start mb-3">
+                            <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{p.title}</h5>
+                            <div className="text-end">
+                              <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>
+                                ₹{Number(p.listing_type === 'rent' ? (p.rental_cost || 0) : (p.price || p.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                {p.listing_type === 'rent' && <small className="ms-1" style={{ fontSize: '0.65rem', textTransform: 'lowercase' }}>/day</small>}
+                              </div>
+                              {p.listing_type === 'rent' && p.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(p.rental_deposit).toLocaleString('en-IN', { minimumFractionDigits: 2 })} deposit</small>}
+                            </div>
+                          </div>
+                          <div className="mb-3 d-flex flex-wrap gap-2">
+                            {p.category && <span style={tagBadge}><i className="bi bi-tag small me-1"></i>{p.category}</span>}
+                            {p.color && <span style={tagBadge}><i className="bi bi-palette small me-1"></i>{p.color}</span>}
+                            {p.used_times && <span style={tagBadge}>{p.used_times} {p.usage_label || 'Uses'}</span>}
+                          </div>
+                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1.25rem' }}>
+                            <div className="small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>Seller Profile</div>
                             <div className="d-flex align-items-center gap-2">
-                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(108,117,125,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#6c757d' }}>{p.seller_name?.charAt(0).toUpperCase()}</div>
-                              <div>
+                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#3b82f6', border: '1px solid #e2e8f0' }}>{p.seller_name?.charAt(0).toUpperCase()}</div>
+                              <div className="flex-grow-1">
                                 <div className="fw-bold small">{p.seller_name}</div>
-                                <div className="small text-muted">{p.seller_email}</div>
+                                {showRatings && renderStars(Number(p.seller_rating_avg || 0), Number(p.seller_rating_count || 0))}
                               </div>
                             </div>
                           </div>
-                          <p className="small text-muted mb-0"><i className="bi bi-clock-history me-1"></i>Edited: {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}, {new Date(p.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                          {p.description && <p className="small text-muted mb-0" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>}
                         </div>
+                        {/* Actions */}
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
-                          <button className="btn w-100 py-3 rounded-3 fw-bold sa-filter-btn" style={{ background: '#6c757d', color: '#fff', border: 'none' }} onClick={() => setAdminEditDiff(p)}>
-                            <i className="bi bi-arrow-left-right me-2"></i>Review Changes & Act
+                          <div className="row g-2">
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => setApproveModal({ id: p.id, title: p.title })}><i className="bi bi-check-lg me-1"></i>Approve</button></div>
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: p.id, title: p.title, type: 'product' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                          </div>
+                          <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => setAdminEditDiff(p)}>
+                            <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
                           </button>
                         </div>
                       </div>
@@ -448,7 +525,63 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                 </div>
               </>
             )}
-            {/* ── Edit Requests ── */}
+
+            {/* ── Edit Requests (Seller Edits via product_edit_requests table) ── */}
+            {editRequests.length > 0 && (
+              <>
+                <div className="mb-4 d-flex align-items-center gap-2 mt-5">
+                  <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#212529', fontWeight: 600 }}>Seller Edit Requests</span>
+                  <hr className="flex-grow-1 opacity-25" />
+                </div>
+                <div className="row g-4 mb-5">
+                  {editRequests.map((r) => (
+                    <div className="col-md-6 col-xxl-4" key={r.id}>
+                      <div style={{ border: 'none', borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.3s', height: '100%', display: 'flex', flexDirection: 'column' }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                        {/* Thumbnail */}
+                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="bi bi-pencil-square" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
+                          <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">EDIT REQUEST</span>
+                          </div>
+                        </div>
+                        {/* Body */}
+                        <div style={{ padding: '1.5rem', flexGrow: 1 }}>
+                          <div className="d-flex justify-content-between align-items-start mb-3">
+                            <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{r.original_title}</h5>
+                            <div className="text-end">
+                              <small className="text-muted d-block" style={{ fontSize: '0.65rem' }}>Request ID: {r.id}</small>
+                            </div>
+                          </div>
+                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1.25rem' }}>
+                            <div className="small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>Seller Profile</div>
+                            <div className="d-flex align-items-center gap-2">
+                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#3b82f6', border: '1px solid #e2e8f0' }}>{r.seller_name?.charAt(0).toUpperCase()}</div>
+                              <div className="flex-grow-1">
+                                <div className="fw-bold small">{r.seller_name}</div>
+                                <div className="small text-muted">Reliability: {r.reliability_score || 'N/A'}</div>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="small text-muted mb-0"><i className="bi bi-clock-history me-1"></i>Submitted: {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}, {new Date(r.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        {/* Actions */}
+                        <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
+                          <div className="row g-2">
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => openComparison(r.id)}><i className="bi bi-eye me-1"></i>Approve</button></div>
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: r.id, title: r.original_title, type: 'edit' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                          </div>
+                          <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => openComparison(r.id)}>
+                            <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
           </>
         ) : (
@@ -848,11 +981,6 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
           adminEditDiff.pending_reason === 'admin_edit' ? 'Admin' :
           adminEditDiff.pending_reason === 'both_edit' ? 'Both User' :
           adminEditDiff.pending_reason === 'seller_edit' ? 'Seller' : 'User';
-          
-        const headerGradient = 
-          adminEditDiff.pending_reason === 'admin_edit' ? 'linear-gradient(135deg,#ffc63a,#f59e0b)' :
-          adminEditDiff.pending_reason === 'both_edit' ? 'linear-gradient(135deg,#6c757d,#495057)' :
-          'linear-gradient(135deg,#17a2b8,#117a8b)';
 
         const fields: Array<{ label: string; prevKey: string; currKey: string; format?: (v: any) => string }> = [
           { label: 'Title', prevKey: 'title', currKey: 'title' },
@@ -892,124 +1020,113 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
         );
 
         return (
-          <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.6)', zIndex: 9999 }} onClick={() => setAdminEditDiff(null)}>
+          <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setAdminEditDiff(null)}>
             <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1.25rem', overflow: 'hidden' }}>
-                <div className="modal-header" style={{ background: headerGradient, border: 'none', padding: '1.25rem 1.5rem' }}>
-                  <div>
-                    <h5 className="modal-title fw-bold mb-0 text-white"><i className="bi bi-arrow-left-right me-2"></i>{editorRole} Edit Changes</h5>
-                    <small className="text-white opacity-75">Product ID: {adminEditDiff.id} — {adminEditDiff.title}</small>
-                  </div>
-                  <button type="button" className="btn-close btn-close-white" onClick={() => setAdminEditDiff(null)}></button>
+              <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
+                <div className="modal-header border-bottom p-4">
+                  <h5 className="modal-title fw-bold"><i className="bi bi-arrow-left-right me-2"></i>Side-by-Side Comparison</h5>
+                  <button type="button" className="btn-close" onClick={() => setAdminEditDiff(null)}></button>
                 </div>
-                <div className="modal-body p-4">
-                  {!adminEditDiff.previous_data ? (
-                    <div className="text-center py-4 text-muted">
-                      <i className="bi bi-info-circle" style={{ fontSize: '2rem' }}></i>
-                      <p className="mt-2">No previous data snapshot available (product was edited before this feature was added).</p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Summary badge */}
-                      <div className="alert alert-warning py-2 mb-4 small">
-                        <i className="bi bi-exclamation-triangle me-1"></i>
-                        {changedFields.length > 0 && <><strong>{changedFields.length} field{changedFields.length > 1 ? 's' : ''} changed</strong> by {editorRole.toLowerCase()}. </>}
-                        {hasImageChanges && <strong>Images were also changed.</strong>}
-                        {changedFields.length === 0 && !hasImageChanges && <span>No changes detected (possible metadata-only update).</span>}
-                        {' '}Review and approve or reject below.
-                      </div>
-
-                      {/* ── Field diff ── */}
-                      {changedFields.length > 0 && (
-                        <>
-                          <div className="row g-0 mb-3">
-                            <div className="col-6 text-center fw-bold py-2 rounded-start" style={{ background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem', letterSpacing: 0.5 }}><i className="bi bi-dash-circle me-1"></i>BEFORE (Previous)</div>
-                            <div className="col-6 text-center fw-bold py-2 rounded-end" style={{ background: '#ecfdf5', color: '#059669', fontSize: '0.8rem', letterSpacing: 0.5 }}><i className="bi bi-plus-circle me-1"></i>AFTER ({editorRole} Edit)</div>
-                          </div>
-                          {changedFields.map((f, i) => (
-                            <div key={i} className="row g-0 mb-2 rounded overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
-                              <div className="col-12 px-3 py-1" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                <small className="fw-bold text-muted text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>{f.label}</small>
-                              </div>
-                              <div className="col-6 px-3 py-2" style={{ background: '#fff5f5', borderRight: '1px solid #e2e8f0' }}>
-                                <div className="small" style={{ color: '#dc2626', wordBreak: 'break-word' }}>{fmt(f, prev[f.prevKey]) || <span className="text-muted fst-italic">empty</span>}</div>
-                              </div>
-                              <div className="col-6 px-3 py-2" style={{ background: '#f0fdf4' }}>
-                                <div className="small fw-bold" style={{ color: '#059669', wordBreak: 'break-word' }}>{fmt(f, curr[f.currKey]) || <span className="text-muted fst-italic">empty</span>}</div>
-                              </div>
+                <div className="modal-body p-0">
+                  <div className="row g-0">
+                    {/* Original */}
+                    <div className="col-md-6 border-end p-4" style={{ background: 'rgba(248,250,252,0.5)' }}>
+                      <div className="text-center mb-4"><span className="badge bg-secondary px-3 py-2 rounded-pill">ORIGINAL DATA</span></div>
+                      <h5 className="fw-bold mb-3">{prev.title || adminEditDiff.title}</h5>
+                      {renderCompSection('General', [
+                        { l: 'Title', v: prev.title || adminEditDiff.title },
+                        { l: 'Category', v: prev.category || adminEditDiff.category },
+                        { l: 'Listing Type', v: prev.listing_type || adminEditDiff.listing_type },
+                      ])}
+                      {renderCompSection('Specs', [
+                        { l: 'Color', v: prev.color || 'N/A' },
+                        { l: 'Size', v: prev.size || 'N/A' },
+                        { l: 'Gender', v: prev.gender || 'N/A' },
+                        { l: 'Used Times', v: prev.used_times ?? 'N/A' },
+                      ])}
+                      {renderCompSection('Pricing', [
+                        { l: 'Original Price', v: '₹' + Number(prev.original_price || adminEditDiff.original_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+                        {
+                          l: prev.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price',
+                          v: '₹' + Number(prev.listing_type === 'rent' ? (prev.rental_cost || 0) : (prev.price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 }) + (prev.listing_type === 'rent' ? ' /day' : '')
+                        },
+                        prev.listing_type === 'rent' && { l: 'Security Deposit', v: '₹' + Number(prev.rental_deposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }
+                      ].filter((item): item is { l: string; v: any } => !!item))}
+                      {renderCompSection('Details', [
+                        { l: 'Description', v: <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{prev.description || adminEditDiff.description || 'No description'}</div> },
+                        { l: 'Has Bill', v: Number(prev.has_bill || adminEditDiff.has_bill) ? 'Yes' : 'No' }
+                      ])}
+                      <div className="mt-4">
+                        <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Original Images ({prevImages.length})</h6>
+                        <div className="row g-2">
+                          {prevImages.map((img: any, i: number) => (
+                            <div className="col-4" key={i}>
+                              <img src={resolveUrl(img)} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover' }} alt="" />
                             </div>
                           ))}
-                        </>
-                      )}
-
-                      {/* ── Image diff ── */}
-                      {adminEditDiff.previous_data && (
+                        </div>
+                      </div>
+                    </div>
+                    {/* Proposed Changes */}
+                    <div className="col-md-6 p-4">
+                      <div className="text-center mb-4"><span className="badge bg-success px-3 py-2 rounded-pill">PROPOSED CHANGES ({editorRole})</span></div>
+                      {(() => {
+                        const diff = (o: string, n: string) => String(o).trim() === String(n).trim() ? n : <><span className="text-danger" style={{ textDecoration: 'line-through', opacity: 0.6 }}>{o}</span> <i className="bi bi-arrow-right mx-1"></i> <mark style={{ background: 'rgba(16,185,129,0.2)', color: '#059669', padding: '0 4px', borderRadius: 4, border: '1px solid rgba(16,185,129,0.3)' }}>{n}</mark></>;
+                        return (
+                          <>
+                            <h5 className="fw-bold mb-3">{diff(prev.title || '', curr.title || '')}</h5>
+                            {renderCompSection('General', [
+                              { l: 'Title', v: diff(prev.title || '', curr.title || '') },
+                              { l: 'Category', v: diff(prev.category || '', curr.category || '') },
+                              { l: 'Listing Type', v: diff(prev.listing_type || '', curr.listing_type || '') },
+                            ])}
+                            {renderCompSection('Specs', [
+                              { l: 'Color', v: diff(prev.color || '', curr.color || '') },
+                              { l: 'Size', v: diff(prev.size || '', curr.size || '') },
+                              { l: 'Gender', v: diff(prev.gender || '', curr.gender || '') },
+                              { l: 'Used Times', v: diff(prev.used_times || '', curr.used_times || '') },
+                            ])}
+                            {renderCompSection('Pricing', [
+                              { l: 'Original Price', v: diff(prev.original_price || '', curr.original_price || '') },
+                              {
+                                l: curr.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price',
+                                v: diff(curr.listing_type === 'rent' ? (prev.rental_cost || '') : (prev.price || ''), curr.listing_type === 'rent' ? (curr.rental_cost || '') : (curr.price || ''))
+                              },
+                              curr.listing_type === 'rent' && { l: 'Security Deposit', v: diff(prev.rental_deposit || '', curr.rental_deposit || '') }
+                            ].filter((item): item is { l: string; v: any } => !!item))}
+                            {renderCompSection('Details', [
+                              { l: 'Description', v: diff(prev.description || '', curr.description || '') },
+                              { l: 'Has Bill', v: diff(prev.has_bill ? 'Yes' : 'No', curr.has_bill ? 'Yes' : 'No') }
+                            ])}
+                          </>
+                        );
+                      })()}
+                      {/* New images */}
+                      {hasImageChanges && (
                         <div className="mt-4">
-                          <div className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-3" style={{ letterSpacing: 0.5 }}>
-                            <i className="bi bi-images me-1"></i>Image Comparison
-                            {hasImageChanges
-                              ? <span className="ms-2 badge bg-warning text-dark" style={{ fontSize: '0.65rem' }}>Changed</span>
-                              : <span className="ms-2 badge bg-success" style={{ fontSize: '0.65rem' }}>No Change</span>}
-                          </div>
-                          <div className="row g-3">
-                            {/* Before images */}
-                            <div className="col-6">
-                              <div className="text-center fw-bold py-2 rounded mb-2" style={{ background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem' }}>
-                                <i className="bi bi-dash-circle me-1"></i>BEFORE ({prevImages.length} image{prevImages.length !== 1 ? 's' : ''})
+                          <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Updated Images ({currImages.length})</h6>
+                          <div className="row g-2">
+                            {currImages.map((img: any, i: number) => (
+                              <div className="col-4" key={i}>
+                                <img src={resolveUrl(img)} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover' }} alt="" />
                               </div>
-                              {prevImages.length === 0 ? (
-                                <div className="text-center text-muted small py-3" style={{ background: '#f8fafc', borderRadius: 8, border: '1px dashed #e2e8f0' }}>
-                                  <i className="bi bi-image" style={{ fontSize: '1.5rem' }}></i><br />No images in snapshot
-                                </div>
-                              ) : (
-                                <div className="d-flex flex-wrap gap-2">
-                                  {prevImages.map((imgPath, i) => (
-                                    <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '2px solid #fca5a5', width: 90, height: 90 }}>
-                                      <img src={resolveUrl(imgPath)} alt={`before-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90"><rect width="90" height="90" fill="%23f1f5f9"/><text x="45" y="50" text-anchor="middle" fill="%23999" font-size="11">No img</text></svg>'; }} />
-                                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(220,38,38,0.7)', color: '#fff', fontSize: '0.6rem', textAlign: 'center', padding: '1px 0' }}>BEFORE</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            {/* After images */}
-                            <div className="col-6">
-                              <div className="text-center fw-bold py-2 rounded mb-2" style={{ background: '#ecfdf5', color: '#059669', fontSize: '0.8rem' }}>
-                                <i className="bi bi-plus-circle me-1"></i>AFTER ({currImages.length} image{currImages.length !== 1 ? 's' : ''})
-                              </div>
-                              {currImages.length === 0 ? (
-                                <div className="text-center text-muted small py-3" style={{ background: '#f8fafc', borderRadius: 8, border: '1px dashed #e2e8f0' }}>
-                                  <i className="bi bi-image" style={{ fontSize: '1.5rem' }}></i><br />No images now
-                                </div>
-                              ) : (
-                                <div className="d-flex flex-wrap gap-2">
-                                  {currImages.map((imgPath, i) => (
-                                    <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '2px solid #6ee7b7', width: 90, height: 90 }}>
-                                      <img src={resolveUrl(imgPath)} alt={`after-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90"><rect width="90" height="90" fill="%23f1f5f9"/><text x="45" y="50" text-anchor="middle" fill="%23999" font-size="11">No img</text></svg>'; }} />
-                                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(5,150,105,0.7)', color: '#fff', fontSize: '0.6rem', textAlign: 'center', padding: '1px 0' }}>AFTER</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                            ))}
                           </div>
                         </div>
                       )}
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </div>
                 <div className="modal-footer border-top p-4 d-flex justify-content-between">
+                  <button className="btn btn-outline-secondary px-4 fw-bold" onClick={() => setAdminEditDiff(null)}>Close</button>
                   <div className="d-flex gap-2">
-                    <button className="btn px-4 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: adminEditDiff.id, title: adminEditDiff.title, type: 'product' }); setRejectReason(''); setAdminEditDiff(null); }}>
+                    <button className="btn px-4 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: adminEditDiff.id, title: adminEditDiff.title, type: 'edit' }); setRejectReason(''); setAdminEditDiff(null); }}>
                       <i className="bi bi-x-lg me-1"></i>Reject Changes
                     </button>
                     <button className="btn px-4 fw-bold" style={btnApprove} onClick={() => { setApproveModal({ id: adminEditDiff.id, title: adminEditDiff.title }); setAdminEditDiff(null); }}>
                       <i className="bi bi-check-lg me-1"></i>Approve Changes
                     </button>
                   </div>
-                  <button className="btn btn-outline-secondary px-4 fw-bold" onClick={() => { openInspector(adminEditDiff.id); setAdminEditDiff(null); }}>
-                    <i className="bi bi-eye me-1"></i>Full Image Inspector
-                  </button>
                 </div>
               </div>
             </div>

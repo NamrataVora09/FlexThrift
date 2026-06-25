@@ -203,7 +203,7 @@ class SeedAllAppMessages extends Migration
         ['message_key' => 'plan_delete_failed',       'message_value' => 'Failed to delete subscription plan.',             'category' => 'error'],
 
         // ─── RENTAL & CALENDAR ──────────────────────────────────────────
-        ['message_key' => 'rental_min_days_error',    'message_value' => 'Minimum rental period is {days} days.',           'category' => 'error'],
+        ['message_key' => 'rental_min_days_error',    'message_value' => 'Minimum rental period is {min} days. You selected {selected} day(s).', 'category' => 'error'],
 
         // ─── BULK UPLOAD ────────────────────────────────────────────────
         ['message_key' => 'bulk_upload_success',      'message_value' => 'Bulk upload completed successfully!',             'category' => 'success'],

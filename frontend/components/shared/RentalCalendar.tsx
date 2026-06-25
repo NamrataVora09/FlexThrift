@@ -82,7 +82,7 @@ export function RentalCalendar({
       const s = startD!;
       const limit = minRentalDays;
       if (daysBetween(s, d) < limit) {
-        toastError('rental_min_days_error', `Minimum rental period is ${limit} days.`);
+        toastError('rental_min_days_error', `Minimum rental period is ${limit} days. You selected ${daysBetween(s, d)} day(s).`, { min: String(limit), selected: String(daysBetween(s, d)) });
         return;
       }
       if (d < s) {

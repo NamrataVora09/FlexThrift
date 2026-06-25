@@ -99,6 +99,7 @@ class SharedApi extends BaseApiController
             'admin_remarks' => $remarks,
             'pending_reason' => null,
             'previous_data' => null,
+            'edit_request' => null,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 

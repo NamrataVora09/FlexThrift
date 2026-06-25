@@ -430,6 +430,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
   const [dateModal, setDateModal] = useState<{
     id: number;
+    product_id: number;
     title: string;
     start: string;
     end: string;
@@ -462,7 +463,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const [sdLoading, setSdLoading] = useState(false);
 
   useEffect(() => {
-    const productId = dateModal?.id || suggestModal?.offer?.product_id;
+    const productId = dateModal?.product_id || suggestModal?.offer?.product_id;
     if (productId) {
       api.get<{ booked_ranges: { start: string; end: string }[] }>(`/product/${productId}/booked-dates`)
         .then(res => { if (res.success && res.data) setBookedRanges(res.data.booked_ranges); })
@@ -470,7 +471,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     } else {
       setBookedRanges([]);
     }
-  }, [dateModal?.id, suggestModal?.offer?.product_id]);
+  }, [dateModal?.product_id, suggestModal?.offer?.product_id]);
 
   /* ── accept-or-suggest choice modal (seller, rent only) ── */
   const [acceptChoiceModal, setAcceptChoiceModal] = useState<{ offer: Offer } | null>(null);
@@ -572,7 +573,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     const { offer } = changeDatesModal;
     const days = daysBetween(cdStart, cdEnd);
     if (days < settings.minRentalDays) {
-      toastWarning('min_rental_duration', `Minimum ${settings.minRentalDays} days rental required.`, { min: String(settings.minRentalDays) });
+      toastWarning('rental_min_days_error', `Minimum ${settings.minRentalDays} days rental required. You selected ${days} day(s).`, { min: String(settings.minRentalDays), selected: String(days) });
       return;
     }
     if (!cdAddress || !cdPin) { toastWarning('offer_address_required', 'Please fill in your delivery address and pin code.'); return; }
@@ -601,7 +602,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
     const days = daysBetween(sdStart, sdEnd);
     if (days < settings.minRentalDays) {
-      toastWarning('min_rental_duration', `Minimum ${settings.minRentalDays} days rental required.`, { min: String(settings.minRentalDays) });
+      toastWarning('rental_min_days_error', `Minimum ${settings.minRentalDays} days rental required. You selected ${days} day(s).`, { min: String(settings.minRentalDays), selected: String(days) });
       return;
     }
 
@@ -905,6 +906,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
               onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
               onUpdateDates={o => setDateModal({
                 id: o.id,
+                product_id: o.product_id,
                 title: o.product_title,
                 start: o.rental_start_date || '',
                 end: o.rental_end_date || '',
@@ -934,6 +936,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
               onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'seller' }); setRatingValue(5); }}
               onUpdateDates={o => setDateModal({
                 id: o.id,
+                product_id: o.product_id,
                 title: o.product_title,
                 start: o.rental_start_date || '',
                 end: o.rental_end_date || '',
@@ -1699,7 +1702,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
         const endFormatted = o.rental_end_date ? new Date(o.rental_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
         return (
-          <div key={o.id} className="luxury-item-card shadow-sm" style={{ padding: 24, borderRadius: 20, background: '#fff', border: '1px solid #eee', marginBottom: 20, display: "grid", gridTemplateColumns: " 20% 80%", columnGap: "30px" }}>
+          <div key={o.id} className="luxury-item-card shadow-sm" style={{ padding: 24, borderRadius: 20, background: '#fff', border: '1px solid #eee', marginBottom: 20, display: "grid", gridTemplateColumns: " 20% 80%", columnGap: "10px" }}>
 
             {/* LEFT COLUMN — Seller Profile Details */}
             <div className=" w-full  ">

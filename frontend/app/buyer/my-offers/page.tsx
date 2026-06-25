@@ -5,16 +5,20 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 // ── Inline rental calendar (reused from ProductDetailClient) ────────────────
 const M = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const D = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-function RentalCalendar({ bookedRanges, startDate, endDate, onRangeChange }: {
+function RentalCalendar({ bookedRanges, startDate, endDate, onRangeChange, minRentalDays }: {
   bookedRanges: { start: string; end: string }[];
   startDate: string; endDate: string;
   onRangeChange: (s: string, e: string) => void;
+  minRentalDays?: number;
 }) {
+    const { toastError } = useToast();
+  
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const [view, setView] = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const [phase, setPhase] = useState<'start' | 'end'>('start');
@@ -33,6 +37,12 @@ function RentalCalendar({ bookedRanges, startDate, endDate, onRangeChange }: {
     return d > lo && d < hi;
   };
 
+  const daysBetween = (a: Date, b: Date) => {
+    const lo = a <= b ? a : b;
+    const hi = a <= b ? b : a;
+    return Math.round((hi.getTime() - lo.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  };
+
   const yr = view.getFullYear(), mo = view.getMonth();
   const cells: (Date | null)[] = [];
   for (let i = 0; i < new Date(yr, mo, 1).getDay(); i++) cells.push(null);
@@ -43,6 +53,11 @@ function RentalCalendar({ bookedRanges, startDate, endDate, onRangeChange }: {
     if (phase === 'start' || (sD && eD)) { onRangeChange(fmt(d), ''); setPhase('end'); }
     else {
       const s = sD!;
+      const limit = minRentalDays || 3;
+      if (daysBetween(s, d) < limit) {
+        toastError('rental_min_days_error', `Minimum rental period is ${limit} days. You selected ${daysBetween(s, d)} day(s).`, { min: String(limit), selected: String(daysBetween(s, d)) });
+        return;
+      }
       d < s ? onRangeChange(fmt(d), fmt(s)) : onRangeChange(fmt(s), fmt(d));
       setPhase('start');
     }
@@ -870,6 +885,7 @@ export default function Page() {
                   startDate={cdStart}
                   endDate={cdEnd}
                   onRangeChange={(s, e) => { setCdStart(s); setCdEnd(e); setCdError(null); }}
+                  minRentalDays={minRentalDays}
                 />
                 <div className="mt-4 bg-light p-3 rounded-3">
                   <div className="d-flex justify-content-between align-items-center mb-2">
