@@ -1015,7 +1015,7 @@ export default function BrowsePage() {
         /* Responsive */
         @media (max-width: 1200px) {
           .em-layout { gap: 40px !important; }
-          .em-grid { grid-template-columns: repeat(2,1fr) !important; gap: 50px 30px !important; }
+          .em-grid { grid-template-columns: repeat(2,1fr) !important; gap: 50px 30px !important; place-items: center !important; place-self: center !important; }
         }
         @media (max-width: 991px) { .em-sidebar-desk { display: none !important; } }
         
@@ -1227,6 +1227,9 @@ export default function BrowsePage() {
                   gridTemplateColumns: 'repeat(3, 1fr)',
                   gap: '0px 45px',
                   position: 'relative',
+                  padding:" 20px ",
+                  justifyContent:"center",
+                  alignItems:"center",
                   minHeight: 200,
                   opacity: loading ? 0.5 : 1,
                   transition: 'opacity 0.3s ease',
