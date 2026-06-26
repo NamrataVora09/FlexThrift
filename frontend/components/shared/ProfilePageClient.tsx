@@ -154,7 +154,10 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
 
   const isBuyer = user?.user_type === 'buyer' || user?.user_type === 'both' || user?.role === 'admin' || user?.role === 'super_admin';
   const isSeller = user?.user_type === 'seller' || user?.user_type === 'both' || user?.role === 'admin' || user?.role === 'super_admin';
-  const subsHref = isSeller && user?.role === 'admin' || user?.role === 'super_admin' ? '/seller/subscriptions' : '/buyer/subscriptions';
+  // Determine current portal context from requiredRoles prop
+  const isSellerPortal = requiredRoles.includes('seller');
+  // Fix: Use proper parentheses to check if user is seller AND (admin or super_admin), or if both user is in seller portal
+  const subsHref = (isSeller && (user?.role === 'admin' || user?.role === 'super_admin')) || (user?.user_type === 'both' && isSellerPortal) ? '/seller/subscriptions' : '/buyer/subscriptions';
 
   return (
     <DashboardLayout requiredRoles={requiredRoles}>
