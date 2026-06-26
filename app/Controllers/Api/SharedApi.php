@@ -1056,6 +1056,7 @@ class SharedApi extends BaseApiController
         $productTypes = $db->table('product_types')->get()->getResultArray();
         $genders = $db->table('genders')->get()->getResultArray();
         $colors = $db->table('colors')->get()->getResultArray();
+        $validationRules = $db->table('validation_rules')->where('is_active', 1)->get()->getResultArray();
         return $this->respond([
             'success' => true,
             'data' => [
@@ -1065,6 +1066,7 @@ class SharedApi extends BaseApiController
                 'product_types' => $productTypes,
                 'genders' => $genders,
                 'colors' => $colors,
+                'validation_rules' => $validationRules,
             ]
         ]);
     }

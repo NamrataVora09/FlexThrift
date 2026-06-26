@@ -34,6 +34,8 @@ interface Product {
   category_id?: string;
   gender?: string;
   gender_ids?: string;
+  product_type?: string;
+  sub_category?: string;
   specifications?: string;
   has_bill?: number;
   views_count?: number;
@@ -50,6 +52,20 @@ interface Product {
   listing_type_name?: string;
   orignal_brand?: string;
   seller_brand?: string;
+  dispatch_city?: string;
+  dispatch_state?: string;
+  dispatch_address?: string;
+  dispatch_pin_code?: string;
+  fitting_charge?: string;
+  suggested_sale_price?: string;
+  suggested_rental_cost?: string;
+  rental_start_date?: string;
+  rental_end_date?: string;
+  is_featured?: number;
+  admin_remarks?: string;
+  price_category?: string;
+  required_badges?: number;
+  edit_request?: string;
 }
 
 interface ProductImage {
@@ -852,6 +868,36 @@ export default function ProductDetailClient({ product, images, similarProducts =
                   <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
                     <span style={{ fontWeight: 600, color: '#111827', width: 200, flexShrink: 0 }}>Gender</span>
                     <span style={{ color: '#6b7280' }}>{genders.join(', ')}</span>
+                  </div>
+                )}
+                {product.product_type && (
+                  <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ fontWeight: 600, color: '#111827', width: 200, flexShrink: 0 }}>Product Type</span>
+                    <span style={{ color: '#6b7280' }}>{product.product_type}</span>
+                  </div>
+                )}
+                {product.sub_category && (
+                  <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ fontWeight: 600, color: '#111827', width: 200, flexShrink: 0 }}>Sub Category</span>
+                    <span style={{ color: '#6b7280' }}>{product.sub_category}</span>
+                  </div>
+                )}
+                {product.product_number && (
+                  <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ fontWeight: 600, color: '#111827', width: 200, flexShrink: 0 }}>Product Number</span>
+                    <span style={{ color: '#6b7280' }}>{product.product_number}</span>
+                  </div>
+                )}
+                {(product.dispatch_city || product.dispatch_state) && (
+                  <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ fontWeight: 600, color: '#111827', width: 200, flexShrink: 0 }}>Dispatch Location</span>
+                    <span style={{ color: '#6b7280' }}>{[product.dispatch_city, product.dispatch_state].filter(Boolean).join(', ')}</span>
+                  </div>
+                )}
+                {product.fitting_charge && parseFloat(product.fitting_charge) > 0 && (
+                  <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ fontWeight: 600, color: '#111827', width: 200, flexShrink: 0 }}>Fitting Charge</span>
+                    <span style={{ color: '#6b7280' }}>&#8377;{formatPrice(product.fitting_charge)}</span>
                   </div>
                 )}
                 {usedTimes !== undefined && usedTimes !== '' && (

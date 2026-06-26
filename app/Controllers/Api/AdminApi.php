@@ -75,7 +75,7 @@ class AdminApi extends BaseApiController
         }
 
         $productsQuery = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.usage_label, u.role as seller_role')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.usage_label, u.role as seller_role, p.listing_type_category as listing_type_name')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.status', 'pending');
@@ -316,7 +316,7 @@ class AdminApi extends BaseApiController
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
         $original = $db->table('products p')
-            ->select('p.*, ob.brand_name as orignal_brand')
+            ->select('p.*, ob.brand_name as orignal_brand, p.listing_type_category as listing_type_name')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
             ->where('p.id', $request['product_id'])
             ->get()->getRowArray();
@@ -330,13 +330,43 @@ class AdminApi extends BaseApiController
                 $updatedData['orignal_brand'] = $brand['brand_name'];
             }
         }
+        // Resolve listing type name in updated_data if listing_type_category is present
+        if (!empty($updatedData['listing_type_category'])) {
+            $updatedData['listing_type_name'] = $updatedData['listing_type_category'];
+        }
         $request['updated_data'] = json_encode($updatedData);
+
+        // Decode image-related fields for frontend
+        $tempImages = json_decode($request['temp_images'] ?? '[]', true) ?: [];
+        $deletedImagesIds = json_decode($request['deleted_images_ids'] ?? '[]', true) ?: [];
+
+        // Handle both old format (IDs only) and new format (with paths) for deleted_images_ids
+        // Convert old format to new format for consistency
+        $deletedImagesWithPaths = [];
+        foreach ($deletedImagesIds as $item) {
+            if (is_array($item) && isset($item['id'], $item['image_path'])) {
+                // Already in new format
+                $deletedImagesWithPaths[] = $item;
+            } else {
+                // Old format - just ID, need to fetch image path
+                $img = $db->table('product_images')->where('id', $item)->get()->getRowArray();
+                if ($img) {
+                    $deletedImagesWithPaths[] = [
+                        'id' => $item,
+                        'image_path' => $img['image_path']
+                    ];
+                }
+            }
+        }
 
         return $this->respond([
             'success' => true,
             'data' => [
                 'request' => $request,
                 'original' => $original,
+                'updated_data' => $updatedData,
+                'temp_images' => $tempImages,
+                'deleted_images_ids' => $deletedImagesWithPaths,
                 'original_images' => $originalImages,
             ]
         ]);
@@ -380,7 +410,16 @@ class AdminApi extends BaseApiController
         // Handle deleted images
         $deletedIds = json_decode($request['deleted_images_ids'] ?? '[]', true);
         if (!empty($deletedIds)) {
-            $db->table('product_images')->whereIn('id', $deletedIds)->delete();
+            // Handle both old format (IDs only) and new format (with paths)
+            $idsToDelete = [];
+            foreach ($deletedIds as $item) {
+                if (is_array($item) && isset($item['id'])) {
+                    $idsToDelete[] = $item['id'];
+                } else {
+                    $idsToDelete[] = $item;
+                }
+            }
+            $db->table('product_images')->whereIn('id', $idsToDelete)->delete();
         }
 
         $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => date('Y-m-d H:i:s')]);

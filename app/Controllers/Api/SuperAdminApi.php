@@ -1339,11 +1339,18 @@ class SuperAdminApi extends BaseApiController
         }
         $request['updated_data'] = json_encode($updatedData);
 
+        // Decode image-related fields for frontend
+        $tempImages = json_decode($request['temp_images'] ?? '[]', true) ?: [];
+        $deletedImagesIds = json_decode($request['deleted_images_ids'] ?? '[]', true) ?: [];
+
         return $this->respond([
             'success' => true,
             'data' => [
                 'request' => $request,
                 'original' => $original,
+                'updated_data' => $updatedData,
+                'temp_images' => $tempImages,
+                'deleted_images_ids' => $deletedImagesIds,
                 'original_images' => $originalImages,
             ]
         ]);
@@ -2139,7 +2146,7 @@ class SuperAdminApi extends BaseApiController
 
         $db = \Config\Database::connect();
         $products = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.usage_label')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.usage_label, p.listing_type_category as listing_type_name')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.status', 'pending')
@@ -3372,6 +3379,130 @@ private function processImage($source, $subDir): ?string
         $seoModel->update($id, $updateData);
 
         return $this->respond(['success' => true, 'message' => 'SEO setting updated successfully.']);
+    }
+
+    /**
+     * GET /api/v1/superadmin/validation-rules
+     * Get all validation rules
+     */
+    public function getValidationRules()
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $db = \Config\Database::connect();
+        $rules = $db->table('validation_rules')->orderBy('field_name')->get()->getResultArray();
+
+        return $this->respond(['success' => true, 'data' => $rules]);
+    }
+
+    /**
+     * POST /api/v1/superadmin/validation-rules
+     * Create validation rule
+     */
+    public function createValidationRule()
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
+
+        if (empty($data['field_name']) || empty($data['field_label'])) {
+            return $this->respond(['success' => false, 'message' => 'Field name and label are required'], 400);
+        }
+
+        $db = \Config\Database::connect();
+
+        // Check if field_name already exists
+        $existing = $db->table('validation_rules')->where('field_name', $data['field_name'])->get()->getRowArray();
+        if ($existing) {
+            return $this->respond(['success' => false, 'message' => 'Validation rule for this field already exists'], 400);
+        }
+
+        $insertData = [
+            'field_name' => $data['field_name'],
+            'field_label' => $data['field_label'],
+            'is_required' => $data['is_required'] ?? 0,
+            'min_length' => $data['min_length'] ?? null,
+            'max_length' => $data['max_length'] ?? null,
+            'min_value' => $data['min_value'] ?? null,
+            'max_value' => $data['max_value'] ?? null,
+            'pattern' => $data['pattern'] ?? null,
+            'error_message' => $data['error_message'] ?? null,
+            'is_active' => $data['is_active'] ?? 1,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        $db->table('validation_rules')->insert($insertData);
+
+        return $this->respond(['success' => true, 'message' => 'Validation rule created successfully']);
+    }
+
+    /**
+     * PUT /api/v1/superadmin/validation-rules/{id}
+     * Update validation rule
+     */
+    public function updateValidationRule($id)
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
+
+        $db = \Config\Database::connect();
+        $rule = $db->table('validation_rules')->where('id', $id)->get()->getRowArray();
+        if (!$rule) {
+            return $this->respond(['success' => false, 'message' => 'Validation rule not found'], 404);
+        }
+
+        $updateData = [];
+        if (array_key_exists('field_label', $data)) $updateData['field_label'] = $data['field_label'];
+        if (array_key_exists('is_required', $data)) $updateData['is_required'] = $data['is_required'];
+        if (array_key_exists('min_length', $data)) $updateData['min_length'] = $data['min_length'];
+        if (array_key_exists('max_length', $data)) $updateData['max_length'] = $data['max_length'];
+        if (array_key_exists('min_value', $data)) $updateData['min_value'] = $data['min_value'];
+        if (array_key_exists('max_value', $data)) $updateData['max_value'] = $data['max_value'];
+        if (array_key_exists('pattern', $data)) $updateData['pattern'] = $data['pattern'];
+        if (array_key_exists('error_message', $data)) $updateData['error_message'] = $data['error_message'];
+        if (array_key_exists('is_active', $data)) $updateData['is_active'] = $data['is_active'];
+        $updateData['updated_at'] = date('Y-m-d H:i:s');
+
+        if (empty($updateData)) {
+            return $this->respond(['success' => false, 'message' => 'No data to update'], 400);
+        }
+
+        $db->table('validation_rules')->where('id', $id)->update($updateData);
+
+        return $this->respond(['success' => true, 'message' => 'Validation rule updated successfully']);
+    }
+
+    /**
+     * DELETE /api/v1/superadmin/validation-rules/{id}
+     * Delete validation rule
+     */
+    public function deleteValidationRule($id)
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $db = \Config\Database::connect();
+        $rule = $db->table('validation_rules')->where('id', $id)->get()->getRowArray();
+        if (!$rule) {
+            return $this->respond(['success' => false, 'message' => 'Validation rule not found'], 404);
+        }
+
+        $db->table('validation_rules')->where('id', $id)->delete();
+
+        return $this->respond(['success' => true, 'message' => 'Validation rule deleted successfully']);
     }
 
 }

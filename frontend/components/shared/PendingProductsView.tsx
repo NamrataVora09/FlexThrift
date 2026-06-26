@@ -16,6 +16,12 @@ interface Product {
   pending_reason?: string | null;
   previous_data?: string | null;
   images?: Array<{ id: number; image_path: string }>;
+  orignal_brand?: string; seller_brand?: string; product_number?: string; product_type?: string;
+  sub_category?: string; listing_type_category?: string; listing_type_name?: string;
+  allow_alter_fitting?: number; condition_description?: string; fitting_charge?: string;
+  suggested_sale_price?: string; suggested_rental_cost?: string; rental_start_date?: string;
+  rental_end_date?: string; is_featured?: number; admin_remarks?: string; price_category?: string;
+  required_badges?: number; edit_request?: string;
 }
 
 interface EditRequest {
@@ -28,6 +34,7 @@ interface EditRequest {
   description?: string;
   category?: string;
   color?: string;
+  listing_type_name?: string;
   used_times?: string;
   usage_label?: string;
   rental_cost?: string;
@@ -42,6 +49,14 @@ interface RejectionTemplate {
   type: string;
   created_at: string;
   updated_at: string;
+}
+
+interface ComparisonData {
+  request: any;
+  original: any;
+  original_images: any[];
+  temp_images?: any[];
+  deleted_images_ids?: Array<{ id: string | number; image_path: string }>;
 }
 
 interface Props { role: string; apiPath: string; showRatings?: boolean; }
@@ -96,7 +111,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
   const [imgIdx, setImgIdx] = useState(0);
 
   // Comparison modal (edit requests)
-  const [comparison, setComparison] = useState<{ request: any; original: any; original_images: any[] } | null>(null);
+  const [comparison, setComparison] = useState<ComparisonData | null>(null);
+  const comp = comparison as ComparisonData | null;
 
   // Admin edit diff modal
   const [adminEditDiff, setAdminEditDiff] = useState<Product | null>(null);
@@ -184,17 +200,79 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
   };
 
   const openComparison = async (requestId: number) => {
-    console.log('Opening comparison for request:', requestId);
     const baseApiPath = role === 'super_admin' ? '/superadmin' : '/admin';
     const res = await api.get<any>(`${baseApiPath}/get-edit-comparison/${requestId}`);
-    console.log('API response:', res);
     if (res.success && res.data) {
-      console.log('Setting comparison data:', res.data);
-      setComparison({
+      // Parse temp_images if it's a JSON string
+      let tempImages: any[] = [];
+      if (res.data.temp_images) {
+        if (typeof res.data.temp_images === 'string') {
+          try {
+            tempImages = JSON.parse(res.data.temp_images);
+          } catch (e) {
+            console.error('Failed to parse temp_images:', e);
+            tempImages = [];
+          }
+        } else {
+          tempImages = res.data.temp_images;
+        }
+      }
+
+      // Parse deleted_images_ids if it's a JSON string
+      // New format: Array of {id, image_path} objects
+      // Old format: Array of IDs (for backward compatibility)
+      let deletedImagesIds: Array<{ id: string | number; image_path: string }> = [];
+      if (res.data.deleted_images_ids) {
+        if (typeof res.data.deleted_images_ids === 'string') {
+          try {
+            deletedImagesIds = JSON.parse(res.data.deleted_images_ids);
+          } catch (e) {
+            console.error('Failed to parse deleted_images_ids:', e);
+            deletedImagesIds = [];
+          }
+        } else {
+          deletedImagesIds = res.data.deleted_images_ids;
+        }
+      }
+
+      // Backend bug workaround: Use previous_data to get original images and calculate temp_images
+      let originalImages: any[] = res.data.original_images || [];
+      let previousImagePaths: string[] = [];
+
+      if (res.data.request?.previous_data) {
+        try {
+          const previousData = typeof res.data.request.previous_data === 'string'
+            ? JSON.parse(res.data.request.previous_data)
+            : res.data.request.previous_data;
+
+          if (previousData._images && Array.isArray(previousData._images)) {
+            previousImagePaths = previousData._images;
+            // Map previous image paths to current image objects
+            originalImages = previousImagePaths
+              .map((path: string) => {
+                return (res.data.original_images || []).find((img: any) => img.image_path === path);
+              })
+              .filter((img: any) => img !== undefined);
+          }
+        } catch (e) {
+          console.error('Failed to parse previous_data:', e);
+        }
+      }
+
+      // Calculate temp_images as the difference between current and previous images
+      if (tempImages.length === 0 && previousImagePaths.length > 0) {
+        const currentImagePaths = (res.data.original_images || []).map((img: any) => img.image_path);
+        tempImages = currentImagePaths.filter((path: string) => !previousImagePaths.includes(path));
+      }
+
+      const data: ComparisonData = {
         request: res.data.request,
         original: res.data.original,
-        original_images: res.data.original_images || [],
-      });
+        original_images: originalImages,
+        temp_images: tempImages,
+        deleted_images_ids: deletedImagesIds,
+      };
+      setComparison(data);
     } else {
       console.error('Failed to get comparison:', res);
     }
@@ -275,7 +353,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1)}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type_name || (p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1))}</span>
                             {Number(p.has_bill) ? <span style={{ background: '#fef9c3', color: '#854d0e', padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}><i className="bi bi-receipt me-1"></i>Bill</span> : null}
                           </div>
                         </div>
@@ -346,7 +424,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{r.listing_type?.charAt(0).toUpperCase() + r.listing_type?.slice(1)}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{r.listing_type_name || (r.listing_type?.charAt(0).toUpperCase() + r.listing_type?.slice(1))}</span>
                             <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">ADMIN EDIT</span>
                           </div>
                         </div>
@@ -417,7 +495,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1)}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type_name || (p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1))}</span>
                             <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
                           </div>
                         </div>
@@ -488,7 +566,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1)}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type_name || (p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1))}</span>
                             <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
                           </div>
                         </div>
@@ -873,7 +951,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
       )}
 
       {/* ══ Edit Comparison Modal ══ */}
-      {comparison && (
+      {comp && (
         <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setComparison(null)}>
           <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
@@ -886,41 +964,63 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                   {/* Original */}
                   <div className="col-md-6 border-end p-4" style={{ background: 'rgba(248,250,252,0.5)' }}>
                     <div className="text-center mb-4"><span className="badge bg-secondary px-3 py-2 rounded-pill">ORIGINAL DATA</span></div>
-                    <h5 className="fw-bold mb-3">{comparison.original?.title}</h5>
+                    <h5 className="fw-bold mb-3">{comp.original?.title}</h5>
                     {renderCompSection('General', [
-                      { l: 'Title', v: comparison.original?.title },
-                      { l: 'Category', v: comparison.original?.category },
-                      { l: 'Listing Type', v: comparison.original?.listing_type?.toUpperCase() },
+                      { l: 'Title', v: comp.original?.title },
+                      { l: 'Product Number', v: comp.original?.product_number || 'N/A' },
+                      { l: 'Category', v: comp.original?.category },
+                      { l: 'Sub Category', v: comp.original?.sub_category || 'N/A' },
+                      { l: 'Product Type', v: comp.original?.product_type || 'N/A' },
+                      { l: 'Listing Type', v: comp.original?.listing_type_name || comp.original?.listing_type?.toUpperCase() },
                     ])}
                     {renderCompSection('Specs', [
-                      { l: 'Color', v: comparison.original?.color || 'N/A' },
-                      { l: 'Size', v: comparison.original?.size || 'N/A' },
-                      { l: 'Gender', v: comparison.original?.gender || 'N/A' },
-                      { l: 'Original Brand', v: comparison.original?.orignal_brand || 'N/A' },
-                      { l: 'Used Times', v: comparison.original?.used_times ?? 'N/A' },
+                      { l: 'Color', v: comp.original?.color || 'N/A' },
+                      { l: 'Size', v: comp.original?.size || 'N/A' },
+                      { l: 'Gender', v: comp.original?.gender || 'N/A' },
+                      { l: 'Original Brand', v: comp.original?.orignal_brand || 'N/A' },
+                      { l: 'Seller Brand', v: comp.original?.seller_brand || 'N/A' },
+                      { l: 'Used Times', v: comp.original?.used_times ?? 'N/A' },
+                      { l: 'Allow Alteration', v: Number(comp.original?.allow_alter_fitting) ? 'Yes' : 'No' },
                     ])}
                     {renderCompSection('Pricing', [
-                      { l: 'Original Price', v: '₹' + Number(comparison.original?.original_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+                      { l: 'Original Price', v: '₹' + Number(comp.original?.original_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
                       {
-                        l: comparison.original?.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price',
-                        v: '₹' + Number(comparison.original?.listing_type === 'rent' ? (comparison.original?.rental_cost || 0) : (comparison.original?.price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 }) + (comparison.original?.listing_type === 'rent' ? ' /day' : '')
+                        l: comp.original?.listing_type === 'rent' ? 'Monthly Rental' : 'Sale Price',
+                        v: '₹' + Number(comp.original?.listing_type === 'rent' ? (comp.original?.rental_cost || 0) : (comp.original?.price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 }) + (comp.original?.listing_type === 'rent' ? ' /day' : '')
                       },
-                      comparison.original?.listing_type === 'rent' && { l: 'Security Deposit', v: '₹' + Number(comparison.original?.rental_deposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }
+                      comp.original?.listing_type === 'rent' && { l: 'Security Deposit', v: '₹' + Number(comp.original?.rental_deposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+                      comp.original?.suggested_sale_price && { l: 'Suggested Sale Price', v: '₹' + Number(comp.original.suggested_sale_price).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+                      comp.original?.suggested_rental_cost && { l: 'Suggested Rental Cost', v: '₹' + Number(comp.original.suggested_rental_cost).toLocaleString('en-IN', { minimumFractionDigits: 2 }) }
                     ].filter((item): item is { l: string; v: any } => !!item))}
                     {renderCompSection('Details', [
-                      { l: 'Description', v: <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{comparison.original?.description || 'No description'}</div> },
-                      { l: 'Has Bill', v: Number(comparison.original?.has_bill) ? 'Yes' : 'No' }
-                    ])}
+                      { l: 'Description', v: <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{comp.original?.description || 'No description'}</div> },
+                      { l: 'Condition Description', v: comp.original?.condition_description || 'N/A' },
+                      { l: 'Has Bill', v: Number(comp.original?.has_bill) ? 'Yes' : 'No' },
+                      { l: 'Dispatch Location', v: [comp.original?.dispatch_city, comp.original?.dispatch_state].filter(Boolean).join(', ') || 'N/A' },
+                      comp.original?.fitting_charge && parseFloat(comp.original.fitting_charge) > 0 && { l: 'Fitting Charge', v: '₹' + Number(comp.original.fitting_charge).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
+                      comp.original?.listing_type === 'rent' && (comp.original?.rental_start_date || comp.original?.rental_end_date) && {
+                        l: 'Rental Period',
+                        v: [comp.original.rental_start_date, comp.original.rental_end_date].filter(Boolean).join(' to ') || 'N/A'
+                      }
+                    ].filter((item): item is { l: string; v: any } => !!item))}
                     <div className="mt-4">
-                      <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Original Images ({(comparison.original_images || []).length})</h6>
+                      <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Original Images ({(comp.original_images || []).length})</h6>
                       <div className="row g-2">
-                        {(comparison.original_images || []).map((img: any, i: number) => {
-                          const deletedIds = JSON.parse(comparison.request?.deleted_images_ids || '[]');
-                          const isDeleted = deletedIds.includes(String(img.id)) || deletedIds.includes(Number(img.id));
+                        {(comp.original_images || []).map((img: any, i: number) => {
+                          const deletedImages = comp.deleted_images_ids || [];
+                          // Check if image is deleted by ID or by image path (new format)
+                          const isDeleted = deletedImages.some((del: any) =>
+                            (typeof del === 'object' && del.id === img.id) ||
+                            (typeof del === 'object' && del.image_path === img.image_path) ||
+                            del === img.id ||
+                            del === String(img.id)
+                          );
                           return (
-                            <div className="col-4" key={i} style={{ position: 'relative' }}>
-                              <img src={resolveUrl(img.image_path)} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover', opacity: isDeleted ? 0.25 : 1 }} alt="" />
-                              {isDeleted && <span className="badge bg-danger position-absolute top-50 start-50 translate-middle" style={{ fontSize: '0.6rem' }}>DELETING</span>}
+                            <div className="col-4" key={i}>
+                              <div style={{ position: 'relative', height: 80, border: isDeleted ? '2px solid #ef4444' : '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                                <img src={resolveUrl(img.image_path)} className="w-100 h-100" style={{ objectFit: 'cover', opacity: isDeleted ? 0.25 : 1 }} alt="" />
+                                {isDeleted && <span className="badge bg-danger position-absolute top-50 start-50 translate-middle" style={{ fontSize: '0.6rem' }}>DELETING</span>}
+                              </div>
                             </div>
                           );
                         })}
@@ -931,23 +1031,28 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                   <div className="col-md-6 p-4">
                     <div className="text-center mb-4"><span className="badge bg-success px-3 py-2 rounded-pill">PROPOSED CHANGES</span></div>
                     {(() => {
-                      const updated = JSON.parse(comparison.request?.updated_data || '{}');
-                      const orig = comparison.original || {};
+                      const updated = JSON.parse(comp.request?.updated_data || '{}');
+                      const orig = comp.original || {};
                       const diff = (o: string, n: string) => String(o).trim() === String(n).trim() ? n : <><span className="text-danger" style={{ textDecoration: 'line-through', opacity: 0.6 }}>{o}</span> <i className="bi bi-arrow-right mx-1"></i> <mark style={{ background: 'rgba(16,185,129,0.2)', color: '#059669', padding: '0 4px', borderRadius: 4, border: '1px solid rgba(16,185,129,0.3)' }}>{n}</mark></>;
                       return (
                         <>
                           <h5 className="fw-bold mb-3">{diff(orig.title, updated.title)}</h5>
                           {renderCompSection('General', [
                             { l: 'Title', v: diff(orig.title, updated.title) },
+                            { l: 'Product Number', v: diff(orig.product_number || 'N/A', updated.product_number || 'N/A') },
                             { l: 'Category', v: diff(orig.category || '', updated.category || '') },
-                            { l: 'Listing Type', v: String(diff(orig.listing_type || '', updated.listing_type || '')).toUpperCase() },
+                            { l: 'Sub Category', v: diff(orig.sub_category || 'N/A', updated.sub_category || 'N/A') },
+                            { l: 'Product Type', v: diff(orig.product_type || 'N/A', updated.product_type || 'N/A') },
+                            { l: 'Listing Type', v: diff(orig.listing_type_name || orig.listing_type?.toUpperCase() || '', updated.listing_type_name || updated.listing_type?.toUpperCase() || '') },
                           ])}
                           {renderCompSection('Specs', [
                             { l: 'Color', v: diff(orig.color || 'N/A', updated.color || 'N/A') },
                             { l: 'Size', v: diff(orig.size || 'N/A', updated.size || 'N/A') },
                             { l: 'Gender', v: diff(orig.gender || 'N/A', updated.gender || 'N/A') },
                             { l: 'Original Brand', v: diff(orig.orignal_brand || 'N/A', updated.orignal_brand || 'N/A') },
+                            { l: 'Seller Brand', v: diff(orig.seller_brand || 'N/A', updated.seller_brand || 'N/A') },
                             { l: 'Used Times', v: diff(String(orig.used_times ?? ''), String(updated.used_times ?? '')) },
+                            { l: 'Allow Alteration', v: diff(Number(orig.allow_alter_fitting) ? 'Yes' : 'No', Number(updated.allow_alter_fitting) ? 'Yes' : 'No') },
                           ])}
                           {renderCompSection('Pricing', [
                             { l: 'Original Price', v: diff('₹' + Number(orig.original_price || 0), '₹' + Number(updated.original_price || 0)) },
@@ -958,15 +1063,24 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                                 '₹' + Number(updated.listing_type === 'rent' ? (updated.rental_cost || 0) : (updated.price || 0)) + (updated.listing_type === 'rent' ? ' /day' : '')
                               )
                             },
-                            updated.listing_type === 'rent' && { l: 'Security Deposit', v: diff('₹' + Number(orig.rental_deposit || 0), '₹' + Number(updated.rental_deposit || 0)) }
+                            updated.listing_type === 'rent' && { l: 'Security Deposit', v: diff('₹' + Number(orig.rental_deposit || 0), '₹' + Number(updated.rental_deposit || 0)) },
+                            (orig.suggested_sale_price || updated.suggested_sale_price) && { l: 'Suggested Sale Price', v: diff('₹' + Number(orig.suggested_sale_price || 0), '₹' + Number(updated.suggested_sale_price || 0)) },
+                            (orig.suggested_rental_cost || updated.suggested_rental_cost) && { l: 'Suggested Rental Cost', v: diff('₹' + Number(orig.suggested_rental_cost || 0), '₹' + Number(updated.suggested_rental_cost || 0)) }
                           ].filter((item): item is { l: string; v: any } => !!item))}
                           {renderCompSection('Details', [
                             { l: 'Description', v: <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{diff(orig.description || 'No description', updated.description || 'No description')}</div> },
-                            { l: 'Has Bill', v: diff(Number(orig.has_bill) ? 'Yes' : 'No', Number(updated.has_bill) ? 'Yes' : 'No') }
-                          ])}
+                            { l: 'Condition Description', v: diff(orig.condition_description || 'N/A', updated.condition_description || 'N/A') },
+                            { l: 'Has Bill', v: diff(Number(orig.has_bill) ? 'Yes' : 'No', Number(updated.has_bill) ? 'Yes' : 'No') },
+                            { l: 'Dispatch Location', v: diff([orig.dispatch_city, orig.dispatch_state].filter(Boolean).join(', ') || 'N/A', [updated.dispatch_city, updated.dispatch_state].filter(Boolean).join(', ') || 'N/A') },
+                            (orig.fitting_charge || updated.fitting_charge) && parseFloat(orig.fitting_charge || '0') > 0 || parseFloat(updated.fitting_charge || '0') > 0 ? { l: 'Fitting Charge', v: diff('₹' + Number(orig.fitting_charge || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }), '₹' + Number(updated.fitting_charge || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })) } : null,
+                            (orig.listing_type === 'rent' || updated.listing_type === 'rent') && (orig.rental_start_date || orig.rental_end_date || updated.rental_start_date || updated.rental_end_date) && {
+                              l: 'Rental Period',
+                              v: diff([orig.rental_start_date, orig.rental_end_date].filter(Boolean).join(' to ') || 'N/A', [updated.rental_start_date, updated.rental_end_date].filter(Boolean).join(' to ') || 'N/A')
+                            }
+                          ].filter((item): item is { l: string; v: any } => !!item))}
                           {/* New images */}
                           {(() => {
-                            const tempImages = JSON.parse(comparison.request?.temp_images || '[]');
+                            const tempImages = comp.temp_images || [];
                             if (tempImages.length === 0) return null;
                             return (
                               <div className="mt-4">
@@ -984,6 +1098,40 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                               </div>
                             );
                           })()}
+                          {/* Final Image State */}
+                          {(() => {
+                            const tempImages = comp.temp_images || [];
+                            const deletedImages = comp.deleted_images_ids || [];
+                            const hasImageChanges = tempImages.length > 0 || deletedImages.length > 0;
+                            if (!hasImageChanges) return null;
+
+                            const finalImages = (comp.original_images || []).filter((img: any) => {
+                              // Check if image is deleted by ID or by image path (new format)
+                              return !deletedImages.some((del: any) =>
+                                (typeof del === 'object' && del.id === img.id) ||
+                                (typeof del === 'object' && del.image_path === img.image_path) ||
+                                del === img.id ||
+                                del === String(img.id)
+                              );
+                            }).map((img: any) => img.image_path);
+
+                            const allFinalImages = [...finalImages, ...tempImages];
+                            
+                            return (
+                              <div className="mt-4" style={{ background: 'rgba(16,185,129,0.05)', padding: '12px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.2)' }}>
+                                <h6 className="fw-bold text-success text-uppercase small border-bottom border-success pb-1 mb-2">Final Image State After Approval ({allFinalImages.length})</h6>
+                                <div className="row g-2">
+                                  {allFinalImages.map((path: string, i: number) => (
+                                    <div className="col-4" key={i}>
+                                      <div style={{ position: 'relative', height: 80, border: '2px solid #059669', borderRadius: 8, overflow: 'hidden' }}>
+                                        <img src={resolveUrl(path)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </>
                       );
                     })()}
@@ -993,8 +1141,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
               <div className="modal-footer border-top p-4 d-flex justify-content-between">
                 <button className="btn btn-outline-secondary px-4 fw-bold" onClick={() => setComparison(null)}>Close</button>
                 <div className="d-flex gap-2">
-                  <button className="btn px-4 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: comparison.request.id, title: 'Edit Request', type: 'edit' }); setRejectReason(''); setComparison(null); }}>Reject Changes</button>
-                  <button className="btn px-4 fw-bold" style={btnApprove} onClick={() => approveEdit(comparison.request.id)}>Approve & Merge Changes</button>
+                  <button className="btn px-4 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: comp.request.id, title: 'Edit Request', type: 'edit' }); setRejectReason(''); setComparison(null); }}>Reject Changes</button>
+                  <button className="btn px-4 fw-bold" style={btnApprove} onClick={() => approveEdit(comp.request.id)}>Approve & Merge Changes</button>
                 </div>
               </div>
             </div>

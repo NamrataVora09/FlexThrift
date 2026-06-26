@@ -724,7 +724,6 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
   const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 
-
   const perspectiveOffers = useMemo(() => {
     return offers.filter(o => {
       if (perspective === 'buyer' && o.perspective && o.perspective !== 'sent') return false;
@@ -1913,13 +1912,13 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                   {o.message}
                 </p>
               )}
-              {o.seller_remarks && (
+              {o.seller_remarks  && o.status !== 'pending' &&(
                 <div className="mb-3 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
                   <i className="bi bi-reply-fill me-1"></i>
                   Seller: {o.seller_remarks}
                 </div>
               )}
-
+              
               {/* Conflict Alert */}
               {conflict && (
                 <div className="conflict-alert mb-3">

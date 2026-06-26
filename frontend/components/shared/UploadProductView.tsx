@@ -39,6 +39,21 @@ interface FormMeta {
   config: Record<string, string>;
   pricing_rules: PricingRule[];
   rental_pricing_rules: PricingRule[];
+  validation_rules: ValidationRule[];
+}
+
+interface ValidationRule {
+  id: number;
+  field_name: string;
+  field_label: string;
+  is_required: number;
+  min_length: number | null;
+  max_length: number | null;
+  min_value: number | null;
+  max_value: number | null;
+  pattern: string | null;
+  error_message: string | null;
+  is_active: number;
 }
 
 interface Props { role: string; apiBasePath: string; redirectPath: string; }
@@ -74,6 +89,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
 
   // Edit mode
@@ -124,7 +140,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   useEffect(() => {
     api.get<FormMeta>(`${apiBasePath}/upload-form-data`).then((r) => {
-      if (r.success && r.data) setMeta(r.data);
+      if (r.success && r.data) {
+        console.log('Form meta loaded:', r.data);
+        console.log('Validation rules:', r.data.validation_rules);
+        setMeta(r.data);
+      }
       setLoading(false);
     });
   }, [apiBasePath]);
@@ -456,6 +476,18 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
       return next;
     });
+
+    // Validate field on change
+    const error = validateField(name, val);
+    setFieldErrors(prev => {
+      if (error) {
+        return { ...prev, [name]: error };
+      } else {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      }
+    });
   };
 
   const handleImages = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -563,8 +595,107 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   const clearOb = () => { setSelectedOb(null); setF(prev => ({ ...prev, orignal_brand_id: '' })); };
 
+  // Client-side validation using configured rules
+  const validateField = (fieldName: string, value: any): string | null => {
+    console.log('Validating field:', fieldName, 'value:', value);
+    if (!meta?.validation_rules) {
+      console.log('No validation rules in meta');
+      return null;
+    }
+    const rule = meta.validation_rules.find(r => r.field_name === fieldName);
+    console.log('Found rule for', fieldName, ':', rule);
+    if (!rule || !rule.is_active) return null;
+
+    // Required check
+    if (rule.is_required && (!value || value === '')) {
+      const error = rule.error_message || `${rule.field_label} is required`;
+      console.log('Required check failed for', fieldName, ':', error);
+      return error;
+    }
+
+    // Skip other validations if empty
+    if (!value || value === '') return null;
+
+    // Length checks for strings
+    if (typeof value === 'string') {
+      if (rule.min_length && value.length < rule.min_length) {
+        const error = rule.error_message || `${rule.field_label} must be at least ${rule.min_length} characters`;
+        console.log('Min length check failed for', fieldName, ':', error);
+        return error;
+      }
+      if (rule.max_length && value.length > rule.max_length) {
+        const error = rule.error_message || `${rule.field_label} must not exceed ${rule.max_length} characters`;
+        console.log('Max length check failed for', fieldName, ':', error);
+        return error;
+      }
+      if (rule.pattern) {
+        const regex = new RegExp(rule.pattern);
+        if (!regex.test(value)) {
+          const error = rule.error_message || `${rule.field_label} format is invalid`;
+          console.log('Pattern check failed for', fieldName, ':', error);
+          return error;
+        }
+      }
+    }
+
+    // Value checks for numbers
+    if (typeof value === 'number' || !isNaN(parseFloat(value))) {
+      const numValue = parseFloat(value);
+      if (rule.min_value !== null && numValue < rule.min_value) {
+        const error = rule.error_message || `${rule.field_label} must be at least ${rule.min_value}`;
+        console.log('Min value check failed for', fieldName, ':', error);
+        return error;
+      }
+      if (rule.max_value !== null && numValue > rule.max_value) {
+        const error = rule.error_message || `${rule.field_label} must not exceed ${rule.max_value}`;
+        console.log('Max value check failed for', fieldName, ':', error);
+        return error;
+      }
+    }
+
+    console.log('Validation passed for', fieldName);
+    return null;
+  };
+
+  const validateForm = (): boolean => {
+    if (!meta?.validation_rules) return true;
+    const errors: Record<string, string> = {};
+    let isValid = true;
+
+    // Validate each field based on rules
+    meta.validation_rules.forEach(rule => {
+      if (!rule.is_active) return;
+      const fieldName = rule.field_name;
+      const value = f[fieldName as keyof typeof f];
+      const error = validateField(fieldName, value);
+      if (error) {
+        errors[fieldName] = error;
+        isValid = false;
+      }
+    });
+
+    setFieldErrors(errors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({}); // Clear previous field errors
+
+    // Run client-side validation
+    if (!validateForm()) {
+      // Scroll to first error
+      const firstErrorField = Object.keys(fieldErrors)[0];
+      if (firstErrorField) {
+        const fieldElement = document.querySelector(`[name="${firstErrorField}"]`) as HTMLElement;
+        if (fieldElement) {
+          fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          fieldElement.focus();
+        }
+      }
+      return;
+    }
+
     const configs = getFieldConfigs();
     if (configs.gender === 'mandatory' && !f.gender) { setError('Gender is required'); setSubmitting(false); return; }
 
@@ -695,9 +826,32 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
         toastSuccess('product_upload_success', res.message || successMessage);
         setSuccess(res.message || successMessage);
+        setFieldErrors({});
         setTimeout(() => router.push(redirectPath), 1500);
       }
-      else setError(res.message || (isEditMode ? 'Update failed' : 'Upload failed'));
+      else {
+        setError(res.message || (isEditMode ? 'Update failed' : 'Upload failed'));
+        // Parse field errors from backend response
+        if (res.errors && typeof res.errors === 'object') {
+          // Map backend field names back to frontend field names
+          const reverseFieldMap: Record<string, string> = { times_used: 'used_times', condition_description: 'description' };
+          const mappedErrors: Record<string, string> = {};
+          Object.entries(res.errors).forEach(([backendField, errorMsg]) => {
+            const frontendField = reverseFieldMap[backendField] || backendField;
+            mappedErrors[frontendField] = errorMsg as string;
+          });
+          setFieldErrors(mappedErrors);
+          // Scroll to first field with error
+          const firstErrorField = Object.keys(mappedErrors)[0];
+          if (firstErrorField) {
+            const fieldElement = document.querySelector(`[name="${firstErrorField}"]`) as HTMLElement;
+            if (fieldElement) {
+              fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              fieldElement.focus();
+            }
+          }
+        }
+      }
     } catch (err) {
       console.error('Upload Error:', err);
       setError('An unexpected error occurred during upload. Please check your connection.');
@@ -857,6 +1011,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               <span className="fw-medium">{error}</span>
             </div>
           )}
+          {Object.keys(fieldErrors).length > 0 && (
+            <div className="alert alert-warning mb-4 shadow-sm border-0" style={{ borderRadius: 12 }}>
+              <strong>Field Errors:</strong> {JSON.stringify(fieldErrors)}
+            </div>
+          )}
           {success && <div className="alert alert-success border-0 shadow-sm" style={{ borderRadius: 12 }}><i className="bi bi-check-circle-fill me-2"></i>{success}</div>}
 
           {isEditMode && f.status === 'rejected' && f.admin_remarks && (
@@ -891,12 +1050,15 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               </div>
 
               <div className="row g-3">
-                <div className="col-md-6"><label className="form-label" style={labelStyle}>Product Title <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="title" value={f.title} onChange={handleChange} required /></div>
+                <div className="col-md-6"><label className="form-label" style={labelStyle}>Product Title <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="title" value={f.title} onChange={handleChange} required />
+                  {fieldErrors.title && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.title}</small>}
+                </div>
                 <div className="col-md-6"><label className="form-label" style={labelStyle}>Listing Type <span className="text-danger">*</span></label>
                   <select className="form-select" style={inputStyle} name="listing_type_category" value={f.listing_type_category} onChange={handleChange} required>
                     <option value="">Select Type</option>
                     {meta.listing_types.map(lt => <option key={lt.id} value={lt.id}>{lt.type_name}</option>)}
                   </select>
+                  {fieldErrors.listing_type_category && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.listing_type_category}</small>}
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Product Type <span className="text-danger">*</span></label>
                   <select className="form-select" style={inputStyle} name="product_type" value={f.product_type} onChange={handleChange} required disabled={!productTypes.length}>
@@ -957,7 +1119,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   </div>
                 </div>
 
-                <div className="col-md-12"><label className="form-label" style={labelStyle}>Description <span className="text-danger">*</span></label><textarea className="form-control" style={inputStyle} name="description" rows={4} value={f.description} onChange={handleChange} required /></div>
+                <div className="col-md-12"><label className="form-label" style={labelStyle}>Description <span className="text-danger">*</span></label><textarea className="form-control" style={inputStyle} name="description" rows={4} value={f.description} onChange={handleChange} required />
+                  {fieldErrors.description && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.description}</small>}
+                </div>
               </div>
             </div>
 
@@ -981,9 +1145,10 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 })()} <span className="text-danger">*</span></label>
                   <input type="number" className="form-control" style={inputStyle} name="used_times" min="0" value={f.used_times} onChange={handleChange} required />
                   <small className="text-muted">Enter 0 if brand new</small>
+                  {fieldErrors.times_used && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.times_used}</small>}
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Original Price <span className="text-danger">*</span></label>
-                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="original_price" step="0.01" min="1" max={meta?.config?.max_original_price || '1000000000'} value={f.original_price} onChange={handleChange} required /></div>
+                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="original_price" step="1" min="1" value={f.original_price} onChange={handleChange} required /></div>
                   {(() => {
                     const maxOrig = parseFloat(meta?.config?.max_original_price || '1000000000');
                     const entered = parseFloat(f.original_price || '0');
@@ -992,6 +1157,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                       : <small className="text-muted">Max: ₹{maxOrig.toLocaleString('en-IN')}</small>;
                   })()
                   }
+                  {fieldErrors.original_price && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.original_price}</small>}
                 </div>
 
                 {/* Dynamic taxonomy attributes */}

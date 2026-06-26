@@ -1238,6 +1238,21 @@ class SellerApi extends BaseApiController
             $deletedIdsArr = [];
         }
 
+        // Fetch image paths for deleted images to store with IDs
+        $deletedImagesWithPaths = [];
+        if (!empty($deletedIdsArr)) {
+            $deletedImages = $db->table('product_images')
+                ->where('product_id', $id)
+                ->whereIn('id', $deletedIdsArr)
+                ->get()->getResultArray();
+            foreach ($deletedImages as $img) {
+                $deletedImagesWithPaths[] = [
+                    'id' => $img['id'],
+                    'image_path' => $img['image_path']
+                ];
+            }
+        }
+
         // Check if there's already a pending edit request for this product
         $existingRequest = $db->table('product_edit_requests')
             ->where('product_id', $id)
@@ -1248,7 +1263,24 @@ class SellerApi extends BaseApiController
             // Update existing pending request instead of creating a new one
             $existingData = json_decode($existingRequest['updated_data'] ?? '{}', true);
             $existingDeletedIds = json_decode($existingRequest['deleted_images_ids'] ?? '[]', true);
-            $mergedDeletedIds = array_unique(array_merge($existingDeletedIds, $deletedIdsArr));
+
+            // Merge deleted images - handle both old format (IDs only) and new format (with paths)
+            $mergedDeletedIds = [];
+            $existingIds = [];
+            foreach ($existingDeletedIds as $item) {
+                if (is_array($item) && isset($item['id'])) {
+                    $existingIds[] = $item['id'];
+                    $mergedDeletedIds[] = $item;
+                } else {
+                    $existingIds[] = $item;
+                }
+            }
+            // Add new deleted images with paths
+            foreach ($deletedImagesWithPaths as $newDeleted) {
+                if (!in_array($newDeleted['id'], $existingIds)) {
+                    $mergedDeletedIds[] = $newDeleted;
+                }
+            }
 
             // Merge new changes with existing changes - new values take precedence
             $mergedData = array_merge($existingData, $processedData);
@@ -1281,13 +1313,13 @@ class SellerApi extends BaseApiController
             // Include current images in snapshot
             $currentImages = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
             $snapshot['_images'] = array_column($currentImages, 'image_path');
-            
+
             $db->table('product_edit_requests')->insert([
                 'product_id' => $id,
                 'seller_id' => $jwtUser['user_id'],
                 'updated_data' => json_encode($processedData),
                 'temp_images' => json_encode($tempImages),
-                'deleted_images_ids' => json_encode($deletedIdsArr),
+                'deleted_images_ids' => json_encode($deletedImagesWithPaths),
                 'previous_data' => json_encode($snapshot),
                 'status' => 'pending',
                 'created_at' => date('Y-m-d H:i:s'),
@@ -1409,22 +1441,38 @@ class SellerApi extends BaseApiController
         $deletedIds = $this->request->getPost('deleted_images_ids');
         if ($deletedIds && is_string($deletedIds)) {
             $deletedIdsArr = json_decode($deletedIds, true) ?: [];
-            if (!empty($deletedIdsArr)) {
-                $imagesToDelete = $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->get()->getResultArray();
-                foreach ($imagesToDelete as $img) {
-                    // Do not delete files physically from disk if this is a pending edit request
-                    // so the admin/superadmin can still review the before/after images in the comparison queue.
-                    if (!$isPendingEdit) {
-                        $fullPath = FCPATH . $img['image_path'];
-                        if (is_file($fullPath)) {
-                            unlink($fullPath);
-                        }
-                    }
-                }
-                $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->delete();
-            }
         } else {
             $deletedIdsArr = [];
+        }
+
+        // Fetch image paths for deleted images to store with IDs
+        $deletedImagesWithPaths = [];
+        if (!empty($deletedIdsArr) && $isPendingEdit) {
+            $deletedImages = $db->table('product_images')
+                ->where('product_id', $id)
+                ->whereIn('id', $deletedIdsArr)
+                ->get()->getResultArray();
+            foreach ($deletedImages as $img) {
+                $deletedImagesWithPaths[] = [
+                    'id' => $img['id'],
+                    'image_path' => $img['image_path']
+                ];
+            }
+        }
+
+        if (!empty($deletedIdsArr)) {
+            $imagesToDelete = $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->get()->getResultArray();
+            foreach ($imagesToDelete as $img) {
+                // Do not delete files physically from disk if this is a pending edit request
+                // so the admin/superadmin can still review the before/after images in the comparison queue.
+                if (!$isPendingEdit) {
+                    $fullPath = FCPATH . $img['image_path'];
+                    if (is_file($fullPath)) {
+                        unlink($fullPath);
+                    }
+                }
+            }
+            $db->table('product_images')->whereIn('id', $deletedIdsArr)->where('product_id', $id)->delete();
         }
 
         // Initialize tempImages for admin edit request workflow
@@ -1453,11 +1501,28 @@ class SellerApi extends BaseApiController
                 // Update existing pending request instead of creating a new one
                 $existingData = json_decode($existingRequest['updated_data'] ?? '{}', true);
                 $existingDeletedIds = json_decode($existingRequest['deleted_images_ids'] ?? '[]', true);
-                $mergedDeletedIds = array_unique(array_merge($existingDeletedIds, $deletedIdsArr));
+
+                // Merge deleted images - handle both old format (IDs only) and new format (with paths)
+                $mergedDeletedIds = [];
+                $existingIds = [];
+                foreach ($existingDeletedIds as $item) {
+                    if (is_array($item) && isset($item['id'])) {
+                        $existingIds[] = $item['id'];
+                        $mergedDeletedIds[] = $item;
+                    } else {
+                        $existingIds[] = $item;
+                    }
+                }
+                // Add new deleted images with paths
+                foreach ($deletedImagesWithPaths as $newDeleted) {
+                    if (!in_array($newDeleted['id'], $existingIds)) {
+                        $mergedDeletedIds[] = $newDeleted;
+                    }
+                }
 
                 // NEW APPROACH: Compare new data with ORIGINAL product state (from previous_data)
                 $originalData = json_decode($existingRequest['previous_data'] ?? '{}', true);
-                
+
                 $accumulatedChanges = $existingData; // Start with existing changes
                 foreach ($updateData as $key => $value) {
                     // Only add/update if different from original product
@@ -1493,13 +1558,13 @@ class SellerApi extends BaseApiController
                     }
                 }
                 $snapshot['_images'] = $previousImagePaths;
-                
+
                 $db->table('product_edit_requests')->insert([
                     'product_id' => $id,
                     'seller_id' => $product['seller_id'],
                     'updated_data' => json_encode($updateData),
                     'temp_images' => json_encode($tempImages),
-                    'deleted_images_ids' => json_encode($deletedIdsArr),
+                    'deleted_images_ids' => json_encode($deletedImagesWithPaths),
                     'previous_data' => json_encode($snapshot),
                     'editor_role' => 'admin',
                     'editor_id' => $jwtUser['user_id'],
