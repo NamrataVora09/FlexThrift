@@ -1289,12 +1289,20 @@ class SellerApi extends BaseApiController
             $existingTempImages = json_decode($existingRequest['temp_images'] ?? '[]', true);
             $mergedTempImages = array_unique(array_merge($existingTempImages, $tempImages));
 
-            $db->table('product_edit_requests')->where('id', $existingRequest['id'])->update([
+            $updateData = [
                 'updated_data' => json_encode($mergedData),
                 'temp_images' => json_encode($mergedTempImages),
                 'deleted_images_ids' => json_encode($mergedDeletedIds),
                 'updated_at' => date('Y-m-d H:i:s'),
-            ]);
+            ];
+
+            // Only set original_images_snapshot if it doesn't exist (first edit)
+            if (empty($existingRequest['original_images_snapshot'])) {
+                $currentImages = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
+                $updateData['original_images_snapshot'] = json_encode(array_column($currentImages, 'image_path'));
+            }
+
+            $db->table('product_edit_requests')->where('id', $existingRequest['id'])->update($updateData);
         } else {
             // Create new edit request with snapshot of original product data
             $snapshotFields = [
@@ -1321,6 +1329,7 @@ class SellerApi extends BaseApiController
                 'temp_images' => json_encode($tempImages),
                 'deleted_images_ids' => json_encode($deletedImagesWithPaths),
                 'previous_data' => json_encode($snapshot),
+                'original_images_snapshot' => json_encode(array_column($currentImages, 'image_path')),
                 'status' => 'pending',
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
@@ -1536,12 +1545,20 @@ class SellerApi extends BaseApiController
                 $existingTempImages = json_decode($existingRequest['temp_images'] ?? '[]', true);
                 $mergedTempImages = array_unique(array_merge($existingTempImages, $tempImages));
 
-                $db->table('product_edit_requests')->where('id', $existingRequest['id'])->update([
+                $updateData = [
                     'updated_data' => json_encode($mergedData),
                     'temp_images' => json_encode($mergedTempImages),
                     'deleted_images_ids' => json_encode($mergedDeletedIds),
                     'updated_at' => date('Y-m-d H:i:s'),
-                ]);
+                ];
+
+                // Only set original_images_snapshot if it doesn't exist (first edit)
+                if (empty($existingRequest['original_images_snapshot'])) {
+                    $currentImages = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
+                    $updateData['original_images_snapshot'] = json_encode(array_column($currentImages, 'image_path'));
+                }
+
+                $db->table('product_edit_requests')->where('id', $existingRequest['id'])->update($updateData);
             } else {
                 // Create new edit request with snapshot of original product data
                 $snapshotFields = [
@@ -1566,6 +1583,7 @@ class SellerApi extends BaseApiController
                     'temp_images' => json_encode($tempImages),
                     'deleted_images_ids' => json_encode($deletedImagesWithPaths),
                     'previous_data' => json_encode($snapshot),
+                    'original_images_snapshot' => json_encode($previousImagePaths),
                     'editor_role' => 'admin',
                     'editor_id' => $jwtUser['user_id'],
                     'status' => 'pending',

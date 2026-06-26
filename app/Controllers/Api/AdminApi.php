@@ -320,7 +320,23 @@ class AdminApi extends BaseApiController
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
             ->where('p.id', $request['product_id'])
             ->get()->getRowArray();
-        $originalImages = $db->table('product_images')->where('product_id', $request['product_id'])->get()->getResultArray();
+
+        // Use original_images_snapshot if available, otherwise fetch current product images
+        $originalImagesSnapshot = json_decode($request['original_images_snapshot'] ?? '[]', true) ?: [];
+        if (!empty($originalImagesSnapshot)) {
+            // Build original images array from snapshot
+            $originalImages = [];
+            foreach ($originalImagesSnapshot as $index => $imagePath) {
+                $originalImages[] = [
+                    'id' => null, // Snapshot doesn't have IDs
+                    'image_path' => $imagePath,
+                    'display_order' => $index,
+                ];
+            }
+        } else {
+            // Fallback to current product images for backward compatibility
+            $originalImages = $db->table('product_images')->where('product_id', $request['product_id'])->get()->getResultArray();
+        }
 
         // Resolve brand name in updated_data if orignal_brand_id is present
         $updatedData = json_decode($request['updated_data'], true) ?: [];

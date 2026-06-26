@@ -32,6 +32,11 @@ class CreateProductEditRequests extends Migration
                 'type' => 'TEXT',
                 'null' => true,
             ],
+            'original_images_snapshot' => [
+                'type' => 'TEXT',
+                'null' => true,
+                'comment' => 'Snapshot of original product images at time of first edit request',
+            ],
             'status' => [
                 'type' => 'ENUM',
                 'constraint' => ['pending', 'approved', 'rejected'],

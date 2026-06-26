@@ -140,11 +140,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   useEffect(() => {
     api.get<FormMeta>(`${apiBasePath}/upload-form-data`).then((r) => {
-      if (r.success && r.data) {
-        console.log('Form meta loaded:', r.data);
-        console.log('Validation rules:', r.data.validation_rules);
-        setMeta(r.data);
-      }
+      if (r.success && r.data) setMeta(r.data);
       setLoading(false);
     });
   }, [apiBasePath]);
