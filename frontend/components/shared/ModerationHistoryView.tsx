@@ -20,7 +20,7 @@ const tdStyle: React.CSSProperties = { padding: '1rem', verticalAlign: 'middle',
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.75rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: '0.8rem', color: '#64748b', marginBottom: '0.4rem', display: 'block' };
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.75rem', padding: '0.5rem 1rem' };
-const BASE = 'http://localhost:8080';
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
 export default function ModerationHistoryView({ role }: Props) {
   const [items, setItems] = useState<Item[]>([]);
