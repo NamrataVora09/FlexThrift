@@ -231,7 +231,7 @@ export default function RegisterPage() {
 
             <div className="input-group">
               <label>PIN Code</label>
-              <input className="input-field" type="text" name="pin_code" placeholder="Enter PIN code" value={formData.pin_code} onChange={handleChange} maxLength={6} required />
+              <input className="input-field" type="number" name="pin_code" placeholder="Enter PIN code" value={formData.pin_code} onChange={handleChange} maxLength={6} required />
               {pinCodeError && <div style={{ color: '#cf1322', fontSize: '0.8rem', marginTop: 6 }}>Please enter a valid 6-digit PIN code</div>}
             </div>
 
