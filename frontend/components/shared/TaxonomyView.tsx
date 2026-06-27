@@ -262,16 +262,28 @@ export default function TaxonomyView() {
       fd.append('name', editForm.name);
       await api.upload(`/superadmin/update-gender/${item.id}`, fd);
     } else if (type === 'product_type') {
+      if (!editForm.listing_type_id) {
+        toastError('validation_error', 'Listing Type is required');
+        return;
+      }
       fd.append('name', editForm.name);
       fd.append('listing_type_id', editForm.listing_type_id);
       await api.upload(`/superadmin/update-product-type/${item.id}`, fd);
     } else if (type === 'category') {
+      if (!editForm.product_type_ids || editForm.product_type_ids.length === 0) {
+        toastError('validation_error', 'At least one Product Type is required');
+        return;
+      }
       fd.append('category_name', editForm.name);
       (editForm.product_type_ids || []).forEach((id: number) => fd.append('product_type_ids[]', String(id)));
       (editForm.applies_to || []).forEach((g: string) => fd.append('applies_to[]', g));
       fd.append('attributes', JSON.stringify(editForm.attributes || []));
       await api.upload(`/superadmin/update-category/${item.id}`, fd);
     } else if (type === 'sub_category') {
+      if (!editForm.category_ids || editForm.category_ids.length === 0) {
+        toastError('validation_error', 'At least one Category is required');
+        return;
+      }
       fd.append('name', editForm.name);
       (editForm.category_ids || []).forEach((id: number) => fd.append('category_ids[]', String(id)));
       (editForm.applies_to || []).forEach((g: string) => fd.append('applies_to[]', g));
