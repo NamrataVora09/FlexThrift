@@ -20,7 +20,7 @@ interface PageData {
   pagination: { page: number; total: number; total_pages: number; per_page: number };
 }
 
-const BASE = 'http://localhost:8080';
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
 
 export default function ProductManagementPage() {
   const [data, setData] = useState<PageData | null>(null);
