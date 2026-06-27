@@ -802,12 +802,16 @@ class BuyerApi extends BaseApiController
 
         $offerId = $db->table('offers')->insert($offerData, true);
 
+        log_message('error', 'Offer created: offerId=' . $offerId . ', buyer_id=' . $jwtUser['user_id'] . ', seller_id=' . $product['seller_id'] . ', role=' . $jwtUser['role']);
+
         // Check if this is the first offer to this seller (deduct subscription)
         $previousOffers = $db->table('offers')
             ->where('buyer_id', $jwtUser['user_id'])
             ->where('seller_id', $product['seller_id'])
             ->where('id !=', $offerId)
             ->countAllResults();
+
+        log_message('error', 'Previous offers count: ' . $previousOffers);
 
         if ($previousOffers === 0 && $jwtUser['role'] !== 'super_admin') {
             // This is the first offer to this seller, deduct subscription
