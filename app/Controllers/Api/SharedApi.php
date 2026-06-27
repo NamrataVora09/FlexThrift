@@ -886,11 +886,10 @@ class SharedApi extends BaseApiController
             'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
             'discount_value' => $data['discount_value'] ?? 0,
-            'min_order_amount' => $data['min_order_amount'] ?? 0,
+            'min_purchase' => $data['min_order_amount'] ?? 0,
             'max_discount' => ($data['max_discount'] ?? null) ?: null,
             'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
-            'valid_from' => $data['valid_from'] ?? null,
-            'valid_until' => $data['valid_until'] ?? null,
+            'expires_at' => $data['valid_until'] ?? null,
             'is_active' => 1,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -905,10 +904,10 @@ class SharedApi extends BaseApiController
             'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
             'discount_value' => $data['discount_value'] ?? 0,
-            'min_order_amount' => $data['min_order_amount'] ?? 0,
+            'min_purchase' => $data['min_order_amount'] ?? 0,
             'max_discount' => ($data['max_discount'] ?? null) ?: null,
             'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
-            'valid_until' => ($data['valid_until'] ?? null) ?: null,
+            'expires_at' => ($data['valid_until'] ?? null) ?: null,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
         return $this->respond(['success' => true, 'message' => 'Coupon updated']);
