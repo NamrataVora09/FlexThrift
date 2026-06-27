@@ -821,8 +821,6 @@ class BuyerApi extends BaseApiController
                 ->where('sp.user_type', 'buyer')
                 ->orderBy('us.id', 'DESC');
             
-            log_message('error', 'Subscription query: ' . $db->getLastQuery());
-            
             $activeSub = $query->get()->getRowArray();
             log_message('error', 'Subscription result: ' . json_encode($activeSub));
 
