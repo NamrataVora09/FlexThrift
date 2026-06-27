@@ -2330,6 +2330,7 @@ class BuyerApi extends BaseApiController
         $db->table('user_subscriptions')->insert([
             'user_id' => $userId,
             'plan_id' => $planId,
+            'coupon_id' => $couponId,
             'starts_at' => $startsAt,
             'expires_at' => $expiresAt,
             'usage_count' => 0,
@@ -2452,6 +2453,15 @@ class BuyerApi extends BaseApiController
                     'transaction_id' => $merchantOrderId,
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
+
+                // Track coupon usage if a coupon was used
+                if ($dbSub['coupon_id']) {
+                    $db->table('coupon_usage')->insert([
+                        'coupon_id' => $dbSub['coupon_id'],
+                        'user_id' => $dbSub['user_id'],
+                        'used_at' => date('Y-m-d H:i:s'),
+                    ]);
+                }
 
                 // Note: Not deactivating previous subscriptions to allow stacking/sequential usage.
                 // The reveal logic handles picking the first valid one.

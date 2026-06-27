@@ -2188,8 +2188,8 @@ class SellerApi extends BaseApiController
         if ($couponCode) {
             $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
             if (
-                $coupon && $basePrice >= (float) $coupon['min_order_amount']
-                && (!$coupon['valid_until'] || strtotime($coupon['valid_until']) >= time())
+                $coupon && $basePrice >= (float) $coupon['min_purchase']
+                && (!$coupon['expires_at'] || strtotime($coupon['expires_at']) >= time())
             ) {
                 if ($coupon['discount_type'] === 'percentage') {
                     $discount = ($basePrice * $coupon['discount_value']) / 100;
@@ -2269,6 +2269,7 @@ class SellerApi extends BaseApiController
         $db->table('user_subscriptions')->insert([
             'user_id' => $userId,
             'plan_id' => $planId,
+            'coupon_id' => $couponId,
             'starts_at' => $startsAt,
             'expires_at' => $expiresAt,
             'usage_count' => 0,
@@ -2366,6 +2367,15 @@ class SellerApi extends BaseApiController
                     'transaction_id' => $merchantOrderId,
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
+
+                // Track coupon usage if a coupon was used
+                if ($dbSub['coupon_id']) {
+                    $db->table('coupon_usage')->insert([
+                        'coupon_id' => $dbSub['coupon_id'],
+                        'user_id' => $dbSub['user_id'],
+                        'used_at' => date('Y-m-d H:i:s'),
+                    ]);
+                }
                 // Deduct used referral balance
                 if ((float) $dbSub['referral_discount_applied'] > 0) {
                     $user = $db->table('users')->where('id', $dbSub['user_id'])->get()->getRowArray();

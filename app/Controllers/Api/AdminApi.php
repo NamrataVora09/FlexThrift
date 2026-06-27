@@ -825,11 +825,13 @@ class AdminApi extends BaseApiController
         }
 
         $discount = 0;
+        $couponId = null;
         if ($couponCode) {
             $cpn = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
-            if ($cpn && $basePrice >= (float)$cpn['min_order_amount'] && (!$cpn['valid_until'] || strtotime($cpn['valid_until']) >= time())) {
+            if ($cpn && $basePrice >= (float)$cpn['min_purchase'] && (!$cpn['expires_at'] || strtotime($cpn['expires_at']) >= time())) {
                 $discount = $cpn['discount_type'] === 'percentage' ? ($basePrice * $cpn['discount_value'] / 100) : (float)$cpn['discount_value'];
                 if ($cpn['max_discount'] && $discount > $cpn['max_discount']) $discount = $cpn['max_discount'];
+                $couponId = $cpn['id'];
             }
         }
 
@@ -857,7 +859,7 @@ class AdminApi extends BaseApiController
             : '2099-12-31 23:59:59';
 
         $db->table('user_subscriptions')->insert([
-            'user_id' => $userId, 'plan_id' => $planId, 'starts_at' => $nowStr, 'expires_at' => $pendingExpiry,
+            'user_id' => $userId, 'plan_id' => $planId, 'coupon_id' => $couponId, 'starts_at' => $nowStr, 'expires_at' => $pendingExpiry,
             'usage_count' => 0, 'is_active' => 0, 'payment_status' => 'pending', 'amount_paid' => $final,
             'referral_discount_applied' => $referralDiscount, 'merchant_transaction_id' => $merchantOrderId,
         ]);
@@ -932,6 +934,15 @@ class AdminApi extends BaseApiController
                 'transaction_id' => $id, 
                 'created_at' => date('Y-m-d H:i:s')
             ]);
+
+            // Track coupon usage if a coupon was used
+            if ($dbSub['coupon_id']) {
+                $db->table('coupon_usage')->insert([
+                    'coupon_id' => $dbSub['coupon_id'],
+                    'user_id' => $dbSub['user_id'],
+                    'used_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
             return $this->respond(['status' => 'success', 'message' => 'Payment verified and plans stacked!']);
         }
 
