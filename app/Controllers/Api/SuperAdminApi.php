@@ -1947,10 +1947,10 @@ class SuperAdminApi extends BaseApiController
         $file = $this->request->getFile('ad_media');
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
-            $file->move(FCPATH . 'uploads/advertisements/', $newName);
             $data['media_path'] = $newName;
             $data['ad_type'] = str_contains($file->getMimeType(), 'video') ? 'video' : 'image';
             $data['media_type'] = $file->getMimeType();
+            $file->move(FCPATH . 'uploads/advertisements/', $newName);
         }
 
         $db->table('advertisements')->insert($data);
@@ -1985,10 +1985,10 @@ class SuperAdminApi extends BaseApiController
                 }
             }
             $newName = $file->getRandomName();
-            $file->move(FCPATH . 'uploads/advertisements/', $newName);
             $data['media_path'] = $newName;
             $data['ad_type'] = str_contains($file->getMimeType(), 'video') ? 'video' : 'image';
             $data['media_type'] = $file->getMimeType();
+            $file->move(FCPATH . 'uploads/advertisements/', $newName);
         }
 
         $db->table('advertisements')->where('id', $id)->update($data);
