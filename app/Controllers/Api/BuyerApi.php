@@ -813,7 +813,7 @@ class BuyerApi extends BaseApiController
 
         log_message('error', 'Previous offers count: ' . $previousOffers);
 
-        if ($previousOffers === 0 && $jwtUser['role'] !== 'super_admin') {
+        if ($previousOffers == 1 && $jwtUser['role'] !== 'super_admin') {
             // This is the first offer to this seller, deduct subscription
             $activeSub = $db->table('user_subscriptions us')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
