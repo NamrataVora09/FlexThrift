@@ -593,20 +593,13 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   // Client-side validation using configured rules
   const validateField = (fieldName: string, value: any): string | null => {
-    console.log('Validating field:', fieldName, 'value:', value);
-    if (!meta?.validation_rules) {
-      console.log('No validation rules in meta');
-      return null;
-    }
+    if (!meta?.validation_rules) return null;
     const rule = meta.validation_rules.find(r => r.field_name === fieldName);
-    console.log('Found rule for', fieldName, ':', rule);
     if (!rule || !rule.is_active) return null;
 
     // Required check
     if (rule.is_required && (!value || value === '')) {
-      const error = rule.error_message || `${rule.field_label} is required`;
-      console.log('Required check failed for', fieldName, ':', error);
-      return error;
+      return rule.error_message || `${rule.field_label} is required`;
     }
 
     // Skip other validations if empty
@@ -615,21 +608,15 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     // Length checks for strings
     if (typeof value === 'string') {
       if (rule.min_length && value.length < rule.min_length) {
-        const error = rule.error_message || `${rule.field_label} must be at least ${rule.min_length} characters`;
-        console.log('Min length check failed for', fieldName, ':', error);
-        return error;
+        return rule.error_message || `${rule.field_label} must be at least ${rule.min_length} characters`;
       }
       if (rule.max_length && value.length > rule.max_length) {
-        const error = rule.error_message || `${rule.field_label} must not exceed ${rule.max_length} characters`;
-        console.log('Max length check failed for', fieldName, ':', error);
-        return error;
+        return rule.error_message || `${rule.field_label} must not exceed ${rule.max_length} characters`;
       }
       if (rule.pattern) {
         const regex = new RegExp(rule.pattern);
         if (!regex.test(value)) {
-          const error = rule.error_message || `${rule.field_label} format is invalid`;
-          console.log('Pattern check failed for', fieldName, ':', error);
-          return error;
+          return rule.error_message || `${rule.field_label} format is invalid`;
         }
       }
     }
@@ -638,18 +625,13 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (typeof value === 'number' || !isNaN(parseFloat(value))) {
       const numValue = parseFloat(value);
       if (rule.min_value !== null && numValue < rule.min_value) {
-        const error = rule.error_message || `${rule.field_label} must be at least ${rule.min_value}`;
-        console.log('Min value check failed for', fieldName, ':', error);
-        return error;
+        return rule.error_message || `${rule.field_label} must be at least ${rule.min_value}`;
       }
       if (rule.max_value !== null && numValue > rule.max_value) {
-        const error = rule.error_message || `${rule.field_label} must not exceed ${rule.max_value}`;
-        console.log('Max value check failed for', fieldName, ':', error);
-        return error;
+        return rule.error_message || `${rule.field_label} must not exceed ${rule.max_value}`;
       }
     }
 
-    console.log('Validation passed for', fieldName);
     return null;
   };
 
@@ -669,6 +651,15 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         isValid = false;
       }
     });
+
+    // Validate product images (only for new products, not edit mode)
+    if (!isEditMode) {
+      const hasImages = files.length > 0;
+      if (!hasImages) {
+        errors['product_images'] = 'At least one product image is required';
+        isValid = false;
+      }
+    }
 
     setFieldErrors(errors);
     return isValid;
@@ -1007,11 +998,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               <span className="fw-medium">{error}</span>
             </div>
           )}
-          {Object.keys(fieldErrors).length > 0 && (
-            <div className="alert alert-warning mb-4 shadow-sm border-0" style={{ borderRadius: 12 }}>
-              <strong>Field Errors:</strong> {JSON.stringify(fieldErrors)}
-            </div>
-          )}
           {success && <div className="alert alert-success border-0 shadow-sm" style={{ borderRadius: 12 }}><i className="bi bi-check-circle-fill me-2"></i>{success}</div>}
 
           {isEditMode && f.status === 'rejected' && f.admin_remarks && (
@@ -1046,24 +1032,24 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               </div>
 
               <div className="row g-3">
-                <div className="col-md-6"><label className="form-label" style={labelStyle}>Product Title <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="title" value={f.title} onChange={handleChange} required />
+                <div className="col-md-6"><label className="form-label" style={labelStyle}>Product Title <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="title" value={f.title} onChange={handleChange} />
                   {fieldErrors.title && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.title}</small>}
                 </div>
                 <div className="col-md-6"><label className="form-label" style={labelStyle}>Listing Type <span className="text-danger">*</span></label>
-                  <select className="form-select" style={inputStyle} name="listing_type_category" value={f.listing_type_category} onChange={handleChange} required>
+                  <select className="form-select" style={inputStyle} name="listing_type_category" value={f.listing_type_category} onChange={handleChange}>
                     <option value="">Select Type</option>
                     {meta.listing_types.map(lt => <option key={lt.id} value={lt.id}>{lt.type_name}</option>)}
                   </select>
                   {fieldErrors.listing_type_category && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.listing_type_category}</small>}
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Product Type <span className="text-danger">*</span></label>
-                  <select className="form-select" style={inputStyle} name="product_type" value={f.product_type} onChange={handleChange} required disabled={!productTypes.length}>
+                  <select className="form-select" style={inputStyle} name="product_type" value={f.product_type} onChange={handleChange} disabled={!productTypes.length}>
                     <option value="">{productTypes.length ? 'Select' : 'Select Listing Type first'}</option>
                     {productTypes.map(pt => <option key={pt.id} value={pt.id}>{pt.name}</option>)}
                   </select>
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Category <span className="text-danger">*</span></label>
-                  <select className="form-select" style={inputStyle} name="category_id" value={f.category_id} onChange={handleChange} required disabled={!categories.length}>
+                  <select className="form-select" style={inputStyle} name="category_id" value={f.category_id} onChange={handleChange} disabled={!categories.length}>
                     <option value="">{categories.length ? 'Select' : 'Select Product Type first'}</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -1080,8 +1066,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                     <label className="form-label" style={labelStyle}>
                       Gender {fieldConfigs.gender === 'mandatory' && <span className="text-danger">*</span>}
                     </label>
-                    <select className="form-select" style={inputStyle} name="gender" value={f.gender} onChange={handleChange}
-                      required={fieldConfigs.gender === 'mandatory'} disabled={!f.category_id}>
+                    <select className="form-select" style={inputStyle} name="gender" value={f.gender} onChange={handleChange} disabled={!f.category_id}>
                       <option value="">{f.category_id ? 'Select Gender' : 'Select Category first'}</option>
                       {filteredGenders.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                     </select>
@@ -1115,7 +1100,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   </div>
                 </div>
 
-                <div className="col-md-12"><label className="form-label" style={labelStyle}>Description <span className="text-danger">*</span></label><textarea className="form-control" style={inputStyle} name="description" rows={4} value={f.description} onChange={handleChange} required />
+                <div className="col-md-12"><label className="form-label" style={labelStyle}>Description <span className="text-danger">*</span></label><textarea className="form-control" style={inputStyle} name="description" rows={4} value={f.description} onChange={handleChange} />
                   {fieldErrors.description && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.description}</small>}
                 </div>
               </div>
@@ -1127,10 +1112,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               <h5 style={sectionTitle}><i className="bi bi-rulers me-2"></i>Specifications</h5>
               <div className="row g-3">
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Color <span className="text-danger">*</span></label>
-                  <select className="form-select" style={inputStyle} name="color" value={f.color} onChange={handleChange} required>
+                  <select className="form-select" style={inputStyle} name="color" value={f.color} onChange={handleChange}>
                     <option value="">Select Color</option>
                     {meta.colors.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
+                  {fieldErrors.color && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.color}</small>}
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>{(() => {
                   const lt = meta?.listing_types?.find(l => String(l.id) === f.listing_type_category);
@@ -1139,12 +1125,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   if (['electronics', 'furniture', 'appliances', 'home'].some(k => ltName.includes(k))) return 'Months used';
                   return 'Number of times used';
                 })()} <span className="text-danger">*</span></label>
-                  <input type="number" className="form-control" style={inputStyle} name="used_times" min="0" value={f.used_times} onChange={handleChange} required />
+                  <input type="number" className="form-control" style={inputStyle} name="used_times" min="0" value={f.used_times} onChange={handleChange} />
                   <small className="text-muted">Enter 0 if brand new</small>
-                  {fieldErrors.times_used && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.times_used}</small>}
+                  {fieldErrors.used_times && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.used_times}</small>}
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Original Price <span className="text-danger">*</span></label>
-                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="original_price" step="1" min="1" value={f.original_price} onChange={handleChange} required /></div>
+                  <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="original_price" step="1" min="1" value={f.original_price} onChange={handleChange} /></div>
                   {(() => {
                     const maxOrig = parseFloat(meta?.config?.max_original_price || '1000000000');
                     const entered = parseFloat(f.original_price || '0');
@@ -1164,7 +1150,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                     </label>
                     {attr.type === 'picklist' ? (
                       <select
-                        className="form-select" style={inputStyle} required={attr.required}
+                        className="form-select" style={inputStyle}
                         value={attributeValues[attr.name] || ''}
                         onChange={(e) => setAttributeValues(prev => ({ ...prev, [attr.name]: e.target.value }))}
                       >
@@ -1176,7 +1162,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                     ) : (
                       <input
                         type={attr.type === 'number' ? 'number' : 'text'}
-                        className="form-control" style={inputStyle} required={attr.required}
+                        className="form-control" style={inputStyle}
                         placeholder={attr.name}
                         value={attributeValues[attr.name] || ''}
                         onChange={(e) => setAttributeValues(prev => ({ ...prev, [attr.name]: e.target.value }))}
@@ -1287,10 +1273,18 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             <div style={sectionStyle}>
               <h5 style={sectionTitle}><i className="bi bi-geo-alt me-2"></i>Dispatch Address</h5>
               <div className="row g-3">
-                <div className="col-md-12"><label className="form-label" style={labelStyle}>Dispatch From <span className="text-danger">*</span></label><textarea className="form-control" style={inputStyle} name="dispatch_address" rows={2} value={f.dispatch_address} onChange={handleChange} required autoComplete="off" /><small className="text-muted">Full address from where the product will be dispatched</small></div>
-                <div className="col-md-4"><label className="form-label" style={labelStyle}>State <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="dispatch_state" placeholder="e.g., Delhi" value={f.dispatch_state} onChange={handleChange} required autoComplete="off" /></div>
-                <div className="col-md-4"><label className="form-label" style={labelStyle}>City <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="dispatch_city" placeholder="e.g., New Delhi" value={f.dispatch_city} onChange={handleChange} required autoComplete="off" /></div>
-                <div className="col-md-4"><label className="form-label" style={labelStyle}>PIN Code <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="dispatch_pin_code" pattern="[0-9]{6}" maxLength={6} placeholder="e.g., 110034" value={f.dispatch_pin_code} onChange={handleChange} required autoComplete="off" /><small className="text-muted">6-digit pin code</small></div>
+                <div className="col-md-12"><label className="form-label" style={labelStyle}>Dispatch From <span className="text-danger">*</span></label><textarea className="form-control" style={inputStyle} name="dispatch_address" rows={2} value={f.dispatch_address} onChange={handleChange} autoComplete="off" /><small className="text-muted">Full address from where the product will be dispatched</small>
+                  {fieldErrors.dispatch_address && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.dispatch_address}</small>}
+                </div>
+                <div className="col-md-4"><label className="form-label" style={labelStyle}>State <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="dispatch_state" placeholder="e.g., Delhi" value={f.dispatch_state} onChange={handleChange} autoComplete="off" />
+                  {fieldErrors.dispatch_state && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.dispatch_state}</small>}
+                </div>
+                <div className="col-md-4"><label className="form-label" style={labelStyle}>City <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="dispatch_city" placeholder="e.g., New Delhi" value={f.dispatch_city} onChange={handleChange} autoComplete="off" />
+                  {fieldErrors.dispatch_city && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.dispatch_city}</small>}
+                </div>
+                <div className="col-md-4"><label className="form-label" style={labelStyle}>PIN Code <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="dispatch_pin_code" pattern="[0-9]{6}" maxLength={6} placeholder="e.g., 110034" value={f.dispatch_pin_code} onChange={handleChange} autoComplete="off" /><small className="text-muted">6-digit pin code</small>
+                  {fieldErrors.dispatch_pin_code && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.dispatch_pin_code}</small>}
+                </div>
               </div>
             </div>
 
@@ -1311,6 +1305,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 <p className="mb-0 mt-1 fw-bold small">Click to upload images</p>
                 <p className="text-muted mb-0" style={{ fontSize: '0.75rem' }}>Up to {cfg.max_product_images || '7'} images (Max {cfg.max_image_size_mb || '2'}MB each)</p>
               </button>
+              {fieldErrors.product_images && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.product_images}</small>}
               {previews.length > 0 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 15, marginTop: 20 }}>
                   {previews.map((src, i) => (

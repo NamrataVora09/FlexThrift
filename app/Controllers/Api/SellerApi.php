@@ -231,6 +231,7 @@ class SellerApi extends BaseApiController
         $colors = $db->table('colors')->orderBy('name', 'ASC')->get()->getResultArray();
         $genders = $db->table('genders')->orderBy('name', 'ASC')->get()->getResultArray();
         $brands = $db->table('orignal_brands')->where('is_active', 1)->orderBy('brand_name', 'ASC')->get()->getResultArray();
+        $validationRules = $db->table('validation_rules')->where('is_active', 1)->get()->getResultArray();
 
         $settings = $db->table('system_settings')->get()->getResultArray();
         $config = [];
@@ -270,6 +271,7 @@ class SellerApi extends BaseApiController
                 'colors' => $colors,
                 'genders' => $genders,
                 'original_brands' => $originalBrands,
+                'validation_rules' => $validationRules,
                 'seller_brands' => $sellerBrands,
                 'config' => $config,
                 'pricing_rules' => $pricingRules,
@@ -317,20 +319,46 @@ class SellerApi extends BaseApiController
 
         $data = $this->request->getPost();
 
+        // Map frontend field names to backend expected names for validation
+        $fieldMap = [
+            'used_times' => 'times_used',
+            'description' => 'condition_description',
+        ];
+
+        $mappedData = [];
+        foreach ($data as $key => $value) {
+            $mappedKey = $fieldMap[$key] ?? $key;
+            $mappedData[$mappedKey] = $value;
+        }
+
         $rules = [
             'title' => 'required|min_length[3]|max_length[200]',
             'listing_type' => 'required|in_list[sell,rent]',
+            'listing_type_category' => 'required',
+            'product_type' => 'required',
+            'category_id' => 'required',
             'original_price' => 'required|numeric|greater_than[0]',
             'times_used' => 'required|integer|greater_than_equal_to[0]',
             'condition_description' => 'required',
+            'color' => 'required',
+            'dispatch_address' => 'required|min_length[5]',
+            'dispatch_state' => 'required|min_length[2]',
+            'dispatch_city' => 'required|min_length[2]',
+            'dispatch_pin_code' => 'required|regex_match[/^[0-9]{6}$/]',
         ];
 
-        if (!$this->validate($rules)) {
+        if (!$this->validate($rules, $mappedData)) {
             return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => $this->validator->getErrors()], 422);
         }
 
-        // Debug: Log received files
+        // Validate product images
         $allFiles = $this->request->getFiles();
+        $imageFiles = $allFiles['product_images'] ?? $allFiles['images'] ?? null;
+        if (!$imageFiles || (is_array($imageFiles) && count($imageFiles) === 0)) {
+            return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['product_images' => 'At least one product image is required']], 422);
+        }
+
+        // Debug: Log received files
         log_message('info', 'Received files: ' . json_encode(array_keys($allFiles)));
         if (isset($allFiles['images'])) {
             log_message('info', 'Images count: ' . count($allFiles['images']));
@@ -1395,6 +1423,56 @@ class SellerApi extends BaseApiController
 
         // Direct update for all users (status and snapshotting is handled below)
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
+
+        // Map frontend field names to backend expected names for validation
+        $fieldMap = [
+            'used_times' => 'times_used',
+            'description' => 'condition_description',
+        ];
+
+        $mappedData = [];
+        foreach ($data as $key => $value) {
+            $mappedKey = $fieldMap[$key] ?? $key;
+            $mappedData[$mappedKey] = $value;
+        }
+
+        $rules = [
+            'title' => 'required|min_length[3]|max_length[200]',
+            'listing_type' => 'required|in_list[sell,rent]',
+            'listing_type_category' => 'required',
+            'product_type' => 'required',
+            'category_id' => 'required',
+            'original_price' => 'required|numeric|greater_than[0]',
+            'times_used' => 'required|integer|greater_than_equal_to[0]',
+            'condition_description' => 'required',
+            'color' => 'required',
+            'dispatch_address' => 'required|min_length[5]',
+            'dispatch_state' => 'required|min_length[2]',
+            'dispatch_city' => 'required|min_length[2]',
+            'dispatch_pin_code' => 'required|regex_match[/^[0-9]{6}$/]',
+        ];
+
+        if (!$this->validate($rules, $mappedData)) {
+            return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => $this->validator->getErrors()], 422);
+        }
+
+        // Validate product images for update (ensure at least one image remains)
+        $existingImages = $db->table('product_images')->where('product_id', $id)->countAllResults();
+        $files = $this->request->getFiles();
+        $imageFiles = $files['product_images'] ?? $files['images'] ?? null;
+        $newImageCount = is_array($imageFiles) ? count($imageFiles) : 0;
+
+        $deletedIds = $this->request->getPost('deleted_images_ids');
+        $deletedCount = 0;
+        if ($deletedIds && is_string($deletedIds)) {
+            $deletedIdsArr = json_decode($deletedIds, true) ?: [];
+            $deletedCount = count($deletedIdsArr);
+        }
+
+        if ($existingImages - $deletedCount + $newImageCount === 0) {
+            return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['product_images' => 'At least one product image is required']], 422);
+        }
+
         $updateData = $this->cleanProductData($data, $db);
 
         // If this is a seller (not admin/superadmin) and review is required, use edit request workflow

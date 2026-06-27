@@ -123,6 +123,34 @@ class CreateValidationRules extends Migration
                 'is_required' => 1,
                 'error_message' => 'Listing type is required',
             ],
+            [
+                'field_name' => 'dispatch_address',
+                'field_label' => 'Dispatch Address',
+                'is_required' => 1,
+                'min_length' => 5,
+                'error_message' => 'Dispatch address is required',
+            ],
+            [
+                'field_name' => 'dispatch_state',
+                'field_label' => 'State',
+                'is_required' => 1,
+                'min_length' => 2,
+                'error_message' => 'State is required',
+            ],
+            [
+                'field_name' => 'dispatch_city',
+                'field_label' => 'City',
+                'is_required' => 1,
+                'min_length' => 2,
+                'error_message' => 'City is required',
+            ],
+            [
+                'field_name' => 'dispatch_pin_code',
+                'field_label' => 'PIN Code',
+                'is_required' => 1,
+                'pattern' => '^[0-9]{6}$',
+                'error_message' => 'PIN code must be 6 digits',
+            ],
         ];
 
         foreach ($defaultRules as $rule) {
