@@ -812,13 +812,18 @@ class BuyerApi extends BaseApiController
         if ($previousOffers == 1 && $jwtUser['role'] !== 'super_admin') {
             // This is the first offer to this seller, deduct subscription
             log_message('error', 'JWT user_id: ' . $jwtUser['user_id'] . ', role: ' . $jwtUser['role']);
-            $activeSub = $db->table('user_subscriptions us')
+            
+            $query = $db->table('user_subscriptions us')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
-                ->where('sp.user_type', 'buyer')
-                ->get()->getRowArray();
+                ->where('sp.user_type', 'buyer');
+            
+            log_message('error', 'Subscription query: ' . $db->getLastQuery());
+            
+            $activeSub = $query->get()->getRowArray();
+            log_message('error', 'Subscription result: ' . json_encode($activeSub));
 
             if ($activeSub && $activeSub['plan_type'] === 'quantity') {
                 $newCount = (int) $activeSub['usage_count'] + 1;
