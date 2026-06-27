@@ -17,6 +17,10 @@ class CorsFilter implements FilterInterface
             'http://localhost:3001',
             'http://localhost:3002',
             'https://flex-three-zeta.vercel.app',
+            'https://www.flexthrift.in',
+            'https://flexthrift.in', 'https://www.flexthrift.com',
+            'https://flexthrift.com',
+            
         ];
 
         // Allow Vercel & Render subdomains
