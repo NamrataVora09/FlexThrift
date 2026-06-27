@@ -819,7 +819,7 @@ class BuyerApi extends BaseApiController
                 ->where('sp.user_type', 'buyer')
                 ->get()->getRowArray();
 
-            log_message('info', 'Subscription check: ' . json_encode([
+            log_message('error', 'Subscription check: ' . json_encode([
                 'user_id' => $jwtUser['user_id'],
                 'previousOffers' => $previousOffers,
                 'activeSub' => $activeSub,
@@ -833,7 +833,7 @@ class BuyerApi extends BaseApiController
                     $update['is_active'] = 0;
                 }
                 $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
-                log_message('info', 'Subscription deducted: user_id=' . $jwtUser['user_id'] . ', newCount=' . $newCount);
+                log_message('error', 'Subscription deducted: user_id=' . $jwtUser['user_id'] . ', newCount=' . $newCount);
             }
         }
 
