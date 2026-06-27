@@ -818,7 +818,8 @@ class BuyerApi extends BaseApiController
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
-                ->where('sp.user_type', 'buyer');
+                ->where('sp.user_type', 'buyer')
+                ->orderBy('us.id', 'DESC');
             
             log_message('error', 'Subscription query: ' . $db->getLastQuery());
             
