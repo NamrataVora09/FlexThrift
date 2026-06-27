@@ -2248,8 +2248,8 @@ class BuyerApi extends BaseApiController
         if ($couponCode) {
             $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
             if (
-                $coupon && $basePrice >= (float) $coupon['min_order_amount']
-                && (!$coupon['valid_until'] || strtotime($coupon['valid_until']) >= time())
+                $coupon && $basePrice >= (float) $coupon['min_purchase']
+                && (!$coupon['expires_at'] || strtotime($coupon['expires_at']) >= time())
             ) {
                 if ($coupon['discount_type'] === 'percentage') {
                     $discount = ($basePrice * $coupon['discount_value']) / 100;
