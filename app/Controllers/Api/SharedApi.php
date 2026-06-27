@@ -875,6 +875,11 @@ class SharedApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $coupons = $db->table('coupons')->orderBy('created_at', 'DESC')->get()->getResultArray();
+        // Map database column names to frontend expected names
+        foreach ($coupons as &$coupon) {
+            $coupon['min_order_amount'] = $coupon['min_purchase'];
+            $coupon['valid_until'] = $coupon['expires_at'];
+        }
         return $this->respond(['success' => true, 'data' => $coupons]);
     }
 
