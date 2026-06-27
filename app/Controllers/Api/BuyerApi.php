@@ -825,8 +825,13 @@ class BuyerApi extends BaseApiController
                 if ($newCount >= (int) $activeSub['limit_value']) {
                     $update['is_active'] = 0;
                 }
+                log_message('error', 'Attempting update: subscription_id=' . $activeSub['id'] . ', update_data=' . json_encode($update));
                 $result = $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
                 log_message('error', 'Subscription update result: ' . $result . ', newCount=' . $newCount);
+                
+                // Verify the update
+                $updatedSub = $db->table('user_subscriptions')->where('id', $activeSub['id'])->get()->getRowArray();
+                log_message('error', 'Updated subscription: ' . json_encode($updatedSub));
             }
         }
 
