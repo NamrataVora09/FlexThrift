@@ -17,7 +17,7 @@ interface Product {
   previous_data?: string | null;
   images?: Array<{ id: number; image_path: string }>;
   orignal_brand?: string; seller_brand?: string; product_number?: string; product_type?: string;
-  sub_category?: string; listing_type_category?: string; listing_type_name?: string;
+  sub_category?: string; listing_type_category?: string; listing_type_name?: string; listing_category_name?: string;
   allow_alter_fitting?: number; condition_description?: string; fitting_charge?: string;
   suggested_sale_price?: string; suggested_rental_cost?: string; rental_start_date?: string;
   rental_end_date?: string; is_featured?: number; admin_remarks?: string; price_category?: string;
@@ -353,7 +353,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type_name || (p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1))}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1) || 'N/A'}</span>
                             {Number(p.has_bill) ? <span style={{ background: '#fef9c3', color: '#854d0e', padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}><i className="bi bi-receipt me-1"></i>Bill</span> : null}
                           </div>
                         </div>
@@ -495,7 +495,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type_name || (p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1))}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1) || 'N/A'}</span>
                             <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
                           </div>
                         </div>
@@ -566,7 +566,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
                           )}
                           <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type_name || (p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1))}</span>
+                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1) || 'N/A'}</span>
                             <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
                           </div>
                         </div>
@@ -971,7 +971,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       { l: 'Category', v: comp.original?.category },
                       { l: 'Sub Category', v: comp.original?.sub_category || 'N/A' },
                       { l: 'Product Type', v: comp.original?.product_type || 'N/A' },
-                      { l: 'Listing Type', v: comp.original?.listing_type_name || comp.original?.listing_type?.toUpperCase() },
+                      { l: 'Listing Type', v: comp.original?.listing_type?.charAt(0).toUpperCase() + comp.original?.listing_type?.slice(1) || 'N/A' },
+                      { l: 'Listing Category', v: comp.original?.listing_category_name || 'N/A' },
                     ])}
                     {renderCompSection('Specs', [
                       { l: 'Color', v: comp.original?.color || 'N/A' },
@@ -1043,7 +1044,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             { l: 'Category', v: diff(orig.category || '', updated.category || '') },
                             { l: 'Sub Category', v: diff(orig.sub_category || 'N/A', updated.sub_category || 'N/A') },
                             { l: 'Product Type', v: diff(orig.product_type || 'N/A', updated.product_type || 'N/A') },
-                            { l: 'Listing Type', v: diff(orig.listing_type_name || orig.listing_type?.toUpperCase() || '', updated.listing_type_name || updated.listing_type?.toUpperCase() || '') },
+                            { l: 'Listing Type', v: diff(orig.listing_type?.charAt(0).toUpperCase() + orig.listing_type?.slice(1) || 'N/A', updated.listing_type?.charAt(0).toUpperCase() + updated.listing_type?.slice(1) || 'N/A') },
+                            { l: 'Listing Category', v: diff(orig.listing_category_name || 'N/A', updated.listing_category_name || 'N/A') },
                           ])}
                           {renderCompSection('Specs', [
                             { l: 'Color', v: diff(orig.color || 'N/A', updated.color || 'N/A') },
