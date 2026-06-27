@@ -802,6 +802,33 @@ class BuyerApi extends BaseApiController
 
         $offerId = $db->table('offers')->insert($offerData, true);
 
+        // Check if this is the first offer to this seller (deduct subscription)
+        $previousOffers = $db->table('offers')
+            ->where('buyer_id', $jwtUser['user_id'])
+            ->where('seller_id', $product['seller_id'])
+            ->where('id !=', $offerId)
+            ->countAllResults();
+
+        if ($previousOffers === 0 && $jwtUser['role'] !== 'super_admin') {
+            // This is the first offer to this seller, deduct subscription
+            $activeSub = $db->table('user_subscriptions us')
+                ->join('subscription_plans sp', 'sp.id = us.plan_id')
+                ->where('us.user_id', $jwtUser['user_id'])
+                ->where('us.is_active', 1)
+                ->where('us.expires_at >=', date('Y-m-d H:i:s'))
+                ->where('sp.user_type', 'buyer')
+                ->get()->getRowArray();
+
+            if ($activeSub && $activeSub['plan_type'] === 'quantity') {
+                $newCount = (int) $activeSub['usage_count'] + 1;
+                $update = ['usage_count' => $newCount];
+                if ($newCount >= (int) $activeSub['limit_value']) {
+                    $update['is_active'] = 0;
+                }
+                $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
+            }
+        }
+
         // Create notification for seller
         $db->table('notifications')->insert([
             'user_id' => $product['seller_id'],
@@ -1832,11 +1859,10 @@ class BuyerApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'You cannot view your own contact'], 400);
         }
 
-        // Check if this buyer has already viewed this specific product's seller contact
+        // Check if this buyer has already viewed this seller's contact (any product)
         $existingView = $db->table('contact_views')
             ->where('user_id', $buyerId)
             ->where('seller_id', $sellerId)
-            ->where('product_id', $productId)
             ->get()->getRowArray();
 
         // Check if this buyer has previously made any offer to this seller
