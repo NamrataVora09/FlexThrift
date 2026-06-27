@@ -28,9 +28,13 @@ export default function AdminsClient() {
   const [approvalFilter, setApprovalFilter] = useState('');
   const [userMgmtFilter, setUserMgmtFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editModal, setEditModal] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
   const [form, setForm] = useState({ name: '', email: '', mobile: '', password: '' });
   const [submitting, setSubmitting] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [mobileError, setMobileError] = useState(false);
+  const [emailError, setEmailError] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -140,6 +144,10 @@ export default function AdminsClient() {
 
   const createAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mobileError || emailError) {
+      toast.error('Please fix the errors before submitting');
+      return;
+    }
     setSubmitting(true);
     const res = await api.post('/superadmin/create-admin', {
       name: form.name,
@@ -152,9 +160,70 @@ export default function AdminsClient() {
       toast.success('Administrator created!');
       setShowModal(false);
       setForm({ name: '', email: '', mobile: '', password: '' });
+      setMobileError(false);
+      setEmailError(false);
       load();
     } else {
       toast.error(res.message || 'Failed to create admin');
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    let processedValue = value;
+    
+    if (name === 'mobile') {
+      const digits = value.replace(/\D/g, '');
+      processedValue = digits.slice(0, 10);
+      setMobileError(processedValue.length > 0 && processedValue.length !== 10);
+    }
+    if (name === 'email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      setEmailError(value.length > 0 && !emailRegex.test(value));
+    }
+    
+    setForm({ ...form, [name]: processedValue });
+  };
+
+  const openEditModal = (admin: Admin) => {
+    setEditingAdmin(admin);
+    setForm({
+      name: admin.name,
+      email: admin.email,
+      mobile: admin.mobile,
+      password: ''
+    });
+    setMobileError(false);
+    setEmailError(false);
+    setEditModal(true);
+  };
+
+  const updateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mobileError || emailError) {
+      toast.error('Please fix the errors before submitting');
+      return;
+    }
+    if (!editingAdmin) return;
+    
+    setSubmitting(true);
+    const res = await api.post(`/superadmin/update-admin/${editingAdmin.id}`, {
+      name: form.name,
+      email: form.email,
+      mobile: form.mobile,
+      password: form.password || undefined
+    });
+    setSubmitting(false);
+    if (res.success) {
+      toast.success('Administrator updated!');
+      setEditModal(false);
+      setEditingAdmin(null);
+      setForm({ name: '', email: '', mobile: '', password: '' });
+      setMobileError(false);
+      setEmailError(false);
+      load();
+    } else {
+      toast.error(res.message || 'Failed to update admin');
     }
   };
 
@@ -339,6 +408,9 @@ export default function AdminsClient() {
                         {/* Actions */}
                         <td style={{ ...tdStyle, textAlign: 'end' }}>
                           <div className="d-flex justify-content-end gap-1 flex-wrap">
+                            <button onClick={() => openEditModal(a)} className="btn btn-sm btn-outline-primary rounded-pill px-2" title="Edit Admin">
+                              <i className="bi bi-pencil me-1"></i>Edit
+                            </button>
                             <button onClick={() => toggleRoleBlock(a.id, 'seller')} 
                               className={`btn btn-sm rounded-pill px-2 fw-bold ${Number(a.blocked_seller) ? 'btn-danger' : 'btn-outline-danger'}`} 
                               title={Number(a.blocked_seller) ? 'Click to unblock from seller operations' : 'Click to block from seller operations'}>
@@ -389,22 +461,24 @@ export default function AdminsClient() {
                   <div className="mb-3">
                     <label className="form-label" style={{ fontWeight: 500, fontSize: '0.875rem', color: '#4b566b' }}>Full Name</label>
                     <input type="text" className="form-control" style={inputStyle} placeholder="Enter admin name" required
-                      value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                      value={form.name} onChange={handleInputChange} name="name" />
                   </div>
                   <div className="mb-3">
                     <label className="form-label" style={{ fontWeight: 500, fontSize: '0.875rem', color: '#4b566b' }}>Email Address</label>
                     <input type="email" className="form-control" style={inputStyle} placeholder="admin@example.com" required
-                      value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                      value={form.email} onChange={handleInputChange} name="email" />
+                    {emailError && <div style={{ color: '#ed4c78', fontSize: '0.75rem', marginTop: '0.25rem' }}>Please enter a valid email address</div>}
                   </div>
                   <div className="mb-3">
                     <label className="form-label" style={{ fontWeight: 500, fontSize: '0.875rem', color: '#4b566b' }}>Mobile Number</label>
                     <input type="text" className="form-control" style={inputStyle} placeholder="+91 XXXXXXXXXX" required
-                      value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
+                      value={form.mobile} onChange={handleInputChange} name="mobile" maxLength={10} />
+                    {mobileError && <div style={{ color: '#ed4c78', fontSize: '0.75rem', marginTop: '0.25rem' }}>Please enter a valid 10-digit mobile number</div>}
                   </div>
                   <div className="mb-3">
                     <label className="form-label" style={{ fontWeight: 500, fontSize: '0.875rem', color: '#4b566b' }}>Password</label>
                     <input type="password" className="form-control" style={inputStyle} placeholder="••••••••" required
-                      value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                      value={form.password} onChange={handleInputChange} name="password" />
                   </div>
                 </div>
                 <div className="modal-footer border-0 p-4 pt-0">
@@ -412,6 +486,53 @@ export default function AdminsClient() {
                   <button type="submit" className="btn py-2 px-4 rounded-pill sa-filter-btn" disabled={submitting}
                     style={{ background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none' }}>
                     {submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</> : 'Create Administrator'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Admin Modal */}
+      {editModal && editingAdmin && (
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setEditModal(false)}>
+          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '0.75rem' }}>
+              <div className="modal-header" style={{ borderBottom: '1px solid #f1f2f4', padding: '1.25rem' }}>
+                <h5 className="modal-title fw-bold">Edit Admin: {editingAdmin.name}</h5>
+                <button type="button" className="btn-close" onClick={() => setEditModal(false)}></button>
+              </div>
+              <form onSubmit={updateAdmin}>
+                <div className="modal-body p-4">
+                  <div className="mb-3">
+                    <label className="form-label" style={{ fontWeight: 500, fontSize: '0.875rem', color: '#4b566b' }}>Full Name</label>
+                    <input type="text" className="form-control" style={inputStyle} placeholder="Enter admin name" required
+                      value={form.name} onChange={handleInputChange} name="name" />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label" style={{ fontWeight: 500, fontSize: '0.875rem', color: '#4b566b' }}>Email Address</label>
+                    <input type="email" className="form-control" style={inputStyle} placeholder="admin@example.com" required
+                      value={form.email} onChange={handleInputChange} name="email" />
+                    {emailError && <div style={{ color: '#ed4c78', fontSize: '0.75rem', marginTop: '0.25rem' }}>Please enter a valid email address</div>}
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label" style={{ fontWeight: 500, fontSize: '0.875rem', color: '#4b566b' }}>Mobile Number</label>
+                    <input type="text" className="form-control" style={inputStyle} placeholder="+91 XXXXXXXXXX" required
+                      value={form.mobile} onChange={handleInputChange} name="mobile" maxLength={10} />
+                    {mobileError && <div style={{ color: '#ed4c78', fontSize: '0.75rem', marginTop: '0.25rem' }}>Please enter a valid 10-digit mobile number</div>}
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label" style={{ fontWeight: 500, fontSize: '0.875rem', color: '#4b566b' }}>Password (leave blank to keep current)</label>
+                    <input type="password" className="form-control" style={inputStyle} placeholder="••••••••"
+                      value={form.password} onChange={handleInputChange} name="password" />
+                  </div>
+                </div>
+                <div className="modal-footer border-0 p-4 pt-0">
+                  <button type="button" className="btn btn-light py-2 px-4 rounded-pill" onClick={() => setEditModal(false)}>Cancel</button>
+                  <button type="submit" className="btn py-2 px-4 rounded-pill sa-filter-btn" disabled={submitting}
+                    style={{ background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none' }}>
+                    {submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Updating...</> : 'Update Administrator'}
                   </button>
                 </div>
               </form>

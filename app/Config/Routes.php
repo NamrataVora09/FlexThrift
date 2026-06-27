@@ -253,6 +253,7 @@ function register_api_routes($routes)
         $routes->get('users', 'Api\SuperAdminApi::users');
         $routes->get('admins', 'Api\SuperAdminApi::admins');
         $routes->post('create-admin', 'Api\SuperAdminApi::createAdmin');
+        $routes->post('update-admin/(:num)', 'Api\SuperAdminApi::updateAdmin/$1');
         $routes->post('toggle-admin-status/(:num)', 'Api\SuperAdminApi::toggleAdminStatus/$1');
         $routes->post('delete-admin/(:num)', 'Api\SuperAdminApi::deleteAdmin/$1');
         $routes->post('toggle-admin-rights/(:num)/(:any)', 'Api\SuperAdminApi::toggleAdminRights/$1/$2');

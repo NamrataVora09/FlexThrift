@@ -41,6 +41,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mobileError, setMobileError] = useState(false);
+  const [pinCodeError, setPinCodeError] = useState(false);
+  const [emailError, setEmailError] = useState(false);
   const [coords, setCoords] = useState({ lat: '', lng: '' });
 
   useEffect(() => {
@@ -54,16 +56,33 @@ export default function RegisterPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let processedValue = value;
+    
     if (name === 'mobile') {
       const digits = value.replace(/\D/g, '');
-      setMobileError(digits.length > 0 && digits.length !== 10);
+      processedValue = digits.slice(0, 10); // Limit to 10 digits
+      setMobileError(processedValue.length > 0 && processedValue.length !== 10);
     }
+    if (name === 'pin_code') {
+      const digits = value.replace(/\D/g, '');
+      processedValue = digits.slice(0, 6); // Limit to 6 digits
+      setPinCodeError(processedValue.length > 0 && processedValue.length !== 6);
+    }
+    if (name === 'email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      setEmailError(value.length > 0 && !emailRegex.test(value));
+    }
+    
+    setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    if (mobileError || pinCodeError || emailError) {
+      setError('Please fix the errors before submitting');
+      return;
+    }
     setLoading(true);
     const result = await register({ ...formData, user_latitude: coords.lat, user_longitude: coords.lng });
     setLoading(false);
@@ -184,6 +203,7 @@ export default function RegisterPage() {
             <div className="input-group">
               <label>Email Address</label>
               <input className="input-field" type="email" name="email" placeholder="your@email.com" value={formData.email} onChange={handleChange} required />
+              {emailError && <div style={{ color: '#cf1322', fontSize: '0.8rem', marginTop: 6 }}>Please enter a valid email address</div>}
             </div>
 
             <div className="input-group">
@@ -194,7 +214,7 @@ export default function RegisterPage() {
                   <span>+91</span>
                   <i className="bi bi-chevron-down ms-1" style={{ fontSize: '0.7rem' }}></i>
                 </div>
-                <input type="tel" name="mobile" placeholder="98XXX XXX00" value={formData.mobile} onChange={handleChange} required />
+                <input type="tel" name="mobile" placeholder="98XXX XXX00" value={formData.mobile} onChange={handleChange} maxLength={10} required />
               </div>
               {mobileError && <div style={{ color: '#cf1322', fontSize: '0.8rem', marginTop: 6 }}>Please enter a valid 10-digit number</div>}
             </div>
@@ -211,7 +231,8 @@ export default function RegisterPage() {
 
             <div className="input-group">
               <label>PIN Code</label>
-              <input className="input-field" type="text" name="pin_code" placeholder="Enter PIN code" value={formData.pin_code} onChange={handleChange} required />
+              <input className="input-field" type="text" name="pin_code" placeholder="Enter PIN code" value={formData.pin_code} onChange={handleChange} maxLength={6} required />
+              {pinCodeError && <div style={{ color: '#cf1322', fontSize: '0.8rem', marginTop: 6 }}>Please enter a valid 6-digit PIN code</div>}
             </div>
 
             <div className="input-group">

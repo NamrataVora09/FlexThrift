@@ -638,6 +638,49 @@ class SuperAdminApi extends BaseApiController
         return $this->respond(['success' => true, 'message' => 'Admin created successfully.']);
     }
 
+    public function updateAdmin($id)
+    {
+        $db = \Config\Database::connect();
+        
+        // Support both JSON and Post data
+        $json = $this->request->getJSON(true);
+        $name = $json['name'] ?? $this->request->getPost('name');
+        $email = $json['email'] ?? $this->request->getPost('email');
+        $mobile = $json['mobile'] ?? $this->request->getPost('mobile');
+        $password = $json['password'] ?? $this->request->getPost('password');
+
+        if (!$name || !$email) {
+            return $this->respond(['success' => false, 'message' => 'Name and email are required.'], 400);
+        }
+
+        $admin = $db->table('users')->where('id', $id)->where('role', 'admin')->get()->getRowArray();
+        if (!$admin) {
+            return $this->respond(['success' => false, 'message' => 'Admin not found.'], 404);
+        }
+
+        // Check if email already exists for another admin
+        $emailExists = $db->table('users')->where('email', $email)->where('id !=', $id)->countAllResults();
+        if ($emailExists) {
+            return $this->respond(['success' => false, 'message' => 'Email already exists for another user.'], 400);
+        }
+
+        $updateData = [
+            'name' => $name,
+            'email' => $email,
+            'mobile' => $mobile,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        // Only update password if provided
+        if ($password) {
+            $updateData['password'] = password_hash($password, PASSWORD_DEFAULT);
+        }
+
+        $db->table('users')->where('id', $id)->update($updateData);
+
+        return $this->respond(['success' => true, 'message' => 'Admin updated successfully.']);
+    }
+
     public function toggleAdminStatus($id)
     {
         $db = \Config\Database::connect();
