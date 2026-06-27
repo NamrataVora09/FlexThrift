@@ -811,18 +811,14 @@ class BuyerApi extends BaseApiController
 
         if ($previousOffers == 1 && $jwtUser['role'] !== 'super_admin') {
             // This is the first offer to this seller, deduct subscription
-            log_message('error', 'JWT user_id: ' . $jwtUser['user_id'] . ', role: ' . $jwtUser['role']);
-            
-            $query = $db->table('user_subscriptions us')
+            $activeSub = $db->table('user_subscriptions us')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'buyer')
-                ->orderBy('us.id', 'DESC');
-            
-            $activeSub = $query->get()->getRowArray();
-            log_message('error', 'Subscription result: ' . json_encode($activeSub));
+                ->orderBy('us.id', 'DESC')
+                ->get()->getRowArray();
 
             if ($activeSub && $activeSub['plan_type'] === 'quantity') {
                 $newCount = (int) $activeSub['usage_count'] + 1;
@@ -830,13 +826,7 @@ class BuyerApi extends BaseApiController
                 if ($newCount >= (int) $activeSub['limit_value']) {
                     $update['is_active'] = 0;
                 }
-                log_message('error', 'Attempting update: subscription_id=' . $activeSub['id'] . ', update_data=' . json_encode($update));
-                $result = $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
-                log_message('error', 'Subscription update result: ' . $result . ', newCount=' . $newCount);
-                
-                // Verify the update
-                $updatedSub = $db->table('user_subscriptions')->where('id', $activeSub['id'])->get()->getRowArray();
-                log_message('error', 'Updated subscription: ' . json_encode($updatedSub));
+                $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
             }
         }
 
