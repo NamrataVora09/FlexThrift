@@ -792,9 +792,9 @@ class AdminApi extends BaseApiController
         $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
         if (!$coupon) return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
 
-        if ($coupon['valid_until'] && strtotime($coupon['valid_until']) < time()) return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+        if ($coupon['expires_at'] && strtotime($coupon['expires_at']) < time()) return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
 
-        if ((float)$plan['price'] < (float)$coupon['min_order_amount']) return $this->respond(['success' => false, 'message' => 'Min purchase required: ₹' . $coupon['min_order_amount']]);
+        if ((float)$plan['price'] < (float)$coupon['min_purchase']) return $this->respond(['success' => false, 'message' => 'Min purchase required: ₹' . $coupon['min_purchase']]);
 
         $discount = $coupon['discount_type'] === 'percentage' ? ($plan['price'] * $coupon['discount_value'] / 100) : (float)$coupon['discount_value'];
         if ($coupon['max_discount'] && $discount > $coupon['max_discount']) $discount = $coupon['max_discount'];

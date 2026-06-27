@@ -2118,7 +2118,7 @@ class SellerApi extends BaseApiController
         if (!$coupon)
             return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
 
-        if ($coupon['valid_until'] && strtotime($coupon['valid_until']) < time())
+        if ($coupon['expires_at'] && strtotime($coupon['expires_at']) < time())
             return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
 
         if ($coupon['usage_limit'] !== null) {
@@ -2127,8 +2127,8 @@ class SellerApi extends BaseApiController
                 return $this->respond(['success' => false, 'message' => 'Coupon usage limit reached.']);
         }
 
-        if ((float) $plan['price'] < (float) $coupon['min_order_amount'])
-            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $coupon['min_order_amount']]);
+        if ((float) $plan['price'] < (float) $coupon['min_purchase'])
+            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $coupon['min_purchase']]);
 
         $discountValue = 0;
         if ($coupon['discount_type'] === 'percentage') {
