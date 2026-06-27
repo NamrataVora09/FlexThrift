@@ -274,6 +274,10 @@ export default function TaxonomyView() {
         toastError('validation_error', 'At least one Product Type is required');
         return;
       }
+      if (!editForm.applies_to || editForm.applies_to.length === 0) {
+        toastError('validation_error', 'At least one Gender (Applies To) is required');
+        return;
+      }
       fd.append('category_name', editForm.name);
       (editForm.product_type_ids || []).forEach((id: number) => fd.append('product_type_ids[]', String(id)));
       (editForm.applies_to || []).forEach((g: string) => fd.append('applies_to[]', g));
@@ -282,6 +286,10 @@ export default function TaxonomyView() {
     } else if (type === 'sub_category') {
       if (!editForm.category_ids || editForm.category_ids.length === 0) {
         toastError('validation_error', 'At least one Category is required');
+        return;
+      }
+      if (!editForm.applies_to || editForm.applies_to.length === 0) {
+        toastError('validation_error', 'At least one Gender (Applies To) is required');
         return;
       }
       fd.append('name', editForm.name);
