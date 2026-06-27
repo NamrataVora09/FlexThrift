@@ -802,16 +802,12 @@ class BuyerApi extends BaseApiController
 
         $offerId = $db->table('offers')->insert($offerData, true);
 
-        log_message('error', 'Offer created: offerId=' . $offerId . ', buyer_id=' . $jwtUser['user_id'] . ', seller_id=' . $product['seller_id'] . ', role=' . $jwtUser['role']);
-
         // Check if this is the first offer to this seller (deduct subscription)
         $previousOffers = $db->table('offers')
             ->where('buyer_id', $jwtUser['user_id'])
             ->where('seller_id', $product['seller_id'])
             ->where('id !=', $offerId)
             ->countAllResults();
-
-        log_message('error', 'Previous offers count: ' . $previousOffers);
 
         if ($previousOffers == 1 && $jwtUser['role'] !== 'super_admin') {
             // This is the first offer to this seller, deduct subscription
@@ -823,21 +819,14 @@ class BuyerApi extends BaseApiController
                 ->where('sp.user_type', 'buyer')
                 ->get()->getRowArray();
 
-            log_message('error', 'Subscription check: ' . json_encode([
-                'user_id' => $jwtUser['user_id'],
-                'previousOffers' => $previousOffers,
-                'activeSub' => $activeSub,
-                'currentTime' => date('Y-m-d H:i:s')
-            ]));
-
             if ($activeSub && $activeSub['plan_type'] === 'quantity') {
                 $newCount = (int) $activeSub['usage_count'] + 1;
                 $update = ['usage_count' => $newCount];
                 if ($newCount >= (int) $activeSub['limit_value']) {
                     $update['is_active'] = 0;
                 }
-                $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
-                log_message('error', 'Subscription deducted: user_id=' . $jwtUser['user_id'] . ', newCount=' . $newCount);
+                $result = $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
+                log_message('error', 'Subscription update result: ' . $result . ', newCount=' . $newCount);
             }
         }
 
