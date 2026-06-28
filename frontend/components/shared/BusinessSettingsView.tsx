@@ -286,9 +286,9 @@ export default function BusinessSettingsView() {
   };
 
   const toggleCharge = async (charge: PlatformCharge) => {
-    const res = await api.post(`/superadmin/update-charge/${charge.id}`, { ...charge, is_active: charge.is_active ? 0 : 1 });
+    const res = await api.post(`/superadmin/update-charge/${charge.id}`, { is_active: charge.is_active ? 0 : 1 });
     if (res.success) loadCharges();
-    else showToast.error('Failed to toggle');
+    else showToast.error(res.message || 'Failed to toggle');
   };
 
   // App Messages
