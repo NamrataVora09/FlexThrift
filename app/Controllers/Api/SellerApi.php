@@ -1395,10 +1395,10 @@ class SellerApi extends BaseApiController
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
         $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
 
-        // Set product edit_request to pending so admins/superadmin see it in review queue
+        // Set product edit_request to pending (1) so admins/superadmin see it in review queue
         // Also clear admin_remarks and ensure status is approved (not pending) so it doesn't appear in new uploads
         $updateData = [
-            'edit_request' => 'pending',
+            'edit_request' => 1,
             'admin_remarks' => null,
             'status' => 'approved',
             'updated_at' => date('Y-m-d H:i:s'),
@@ -1701,10 +1701,10 @@ class SellerApi extends BaseApiController
                 ]);
             }
 
-            // Set product edit_request to pending so superadmin sees it in review queue
+            // Set product edit_request to pending (1) so superadmin sees it in review queue
             // Also clear admin_remarks and ensure status is approved
             $updateData = [
-                'edit_request' => 'pending',
+                'edit_request' => 1,
                 'admin_remarks' => null,
                 'status' => 'approved',
                 'updated_at' => date('Y-m-d H:i:s'),
@@ -1765,8 +1765,8 @@ class SellerApi extends BaseApiController
                 $updateData['previous_data'] = json_encode($snapshot);
             }
 
-            // Set edit_request to pending
-            $updateData['edit_request'] = 'pending';
+            // Set edit_request to pending (1)
+            $updateData['edit_request'] = 1;
             // Clear admin_remarks when submitting new edit
             $updateData['admin_remarks'] = null;
             // Reset status to approved if it was rejected_changes from old logic

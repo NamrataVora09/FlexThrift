@@ -1597,7 +1597,7 @@ class SuperAdminApi extends BaseApiController
                         }
                     }
                     $updateData['status'] = 'approved';
-                    $updateData['edit_request'] = 'rejected';
+                    $updateData['edit_request'] = 0;
                     $updateData['pending_reason'] = null;
                     $updateData['previous_data'] = null;
                     $updateData['admin_remarks'] = $remarks;
@@ -1607,7 +1607,7 @@ class SuperAdminApi extends BaseApiController
                     // If previous_data is invalid, just clear pending status
                     $db->table('products')->where('id', $id)->update([
                         'status' => 'approved',
-                        'edit_request' => 'rejected',
+                        'edit_request' => 0,
                         'pending_reason' => null,
                         'previous_data' => null,
                         'admin_remarks' => $remarks,
@@ -1618,7 +1618,7 @@ class SuperAdminApi extends BaseApiController
                 // No previous_data, just clear pending status
                 $db->table('products')->where('id', $id)->update([
                     'status' => 'approved',
-                    'edit_request' => 'rejected',
+                    'edit_request' => 0,
                     'pending_reason' => null,
                     'previous_data' => null,
                     'admin_remarks' => $remarks,
@@ -1648,7 +1648,7 @@ class SuperAdminApi extends BaseApiController
             // Restore product to its original approved state (it was set to pending when edit was submitted)
             $db->table('products')->where('id', $request['product_id'])->update([
                 'status' => 'approved',
-                'edit_request' => 'rejected',
+                'edit_request' => 0,
                 'pending_reason' => null,
                 'previous_data' => null,
                 'admin_remarks' => $remarks,

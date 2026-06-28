@@ -407,10 +407,10 @@ class AdminApi extends BaseApiController
         // Merge edit data with current product data (edit data takes precedence for changed fields)
         $mergedData = array_merge($currentProduct, $editData);
         
-        // Force status back to approvedAfter merging edit
+        // Force status back to approved after merging edit
         $mergedData['status'] = 'approved';
         $mergedData['updated_at'] = date('Y-m-d H:i:s');
-        $mergedData['edit_request'] = null;
+        $mergedData['edit_request'] = 0;
         
         // Remove fields that shouldn't be updated
         unset($mergedData['id'], $mergedData['created_at']);
@@ -501,7 +501,7 @@ class AdminApi extends BaseApiController
                         }
                     }
                     $updateData['status'] = 'approved';
-                    $updateData['edit_request'] = 'rejected';
+                    $updateData['edit_request'] = 0;
                     $updateData['pending_reason'] = null;
                     $updateData['previous_data'] = null;
                     $updateData['admin_remarks'] = $remarks;
@@ -511,7 +511,7 @@ class AdminApi extends BaseApiController
                     // If previous_data is invalid, just clear pending status
                     $db->table('products')->where('id', $id)->update([
                         'status' => 'approved',
-                        'edit_request' => 'rejected',
+                        'edit_request' => 0,
                         'pending_reason' => null,
                         'previous_data' => null,
                         'admin_remarks' => $remarks,
@@ -522,7 +522,7 @@ class AdminApi extends BaseApiController
                 // No previous_data, just clear pending status
                 $db->table('products')->where('id', $id)->update([
                     'status' => 'approved',
-                    'edit_request' => 'rejected',
+                    'edit_request' => 0,
                     'pending_reason' => null,
                     'previous_data' => null,
                     'admin_remarks' => $remarks,
@@ -551,7 +551,7 @@ class AdminApi extends BaseApiController
             // Restore product to its original approved state (it was set to pending when edit was submitted)
             $db->table('products')->where('id', $request['product_id'])->update([
                 'status' => 'approved',
-                'edit_request' => 'rejected',
+                'edit_request' => 0,
                 'pending_reason' => null,
                 'previous_data' => null,
                 'admin_remarks' => $remarks,
