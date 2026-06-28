@@ -1403,7 +1403,9 @@ class SellerApi extends BaseApiController
             'status' => 'approved',
             'updated_at' => date('Y-m-d H:i:s'),
         ];
+        log_message('info', 'editProduct updating product_id: ' . $id . ' with data: ' . json_encode($updateData));
         $db->table('products')->where('id', $id)->update($updateData);
+        log_message('info', 'editProduct update completed for product_id: ' . $id);
 
         // Notify all admins and super_admins about the pending edit request
         $admins = $db->table('users')
