@@ -59,8 +59,12 @@ export default function FeeManagementClient() {
 
 
   const toggleActive = async (c: Charge) => {
-    await api.post(`/superadmin/update-charge/${c.id}`, { is_active: Number(c.is_active) ? 0 : 1 });
-    load();
+    const res = await api.post(`/superadmin/update-charge/${c.id}`, { is_active: Number(c.is_active) ? 0 : 1 });
+    if (res.success) {
+      load();
+    } else {
+      toast.error(res.message || 'Failed to toggle status');
+    }
   };
 
   const isPercentage = (c: Charge) => c.charge_type === 'percentage';
