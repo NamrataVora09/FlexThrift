@@ -98,7 +98,6 @@ class SharedApi extends BaseApiController
             'status' => 'approved',
             'admin_remarks' => $remarks,
             'pending_reason' => null,
-            'previous_data' => null,
             'edit_request' => null,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
@@ -139,7 +138,6 @@ class SharedApi extends BaseApiController
         $db->table('products')->where('id', $id)->update([
             'status' => 'rejected',
             'pending_reason' => null,
-            'previous_data' => null,
             'edit_request' => null,
             'admin_remarks' => $remarks,
         ]);
