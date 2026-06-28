@@ -2767,6 +2767,13 @@ private function processImage($source, $subDir): ?string
                         $lts = $db->table('listing_types')->whereIn('LOWER(type_name)', array_map('strtolower', $names))->get()->getResultArray();
                         $ltIds = array_column($lts, 'id');
                     }
+                    
+                    // Validation: If listing type was provided but not found, skip this row
+                    if (empty($ltIds)) {
+                        $skipped++;
+                        $errors[] = "Row {$row}: Listing type '{$ltInput}' not found. Please check the spelling.";
+                        continue;
+                    }
                 }
                 
                 $rec['listing_type_ids'] = json_encode(array_map('intval', $ltIds));
