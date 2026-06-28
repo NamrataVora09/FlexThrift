@@ -2635,6 +2635,23 @@ class SuperAdminApi extends BaseApiController
 
                         $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
                         
+                        // Validate applies_to gender values against existing genders
+                        if (!empty($appliesTo) && is_array($appliesTo)) {
+                            $allGenders = $db->table('genders')->select('LOWER(name) as name')->get()->getResultArray();
+                            $validGenderNames = array_map('strtolower', array_column($allGenders, 'name'));
+                            $invalidGenders = [];
+                            foreach ($appliesTo as $gender) {
+                                if (!in_array(strtolower($gender), $validGenderNames)) {
+                                    $invalidGenders[] = $gender;
+                                }
+                            }
+                            if (!empty($invalidGenders)) {
+                                $skipped++;
+                                $errors[] = "Row {$row}: Invalid gender(s) in applies_to: " . implode(', ', $invalidGenders) . ". Valid genders are: " . implode(', ', array_map('ucfirst', $validGenderNames));
+                                continue 2;
+                            }
+                        }
+                        
                         // Parse field_config/attributes if provided
                         $fieldConfig = [];
                         $hasAttributes = false;
@@ -2704,6 +2721,23 @@ class SuperAdminApi extends BaseApiController
                         }
 
                         $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
+                        
+                        // Validate applies_to gender values against existing genders
+                        if (!empty($appliesTo) && is_array($appliesTo)) {
+                            $allGenders = $db->table('genders')->select('LOWER(name) as name')->get()->getResultArray();
+                            $validGenderNames = array_map('strtolower', array_column($allGenders, 'name'));
+                            $invalidGenders = [];
+                            foreach ($appliesTo as $gender) {
+                                if (!in_array(strtolower($gender), $validGenderNames)) {
+                                    $invalidGenders[] = $gender;
+                                }
+                            }
+                            if (!empty($invalidGenders)) {
+                                $skipped++;
+                                $errors[] = "Row {$row}: Invalid gender(s) in applies_to: " . implode(', ', $invalidGenders) . ". Valid genders are: " . implode(', ', array_map('ucfirst', $validGenderNames));
+                                continue 2;
+                            }
+                        }
                         
                         // Parse field_config/attributes if provided
                         $fieldConfig = [];
