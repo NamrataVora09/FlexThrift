@@ -3454,6 +3454,12 @@ private function processImage($source, $subDir): ?string
         }
 
         $db = \Config\Database::connect();
+        
+        // Check if seo_settings table exists
+        if (!$db->tableExists('seo_settings')) {
+            return $this->respond(['success' => true, 'data' => []]);
+        }
+        
         $seoModel = new \App\Models\SeoSettingModel();
         
         // Check if cms_pages table exists
