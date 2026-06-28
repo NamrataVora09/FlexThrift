@@ -262,7 +262,7 @@ export default function BusinessSettingsView() {
   }, []);
 
   const openChargeModal = (charge?: PlatformCharge) => {
-    setEditingCharge(charge ? { ...charge } : { charge_name: '', charge_type: 'percentage', charge_value: '', is_active: 1 });
+    setEditingCharge(charge ? { ...charge } : { charge_name: '', charge_type: 'percentage', charge_value: '', is_active: 0 });
     setChargeModal(true);
   };
 
@@ -608,11 +608,11 @@ export default function BusinessSettingsView() {
                         </td>
                         <td>
                           <button
-                            className={`badge border-0 bg-${charge.is_active ? 'success' : 'danger'}-subtle text-${charge.is_active ? 'success' : 'danger'} border border-${charge.is_active ? 'success' : 'danger'}`}
+                            className={`badge border-0 bg-${charge.is_active == 1 ? 'success' : 'danger'}-subtle text-${charge.is_active == 1 ? 'success' : 'danger'} border border-${charge.is_active == 1 ? 'success' : 'danger'}`}
                             style={{ cursor: 'pointer', fontSize: '0.72rem', padding: '5px 10px' }}
                             onClick={() => toggleCharge(charge)}
                           >
-                            {charge.is_active ? 'Active' : 'Inactive'}
+                            {charge.is_active == 1 ? 'Active' : 'Inactive'}
                           </button>
                         </td>
                         <td className="text-end">
@@ -666,10 +666,10 @@ export default function BusinessSettingsView() {
                           onChange={e => setEditingCharge(p => ({ ...p!, charge_value: e.target.value }))} />
                       </div>
                       <div className="form-check form-switch">
-                        <input className="form-check-input" type="checkbox" checked={!!editingCharge.is_active}
+                        <input className="form-check-input" type="checkbox" checked={editingCharge.is_active == 1}
                           onChange={e => setEditingCharge(p => ({ ...p!, is_active: e.target.checked ? 1 : 0 }))}
                           style={{ width: 40, height: 22 }} />
-                        <label className="form-check-label small fw-semibold ms-2">Active</label>
+                        <label className="form-check-label small fw-semibold ms-2">{ editingCharge.is_active == 1 ? 'Active' : 'Inactive'}</label>
                       </div>
                     </div>
                     <div className="modal-footer border-0">
