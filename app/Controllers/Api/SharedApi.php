@@ -887,6 +887,17 @@ class SharedApi extends BaseApiController
     {
         $data = $this->request->getJSON(true);
         $db = \Config\Database::connect();
+        
+        // Handle expiry date - if only date is provided, set it to end of that day
+        $expiresAt = null;
+        if (!empty($data['valid_until'])) {
+            $expiresAt = $data['valid_until'];
+            // If it's just a date (YYYY-MM-DD), append 23:59:59 to make it end of day
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiresAt)) {
+                $expiresAt .= ' 23:59:59';
+            }
+        }
+        
         $db->table('coupons')->insert([
             'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
@@ -894,7 +905,7 @@ class SharedApi extends BaseApiController
             'min_purchase' => $data['min_order_amount'] ?? 0,
             'max_discount' => ($data['max_discount'] ?? null) ?: null,
             'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
-            'expires_at' => $data['valid_until'] ?? null,
+            'expires_at' => $expiresAt,
             'is_active' => 1,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -905,6 +916,17 @@ class SharedApi extends BaseApiController
     {
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
         $db = \Config\Database::connect();
+        
+        // Handle expiry date - if only date is provided, set it to end of that day
+        $expiresAt = null;
+        if (!empty($data['valid_until'])) {
+            $expiresAt = $data['valid_until'];
+            // If it's just a date (YYYY-MM-DD), append 23:59:59 to make it end of day
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiresAt)) {
+                $expiresAt .= ' 23:59:59';
+            }
+        }
+        
         $db->table('coupons')->where('id', $id)->update([
             'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
@@ -912,7 +934,7 @@ class SharedApi extends BaseApiController
             'min_purchase' => $data['min_order_amount'] ?? 0,
             'max_discount' => ($data['max_discount'] ?? null) ?: null,
             'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
-            'expires_at' => ($data['valid_until'] ?? null) ?: null,
+            'expires_at' => $expiresAt,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
         return $this->respond(['success' => true, 'message' => 'Coupon updated']);
