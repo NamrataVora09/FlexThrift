@@ -460,7 +460,7 @@ class SuperAdminApi extends BaseApiController
             'delivery' => $db->table('users')->where('user_type', 'delivery')->countAllResults(),
             'admins' => $db->table('users')->where('role', 'admin')->countAllResults(),
             'total_products' => $db->table('products')->countAllResults(),
-            'pending_products' => $db->table('products')->where('status', 'pending')->countAllResults(),
+            'pending_products' => $db->table('products')->groupStart()->where('status', 'pending')->orWhere('edit_request', 'pending')->groupEnd()->countAllResults(),
             'approved_products' => $db->table('products')->where('status', 'approved')->countAllResults(),
             'total_offers' => $db->table('offers')->countAllResults(),
             'pending_offers' => $db->table('offers')->where('status', 'pending')->countAllResults(),
@@ -2306,7 +2306,10 @@ class SuperAdminApi extends BaseApiController
             ->select('p.*, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.type_name as listing_category_name, lt.usage_label, p.listing_type')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
-            ->where('p.status', 'pending')
+            ->groupStart()
+                ->where('p.status', 'pending')
+                ->orWhere('p.edit_request', 'pending')
+            ->groupEnd()
             ->orderBy('p.created_at', 'ASC')
             ->get()->getResultArray();
 

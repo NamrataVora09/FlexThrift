@@ -140,6 +140,7 @@ class SharedApi extends BaseApiController
             'status' => 'rejected',
             'pending_reason' => null,
             'previous_data' => null,
+            'edit_request' => null,
             'admin_remarks' => $remarks,
         ]);
 
