@@ -459,6 +459,29 @@ class SellerApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Failed to create product'], 500);
         }
 
+        // Deduct from quantity-based seller subscription (only on product creation, not editing)
+        if ($jwtUser['role'] !== 'super_admin') {
+            $activeSub = $db->table('user_subscriptions us')
+                ->join('subscription_plans sp', 'sp.id = us.plan_id')
+                ->where('us.user_id', $userId)
+                ->where('us.is_active', 1)
+                ->where('us.starts_at <=', date('Y-m-d H:i:s'))
+                ->where('us.expires_at >=', date('Y-m-d H:i:s'))
+                ->where('sp.user_type', 'seller')
+                ->where('sp.plan_type', 'quantity')
+                ->get()->getRowArray();
+            
+            if ($activeSub) {
+                $newCount = (int) $activeSub['usage_count'] + 1;
+                $update = ['usage_count' => $newCount];
+                // Auto-deactivate when all product uploads are exhausted
+                if ($newCount >= (int) $activeSub['limit_value']) {
+                    $update['is_active'] = 0;
+                }
+                $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
+            }
+        }
+
         // Handle image uploads
         $allFiles = $this->request->getFiles();
         // Support both 'product_images' (mobile payload key) and legacy 'images' key
