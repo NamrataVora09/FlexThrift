@@ -499,7 +499,22 @@ export default function TaxonomyView() {
         {/* 4. Categories */}
         <div className="card mb-4"><SectionHeader icon="bi bi-grid" title="Categories" />
           <div className="card-body">
-            <form className="row g-3 mb-3" onSubmit={(e) => { e.preventDefault(); submitForm('/superadmin/add-category', new FormData(e.currentTarget)); e.currentTarget.reset(); }}>
+            <form className="row g-3 mb-3" onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              const productTypes = fd.getAll('product_type_ids[]');
+              const appliesTo = fd.getAll('applies_to[]');
+              if (!productTypes || productTypes.length === 0) {
+                toastError('validation_error', 'At least one Product Type is required');
+                return;
+              }
+              if (!appliesTo || appliesTo.length === 0) {
+                toastError('validation_error', 'At least one Gender (Applies To) is required');
+                return;
+              }
+              submitForm('/superadmin/add-category', fd);
+              e.currentTarget.reset();
+            }}>
               <div className="col-md-4"><label className="small text-muted mb-1 d-block">Select Product Types (Multiple)</label><div className="form-control" style={{ ...inputStyle, height: 100, overflowY: 'auto' }}>{product_types.map((pt) => (<div className="form-check" key={pt.id}><input className="form-check-input" type="checkbox" name="product_type_ids[]" value={pt.id} /><label className="form-check-label small">{pt.name}</label></div>))}</div></div>
               <div className="col-md-3 mt-auto"><input name="category_name" className="form-control" style={inputStyle} placeholder="Category Name" required /></div>
               <div className="col-md-3"><label className="small text-muted mb-1 d-block">Applies To</label><div className="form-control" style={{ ...inputStyle, height: 100, overflowY: 'auto' }}>{genders.map((g) => (<div className="form-check" key={g.id}><input className="form-check-input" type="checkbox" name="applies_to[]" value={g.name} /><label className="form-check-label small">{g.name}</label></div>))}</div></div>
@@ -520,7 +535,22 @@ export default function TaxonomyView() {
         {/* 5. Sub-Categories */}
         <div className="card mb-4"><SectionHeader icon="bi bi-list-nested" title="Sub-Categories" />
           <div className="card-body">
-            <form className="row g-3 mb-3" onSubmit={(e) => { e.preventDefault(); submitForm('/superadmin/add-sub-category', new FormData(e.currentTarget)); e.currentTarget.reset(); }}>
+            <form className="row g-3 mb-3" onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              const categories = fd.getAll('category_ids[]');
+              const appliesTo = fd.getAll('applies_to[]');
+              if (!categories || categories.length === 0) {
+                toastError('validation_error', 'At least one Category is required');
+                return;
+              }
+              if (!appliesTo || appliesTo.length === 0) {
+                toastError('validation_error', 'At least one Gender (Applies To) is required');
+                return;
+              }
+              submitForm('/superadmin/add-sub-category', fd);
+              e.currentTarget.reset();
+            }}>
               <div className="col-md-4"><label className="small text-muted mb-1 d-block">Select Categories (Multiple)</label><div className="form-control" style={{ ...inputStyle, height: 100, overflowY: 'auto' }}>{categories.map((c) => (<div className="form-check" key={c.id}><input className="form-check-input" type="checkbox" name="category_ids[]" value={c.id} /><label className="form-check-label small">{c.category_name || c.name}</label></div>))}</div></div>
               <div className="col-md-3 mt-auto"><input name="name" className="form-control" style={inputStyle} placeholder="Sub-Category Name" required /></div>
               <div className="col-md-3"><label className="small text-muted mb-1 d-block">Applies To</label><div className="form-control" style={{ ...inputStyle, height: 100, overflowY: 'auto' }}>{genders.map((g) => (<div className="form-check" key={g.id}><input className="form-check-input" type="checkbox" name="applies_to[]" value={g.name} /><label className="form-check-label small">{g.name}</label></div>))}</div></div>
