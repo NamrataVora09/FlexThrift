@@ -96,9 +96,8 @@ class SellerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         $products = $db->table('products p')
-            ->select('p.id, p.seller_id, p.title, p.product_number, p.listing_type, p.listing_type_category, p.category, p.description, p.original_price, p.price, p.rental_cost, p.rental_deposit, p.dispatch_city, p.dispatch_state, p.views_count, p.is_featured, p.admin_remarks, p.pending_reason, p.edit_request, p.created_at, p.updated_at, p.status AS status, per.status AS edit_status, per.admin_remarks AS edit_remarks, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as image, lt.usage_label')
+            ->select('p.id, p.seller_id, p.title, p.product_number, p.listing_type, p.listing_type_category, p.category, p.description, p.original_price, p.price, p.rental_cost, p.rental_deposit, p.dispatch_city, p.dispatch_state, p.views_count, p.is_featured, p.admin_remarks, p.pending_reason, p.edit_request, p.created_at, p.updated_at, p.status AS status, (SELECT per.status FROM product_edit_requests per WHERE per.product_id = p.id ORDER BY per.created_at DESC LIMIT 1) AS edit_status, (SELECT per.admin_remarks FROM product_edit_requests per WHERE per.product_id = p.id ORDER BY per.created_at DESC LIMIT 1) AS edit_remarks, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as image, lt.usage_label')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
-            ->join('product_edit_requests per', 'per.product_id = p.id AND (per.status = "pending" OR per.status = "rejected")', 'left')
             ->where('p.seller_id', $jwtUser['user_id'])
             ->orderBy('p.created_at', 'DESC')
             ->get()->getResultArray();
