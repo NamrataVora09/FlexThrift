@@ -210,11 +210,11 @@ export default function TaxonomyView() {
 
   const downloadTemplate = () => {
     const templates: Record<string, string> = {
-      listing_types: 'name,gender_config,image\nClothing,mandatory,uploads/listing-types/clothing.jpg\nElectronics,hidden,',
+      listing_types: 'name,gender_config,usage_label,attributes,image\nClothing,mandatory,Months Used,"[{\\"name\\":\\"Sleeves\\",\\"type\\":\\"picklist\\",\\"options\\":\\"Full,Half,Short\\"}]",uploads/listing-types/clothing.jpg\nElectronics,hidden,Times Used,,',
       genders: 'name\nMale\nFemale\nUnisex\nKids',
       product_types: 'name,listing_type\nShirts,Clothing\nPants,Clothing',
-      categories: 'category_name,product_types,applies_to\nCasual Wear,"Shirts,Pants","[""Male"",""Female""]"',
-      sub_categories: 'name,categories,applies_to\nT-Shirts,Casual Wear,"[""Male"",""Unisex""]"',
+      categories: 'category_name,product_types,applies_to,attributes\nCasual Wear,"Shirts,Pants","[""Male"",""Female""]","[{\\"name\\":\\"Season\\",\\"type\\":\\"picklist\\",\\"options\\":\\"Summer,Winter\\"}]"',
+      sub_categories: 'name,categories,applies_to,attributes\nT-Shirts,Casual Wear,"[""Male"",""Unisex""]","[{\\"name\\":\\"Fit\\",\\"type\\":\\"picklist\\",\\"options\\":\\"Slim,Regular\\"}]"',
       colors: 'name,hex_code\nCrimson,#dc143c\nNavy Blue,#000080\nForest Green,#228b22',
     };
     const csv = templates[csvType] || '';
@@ -411,14 +411,14 @@ export default function TaxonomyView() {
               <strong>CSV Format Guide:</strong>
               <div className="row mt-2">
                 <div className="col-md-6">
-                  <div><strong>Listing Types:</strong> name, gender_config (mandatory/optional/hidden), image (path/URL)</div>
+                  <div><strong>Listing Types:</strong> name, gender_config (mandatory/optional/hidden), usage_label, attributes (JSON array), image (path/URL)</div>
                   <div><strong>Genders:</strong> name</div>
                   <div><strong>Product Types:</strong> name, listing_type (Name)</div>
                 </div>
                 <div className="col-md-6">
-                  <div><strong>Categories:</strong> category_name, product_types (Names, comma separated), applies_to (JSON array)</div>
-                  <div><strong>Sub-Categories:</strong> name, categories (Names, comma separated), applies_to (JSON array)</div>
-                  <div><strong>Colors:</strong> name, hex_code</div>
+                  <div><strong>Categories:</strong> category_name, product_types (Names, comma separated), applies_to (JSON array), attributes (JSON array)</div>
+                  <div><strong>Sub-Categories:</strong> name, categories (Names, comma separated), applies_to (JSON array), attributes (JSON array)</div>
+                  <div><strong>Colors:</strong> name, hex_code (e.g., #FFF or #FFFFFF)</div>
                 </div>
               </div>
             </div>
