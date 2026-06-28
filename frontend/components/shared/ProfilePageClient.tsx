@@ -636,7 +636,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
 
                   <div className="d-flex gap-2 mt-4">
                     <button className="btn-save" onClick={handleSave} disabled={saving}>
-                      {saving ? 'Saving…' : 'Save Changes'}
+                      {saving ? 'Saving…' : 'Save'}
                     </button>
                     <button className="btn-cancel" onClick={() => setModalOpen(false)}>Cancel</button>
                   </div>

@@ -1381,7 +1381,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
         <div className="modal-footer border-0 p-4 pt-0">
           <button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button>
           <button className="btn" style={btnGold} disabled={saving} onClick={() => { setHeroSlides(editTemp); saveContent({ hero_slides: JSON.stringify(editTemp) }); }}>
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </Modal>

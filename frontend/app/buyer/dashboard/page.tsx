@@ -299,7 +299,7 @@ export default function BuyerDashboardPage() {
           </div>
         ) : (
           <>
-            <div className="mb-4">
+            <div className="mb-4 px-10">
               <AdBanner position="top_banner" page="portal_buyer_dashboard" />
             </div>
             {/* Welcome */}

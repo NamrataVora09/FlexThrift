@@ -618,7 +618,7 @@ export default function TaxonomyView() {
           </div>
           <AttributeEditor attributes={editForm.attributes || []} onChange={(attrs) => setEditForm({ ...editForm, attributes: attrs })} />
         </div>
-        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save Changes</button></div>
+        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save</button></div>
       </EditModal>
 
       {/* Edit Gender */}
@@ -626,7 +626,7 @@ export default function TaxonomyView() {
         <div className="modal-body p-4">
           <div className="mb-3"><label style={modalLabelStyle}>Gender Name</label><input className="form-control" style={modalInputStyle} value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
         </div>
-        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save Changes</button></div>
+        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save</button></div>
       </EditModal>
 
       {/* Edit Product Type */}
@@ -639,7 +639,7 @@ export default function TaxonomyView() {
             </select>
           </div>
         </div>
-        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save Changes</button></div>
+        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save</button></div>
       </EditModal>
 
       {/* Edit Category */}
@@ -650,7 +650,7 @@ export default function TaxonomyView() {
           <CheckboxGroup label="Applies To" items={genders.map((g) => ({ id: g.name as any, name: g.name }))} selected={editForm.applies_to || []} onChange={(v) => setEditForm({ ...editForm, applies_to: v })} />
           <AttributeEditor attributes={editForm.attributes || []} onChange={(attrs) => setEditForm({ ...editForm, attributes: attrs })} />
         </div>
-        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save Changes</button></div>
+        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save</button></div>
       </EditModal>
 
       {/* Edit Sub-Category */}
@@ -661,7 +661,7 @@ export default function TaxonomyView() {
           <CheckboxGroup label="Applies To" items={genders.map((g) => ({ id: g.name as any, name: g.name }))} selected={editForm.applies_to || []} onChange={(v) => setEditForm({ ...editForm, applies_to: v })} />
           <AttributeEditor attributes={editForm.attributes || []} onChange={(attrs) => setEditForm({ ...editForm, attributes: attrs })} />
         </div>
-        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save Changes</button></div>
+        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save</button></div>
       </EditModal>
 
       {/* Edit Color */}
@@ -670,7 +670,7 @@ export default function TaxonomyView() {
           <div className="mb-3"><label style={modalLabelStyle}>Color Name</label><input className="form-control" style={modalInputStyle} value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
           <div className="mb-3"><label style={modalLabelStyle}>Color Picker</label><input type="color" className="form-control form-control-color" style={{ width: '100%', height: 45 }} value={editForm.hex_code || '#000000'} onChange={(e) => setEditForm({ ...editForm, hex_code: e.target.value })} /></div>
         </div>
-        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save Changes</button></div>
+        <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save</button></div>
       </EditModal>
     </DashboardLayout>
   );

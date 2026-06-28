@@ -265,7 +265,7 @@ export default function CmsPagesView() {
               <div className="modal-footer border-0 p-4 pt-0">
                 <button className="btn btn-light" onClick={() => setEditing(null)}>Cancel</button>
                 <button className="btn sa-filter-btn" style={btnGold} onClick={handleSave} disabled={saving}>
-                  {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : <><i className="bi bi-check-circle me-2"></i>Save Changes</>}
+                  {saving ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : <><i className="bi bi-check-circle me-2"></i>Save</>}
                 </button>
               </div>
             </div>

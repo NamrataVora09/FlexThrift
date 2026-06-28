@@ -389,7 +389,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
     }
   };
 
-  const getImageUrl = (path: string) => {
+  const getImageUrl = (path: string | undefined | null) => {
+    if (!path) return `${BASE_URL}/uploads/products/default.jpg`;
     if (path.startsWith('http')) return path;
     if (path.startsWith('uploads/')) return `${BASE_URL}/${path}`;
     return `${BASE_URL}/uploads/products/${path}`;
@@ -457,8 +458,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
       {/* Landing Navbar */}
       {!isPreview && <LandingNavbar showAuth />}
 
-      {/* Breadcrumb */}
-      <div className=' xl:px-28 px-8 py-4'>
+     <div className="xl:px-28 px-8 mb-4">
+
+       {/* Breadcrumb */}
+      <div className='  py-4'>
         <nav style={{ display: 'flex', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', flexWrap: 'wrap' }}>
           <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none', textTransform: 'capitalize' }}>Home</Link>
           {product.listing_type && (
@@ -481,7 +484,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
       </div>
 
       {/* Top Banner Ad */}
-      <div className="xl:px-28 px-8 mb-4">
+      <div >
         <AdBanner position="top_banner" page="product_detail" />
       </div>
 
@@ -1328,6 +1331,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
       <div className="xl:px-28 px-8 my-10">
         <AdBanner position="footer" page="product_detail" />
       </div>
+     </div>
 
       {<Footer />}
     </div>

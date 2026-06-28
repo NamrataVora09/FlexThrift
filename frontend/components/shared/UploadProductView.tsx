@@ -1363,7 +1363,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 ) : success ? (
                   <><i className="bi bi-check-circle me-2"></i>{isEditMode ? 'Updated!' : 'Uploaded!'}</>
                 ) : (
-                  <><i className="bi bi-cloud-upload me-2"></i>{isEditMode ? 'Save Changes' : 'Upload Product'}</>
+                  <><i className="bi bi-cloud-upload me-2"></i>{isEditMode ? 'Save' : 'Upload Product'}</>
                 )}
               </button>
             </div>

@@ -642,7 +642,7 @@ export default function BrandsClient() {
                 <div className="modal-footer border-0 p-4 pt-0" style={{ background: '#f8f9fa' }}>
                   <button type="button" className="btn btn-light px-4" onClick={() => setShowEdit(null)}>Cancel</button>
                   <button type="submit" className="btn sa-filter-btn px-4 fw-bold" style={btnGold} disabled={submitting}>
-                    {submitting ? 'Saving...' : 'Save Changes'}
+                    {submitting ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </form>

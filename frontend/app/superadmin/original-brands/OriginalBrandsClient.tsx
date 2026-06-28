@@ -619,7 +619,7 @@ export default function OriginalBrandsClient() {
                 <div className="modal-footer border-0 px-4 pb-4">
                   <button type="button" className="btn btn-light" onClick={() => setShowEdit(null)}>Cancel</button>
                   <button type="submit" className="btn sa-filter-btn px-4" style={btnGold} disabled={submitting || editLtIds.length === 0}>
-                    {submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : 'Save Changes'}
+                    {submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : 'Save'}
                   </button>
                 </div>
               </form>
