@@ -469,15 +469,6 @@ export default function BusinessSettingsView() {
     const field = FIELD_MAP[key] || { label: key };
     let val = (config[key] !== undefined && config[key] !== null) ? config[key] : '';
 
-    // Fallbacks & Defaults for Referral
-    if (val === '') {
-      if (key === 'referral_referrer_reward') val = config['referral_reward_amount'] || '50';
-      else if (key === 'referral_receiver_reward') val = '50';
-      else if (key === 'referral_max_discount_percent') val = '50';
-      else if (key === 'referral_expiry_days') val = '7';
-      else if (key === 'referral_enabled') val = '1';
-    }
-
     if (field.type === 'textarea') return (
       <div className="col-md-12 mb-3" key={key}>
         <label className="form-label" style={labelStyle}>{field.label}</label>

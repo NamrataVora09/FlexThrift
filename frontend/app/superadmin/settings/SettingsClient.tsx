@@ -143,28 +143,28 @@ export default function SettingsClient() {
             <div className="row g-3">
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Commission Rate (%)</label>
-                <input type="number" step="0.1" min="0" max="100" className="form-control" style={inputStyle} value={settings.commission_rate || '10'} onChange={(e) => update('commission_rate', e.target.value)} />
+                <input type="number" step="0.1" min="0" max="100" className="form-control" style={inputStyle} value={settings.commission_rate !== undefined ? settings.commission_rate : ''} onChange={(e) => update('commission_rate', e.target.value)} />
                 <small className="text-muted">Platform fee on each transaction</small>
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Default Delivery Charge (₹)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.default_delivery_charge || settings.delivery_charge || '50'} onChange={(e) => update('default_delivery_charge', e.target.value)} />
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.default_delivery_charge !== undefined ? settings.default_delivery_charge : (settings.delivery_charge !== undefined ? settings.delivery_charge : '')} onChange={(e) => update('default_delivery_charge', e.target.value)} />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Minimum Order Value (₹)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.min_order_value || '100'} onChange={(e) => update('min_order_value', e.target.value)} />
+                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.min_order_value !== undefined ? settings.min_order_value : ''} onChange={(e) => update('min_order_value', e.target.value)} />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Max Images per Product</label>
-                <input type="number" min="1" max="20" className="form-control" style={inputStyle} value={settings.max_images_per_product || '8'} onChange={(e) => update('max_images_per_product', e.target.value)} />
+                <input type="number" min="1" max="20" className="form-control" style={inputStyle} value={settings.max_images_per_product !== undefined ? settings.max_images_per_product : ''} onChange={(e) => update('max_images_per_product', e.target.value)} />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">OTP Expiry (minutes)</label>
-                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.otp_expiry_minutes || '10'} onChange={(e) => update('otp_expiry_minutes', e.target.value)} />
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.otp_expiry_minutes !== undefined ? settings.otp_expiry_minutes : ''} onChange={(e) => update('otp_expiry_minutes', e.target.value)} />
               </div>
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Blocked from Approvals (days)</label>
-                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.blocked_from_approvals_days || '30'} onChange={(e) => update('blocked_from_approvals_days', e.target.value)} />
+                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.blocked_from_approvals_days !== undefined ? settings.blocked_from_approvals_days : ''} onChange={(e) => update('blocked_from_approvals_days', e.target.value)} />
                 <small className="text-muted">Days a seller stays blocked from approvals after violations</small>
               </div>
               <div className="col-md-4">
@@ -176,10 +176,10 @@ export default function SettingsClient() {
                   step="1"
                   className="form-control"
                   style={inputStyle}
-                  value={settings.max_original_price || '1000000000'}
+                  value={settings.max_original_price !== undefined ? settings.max_original_price : ''}
                   onChange={(e) => {
-                    const val = Math.min(1000000000, Math.max(1, parseInt(e.target.value) || 1));
-                    update('max_original_price', String(val));
+                    const val = e.target.value === '' ? '' : String(Math.min(1000000000, Math.max(1, parseInt(e.target.value) || 1)));
+                    update('max_original_price', val);
                   }}
                 />
                 <small className="text-muted">
