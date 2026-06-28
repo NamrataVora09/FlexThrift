@@ -751,6 +751,13 @@ class SuperAdminApi extends BaseApiController
         $name = $this->request->getPost('name');
         $gender = $this->request->getPost('gender_config') ?? 'optional';
         if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        
+        // Check for duplicate
+        $exists = $db->table('listing_types')->where('type_name', $name)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Listing type with this name already exists.'], 400);
+        }
+        
         $usageLabel = $this->request->getPost('usage_label') ?? 'Times Used';
         $data = [
             'type_name' => $name,
@@ -775,6 +782,13 @@ class SuperAdminApi extends BaseApiController
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        
+        // Check for duplicate
+        $exists = $db->table('genders')->where('name', $name)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Gender with this name already exists.'], 400);
+        }
+        
         $db->table('genders')->insert(['name' => $name, 'created_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => 'Gender added.']);
     }
@@ -785,6 +799,13 @@ class SuperAdminApi extends BaseApiController
         $name = $this->request->getPost('name');
         $ltId = $this->request->getPost('listing_type_id');
         if (!$name || !$ltId) return $this->respond(['success' => false, 'message' => 'Name and listing type are required.'], 400);
+        
+        // Check for duplicate (same name within same listing type)
+        $exists = $db->table('product_types')->where('name', $name)->where('listing_type_id', $ltId)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Product type with this name already exists in this listing type.'], 400);
+        }
+        
         $db->table('product_types')->insert(['name' => $name, 'listing_type_id' => $ltId, 'created_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => 'Product type added.']);
     }
@@ -796,6 +817,13 @@ class SuperAdminApi extends BaseApiController
         $ptIds = $this->request->getPost('product_type_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
         if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        
+        // Check for duplicate
+        $exists = $db->table('categories')->where('category_name', $name)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Category with this name already exists.'], 400);
+        }
+        
         $db->table('categories')->insert([
             'category_name' => $name,
             'product_type_ids' => json_encode($ptIds),
@@ -812,6 +840,13 @@ class SuperAdminApi extends BaseApiController
         $catIds = $this->request->getPost('category_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
         if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        
+        // Check for duplicate
+        $exists = $db->table('sub_categories')->where('name', $name)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Sub-category with this name already exists.'], 400);
+        }
+        
         $db->table('sub_categories')->insert([
             'name' => $name,
             'category_ids' => json_encode($catIds),
@@ -827,6 +862,13 @@ class SuperAdminApi extends BaseApiController
         $name = $this->request->getPost('name');
         $hex = $this->request->getPost('hex_code');
         if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        
+        // Check for duplicate by name or hex code
+        $exists = $db->table('colors')->groupStart()->where('name', $name)->orWhere('hex_code', $hex ?? '#000000')->groupEnd()->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Color with this name or hex code already exists.'], 400);
+        }
+        
         $db->table('colors')->insert(['name' => $name, 'hex_code' => $hex ?? '#000000', 'created_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => 'Color added.']);
     }
@@ -840,6 +882,13 @@ class SuperAdminApi extends BaseApiController
         $config = ['gender' => $gender];
         if ($attrs) $config['attributes'] = json_decode($attrs, true) ?: [];
         $usageLabel = $this->request->getPost('usage_label') ?? 'Times Used';
+        
+        // Check for duplicate (excluding current record)
+        $exists = $db->table('listing_types')->where('type_name', $name)->where('id !=', $id)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Listing type with this name already exists.'], 400);
+        }
+        
         $data = ['type_name' => $name, 'usage_label' => $usageLabel, 'field_config' => json_encode($config)];
         $file = $this->request->getFile('image');
         if ($file && $file->isValid() && !$file->hasMoved()) {
@@ -856,16 +905,33 @@ class SuperAdminApi extends BaseApiController
     public function updateGender($id)
     {
         $db = \Config\Database::connect();
-        $db->table('genders')->where('id', $id)->update(['name' => $this->request->getPost('name')]);
+        $name = $this->request->getPost('name');
+        
+        // Check for duplicate (excluding current record)
+        $exists = $db->table('genders')->where('name', $name)->where('id !=', $id)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Gender with this name already exists.'], 400);
+        }
+        
+        $db->table('genders')->where('id', $id)->update(['name' => $name]);
         return $this->respond(['success' => true, 'message' => 'Gender updated.']);
     }
 
     public function updateProductType($id)
     {
         $db = \Config\Database::connect();
+        $name = $this->request->getPost('name');
+        $ltId = $this->request->getPost('listing_type_id');
+        
+        // Check for duplicate (same name within same listing type, excluding current record)
+        $exists = $db->table('product_types')->where('name', $name)->where('listing_type_id', $ltId)->where('id !=', $id)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Product type with this name already exists in this listing type.'], 400);
+        }
+        
         $db->table('product_types')->where('id', $id)->update([
-            'name' => $this->request->getPost('name'),
-            'listing_type_id' => $this->request->getPost('listing_type_id'),
+            'name' => $name,
+            'listing_type_id' => $ltId,
         ]);
         return $this->respond(['success' => true, 'message' => 'Product type updated.']);
     }
@@ -873,11 +939,19 @@ class SuperAdminApi extends BaseApiController
     public function updateCategory($id)
     {
         $db = \Config\Database::connect();
+        $name = $this->request->getPost('category_name');
         $ptIds = $this->request->getPost('product_type_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
         $attrs = $this->request->getPost('attributes');
+        
+        // Check for duplicate (excluding current record)
+        $exists = $db->table('categories')->where('category_name', $name)->where('id !=', $id)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Category with this name already exists.'], 400);
+        }
+        
         $data = [
-            'category_name' => $this->request->getPost('category_name'),
+            'category_name' => $name,
             'product_type_ids' => json_encode($ptIds),
             'product_type_id' => !empty($ptIds) ? $ptIds[0] : null,
             'applies_to' => json_encode($appliesTo),
@@ -892,11 +966,19 @@ class SuperAdminApi extends BaseApiController
     public function updateSubCategory($id)
     {
         $db = \Config\Database::connect();
+        $name = $this->request->getPost('name');
         $catIds = $this->request->getPost('category_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
         $attrs = $this->request->getPost('attributes');
+        
+        // Check for duplicate (excluding current record)
+        $exists = $db->table('sub_categories')->where('name', $name)->where('id !=', $id)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Sub-category with this name already exists.'], 400);
+        }
+        
         $data = [
-            'name' => $this->request->getPost('name'),
+            'name' => $name,
             'category_ids' => json_encode($catIds),
             'category_id' => !empty($catIds) ? $catIds[0] : null,
             'applies_to' => json_encode($appliesTo),
@@ -911,9 +993,18 @@ class SuperAdminApi extends BaseApiController
     public function updateColor($id)
     {
         $db = \Config\Database::connect();
+        $name = $this->request->getPost('name');
+        $hex = $this->request->getPost('hex_code');
+        
+        // Check for duplicate by name or hex code (excluding current record)
+        $exists = $db->table('colors')->groupStart()->where('name', $name)->orWhere('hex_code', $hex)->groupEnd()->where('id !=', $id)->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Color with this name or hex code already exists.'], 400);
+        }
+        
         $db->table('colors')->where('id', $id)->update([
-            'name' => $this->request->getPost('name'),
-            'hex_code' => $this->request->getPost('hex_code'),
+            'name' => $name,
+            'hex_code' => $hex,
         ]);
         return $this->respond(['success' => true, 'message' => 'Color updated.']);
     }
