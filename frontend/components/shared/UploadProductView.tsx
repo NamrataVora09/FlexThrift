@@ -265,7 +265,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       }
       try {
         const ids = JSON.parse(sc.category_ids || '[]');
-        return ids.includes(Number(f.category_id)) || ids.includes(f.category_id);
+        return ids.includes(Number(f.category_id)) || ids.includes(String(f.category_id));
       } catch { return false; }
     }));
     // Filter genders by category's applies_to
