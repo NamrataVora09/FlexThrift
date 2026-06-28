@@ -130,7 +130,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const prefix = type === 'product' ? 'uploads/products/' : 'uploads/bills/';
       cleanPath = prefix + cleanPath;
     }
-    return `http://localhost:8080/${cleanPath}`;
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/${cleanPath}`;
   };
 
   // Cascading options
