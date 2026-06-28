@@ -827,7 +827,7 @@ class AdminApi extends BaseApiController
         $discount = 0;
         if ($couponCode) {
             $cpn = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
-            if ($cpn && $basePrice >= (float)$cpn['min_order_amount'] && (!$cpn['valid_until'] || strtotime($cpn['valid_until']) >= time())) {
+            if ($cpn && $basePrice >= (float)$cpn['min_purchase'] && (!$cpn['expires_at'] || strtotime($cpn['expires_at']) >= time())) {
                 $discount = $cpn['discount_type'] === 'percentage' ? ($basePrice * $cpn['discount_value'] / 100) : (float)$cpn['discount_value'];
                 if ($cpn['max_discount'] && $discount > $cpn['max_discount']) $discount = $cpn['max_discount'];
             }
