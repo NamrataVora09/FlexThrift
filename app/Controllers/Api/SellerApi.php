@@ -286,6 +286,8 @@ class SellerApi extends BaseApiController
         $userId = $jwtUser['user_id'];
         $db = \Config\Database::connect();
 
+        log_message('info', 'uploadProduct called for user_id: ' . $userId);
+
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         if ($user && !empty($user['blocked_seller'])) {
             return $this->respond(['success' => false, 'message' => 'Your seller role has been blocked by the admin. You cannot upload products.'], 403);
@@ -1247,6 +1249,8 @@ class SellerApi extends BaseApiController
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
 
+        log_message('info', 'editProduct called for product_id: ' . $id . ' by user_id: ' . $jwtUser['user_id']);
+
         // Check if seller is blocked
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if ($currentUser && !empty($currentUser['blocked_seller'])) {
@@ -1430,6 +1434,8 @@ class SellerApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
+
+        log_message('info', 'updateProduct called for product_id: ' . $id . ' by user_id: ' . $jwtUser['user_id']);
 
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
         if (!$product)
