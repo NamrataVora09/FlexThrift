@@ -228,8 +228,8 @@ export default function CouponsView() {
                         value={form.usage_limit} onChange={(e) => setForm({ ...form, usage_limit: e.target.value })} />
                     </div>
                     <div className="col-6">
-                      <label style={modalLabel}>Expiry Date</label>
-                      <input type="date" className="form-control" style={inputStyle}
+                      <label style={modalLabel}>Expiry Date *</label>
+                      <input type="date" className="form-control" style={inputStyle} required
                         value={form.valid_until} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} />
                     </div>
                   </div>
