@@ -2520,7 +2520,16 @@ class SuperAdminApi extends BaseApiController
                     case 'listing_types':
                         $name = $data['name'] ?? $data['type_name'] ?? '';
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
-                        $gender = $data['gender_config'] ?? 'optional';
+                        $gender = strtolower(trim($data['gender_config'] ?? 'optional'));
+                        
+                        // Validate gender_config value
+                        $allowedGenderConfigs = ['optional', 'hidden', 'mandatory'];
+                        if (!in_array($gender, $allowedGenderConfigs)) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Invalid gender_config '{$gender}'. Must be one of: " . implode(', ', $allowedGenderConfigs);
+                            continue 2;
+                        }
+                        
                         $rec = ['type_name' => $name, 'field_config' => json_encode(['gender' => $gender]), 'created_at' => $now];
                         
                         $imageSource = $data['image'] ?? $data['image_path'] ?? '';
