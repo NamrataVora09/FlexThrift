@@ -21,7 +21,8 @@ interface Product {
 interface ProductImage { id: number; image_path: string; }
 interface DetailData { product: Product; images: ProductImage[]; }
 
-const BASE = 'http://localhost:8080';
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8080');
+
 
 export default function SAProductDetailClient() {
   const params = useParams();

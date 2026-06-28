@@ -64,7 +64,8 @@ interface Props { role: string; apiPath: string; showRatings?: boolean; }
 const btnApprove: React.CSSProperties = { background: '#ecfdf5', color: '#059669', border: '1px solid #10b981', fontWeight: 700 };
 const btnReject: React.CSSProperties = { background: '#fef2f2', color: '#dc2626', border: '1px solid #ef4444', fontWeight: 700 };
 const tagBadge: React.CSSProperties = { background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 500 };
-const BASE = 'http://localhost:8080';
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8080');
+
 
 const resolveUrl = (path: string) => {
   if (!path) return '';
