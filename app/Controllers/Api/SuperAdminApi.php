@@ -2560,8 +2560,7 @@ class SuperAdminApi extends BaseApiController
                         $rec = [
                             'type_name' => $name, 
                             'usage_label' => $usageLabel, 
-                            'field_config' => json_encode($config), 
-                            'updated_at' => $now
+                            'field_config' => json_encode($config)
                         ];
                         
                         $imageSource = $data['image'] ?? $data['image_path'] ?? '';
@@ -2589,7 +2588,7 @@ class SuperAdminApi extends BaseApiController
                         // Check if exists (case-insensitive)
                         $existing = $db->table('genders')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
                         if ($existing) {
-                            $db->table('genders')->where('id', $existing['id'])->update(['name' => $name, 'updated_at' => $now]);
+                            $db->table('genders')->where('id', $existing['id'])->update(['name' => $name]);
                             $updated++;
                         } else {
                             $db->table('genders')->insert(['name' => $name, 'created_at' => $now]);
@@ -2612,7 +2611,7 @@ class SuperAdminApi extends BaseApiController
                         // Check if exists (case-insensitive by name and listing_type_id)
                         $existing = $db->table('product_types')->where('LOWER(name)', strtolower($name))->where('listing_type_id', $ltId)->get()->getRowArray();
                         if ($existing) {
-                            $db->table('product_types')->where('id', $existing['id'])->update(['name' => $name, 'listing_type_id' => $ltId, 'updated_at' => $now]);
+                            $db->table('product_types')->where('id', $existing['id'])->update(['name' => $name, 'listing_type_id' => $ltId]);
                             $updated++;
                         } else {
                             $db->table('product_types')->insert(['name' => $name, 'listing_type_id' => $ltId, 'created_at' => $now]);
@@ -2638,7 +2637,9 @@ class SuperAdminApi extends BaseApiController
                         
                         // Parse field_config/attributes if provided
                         $fieldConfig = [];
+                        $hasAttributes = false;
                         if (!empty($data['attributes']) || !empty($data['field_config'])) {
+                            $hasAttributes = true;
                             $attrData = $data['attributes'] ?? $data['field_config'] ?? '';
                             try {
                                 $attrs = json_decode($attrData, true);
@@ -2660,14 +2661,17 @@ class SuperAdminApi extends BaseApiController
                             'category_name' => $name,
                             'product_type_ids' => json_encode(is_array($ptIds) ? $ptIds : []),
                             'applies_to' => json_encode(is_array($appliesTo) ? $appliesTo : []),
-                            'field_config' => !empty($fieldConfig) ? json_encode($fieldConfig) : null,
-                            'updated_at' => $now,
                         ];
+                        // Only update field_config if attributes are provided in CSV
+                        if ($hasAttributes) {
+                            $rec['field_config'] = !empty($fieldConfig) ? json_encode($fieldConfig) : null;
+                        }
                         if ($existing) {
                             $db->table('categories')->where('id', $existing['id'])->update($rec);
                             $updated++;
                         } else {
                             $rec['created_at'] = $now;
+                            $rec['field_config'] = !empty($fieldConfig) ? json_encode($fieldConfig) : null;
                             $db->table('categories')->insert($rec);
                             $inserted++;
                         }
@@ -2703,7 +2707,9 @@ class SuperAdminApi extends BaseApiController
                         
                         // Parse field_config/attributes if provided
                         $fieldConfig = [];
+                        $hasAttributes = false;
                         if (!empty($data['attributes']) || !empty($data['field_config'])) {
+                            $hasAttributes = true;
                             $attrData = $data['attributes'] ?? $data['field_config'] ?? '';
                             try {
                                 $attrs = json_decode($attrData, true);
@@ -2725,14 +2731,17 @@ class SuperAdminApi extends BaseApiController
                             'name' => $name,
                             'category_ids' => json_encode(is_array($catIds) ? $catIds : []),
                             'applies_to' => json_encode(is_array($appliesTo) ? $appliesTo : []),
-                            'field_config' => !empty($fieldConfig) ? json_encode($fieldConfig) : null,
-                            'updated_at' => $now,
                         ];
+                        // Only update field_config if attributes are provided in CSV
+                        if ($hasAttributes) {
+                            $rec['field_config'] = !empty($fieldConfig) ? json_encode($fieldConfig) : null;
+                        }
                         if ($existing) {
                             $db->table('sub_categories')->where('id', $existing['id'])->update($rec);
                             $updated++;
                         } else {
                             $rec['created_at'] = $now;
+                            $rec['field_config'] = !empty($fieldConfig) ? json_encode($fieldConfig) : null;
                             $db->table('sub_categories')->insert($rec);
                             $inserted++;
                         }
@@ -2758,7 +2767,7 @@ class SuperAdminApi extends BaseApiController
                         
                         // Check if exists (case-insensitive by name)
                         $existing = $db->table('colors')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
-                        $rec = ['name' => $name, 'hex_code' => $hex, 'updated_at' => $now];
+                        $rec = ['name' => $name, 'hex_code' => $hex];
                         if ($existing) {
                             $db->table('colors')->where('id', $existing['id'])->update($rec);
                             $updated++;
