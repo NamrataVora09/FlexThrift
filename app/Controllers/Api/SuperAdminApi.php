@@ -877,14 +877,21 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('type_name') ?? $this->request->getPost('name');
-        $gender = $this->request->getPost('gender_config') ?? 'optional';
+        $gender = strtolower(trim($this->request->getPost('gender_config') ?? 'optional'));
+        
+        // Validate gender_config value
+        $allowedGenderConfigs = ['optional', 'hidden', 'mandatory'];
+        if (!in_array($gender, $allowedGenderConfigs)) {
+            return $this->respond(['success' => false, 'message' => 'Invalid gender_config value. Must be one of: ' . implode(', ', $allowedGenderConfigs)], 400);
+        }
+        
         $attrs = $this->request->getPost('attributes');
         $config = ['gender' => $gender];
         if ($attrs) $config['attributes'] = json_decode($attrs, true) ?: [];
         $usageLabel = $this->request->getPost('usage_label') ?? 'Times Used';
         
-        // Check for duplicate (excluding current record)
-        $exists = $db->table('listing_types')->where('type_name', $name)->where('id !=', $id)->countAllResults();
+        // Check for duplicate (excluding current record, case-insensitive)
+        $exists = $db->table('listing_types')->where('LOWER(type_name)', strtolower($name))->where('id !=', $id)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => 'Listing type with this name already exists.'], 400);
         }
@@ -2501,6 +2508,7 @@ class SuperAdminApi extends BaseApiController
         $header = array_map('trim', array_map('strtolower', $header));
 
         $inserted = 0;
+        $updated = 0;
         $skipped = 0;
         $errors = [];
         $now = date('Y-m-d H:i:s');
@@ -2530,7 +2538,31 @@ class SuperAdminApi extends BaseApiController
                             continue 2;
                         }
                         
-                        $rec = ['type_name' => $name, 'field_config' => json_encode(['gender' => $gender]), 'created_at' => $now];
+                        $usageLabel = $data['usage_label'] ?? 'Times Used';
+                        $config = ['gender' => $gender];
+                        
+                        // Parse attributes if provided
+                        if (!empty($data['attributes'])) {
+                            try {
+                                $attrs = json_decode($data['attributes'], true);
+                                if (is_array($attrs)) {
+                                    $config['attributes'] = $attrs;
+                                }
+                            } catch (\Exception $e) {
+                                // If not valid JSON, try comma-separated values
+                                $attrs = array_map('trim', explode(',', $data['attributes']));
+                                if (!empty($attrs)) {
+                                    $config['attributes'] = $attrs;
+                                }
+                            }
+                        }
+                        
+                        $rec = [
+                            'type_name' => $name, 
+                            'usage_label' => $usageLabel, 
+                            'field_config' => json_encode($config), 
+                            'updated_at' => $now
+                        ];
                         
                         $imageSource = $data['image'] ?? $data['image_path'] ?? '';
                         if ($imageSource) {
@@ -2538,15 +2570,31 @@ class SuperAdminApi extends BaseApiController
                             if ($processed) $rec['image'] = $processed;
                         }
                         
-                        $db->table('listing_types')->insert($rec);
-                        $inserted++;
+                        // Check if exists (case-insensitive)
+                        $existing = $db->table('listing_types')->where('LOWER(type_name)', strtolower($name))->get()->getRowArray();
+                        if ($existing) {
+                            $db->table('listing_types')->where('id', $existing['id'])->update($rec);
+                            $updated++;
+                        } else {
+                            $rec['created_at'] = $now;
+                            $db->table('listing_types')->insert($rec);
+                            $inserted++;
+                        }
                         break;
 
                     case 'genders':
                         $name = $data['name'] ?? '';
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
-                        $db->table('genders')->insert(['name' => $name, 'created_at' => $now]);
-                        $inserted++;
+                        
+                        // Check if exists (case-insensitive)
+                        $existing = $db->table('genders')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
+                        if ($existing) {
+                            $db->table('genders')->where('id', $existing['id'])->update(['name' => $name, 'updated_at' => $now]);
+                            $updated++;
+                        } else {
+                            $db->table('genders')->insert(['name' => $name, 'created_at' => $now]);
+                            $inserted++;
+                        }
                         break;
 
                     case 'product_types':
@@ -2555,13 +2603,21 @@ class SuperAdminApi extends BaseApiController
                         
                         // Name lookup if ID missing
                         if (!$ltId && !empty($data['listing_type'])) {
-                            $lt = $db->table('listing_types')->where('type_name', $data['listing_type'])->get()->getRowArray();
+                            $lt = $db->table('listing_types')->where('LOWER(type_name)', strtolower($data['listing_type']))->get()->getRowArray();
                             if ($lt) $ltId = $lt['id'];
                         }
 
                         if (!$name || !$ltId) { $skipped++; $errors[] = "Row {$row}: Name or listing_type missing"; continue 2; }
-                        $db->table('product_types')->insert(['name' => $name, 'listing_type_id' => $ltId, 'created_at' => $now]);
-                        $inserted++;
+                        
+                        // Check if exists (case-insensitive by name and listing_type_id)
+                        $existing = $db->table('product_types')->where('LOWER(name)', strtolower($name))->where('listing_type_id', $ltId)->get()->getRowArray();
+                        if ($existing) {
+                            $db->table('product_types')->where('id', $existing['id'])->update(['name' => $name, 'listing_type_id' => $ltId, 'updated_at' => $now]);
+                            $updated++;
+                        } else {
+                            $db->table('product_types')->insert(['name' => $name, 'listing_type_id' => $ltId, 'created_at' => $now]);
+                            $inserted++;
+                        }
                         break;
 
                     case 'categories':
@@ -2574,18 +2630,47 @@ class SuperAdminApi extends BaseApiController
                         // Name lookup
                         if (empty($ptIds) && !empty($data['product_types'])) {
                             $names = array_map('trim', explode(',', $data['product_types']));
-                            $pts = $db->table('product_types')->whereIn('name', $names)->get()->getResultArray();
+                            $pts = $db->table('product_types')->whereIn('LOWER(name)', array_map('strtolower', $names))->get()->getResultArray();
                             $ptIds = array_column($pts, 'id');
                         }
 
                         $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
-                        $db->table('categories')->insert([
+                        
+                        // Parse field_config/attributes if provided
+                        $fieldConfig = [];
+                        if (!empty($data['attributes']) || !empty($data['field_config'])) {
+                            $attrData = $data['attributes'] ?? $data['field_config'] ?? '';
+                            try {
+                                $attrs = json_decode($attrData, true);
+                                if (is_array($attrs)) {
+                                    $fieldConfig = $attrs;
+                                }
+                            } catch (\Exception $e) {
+                                // If not valid JSON, try comma-separated values
+                                $attrs = array_map('trim', explode(',', $attrData));
+                                if (!empty($attrs)) {
+                                    $fieldConfig = $attrs;
+                                }
+                            }
+                        }
+                        
+                        // Check if exists (case-insensitive by category_name)
+                        $existing = $db->table('categories')->where('LOWER(category_name)', strtolower($name))->get()->getRowArray();
+                        $rec = [
                             'category_name' => $name,
                             'product_type_ids' => json_encode(is_array($ptIds) ? $ptIds : []),
                             'applies_to' => json_encode(is_array($appliesTo) ? $appliesTo : []),
-                            'created_at' => $now,
-                        ]);
-                        $inserted++;
+                            'field_config' => !empty($fieldConfig) ? json_encode($fieldConfig) : null,
+                            'updated_at' => $now,
+                        ];
+                        if ($existing) {
+                            $db->table('categories')->where('id', $existing['id'])->update($rec);
+                            $updated++;
+                        } else {
+                            $rec['created_at'] = $now;
+                            $db->table('categories')->insert($rec);
+                            $inserted++;
+                        }
                         break;
 
                     case 'sub_categories':
@@ -2615,21 +2700,73 @@ class SuperAdminApi extends BaseApiController
                         }
 
                         $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
-                        $db->table('sub_categories')->insert([
+                        
+                        // Parse field_config/attributes if provided
+                        $fieldConfig = [];
+                        if (!empty($data['attributes']) || !empty($data['field_config'])) {
+                            $attrData = $data['attributes'] ?? $data['field_config'] ?? '';
+                            try {
+                                $attrs = json_decode($attrData, true);
+                                if (is_array($attrs)) {
+                                    $fieldConfig = $attrs;
+                                }
+                            } catch (\Exception $e) {
+                                // If not valid JSON, try comma-separated values
+                                $attrs = array_map('trim', explode(',', $attrData));
+                                if (!empty($attrs)) {
+                                    $fieldConfig = $attrs;
+                                }
+                            }
+                        }
+                        
+                        // Check if exists (case-insensitive by name)
+                        $existing = $db->table('sub_categories')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
+                        $rec = [
                             'name' => $name,
                             'category_ids' => json_encode(is_array($catIds) ? $catIds : []),
                             'applies_to' => json_encode(is_array($appliesTo) ? $appliesTo : []),
-                            'created_at' => $now,
-                        ]);
-                        $inserted++;
+                            'field_config' => !empty($fieldConfig) ? json_encode($fieldConfig) : null,
+                            'updated_at' => $now,
+                        ];
+                        if ($existing) {
+                            $db->table('sub_categories')->where('id', $existing['id'])->update($rec);
+                            $updated++;
+                        } else {
+                            $rec['created_at'] = $now;
+                            $db->table('sub_categories')->insert($rec);
+                            $inserted++;
+                        }
                         break;
 
                     case 'colors':
                         $name = $data['name'] ?? '';
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
                         $hex = $data['hex_code'] ?? '#000000';
-                        $db->table('colors')->insert(['name' => $name, 'hex_code' => $hex, 'created_at' => $now]);
-                        $inserted++;
+                        
+                        // Validate hex_code format
+                        $hex = trim($hex);
+                        // Add # prefix if missing
+                        if (!empty($hex) && $hex[0] !== '#') {
+                            $hex = '#' . $hex;
+                        }
+                        // Validate hex format (3 or 6 hex digits)
+                        if (!preg_match('/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/', $hex)) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Invalid hex_code '{$data['hex_code']}'. Must be a valid hex color code (e.g., #FFF or #FFFFFF)";
+                            continue 2;
+                        }
+                        
+                        // Check if exists (case-insensitive by name)
+                        $existing = $db->table('colors')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
+                        $rec = ['name' => $name, 'hex_code' => $hex, 'updated_at' => $now];
+                        if ($existing) {
+                            $db->table('colors')->where('id', $existing['id'])->update($rec);
+                            $updated++;
+                        } else {
+                            $rec['created_at'] = $now;
+                            $db->table('colors')->insert($rec);
+                            $inserted++;
+                        }
                         break;
                 }
             } catch (\Exception $e) {
@@ -2642,8 +2779,9 @@ class SuperAdminApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => "{$inserted} records inserted, {$skipped} skipped.",
+            'message' => "{$inserted} records inserted, {$updated} records updated, {$skipped} skipped.",
             'inserted' => $inserted,
+            'updated' => $updated,
             'skipped' => $skipped,
             'errors' => $errors,
         ]);
