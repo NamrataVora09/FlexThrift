@@ -210,8 +210,7 @@ export default function AdminsClient() {
     const res = await api.post(`/superadmin/update-admin/${editingAdmin.id}`, {
       name: form.name,
       email: form.email,
-      mobile: form.mobile,
-      password: form.password || undefined
+      mobile: form.mobile
     });
     setSubmitting(false);
     if (res.success) {
@@ -521,11 +520,6 @@ export default function AdminsClient() {
                     <input type="text" className="form-control" style={inputStyle} placeholder="+91 XXXXXXXXXX" required
                       value={form.mobile} onChange={handleInputChange} name="mobile" maxLength={10} />
                     {mobileError && <div style={{ color: '#ed4c78', fontSize: '0.75rem', marginTop: '0.25rem' }}>Please enter a valid 10-digit mobile number</div>}
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label" style={{ fontWeight: 500, fontSize: '0.875rem', color: '#4b566b' }}>Password (leave blank to keep current)</label>
-                    <input type="password" className="form-control" style={inputStyle} placeholder="••••••••"
-                      value={form.password} onChange={handleInputChange} name="password" />
                   </div>
                 </div>
                 <div className="modal-footer border-0 p-4 pt-0">
