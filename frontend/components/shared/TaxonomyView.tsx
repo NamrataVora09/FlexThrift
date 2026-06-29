@@ -274,13 +274,29 @@ export default function TaxonomyView() {
         toastError('validation_error', 'At least one Product Type is required');
         return;
       }
-      if (!editForm.applies_to || editForm.applies_to.length === 0) {
-        toastError('validation_error', 'At least one Gender (Applies To) is required');
-        return;
+      // Check if removing genders would affect sub-categories without genders
+      if (editForm.applies_to && editForm.applies_to.length > 0) {
+        // User is setting genders, this is fine
+      } else {
+        // User is removing all genders - check if any sub-categories exist without genders
+        const categorySubCategories = sub_categories.filter(sc => {
+          const scCatIds = sc.category_ids ? parseJson(sc.category_ids) : (sc.category_id ? [sc.category_id] : []);
+          return scCatIds.includes(item.id);
+        });
+        const subCategoriesWithoutGenders = categorySubCategories.filter(sc => {
+          const scAppliesTo = parseJson(sc.applies_to);
+          return !scAppliesTo || scAppliesTo.length === 0;
+        });
+        if (subCategoriesWithoutGenders.length > 0) {
+          toastError('validation_error', 'Cannot remove genders: This category has sub-categories without genders. Please add genders to those sub-categories first.');
+          return;
+        }
       }
       fd.append('category_name', editForm.name);
       (editForm.product_type_ids || []).forEach((id: number) => fd.append('product_type_ids[]', String(id)));
-      (editForm.applies_to || []).forEach((g: string) => fd.append('applies_to[]', g));
+      if (editForm.applies_to && editForm.applies_to.length > 0) {
+        (editForm.applies_to || []).forEach((g: string) => fd.append('applies_to[]', g));
+      }
       fd.append('attributes', JSON.stringify(editForm.attributes || []));
       await api.upload(`/superadmin/update-category/${item.id}`, fd);
     } else if (type === 'sub_category') {
@@ -288,13 +304,28 @@ export default function TaxonomyView() {
         toastError('validation_error', 'At least one Category is required');
         return;
       }
-      if (!editForm.applies_to || editForm.applies_to.length === 0) {
-        toastError('validation_error', 'At least one Gender (Applies To) is required');
-        return;
+      // Check if selected categories have genders - if yes, gender is optional for sub-category
+      // If no genders in parent categories, gender is mandatory for sub-category
+      const selectedCategories = categories.filter(c => editForm.category_ids.includes(c.id));
+      const categoriesWithGenders = selectedCategories.filter(c => {
+        const appliesTo = parseJson(c.applies_to);
+        return appliesTo && appliesTo.length > 0;
+      });
+      
+      if (categoriesWithGenders.length === 0) {
+        // All selected categories have no genders - sub-category must have genders
+        if (!editForm.applies_to || editForm.applies_to.length === 0) {
+          toastError('validation_error', 'Gender (Applies To) is mandatory when parent category has no genders');
+          return;
+        }
       }
+      // If at least one parent category has genders, gender is optional for sub-category
+      
       fd.append('name', editForm.name);
       (editForm.category_ids || []).forEach((id: number) => fd.append('category_ids[]', String(id)));
-      (editForm.applies_to || []).forEach((g: string) => fd.append('applies_to[]', g));
+      if (editForm.applies_to && editForm.applies_to.length > 0) {
+        (editForm.applies_to || []).forEach((g: string) => fd.append('applies_to[]', g));
+      }
       fd.append('attributes', JSON.stringify(editForm.attributes || []));
       await api.upload(`/superadmin/update-sub-category/${item.id}`, fd);
     } else if (type === 'color') {

@@ -840,6 +840,25 @@ class SuperAdminApi extends BaseApiController
         $catIds = $this->request->getPost('category_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
         if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        if (empty($catIds)) return $this->respond(['success' => false, 'message' => 'At least one Category is required.'], 400);
+        
+        // Check if selected categories have genders - if no genders in parent categories, gender is mandatory for sub-category
+        $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
+        $categoriesWithGenders = 0;
+        foreach ($categories as $cat) {
+            $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
+            if (!empty($catAppliesTo)) {
+                $categoriesWithGenders++;
+            }
+        }
+        
+        if ($categoriesWithGenders === 0) {
+            // All selected categories have no genders - sub-category must have genders
+            if (empty($appliesTo)) {
+                return $this->respond(['success' => false, 'message' => 'Gender (Applies To) is mandatory when parent category has no genders.'], 400);
+            }
+        }
+        // If at least one parent category has genders, gender is optional for sub-category
         
         // Check for duplicate
         $exists = $db->table('sub_categories')->where('name', $name)->countAllResults();
@@ -957,6 +976,21 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Category with this name already exists.'], 400);
         }
         
+        // Check if removing genders would affect sub-categories without genders
+        if (empty($appliesTo)) {
+            // User is removing all genders - check if any sub-categories exist without genders
+            $subCategories = $db->table('sub_categories')->get()->getResultArray();
+            foreach ($subCategories as $sc) {
+                $scCatIds = json_decode($sc['category_ids'] ?? '[]', true);
+                if (in_array($id, $scCatIds)) {
+                    $scAppliesTo = json_decode($sc['applies_to'] ?? '[]', true);
+                    if (empty($scAppliesTo)) {
+                        return $this->respond(['success' => false, 'message' => 'Cannot remove genders: This category has sub-categories without genders. Please add genders to those sub-categories first.'], 400);
+                    }
+                }
+            }
+        }
+        
         $data = [
             'category_name' => $name,
             'product_type_ids' => json_encode($ptIds),
@@ -977,6 +1011,26 @@ class SuperAdminApi extends BaseApiController
         $catIds = $this->request->getPost('category_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
         $attrs = $this->request->getPost('attributes');
+        
+        if (empty($catIds)) return $this->respond(['success' => false, 'message' => 'At least one Category is required.'], 400);
+        
+        // Check if selected categories have genders - if no genders in parent categories, gender is mandatory for sub-category
+        $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
+        $categoriesWithGenders = 0;
+        foreach ($categories as $cat) {
+            $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
+            if (!empty($catAppliesTo)) {
+                $categoriesWithGenders++;
+            }
+        }
+        
+        if ($categoriesWithGenders === 0) {
+            // All selected categories have no genders - sub-category must have genders
+            if (empty($appliesTo)) {
+                return $this->respond(['success' => false, 'message' => 'Gender (Applies To) is mandatory when parent category has no genders.'], 400);
+            }
+        }
+        // If at least one parent category has genders, gender is optional for sub-category
         
         // Check for duplicate (excluding current record)
         $exists = $db->table('sub_categories')->where('name', $name)->where('id !=', $id)->countAllResults();
