@@ -456,6 +456,30 @@ class SellerApi extends BaseApiController
         if (!$v['success'])
             return $this->respond($v, 422);
 
+        // Validate required attributes based on category/sub-category
+        $specifications = $data['specifications'] ?? null;
+        $specArray = is_string($specifications) ? json_decode($specifications, true) : $specifications;
+        
+        // Fetch required attributes for this product's category/sub-category
+        $requiredAttributes = $this->getRequiredAttributes($db, $categoryName, $subCategoryName, $listingTypeCatName);
+        
+        if (!empty($requiredAttributes)) {
+            if (!is_array($specArray) || empty($specArray)) {
+                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
+            }
+            
+            $missingAttributes = [];
+            foreach ($requiredAttributes as $attrName) {
+                if (!isset($specArray[$attrName]) || trim($specArray[$attrName]) === '') {
+                    $missingAttributes[] = $attrName;
+                }
+            }
+            
+            if (!empty($missingAttributes)) {
+                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
+            }
+        }
+
         // Check if admin review is required
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
         $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
@@ -1320,6 +1344,35 @@ class SellerApi extends BaseApiController
         if (!$v['success'])
             return $this->respond($v, 422);
 
+        // Validate required attributes based on category/sub-category
+        $specifications = $data['specifications'] ?? null;
+        $specArray = is_string($specifications) ? json_decode($specifications, true) : $specifications;
+        
+        // Get category, sub-category, and listing type names from the data or existing product
+        $categoryName = $processedData['category'] ?? $product['category'] ?? '';
+        $subCategoryName = $processedData['sub_category'] ?? $product['sub_category'] ?? '';
+        $listingTypeCatName = $processedData['listing_type_category'] ?? $product['listing_type_category'] ?? '';
+        
+        // Fetch required attributes for this product's category/sub-category
+        $requiredAttributes = $this->getRequiredAttributes($db, $categoryName, $subCategoryName, $listingTypeCatName);
+        
+        if (!empty($requiredAttributes)) {
+            if (!is_array($specArray) || empty($specArray)) {
+                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
+            }
+            
+            $missingAttributes = [];
+            foreach ($requiredAttributes as $attrName) {
+                if (!isset($specArray[$attrName]) || trim($specArray[$attrName]) === '') {
+                    $missingAttributes[] = $attrName;
+                }
+            }
+            
+            if (!empty($missingAttributes)) {
+                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
+            }
+        }
+
         // Handle new image uploads for edit request
         $tempImages = [];
         $files = $this->request->getFiles();
@@ -1569,6 +1622,36 @@ class SellerApi extends BaseApiController
         $v = $this->validatePricing($data);
         if (!$v['success'])
             return $this->respond($v, 422);
+
+        // Validate required attributes based on category/sub-category
+        $specifications = $data['specifications'] ?? null;
+        $specArray = is_string($specifications) ? json_decode($specifications, true) : $specifications;
+        
+        // Get category, sub-category, and listing type names from the data or existing product
+        $categoryName = $updateData['category'] ?? $product['category'] ?? '';
+        $subCategoryName = $updateData['sub_category'] ?? $product['sub_category'] ?? '';
+        $listingTypeCatName = $updateData['listing_type_category'] ?? $product['listing_type_category'] ?? '';
+        
+        // Fetch required attributes for this product's category/sub-category
+        $requiredAttributes = $this->getRequiredAttributes($db, $categoryName, $subCategoryName, $listingTypeCatName);
+        
+        if (!empty($requiredAttributes)) {
+            if (!is_array($specArray) || empty($specArray)) {
+                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
+            }
+            
+            $missingAttributes = [];
+            foreach ($requiredAttributes as $attrName) {
+                if (!isset($specArray[$attrName]) || trim($specArray[$attrName]) === '') {
+                    $missingAttributes[] = $attrName;
+                }
+            }
+            
+            if (!empty($missingAttributes)) {
+                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
+            }
+        }
+        
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         // Snapshot current images BEFORE any deletions/uploads so previous_data can include them
@@ -2551,5 +2634,72 @@ class SellerApi extends BaseApiController
         }
 
         return ['success' => true];
+    }
+
+    /**
+     * Get required attributes for a product based on its category/sub-category
+     */
+    private function getRequiredAttributes($db, string $categoryName, string $subCategoryName, string $listingTypeCatName): array
+    {
+        $requiredAttributes = [];
+        
+        // First check sub-category attributes (most specific)
+        if (!empty($subCategoryName)) {
+            $subCat = $db->table('sub_categories')
+                ->where('name', $subCategoryName)
+                ->get()
+                ->getRowArray();
+            
+            if ($subCat && !empty($subCat['field_config'])) {
+                $config = json_decode($subCat['field_config'], true);
+                if (!empty($config['attributes'])) {
+                    foreach ($config['attributes'] as $attr) {
+                        if (!empty($attr['required'])) {
+                            $requiredAttributes[] = $attr['name'];
+                        }
+                    }
+                }
+            }
+        }
+        
+        // If no required attributes found in sub-category, check category
+        if (empty($requiredAttributes) && !empty($categoryName)) {
+            $cat = $db->table('categories')
+                ->where('category_name', $categoryName)
+                ->get()
+                ->getRowArray();
+            
+            if ($cat && !empty($cat['field_config'])) {
+                $config = json_decode($cat['field_config'], true);
+                if (!empty($config['attributes'])) {
+                    foreach ($config['attributes'] as $attr) {
+                        if (!empty($attr['required'])) {
+                            $requiredAttributes[] = $attr['name'];
+                        }
+                    }
+                }
+            }
+        }
+        
+        // If no required attributes found in category, check listing type
+        if (empty($requiredAttributes) && !empty($listingTypeCatName)) {
+            $lt = $db->table('listing_types')
+                ->where('type_name', $listingTypeCatName)
+                ->get()
+                ->getRowArray();
+            
+            if ($lt && !empty($lt['field_config'])) {
+                $config = json_decode($lt['field_config'], true);
+                if (!empty($config['attributes'])) {
+                    foreach ($config['attributes'] as $attr) {
+                        if (!empty($attr['required'])) {
+                            $requiredAttributes[] = $attr['name'];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return $requiredAttributes;
     }
 }
