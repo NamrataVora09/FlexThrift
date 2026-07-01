@@ -1240,15 +1240,29 @@ class SuperAdminApi extends BaseApiController
     public function createSellerBrand()
     {
         $db = \Config\Database::connect();
+        $brandName = $this->request->getPost('brand_name');
+        $sellerId = $this->request->getPost('seller_id');
         $data = [
-            'brand_name' => $this->request->getPost('brand_name'),
-            'seller_id' => $this->request->getPost('seller_id'),
+            'brand_name' => $brandName,
+            'seller_id' => $sellerId,
             'description' => $this->request->getPost('description') ?? '',
             'created_by_admin' => 1,
             'created_at' => date('Y-m-d H:i:s'),
         ];
         if (!$data['brand_name'] || !$data['seller_id']) {
             return $this->respond(['success' => false, 'message' => 'Brand name and Seller are required.'], 400);
+        }
+
+        // Check if brand name already exists (unique validation)
+        $existingBrand = $db->table('brands')->where('LOWER(brand_name)', strtolower($brandName))->get()->getRowArray();
+        if ($existingBrand) {
+            return $this->respond(['success' => false, 'message' => 'Brand name already exists. Brand names must be unique.'], 400);
+        }
+
+        // Check if seller already has a brand (one-brand-per-seller validation)
+        $existingSellerBrand = $db->table('brands')->where('seller_id', $sellerId)->get()->getRowArray();
+        if ($existingSellerBrand) {
+            return $this->respond(['success' => false, 'message' => 'Seller already has a brand. Each seller can have only one brand.'], 400);
         }
 
         // Handle multiple listing types
@@ -2412,6 +2426,12 @@ class SuperAdminApi extends BaseApiController
         $desc = $this->request->getPost('description') ?? '';
         if (!$name) return $this->respond(['success' => false, 'message' => 'Brand name is required.'], 400);
 
+        // Check if brand name already exists (unique validation)
+        $existingBrand = $db->table('orignal_brands')->where('LOWER(brand_name)', strtolower($name))->get()->getRowArray();
+        if ($existingBrand) {
+            return $this->respond(['success' => false, 'message' => 'Brand name already exists. Brand names must be unique.'], 400);
+        }
+
         $data = ['brand_name' => $name, 'description' => $desc, 'is_active' => 1, 'created_at' => date('Y-m-d H:i:s')];
         
         // Handle multiple listing types
@@ -3425,6 +3445,15 @@ private function processImage($source, $subDir): ?string
             $row = $i + 2;
             $name = $data['brand_name'] ?? $data['name'] ?? '';
             if (!$name) { $skipped++; $errors[] = "Row {$row}: brand_name is empty"; continue; }
+            
+            // Check if brand name already exists (unique validation)
+            $existingBrand = $db->table('orignal_brands')->where('LOWER(brand_name)', strtolower($name))->get()->getRowArray();
+            if ($existingBrand) {
+                $skipped++;
+                $errors[] = "Row {$row}: Brand name '{$name}' already exists. Skipping duplicate.";
+                continue;
+            }
+            
             try {
                 $rec = ['brand_name' => $name, 'is_active' => 1, 'created_at' => $now];
                 
@@ -3471,18 +3500,11 @@ private function processImage($source, $subDir): ?string
                     if ($processed) $rec['brand_image'] = $processed;
                 }
 
-                // Check if exists (case-insensitive by brand_name)
-                $existing = $db->table('orignal_brands')->where('LOWER(brand_name)', strtolower($name))->get()->getRowArray();
-                if ($existing) {
-                    $db->table('orignal_brands')->where('id', $existing['id'])->update($rec);
-                    $updated++;
-                } else {
-                    $db->table('orignal_brands')->insert($rec);
-                    $inserted++;
-                }
+                $db->table('orignal_brands')->insert($rec);
+                $inserted++;
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} records inserted, {$updated} records updated, {$skipped} skipped.", 'inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} records inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     // ── Attributes Management ──────────────────────────────
