@@ -678,7 +678,7 @@ export default function PricingRulesManager() {
                   <div className="col-md-12">
                     <label className="form-label small fw-bold">Max Rental Cost Cap (%)</label>
                     <input type="number" step="0.1" className="form-control" placeholder="Leave empty or 0 to use Global Setting" value={editingRentalRule.max_cost_cap_per_day} onChange={e => setEditingRentalRule({ ...editingRentalRule, max_cost_cap_per_day: e.target.value })} />
-                    <small className="text-muted">If set to 0 or empty, the global setting (14%) will be used.</small>
+                    <small className="text-muted">If set to 0 or empty, the global setting will be used.</small>
                   </div>
                   <div className="col-md-12"><hr /></div>
                   <div className="col-md-12 d-flex justify-content-between align-items-center mb-2">

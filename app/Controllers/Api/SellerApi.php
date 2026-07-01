@@ -290,10 +290,10 @@ class SellerApi extends BaseApiController
         $defaults = [
             'sale_base_discount' => 0,
             'rental_base_deposit_deduction' => 0,
-            'rental_max_cost_cap_per_day' => 14,
-            'fallback_rental_cost_per_day' => 10,
-            'min_rental_days' => 3,
-            'max_product_images' => 7,
+            'rental_max_cost_cap_per_day' => 0,
+            'fallback_rental_cost_per_day' => 0,
+            'min_rental_days' => 0,
+            'max_product_images' => 0,
             'max_original_price' => 1000000000, // 100 Crore (platform ceiling)
         ];
         $config = array_merge($defaults, $config);
@@ -488,6 +488,7 @@ class SellerApi extends BaseApiController
             'rental_deposit' => $data['rental_deposit'] ?? null,
             'rental_cost' => $data['rental_cost'] ?? null,
             'used_times' => $data['times_used'],
+            'usage_label' => $data['usage_label'] ?? 'Times Used',
             'brand_id' => $data['brand_id'] ?? null,
             'orignal_brand_id' => $data['orignal_brand_id'] ?? null,
             'color' => $data['color'] ?? null,
@@ -1413,7 +1414,7 @@ class SellerApi extends BaseApiController
             $snapshotFields = [
                 'title', 'description', 'listing_type', 'listing_type_category',
                 'product_type', 'category', 'sub_category', 'color', 'gender',
-                'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
+                'used_times', 'usage_label', 'original_price', 'price', 'rental_cost', 'rental_deposit',
                 'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
                 'has_bill', 'allow_alter_fitting', 'brand_id', 'orignal_brand_id',
             ];
@@ -1723,7 +1724,7 @@ class SellerApi extends BaseApiController
                 $snapshotFields = [
                     'title', 'description', 'listing_type', 'listing_type_category',
                     'product_type', 'category', 'sub_category', 'color', 'gender',
-                    'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
+                    'used_times', 'usage_label', 'original_price', 'price', 'rental_cost', 'rental_deposit',
                     'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
                     'has_bill', 'allow_alter_fitting', 'brand_id', 'orignal_brand_id',
                 ];

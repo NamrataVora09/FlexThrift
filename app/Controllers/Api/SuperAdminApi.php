@@ -758,10 +758,8 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Listing type with this name already exists.'], 400);
         }
         
-        $usageLabel = $this->request->getPost('usage_label') ?? 'Times Used';
         $data = [
             'type_name' => $name,
-            'usage_label' => $usageLabel,
             'field_config' => json_encode(['gender' => $gender]),
             'created_at' => date('Y-m-d H:i:s'),
         ];
@@ -943,7 +941,6 @@ class SuperAdminApi extends BaseApiController
         $attrs = $this->request->getPost('attributes');
         $config = ['gender' => $gender];
         if ($attrs) $config['attributes'] = json_decode($attrs, true) ?: [];
-        $usageLabel = $this->request->getPost('usage_label') ?? 'Times Used';
         
         // Check for duplicate (excluding current record, case-insensitive)
         $exists = $db->table('listing_types')->where('LOWER(type_name)', strtolower($name))->where('id !=', $id)->countAllResults();
@@ -951,7 +948,7 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Listing type with this name already exists.'], 400);
         }
         
-        $data = ['type_name' => $name, 'usage_label' => $usageLabel, 'field_config' => json_encode($config)];
+        $data = ['type_name' => $name, 'field_config' => json_encode($config)];
         $file = $this->request->getFile('image');
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
@@ -1648,10 +1645,9 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $requests = $db->table('product_edit_requests r')
-            ->select('r.*, p.title as original_title, p.listing_type, p.category, p.color, p.used_times, p.price, p.original_price, p.rental_cost, p.rental_deposit, p.description, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.usage_label')
+            ->select('r.*, p.title as original_title, p.listing_type, p.category, p.color, p.used_times, p.usage_label, p.price, p.original_price, p.rental_cost, p.rental_deposit, p.description, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->join('users u', 'u.id = p.seller_id', 'left')
-            ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('r.status', 'pending')
             ->orderBy('r.created_at', 'DESC')
             ->get()->getResultArray();
@@ -2513,7 +2509,7 @@ class SuperAdminApi extends BaseApiController
 
         $db = \Config\Database::connect();
         $products = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.type_name as listing_category_name, lt.usage_label, p.listing_type')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.type_name as listing_category_name, p.listing_type')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->groupStart()
@@ -2710,7 +2706,7 @@ class SuperAdminApi extends BaseApiController
 
         // Define expected headers for each type
         $expectedHeaders = [
-            'listing_types' => ['name', 'gender_config', 'usage_label', 'attributes', 'image'],
+            'listing_types' => ['name', 'gender_config', 'attributes', 'image'],
             'genders' => ['name'],
             'product_types' => ['name', 'listing_type'],
             'categories' => ['category_name', 'product_types', 'applies_to', 'attributes'],
@@ -2776,7 +2772,6 @@ class SuperAdminApi extends BaseApiController
                             continue 2;
                         }
                         
-                        $usageLabel = $data['usage_label'] ?? 'Times Used';
                         $config = ['gender' => $gender];
                         
                         // Parse attributes if provided
@@ -2797,7 +2792,6 @@ class SuperAdminApi extends BaseApiController
                         
                         $rec = [
                             'type_name' => $name, 
-                            'usage_label' => $usageLabel, 
                             'field_config' => json_encode($config)
                         ];
                         

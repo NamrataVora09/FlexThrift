@@ -8,7 +8,7 @@ import { confirmToast } from '@/lib/toast-utils';
 import toast from 'react-hot-toast';
 import HexColorPicker from '@/components/shared/HexColorPicker';
 
-interface ListingType { id: number; type_name?: string; name?: string; usage_label?: string; image?: string; field_config?: string; created_at?: string; }
+interface ListingType { id: number; type_name?: string; name?: string; image?: string; field_config?: string; created_at?: string; }
 interface Gender { id: number; name: string; created_at?: string; }
 interface ProductType { id: number; name: string; listing_type_id: number; created_at?: string; }
 interface Category { id: number; category_name?: string; name?: string; product_type_ids?: string; product_type_id?: number; applies_to?: string; field_config?: string; created_at?: string; }
@@ -249,13 +249,29 @@ export default function TaxonomyView() {
 
   const downloadTemplate = () => {
     const templates: Record<string, string> = {
-      listing_types: 'name,gender_config,usage_label,attributes,image\nClothing,mandatory,Months Used,"[{\\"name\\":\\"Sleeves\\",\\"type\\":\\"picklist\\",\\"options\\":\\"Full,Half,Short\\"}]",uploads/listing-types/clothing.jpg\nElectronics,hidden,Times Used,,',
-      genders: 'name\nMale\nFemale\nUnisex\nKids',
-      product_types: 'name,listing_type\nShirts,Clothing\nPants,Clothing',
-      categories: 'category_name,product_types,applies_to,attributes\nCasual Wear,"Shirts,Pants","[""Male"",""Female""]","[{\\"name\\":\\"Season\\",\\"type\\":\\"picklist\\",\\"options\\":\\"Summer,Winter\\"}]"',
-      sub_categories: 'name,categories,applies_to,attributes\nT-Shirts,Casual Wear,"[""Male"",""Unisex""]","[{\\"name\\":\\"Fit\\",\\"type\\":\\"picklist\\",\\"options\\":\\"Slim,Regular\\"}]"',
-      colors: 'name,hex_code\nCrimson,#dc143c\nNavy Blue,#000080\nForest Green,#228b22',
-      attributes: 'name,type,required,allowed_values,placeholder,entity_types,entity_ids\nSize,picklist,1,"Small,Medium,Large",,"listing_type","Clothing,Electronics"\nColor,text,0,,,category,"Casual Wear,Formal Wear"\nMaterial,text,0,,,',
+      listing_types: `name,gender_config,image
+Clothing,mandatory,uploads/listing-types/clothing.jpg
+Electronics,hidden,`,
+      genders: `name
+Male
+Female
+Unisex
+Kids`,
+      product_types: `name,listing_type
+Shirts,Clothing
+Pants,Clothing`,
+      categories: `category_name,product_types,applies_to
+Casual Wear,"Shirts,Pants","[""Male"",""Female""]"`,
+      sub_categories: `name,categories,applies_to
+T-Shirts,Casual Wear,"[""Male"",""Unisex""]"`,
+      colors: `name,hex_code
+Crimson,#dc143c
+Navy Blue,#000080
+Forest Green,#228b22`,
+      attributes: `name,type,required,allowed_values,placeholder,entity_types,entity_ids
+Size,picklist,1,"Small,Medium,Large",,"listing_type","Clothing,Electronics"
+Color,text,0,,,category,"Casual Wear,Formal Wear"
+Material,text,0,,,`,
     };
     const csv = templates[csvType] || '';
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -270,7 +286,7 @@ export default function TaxonomyView() {
   const openEdit = (type: string, item: any) => {
     setEditModal({ type, item });
     if (type === 'listing_type') {
-      setEditForm({ name: item.type_name || item.name || '', usage_label: item.usage_label || 'Times Used', gender_config: getGenderConfig(item.field_config), attributes: getAttributes(item.field_config), image: null, currentImage: item.image || '' });
+      setEditForm({ name: item.type_name || item.name || '', gender_config: getGenderConfig(item.field_config), attributes: getAttributes(item.field_config), image: null, currentImage: item.image || '' });
     } else if (type === 'gender') {
       setEditForm({ name: item.name });
     } else if (type === 'product_type') {
@@ -312,7 +328,6 @@ export default function TaxonomyView() {
 
     if (type === 'listing_type') {
       fd.append('type_name', editForm.name);
-      fd.append('usage_label', editForm.usage_label || 'Times Used');
       fd.append('gender_config', editForm.gender_config);
       fd.append('attributes', JSON.stringify(editForm.attributes || []));
       if (editForm.image) fd.append('image', editForm.image);
@@ -491,14 +506,14 @@ export default function TaxonomyView() {
               <strong>CSV Format Guide:</strong>
               <div className="row mt-2">
                 <div className="col-md-6">
-                  <div><strong>Listing Types:</strong> name, gender_config (mandatory/optional/hidden), usage_label, attributes (JSON array), image (path/URL)</div>
+                  <div><strong>Listing Types:</strong> name, gender_config (mandatory/optional/hidden), image (path/URL)</div>
                   <div><strong>Genders:</strong> name</div>
                   <div><strong>Product Types:</strong> name, listing_type (Name)</div>
                   <div><strong>Attributes:</strong> name, type (text/number/picklist), required (0/1), allowed_values (comma-separated for picklist), placeholder, entity_types (listing_type/category/sub_category), entity_ids (comma-separated entity names)</div>
                 </div>
                 <div className="col-md-6">
-                  <div><strong>Categories:</strong> category_name, product_types (Names, comma separated), applies_to (JSON array), attributes (JSON array)</div>
-                  <div><strong>Sub-Categories:</strong> name, categories (Names, comma separated), applies_to (JSON array), attributes (JSON array)</div>
+                  <div><strong>Categories:</strong> category_name, product_types (Names, comma separated), applies_to (JSON array)</div>
+                  <div><strong>Sub-Categories:</strong> name, categories (Names, comma separated), applies_to (JSON array)</div>
                   <div><strong>Colors:</strong> name, hex_code (e.g., #FFF or #FFFFFF)</div>
                 </div>
               </div>
@@ -516,13 +531,6 @@ export default function TaxonomyView() {
                   <option value="mandatory">Gender: Mandatory</option><option value="optional">Gender: Optional</option><option value="hidden">Gender: Hidden</option>
                 </select>
               </div>
-              <div className="col-md-2">
-                <select name="usage_label" className="form-select" style={inputStyle}>
-                  <option value="Times Used">Times Used</option>
-                  <option value="Months Used">Months Used</option>
-                  <option value="Years Used">Years Used</option>
-                </select>
-              </div>
               <div className="col-md-2"><input name="image" type="file" accept="image/*" className="form-control" style={inputStyle} /></div>
               <div className="col-md-2"><button type="submit" className="btn w-100 sa-filter-btn" style={btnGold}><i className="bi bi-plus-circle me-2"></i>Add Listing Type</button></div>
             </form>
@@ -531,8 +539,8 @@ export default function TaxonomyView() {
               <input className="form-control" style={{ ...inputStyle, paddingLeft: 36 }} placeholder="Search listing types..." value={ltSearch} onChange={(e) => { setLtSearch(e.target.value); setLtPage(1); }} />
             </div>
             <div className="table-responsive"><table className="table table-hover mb-0">
-              <thead><tr><th style={thStyle}>ID</th><th style={thStyle}>Image</th><th style={thStyle}>Name & Config</th><th style={thStyle}>Usage Label</th><th style={thStyle}>Created</th><th style={thStyle}>Actions</th></tr></thead>
-              <tbody>{(() => { const filtered = listing_types.filter(lt => (lt.type_name || lt.name || '').toLowerCase().includes(ltSearch.toLowerCase())); const paged = filtered.slice((ltPage - 1) * PAGE_SIZE, ltPage * PAGE_SIZE); return paged.length > 0 ? paged.map((lt) => { const gender = getGenderConfig(lt.field_config); const bcForGender = gender === 'mandatory' ? '#dc3545' : gender === 'hidden' ? '#6c757d' : '#0dcaf0'; return (<tr key={lt.id}><td style={tdStyle}>{lt.id}</td><td style={tdStyle}>{lt.image ? <img src={`http://localhost:8080/${lt.image}`} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} /> : <div style={{ width: 50, height: 50, borderRadius: 8, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}><i className="bi bi-image"></i></div>}</td><td style={tdStyle}><strong>{lt.type_name || lt.name}</strong><div className="small text-muted mt-1">Gender: <span className="badge" style={{ background: bcForGender }}>{gender}</span></div></td><td style={tdStyle}><span className="badge bg-light text-dark border">{lt.usage_label || 'Times Used'}</span></td><td style={tdStyle}>{fmtDate(lt.created_at)}</td><td style={tdStyle}><ActionBtns table="listing_types" id={lt.id} item={lt} type="listing_type" /></td></tr>); }) : <tr><td colSpan={6} className="text-center text-muted py-4">{ltSearch ? `No results for "${ltSearch}"` : 'No listing types yet'}</td></tr>; })()}</tbody>
+              <thead><tr><th style={thStyle}>ID</th><th style={thStyle}>Image</th><th style={thStyle}>Name & Config</th><th style={thStyle}>Created</th><th style={thStyle}>Actions</th></tr></thead>
+              <tbody>{(() => { const filtered = listing_types.filter(lt => (lt.type_name || lt.name || '').toLowerCase().includes(ltSearch.toLowerCase())); const paged = filtered.slice((ltPage - 1) * PAGE_SIZE, ltPage * PAGE_SIZE); return paged.length > 0 ? paged.map((lt) => { const gender = getGenderConfig(lt.field_config); const bcForGender = gender === 'mandatory' ? '#dc3545' : gender === 'hidden' ? '#6c757d' : '#0dcaf0'; return (<tr key={lt.id}><td style={tdStyle}>{lt.id}</td><td style={tdStyle}>{lt.image ? <img src={`http://localhost:8080/${lt.image}`} alt="" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 8, border: '1px solid #eee' }} /> : <div style={{ width: 50, height: 50, borderRadius: 8, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc' }}><i className="bi bi-image"></i></div>}</td><td style={tdStyle}><strong>{lt.type_name || lt.name}</strong><div className="small text-muted mt-1">Gender: <span className="badge" style={{ background: bcForGender }}>{gender}</span></div></td><td style={tdStyle}>{fmtDate(lt.created_at)}</td><td style={tdStyle}><ActionBtns table="listing_types" id={lt.id} item={lt} type="listing_type" /></td></tr>); }) : <tr><td colSpan={5} className="text-center text-muted py-4">{ltSearch ? `No results for "${ltSearch}"` : 'No listing types yet'}</td></tr>; })()}</tbody>
             </table></div>
             <Paginator total={listing_types.filter(lt => (lt.type_name || lt.name || '').toLowerCase().includes(ltSearch.toLowerCase())).length} page={ltPage} setPage={setLtPage} />
           </div>
@@ -853,15 +861,6 @@ export default function TaxonomyView() {
             <select className="form-select" style={modalInputStyle} value={editForm.gender_config || 'optional'} onChange={(e) => setEditForm({ ...editForm, gender_config: e.target.value })}>
               <option value="mandatory">Mandatory</option><option value="optional">Optional</option><option value="hidden">Hidden</option>
             </select>
-          </div>
-          <div className="mb-3">
-            <label style={modalLabelStyle}>Usage Display Unit</label>
-            <select className="form-select" style={modalInputStyle} value={editForm.usage_label || 'Times Used'} onChange={(e) => setEditForm({ ...editForm, usage_label: e.target.value })}>
-              <option value="Times Used">Times Used (e.g. 5 Times Used)</option>
-              <option value="Months Used">Months Used (e.g. 5 Months Used)</option>
-              <option value="Years Used">Years Used (e.g. 5 Years Used)</option>
-            </select>
-            <small className="text-muted">How the usage/age of products in this category will be displayed.</small>
           </div>
           <div className="mb-3">
             <label style={modalLabelStyle}>Image</label>

@@ -119,7 +119,7 @@ class RentalPricingRuleModel extends Model
 
         $baseThreshold = (float) ($cfg['rental_base_deposit_deduction'] ?? 10);
         $depositPct = (float) ($cfg['rental_deposit_percentage'] ?? 40);
-        $maxCostCap = (float) ($cfg['rental_max_cost_cap_per_day'] ?? 14);
+        $maxCostCap = (float) ($cfg['rental_max_cost_cap_per_day'] ?? 0);
 
         // Cascading tier lookup: sub_category → category → listing_type → global
         $tiers = null;

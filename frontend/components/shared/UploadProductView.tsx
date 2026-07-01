@@ -114,7 +114,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [f, setF] = useState({
     listing_type: 'sell', title: '', gender: '', listing_type_category: '', product_type: '',
     category_id: '', sub_category_id: '', orignal_brand_id: '', description: '',
-    color: '', used_times: '0', original_price: '', price: '', rental_deposit: '',
+    color: '', used_times: '0', usage_label: 'Times Used', original_price: '', price: '', rental_deposit: '',
     rental_cost: '', allow_alter_fitting: false, dispatch_address: '', dispatch_state: '',
     dispatch_city: '', dispatch_pin_code: '', has_bill: false,
     admin_remarks: '', status: 'pending'
@@ -181,6 +181,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             description: product.description || product.condition_description || '',
             color: product.color || '',
             used_times: String(product.used_times || product.times_used || '0'),
+            usage_label: product.usage_label || 'Times Used',
             original_price: String(product.original_price || ''),
             price: String(product.price || ''),
             rental_deposit: String(product.rental_deposit || ''),
@@ -1189,16 +1190,19 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                   </select>
                   {fieldErrors.color && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.color}</small>}
                 </div>
-                <div className="col-md-3"><label className="form-label" style={labelStyle}>{(() => {
-                  const lt = meta?.listing_types?.find(l => String(l.id) === f.listing_type_category);
-                  if (lt?.usage_label) return lt.usage_label;
-                  const ltName = (lt?.type_name || '').toLowerCase();
-                  if (['electronics', 'furniture', 'appliances', 'home'].some(k => ltName.includes(k))) return 'Months used';
-                  return 'Number of times used';
-                })()} <span className="text-danger">*</span></label>
+                <div className="col-md-3"><label className="form-label" style={labelStyle}>Number of times used <span className="text-danger">*</span></label>
                   <input type="number" className="form-control" style={inputStyle} name="used_times" min="0" value={f.used_times} onChange={handleChange} />
                   <small className="text-muted">Enter 0 if brand new</small>
                   {fieldErrors.used_times && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.used_times}</small>}
+                </div>
+                <div className="col-md-3"><label className="form-label" style={labelStyle}>Usage Label <span className="text-danger">*</span></label>
+                  <select className="form-select" style={inputStyle} name="usage_label" value={f.usage_label} onChange={handleChange}>
+                    <option value="Times Used">Times Used (e.g., 5 Times Used)</option>
+                    <option value="Months Used">Months Used (e.g., 5 Months Used)</option>
+                    <option value="Years Used">Years Used (e.g., 5 Years Used)</option>
+                  </select>
+                  <small className="text-muted">How the usage/age will be displayed</small>
+                  {fieldErrors.usage_label && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.usage_label}</small>}
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Original Price <span className="text-danger">*</span></label>
                   <div className="input-group"><span className="input-group-text">₹</span><input type="number" className="form-control" style={inputStyle} name="original_price" step="1" min="1" value={f.original_price} onChange={handleChange} /></div>
