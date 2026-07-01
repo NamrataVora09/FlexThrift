@@ -2706,11 +2706,11 @@ class SuperAdminApi extends BaseApiController
 
         // Define expected headers for each type
         $expectedHeaders = [
-            'listing_types' => ['name', 'gender_config', 'attributes', 'image'],
+            'listing_types' => ['name', 'gender_config', 'image'],
             'genders' => ['name'],
             'product_types' => ['name', 'listing_type'],
-            'categories' => ['category_name', 'product_types', 'applies_to', 'attributes'],
-            'sub_categories' => ['name', 'categories', 'applies_to', 'attributes'],
+            'categories' => ['category_name', 'product_types', 'applies_to'],
+            'sub_categories' => ['name', 'categories', 'applies_to'],
             'colors' => ['name', 'hex_code'],
             'attributes' => ['name', 'type', 'required', 'allowed_values', 'placeholder', 'entity_types', 'entity_ids'],
         ];
@@ -2762,33 +2762,27 @@ class SuperAdminApi extends BaseApiController
                     case 'listing_types':
                         $name = $data['name'] ?? $data['type_name'] ?? '';
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
-                        $gender = strtolower(trim($data['gender_config'] ?? 'optional'));
                         
-                        // Validate gender_config value
+                        $genderInput = trim($data['gender_config'] ?? '');
+                        
+                        // Blank value validation: skip if gender is blank
+                        if ($genderInput === '') {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Gender config is blank. Skipping row.";
+                            continue 2;
+                        }
+                        
+                        $gender = strtolower($genderInput);
+                        
+                        // Validate gender_config value (partial update: if invalid, skip but don't fail entire row if name exists)
                         $allowedGenderConfigs = ['optional', 'hidden', 'mandatory'];
                         if (!in_array($gender, $allowedGenderConfigs)) {
                             $skipped++;
-                            $errors[] = "Row {$row}: Invalid gender_config '{$gender}'. Must be one of: " . implode(', ', $allowedGenderConfigs);
+                            $errors[] = "Row {$row}: Invalid gender_config '{$gender}'. Must be one of: " . implode(', ', $allowedGenderConfigs) . ". Skipping row.";
                             continue 2;
                         }
                         
                         $config = ['gender' => $gender];
-                        
-                        // Parse attributes if provided
-                        if (!empty($data['attributes'])) {
-                            try {
-                                $attrs = json_decode($data['attributes'], true);
-                                if (is_array($attrs)) {
-                                    $config['attributes'] = $attrs;
-                                }
-                            } catch (\Exception $e) {
-                                // If not valid JSON, try comma-separated values
-                                $attrs = array_map('trim', explode(',', $data['attributes']));
-                                if (!empty($attrs)) {
-                                    $config['attributes'] = $attrs;
-                                }
-                            }
-                        }
                         
                         $rec = [
                             'type_name' => $name, 
@@ -2830,15 +2824,30 @@ class SuperAdminApi extends BaseApiController
 
                     case 'product_types':
                         $name = $data['name'] ?? '';
-                        $ltId = $data['listing_type_id'] ?? '';
+                        $ltInput = trim($data['listing_type'] ?? $data['listing_type_id'] ?? '');
 
-                        // Name lookup if ID missing
-                        if (!$ltId && !empty($data['listing_type'])) {
-                            $lt = $db->table('listing_types')->where('LOWER(type_name)', strtolower($data['listing_type']))->get()->getRowArray();
-                            if ($lt) $ltId = $lt['id'];
+                        // Blank value validation: skip if listing type is blank
+                        if ($ltInput === '') {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Listing type is blank. Skipping row.";
+                            continue 2;
                         }
 
-                        if (!$name || !$ltId) { $skipped++; $errors[] = "Row {$row}: Name or listing_type missing"; continue 2; }
+                        // Name lookup for listing type
+                        $ltId = null;
+                        $lt = $db->table('listing_types')->where('LOWER(type_name)', strtolower($ltInput))->get()->getRowArray();
+                        if ($lt) {
+                            $ltId = $lt['id'];
+                        }
+
+                        // Validation: if listing type not found, skip
+                        if (!$ltId) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Listing type '{$ltInput}' not found. Skipping row.";
+                            continue 2;
+                        }
+
+                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
 
                         // Check if exists globally by name only (case-insensitive)
                         $existing = $db->table('product_types')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
@@ -2855,33 +2864,55 @@ class SuperAdminApi extends BaseApiController
                         $name = $data['category_name'] ?? $data['name'] ?? '';
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
                         
-                        // ID parsing
-                        $ptIds = isset($data['product_type_ids']) ? json_decode($data['product_type_ids'], true) : [];
+                        // Product types handling with partial update
+                        $ptInput = trim($data['product_types'] ?? '');
                         
-                        // Name lookup
-                        if (empty($ptIds) && !empty($data['product_types'])) {
-                            $names = array_map('trim', explode(',', $data['product_types']));
-                            $pts = $db->table('product_types')->whereIn('LOWER(name)', array_map('strtolower', $names))->get()->getResultArray();
-                            $ptIds = array_column($pts, 'id');
+                        // Blank value validation: skip if product types is blank
+                        if ($ptInput === '') {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Product types is blank. Skipping row.";
+                            continue 2;
                         }
-
-                        // Validate that product types exist
+                        
+                        $names = array_map('trim', explode(',', $ptInput));
+                        $pts = $db->table('product_types')->whereIn('LOWER(name)', array_map('strtolower', $names))->get()->getResultArray();
+                        $foundNames = array_map('strtolower', array_column($pts, 'name'));
+                        $ptIds = array_column($pts, 'id');
+                        
+                        // Partial update: log invalid product types but continue with valid ones
+                        if (count($ptIds) < count($names)) {
+                            $missing = [];
+                            foreach ($names as $n) {
+                                if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
+                            }
+                            if (!empty($missing)) {
+                                $errors[] = "Row {$row}: Invalid product types skipped: " . implode(', ', $missing) . ". Proceeding with valid ones.";
+                            }
+                        }
+                        
+                        // Validate that at least one valid product type exists
                         if (empty($ptIds)) {
                             $skipped++;
                             $errors[] = "Row {$row}: No valid product types found. Category cannot be created without product types.";
                             continue 2;
                         }
 
-                        $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
+                        // Gender handling with partial update
+                        $appliesToInput = trim($data['applies_to'] ?? '');
+                        $appliesTo = [];
                         
-                        // Handle applies_to gender values
-                        if (!empty($appliesTo) && is_array($appliesTo)) {
+                        if ($appliesToInput !== '') {
+                            $appliesTo = json_decode($appliesToInput, true);
+                            if (!is_array($appliesTo)) {
+                                $appliesTo = array_map('trim', explode(',', $appliesToInput));
+                            }
+                            
                             // Filter out "all" and convert to lowercase for comparison
                             $appliesTo = array_filter(array_map('trim', $appliesTo), function($val) {
                                 return strtolower($val) !== 'all';
                             });
                             
-                            // Validate applies_to gender values against existing genders
+                            // Validate applies_to gender values against existing genders (partial update)
                             $allGenders = $db->table('genders')->select('LOWER(name) as name')->get()->getResultArray();
                             $validGenderNames = array_map('strtolower', array_column($allGenders, 'name'));
                             $invalidGenders = [];
@@ -2894,34 +2925,25 @@ class SuperAdminApi extends BaseApiController
                                 }
                             }
                             if (!empty($invalidGenders)) {
-                                $skipped++;
-                                $errors[] = "Row {$row}: Invalid gender(s) in applies_to: " . implode(', ', $invalidGenders) . ". Valid genders are: " . implode(', ', array_map('ucfirst', $validGenderNames));
-                                continue 2;
+                                $errors[] = "Row {$row}: Invalid gender(s) skipped: " . implode(', ', $invalidGenders) . ". Proceeding with valid ones.";
                             }
                             $appliesTo = $validGenders;
-                        } elseif (empty($appliesTo)) {
+                        } else {
+                            // Blank gender validation: check if any sub-category with this category's gender exists
+                            // If gender is blank and sub-category with this category's gender is also blank, skip
+                            $hasSubCategoriesWithBlankGender = $db->table('sub_categories')
+                                ->where('LOWER(category_name)', strtolower($name))
+                                ->where('applies_to', '[]')
+                                ->countAllResults() > 0;
+                            
+                            if ($hasSubCategoriesWithBlankGender) {
+                                $skipped++;
+                                $errors[] = "Row {$row}: Gender is blank and sub-category with this category's gender is also blank. Skipping row.";
+                                continue 2;
+                            }
+                            
                             // If no gender value is present, use "N/A"
                             $appliesTo = ['N/A'];
-                        }
-                        
-                        // Parse field_config/attributes if provided
-                        $fieldConfig = [];
-                        $hasAttributes = false;
-                        if (!empty($data['attributes']) || !empty($data['field_config'])) {
-                            $hasAttributes = true;
-                            $attrData = $data['attributes'] ?? $data['field_config'] ?? '';
-                            try {
-                                $attrs = json_decode($attrData, true);
-                                if (is_array($attrs)) {
-                                    $fieldConfig = $attrs;
-                                }
-                            } catch (\Exception $e) {
-                                // If not valid JSON, try comma-separated values
-                                $attrs = array_map('trim', explode(',', $attrData));
-                                if (!empty($attrs)) {
-                                    $fieldConfig = $attrs;
-                                }
-                            }
                         }
                         
                         // Check if exists (case-insensitive by category_name)
@@ -2931,16 +2953,11 @@ class SuperAdminApi extends BaseApiController
                             'product_type_ids' => json_encode(is_array($ptIds) ? $ptIds : []),
                             'applies_to' => json_encode(is_array($appliesTo) ? $appliesTo : []),
                         ];
-                        // Only update field_config if attributes are provided in CSV
-                        if ($hasAttributes) {
-                            $rec['field_config'] = !empty($fieldConfig) ? json_encode($fieldConfig) : null;
-                        }
                         if ($existing) {
                             $db->table('categories')->where('id', $existing['id'])->update($rec);
                             $updated++;
                         } else {
                             $rec['created_at'] = $now;
-                            $rec['field_config'] = !empty($fieldConfig) ? json_encode($fieldConfig) : null;
                             $db->table('categories')->insert($rec);
                             $inserted++;
                         }
@@ -2950,31 +2967,33 @@ class SuperAdminApi extends BaseApiController
                         $name = $data['name'] ?? '';
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
                         
-                        // ID parsing
-                        $catIds = isset($data['category_ids']) ? json_decode($data['category_ids'], true) : [];
+                        // Categories handling with partial update
+                        $catInput = trim($data['categories'] ?? $data['category'] ?? '');
                         
-                        // Name lookup
-                        $categoryInput = $data['categories'] ?? $data['category'] ?? '';
-                        if (empty($catIds) && !empty($categoryInput)) {
-                            $names = array_map('trim', explode(',', $categoryInput));
-                            $cats = $db->table('categories')->whereIn('LOWER(category_name)', array_map('strtolower', $names))->get()->getResultArray();
-                            $catIds = array_column($cats, 'id');
-                            
-                            if (count($catIds) < count($names)) {
-                                $foundNames = array_map('strtolower', array_column($cats, 'category_name'));
-                                $missing = [];
-                                foreach ($names as $n) {
-                                    if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
-                                }
-                                if (!empty($missing)) {
-                                    $skipped++;
-                                    $errors[] = "Row {$row}: Categories not found: " . implode(', ', $missing) . ". Sub-category cannot be created without valid categories.";
-                                    continue 2;
-                                }
+                        // Blank value validation: skip if categories is blank
+                        if ($catInput === '') {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Categories is blank. Skipping row.";
+                            continue 2;
+                        }
+                        
+                        $names = array_map('trim', explode(',', $catInput));
+                        $cats = $db->table('categories')->whereIn('LOWER(category_name)', array_map('strtolower', $names))->get()->getResultArray();
+                        $foundNames = array_map('strtolower', array_column($cats, 'category_name'));
+                        $catIds = array_column($cats, 'id');
+                        
+                        // Partial update: log invalid categories but continue with valid ones
+                        if (count($catIds) < count($names)) {
+                            $missing = [];
+                            foreach ($names as $n) {
+                                if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
+                            }
+                            if (!empty($missing)) {
+                                $errors[] = "Row {$row}: Invalid categories skipped: " . implode(', ', $missing) . ". Proceeding with valid ones.";
                             }
                         }
-
-                        // Validate that categories exist
+                        
+                        // Validate that at least one valid category exists
                         if (empty($catIds)) {
                             $skipped++;
                             $errors[] = "Row {$row}: No valid categories found. Sub-category cannot be created without categories.";
@@ -2992,16 +3011,22 @@ class SuperAdminApi extends BaseApiController
                             }
                         }
 
-                        $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
+                        // Gender handling with partial update
+                        $appliesToInput = trim($data['applies_to'] ?? '');
+                        $appliesTo = [];
                         
-                        // Handle applies_to gender values
-                        if (!empty($appliesTo) && is_array($appliesTo)) {
+                        if ($appliesToInput !== '') {
+                            $appliesTo = json_decode($appliesToInput, true);
+                            if (!is_array($appliesTo)) {
+                                $appliesTo = array_map('trim', explode(',', $appliesToInput));
+                            }
+                            
                             // Filter out "all" and convert to lowercase for comparison
                             $appliesTo = array_filter(array_map('trim', $appliesTo), function($val) {
                                 return strtolower($val) !== 'all';
                             });
                             
-                            // Validate applies_to gender values against existing genders
+                            // Validate applies_to gender values against existing genders (partial update)
                             $allGenders = $db->table('genders')->select('LOWER(name) as name')->get()->getResultArray();
                             $validGenderNames = array_map('strtolower', array_column($allGenders, 'name'));
                             $invalidGenders = [];
@@ -3014,12 +3039,27 @@ class SuperAdminApi extends BaseApiController
                                 }
                             }
                             if (!empty($invalidGenders)) {
-                                $skipped++;
-                                $errors[] = "Row {$row}: Invalid gender(s) in applies_to: " . implode(', ', $invalidGenders) . ". Valid genders are: " . implode(', ', array_map('ucfirst', $validGenderNames));
-                                continue 2;
+                                $errors[] = "Row {$row}: Invalid gender(s) skipped: " . implode(', ', $invalidGenders) . ". Proceeding with valid ones.";
                             }
                             $appliesTo = $validGenders;
-                        } elseif (empty($appliesTo)) {
+                        } else {
+                            // Blank gender validation: check if category with this sub-category's gender is also blank
+                            // If gender is blank and category with this sub-category's gender is also blank, skip
+                            $hasCategoriesWithBlankGender = false;
+                            foreach ($parentCategories as $cat) {
+                                $appliesTo = json_decode($cat['applies_to'] ?? '[]', true);
+                                if (empty($appliesTo) || (count($appliesTo) === 1 && $appliesTo[0] === 'N/A')) {
+                                    $hasCategoriesWithBlankGender = true;
+                                    break;
+                                }
+                            }
+                            
+                            if ($hasCategoriesWithBlankGender) {
+                                $skipped++;
+                                $errors[] = "Row {$row}: Gender is blank and category with this sub-category's gender is also blank. Skipping row.";
+                                continue 2;
+                            }
+                            
                             // If no gender value is present
                             if ($parentHasGenderRestriction) {
                                 // If parent categories have gender restrictions, use "N/A"
@@ -3032,26 +3072,6 @@ class SuperAdminApi extends BaseApiController
                             }
                         }
                         
-                        // Parse field_config/attributes if provided
-                        $fieldConfig = [];
-                        $hasAttributes = false;
-                        if (!empty($data['attributes']) || !empty($data['field_config'])) {
-                            $hasAttributes = true;
-                            $attrData = $data['attributes'] ?? $data['field_config'] ?? '';
-                            try {
-                                $attrs = json_decode($attrData, true);
-                                if (is_array($attrs)) {
-                                    $fieldConfig = $attrs;
-                                }
-                            } catch (\Exception $e) {
-                                // If not valid JSON, try comma-separated values
-                                $attrs = array_map('trim', explode(',', $attrData));
-                                if (!empty($attrs)) {
-                                    $fieldConfig = $attrs;
-                                }
-                            }
-                        }
-                        
                         // Check if exists (case-insensitive by name)
                         $existing = $db->table('sub_categories')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
                         $rec = [
@@ -3059,16 +3079,11 @@ class SuperAdminApi extends BaseApiController
                             'category_ids' => json_encode(is_array($catIds) ? $catIds : []),
                             'applies_to' => json_encode(is_array($appliesTo) ? $appliesTo : []),
                         ];
-                        // Only update field_config if attributes are provided in CSV
-                        if ($hasAttributes) {
-                            $rec['field_config'] = !empty($fieldConfig) ? json_encode($fieldConfig) : null;
-                        }
                         if ($existing) {
                             $db->table('sub_categories')->where('id', $existing['id'])->update($rec);
                             $updated++;
                         } else {
                             $rec['created_at'] = $now;
-                            $rec['field_config'] = !empty($fieldConfig) ? json_encode($fieldConfig) : null;
                             $db->table('sub_categories')->insert($rec);
                             $inserted++;
                         }
