@@ -1149,9 +1149,15 @@ class SuperAdminApi extends BaseApiController
 
     public function removeTaxonomy($table, $id)
     {
-        $allowed = ['listing_types', 'genders', 'product_types', 'categories', 'sub_categories', 'colors'];
+        $allowed = ['listing_types', 'genders', 'product_types', 'categories', 'sub_categories', 'colors', 'attributes'];
         if (!in_array($table, $allowed)) return $this->respond(['success' => false, 'message' => 'Invalid table.'], 400);
         $db = \Config\Database::connect();
+        
+        // Special handling for attributes - delete related assignments first
+        if ($table === 'attributes') {
+            $db->table('attribute_assignments')->where('attribute_id', $id)->delete();
+        }
+        
         $db->table($table)->where('id', $id)->delete();
         return $this->respond(['success' => true, 'message' => 'Item deleted.']);
     }
