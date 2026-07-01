@@ -869,24 +869,27 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Invalid category IDs: ' . implode(', ', $invalidCatIds) . '. These categories do not exist in the database.'], 400);
         }
         
-        // Check if selected categories have genders - if no genders in parent categories, gender is mandatory for sub-category
-        $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
-        $categoriesWithGenders = 0;
-        foreach ($categories as $cat) {
-            $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
-            if (!empty($catAppliesTo)) {
-                $categoriesWithGenders++;
-            }
-        }
+        // Check if gender is required based on parent categories' listing types' gender_config
+        $isGenderRequired = $this->isGenderRequiredForCategories($catIds);
         
-        // Only make gender mandatory if categories are selected AND none of them have genders
-        if (!empty($categories) && $categoriesWithGenders === 0) {
-            // All selected categories have no genders - sub-category must have genders
-            if (empty($appliesTo)) {
+        if ($isGenderRequired && empty($appliesTo)) {
+            // Gender is required but not provided - check if parent categories have genders
+            $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
+            $categoriesWithGenders = 0;
+            foreach ($categories as $cat) {
+                $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
+                if (!empty($catAppliesTo)) {
+                    $categoriesWithGenders++;
+                }
+            }
+            
+            // Only make gender mandatory if categories are selected AND none of them have genders
+            if (!empty($categories) && $categoriesWithGenders === 0) {
+                // All selected categories have no genders - sub-category must have genders
                 return $this->respond(['success' => false, 'message' => 'Since the selected parent category has no genders, you must select at least one gender for this sub-category.'], 400);
             }
         }
-        // If at least one parent category has genders, gender is optional for sub-category
+        // If gender is not required (listing type has gender hidden), gender is optional
         
         // Check for duplicate
         $exists = $db->table('sub_categories')->where('name', $name)->countAllResults();
@@ -1090,24 +1093,27 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Invalid category IDs: ' . implode(', ', $invalidCatIds) . '. These categories do not exist in the database.'], 400);
         }
         
-        // Check if selected categories have genders - if no genders in parent categories, gender is mandatory for sub-category
-        $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
-        $categoriesWithGenders = 0;
-        foreach ($categories as $cat) {
-            $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
-            if (!empty($catAppliesTo)) {
-                $categoriesWithGenders++;
-            }
-        }
+        // Check if gender is required based on parent categories' listing types' gender_config
+        $isGenderRequired = $this->isGenderRequiredForCategories($catIds);
         
-        // Only make gender mandatory if categories are selected AND none of them have genders
-        if (!empty($categories) && $categoriesWithGenders === 0) {
-            // All selected categories have no genders - sub-category must have genders
-            if (empty($appliesTo)) {
+        if ($isGenderRequired && empty($appliesTo)) {
+            // Gender is required but not provided - check if parent categories have genders
+            $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
+            $categoriesWithGenders = 0;
+            foreach ($categories as $cat) {
+                $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
+                if (!empty($catAppliesTo)) {
+                    $categoriesWithGenders++;
+                }
+            }
+            
+            // Only make gender mandatory if categories are selected AND none of them have genders
+            if (!empty($categories) && $categoriesWithGenders === 0) {
+                // All selected categories have no genders - sub-category must have genders
                 return $this->respond(['success' => false, 'message' => 'Since the selected parent category has no genders, you must select at least one gender for this sub-category.'], 400);
             }
         }
-        // If at least one parent category has genders, gender is optional for sub-category
+        // If gender is not required (listing type has gender hidden), gender is optional
         
         // Check for duplicate (excluding current record)
         $exists = $db->table('sub_categories')->where('name', $name)->where('id !=', $id)->countAllResults();
@@ -2963,32 +2969,40 @@ class SuperAdminApi extends BaseApiController
                             }
                             $appliesTo = $validGenders;
                         } else {
-                            // Blank gender validation: check if any sub-category with this category's gender exists
-                            // If gender is blank and sub-category with this category's gender is also blank, skip
+                            // Blank gender validation: check if gender is required based on listing type's gender_config
+                            $isGenderRequired = $this->isGenderRequiredForProductTypes($ptIds);
                             
-                            // Check if exists (case-insensitive by category_name) to get ID for sub-category check
-                            $existingCategory = $db->table('categories')->where('LOWER(category_name)', strtolower($name))->get()->getRowArray();
-                            
-                            if ($existingCategory) {
-                                // Check sub-categories that reference this category
-                                $hasSubCategoriesWithBlankGender = $db->table('sub_categories')
-                                    ->where("JSON_CONTAINS(category_ids, '\"{$existingCategory['id']}\"')")
-                                    ->groupStart()
-                                        ->where('applies_to', '[]')
-                                        ->orWhere('applies_to', '["N/A"]')
-                                    ->groupEnd()
-                                    ->countAllResults() > 0;
+                            if (!$isGenderRequired) {
+                                // Gender is not required (listing type has gender hidden), allow blank
+                                $appliesTo = [];
+                            } else {
+                                // Gender is required, check if any sub-category with this category's gender exists
+                                // If gender is blank and sub-category with this category's gender is also blank, skip
                                 
-                                if ($hasSubCategoriesWithBlankGender) {
-                                    $skipped++;
-                                    $errors[] = "Row {$row}: Gender is blank and sub-category with this category's gender is also blank. Skipping row.";
-                                    continue 2;
+                                // Check if exists (case-insensitive by category_name) to get ID for sub-category check
+                                $existingCategory = $db->table('categories')->where('LOWER(category_name)', strtolower($name))->get()->getRowArray();
+                                
+                                if ($existingCategory) {
+                                    // Check sub-categories that reference this category
+                                    $hasSubCategoriesWithBlankGender = $db->table('sub_categories')
+                                        ->where("JSON_CONTAINS(category_ids, '\"{$existingCategory['id']}\"')")
+                                        ->groupStart()
+                                            ->where('applies_to', '[]')
+                                            ->orWhere('applies_to', '["N/A"]')
+                                        ->groupEnd()
+                                        ->countAllResults() > 0;
+                                    
+                                    if ($hasSubCategoriesWithBlankGender) {
+                                        $skipped++;
+                                        $errors[] = "Row {$row}: Gender is blank and sub-category with this category's gender is also blank. Skipping row.";
+                                        continue 2;
+                                    }
                                 }
+                                
+                                // If no gender value is present, use "N/A" only for new records
+                                // For existing records, preserve the existing applies_to value
+                                $appliesTo = ['N/A'];
                             }
-                            
-                            // If no gender value is present, use "N/A" only for new records
-                            // For existing records, preserve the existing applies_to value
-                            $appliesTo = ['N/A'];
                         }
                         
                         // Check if exists (case-insensitive by category_name)
@@ -3099,33 +3113,40 @@ class SuperAdminApi extends BaseApiController
                             }
                             $appliesTo = $validGenders;
                         } else {
-                            // Blank gender validation: check if category with this sub-category's gender is also blank
-                            // If gender is blank and category with this sub-category's gender is also blank, skip
-                            $hasCategoriesWithBlankGender = false;
-                            foreach ($parentCategories as $cat) {
-                                $appliesTo = json_decode($cat['applies_to'] ?? '[]', true);
-                                if (empty($appliesTo) || (count($appliesTo) === 1 && $appliesTo[0] === 'N/A')) {
-                                    $hasCategoriesWithBlankGender = true;
-                                    break;
-                                }
-                            }
+                            // Blank gender validation: check if gender is required based on listing type's gender_config
+                            $isGenderRequired = $this->isGenderRequiredForCategories($catIds);
                             
-                            if ($hasCategoriesWithBlankGender) {
-                                $skipped++;
-                                $errors[] = "Row {$row}: Gender is blank and category with this sub-category's gender is also blank. Skipping row.";
-                                continue 2;
-                            }
-                            
-                            // If no gender value is present
-                            if ($parentHasGenderRestriction) {
-                                // If parent categories have gender restrictions, use "N/A"
-                                $appliesTo = ['N/A'];
+                            if (!$isGenderRequired) {
+                                // Gender is not required (listing type has gender hidden), allow blank
+                                $appliesTo = [];
                             } else {
-                                // If parent categories don't have gender restrictions, don't create
-                                $skipped++;
+                                // Gender is required - check if category with this sub-category's gender is also blank
+                                $hasCategoriesWithBlankGender = false;
+                                foreach ($parentCategories as $cat) {
+                                    $appliesTo = json_decode($cat['applies_to'] ?? '[]', true);
+                                    if (empty($appliesTo) || (count($appliesTo) === 1 && $appliesTo[0] === 'N/A')) {
+                                        $hasCategoriesWithBlankGender = true;
+                                        break;
+                                    }
+                                }
+                                
+                                if ($hasCategoriesWithBlankGender) {
+                                    $skipped++;
+                                    $errors[] = "Row {$row}: Gender is blank and category with this sub-category's gender is also blank. Skipping row.";
+                                    continue 2;
+                                }
+                                
+                                // If no gender value is present
+                                if ($parentHasGenderRestriction) {
+                                    // If parent categories have gender restrictions, use "N/A"
+                                    $appliesTo = ['N/A'];
+                                } else {
+                                    // If parent categories don't have gender restrictions, don't create
+                                    $skipped++;
                                 $errors[] = "Row {$row}: No gender value provided and parent categories have no gender restrictions. Sub-category cannot be created.";
                                 continue 2;
                             }
+                        }
                         }
                         
                         // Check if exists (case-insensitive by name)
@@ -3316,6 +3337,86 @@ class SuperAdminApi extends BaseApiController
             'skipped' => $skipped,
             'errors' => $errors,
         ]);
+    }
+
+    // ── Helper Functions ──────────────────────────────────
+    
+    private function isGenderRequiredForProductTypes(array $productTypeIds): bool
+    {
+        $db = \Config\Database::connect();
+        
+        // Get listing types for the given product types
+        $productTypes = $db->table('product_types')
+            ->whereIn('id', $productTypeIds)
+            ->select('listing_type_id')
+            ->get()
+            ->getResultArray();
+        
+        if (empty($productTypes)) {
+            return true; // Default to required if no product types found
+        }
+        
+        $listingTypeIds = array_unique(array_column($productTypes, 'listing_type_id'));
+        
+        // Get listing types with their gender_config
+        $listingTypes = $db->table('listing_types')
+            ->whereIn('id', $listingTypeIds)
+            ->select('id, field_config')
+            ->get()
+            ->getResultArray();
+        
+        foreach ($listingTypes as $lt) {
+            $config = json_decode($lt['field_config'] ?? '{}', true);
+            $genderConfig = $config['gender'] ?? 'optional';
+            
+            // If any listing type has gender as mandatory, gender is required
+            if ($genderConfig === 'mandatory') {
+                return true;
+            }
+            
+            // If any listing type has gender as optional, gender is not mandatory
+            if ($genderConfig === 'optional') {
+                return false;
+            }
+            
+            // If gender is hidden, it's not required
+            if ($genderConfig === 'hidden') {
+                continue;
+            }
+        }
+        
+        // If all listing types have gender hidden, gender is not required
+        return false;
+    }
+    
+    private function isGenderRequiredForCategories(array $categoryIds): bool
+    {
+        $db = \Config\Database::connect();
+        
+        // Get product types for the given categories
+        $categories = $db->table('categories')
+            ->whereIn('id', $categoryIds)
+            ->select('product_type_ids')
+            ->get()
+            ->getResultArray();
+        
+        if (empty($categories)) {
+            return true; // Default to required if no categories found
+        }
+        
+        $productTypeIds = [];
+        foreach ($categories as $cat) {
+            $ptIds = json_decode($cat['product_type_ids'] ?? '[]', true);
+            if (is_array($ptIds)) {
+                $productTypeIds = array_merge($productTypeIds, $ptIds);
+            }
+        }
+        
+        if (empty($productTypeIds)) {
+            return true;
+        }
+        
+        return $this->isGenderRequiredForProductTypes($productTypeIds);
     }
 
     // ── Bulk CSV Uploads ──────────────────────────────────

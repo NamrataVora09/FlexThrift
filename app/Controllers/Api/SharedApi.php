@@ -1084,6 +1084,31 @@ class SharedApi extends BaseApiController
         $attributes = $db->table('attributes')->orderBy('created_at', 'DESC')->get()->getResultArray();
         $validationRules = $db->table('validation_rules')->where('is_active', 1)->get()->getResultArray();
         
+        // Get valid gender names for filtering
+        $validGenderNames = array_map('strtolower', array_column($genders, 'name'));
+        
+        // Filter out deleted genders from categories' applies_to
+        foreach ($categories as &$cat) {
+            $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
+            if (is_array($catAppliesTo)) {
+                $catAppliesTo = array_filter($catAppliesTo, function($gender) use ($validGenderNames) {
+                    return in_array(strtolower($gender), $validGenderNames);
+                });
+                $cat['applies_to'] = json_encode(array_values($catAppliesTo));
+            }
+        }
+        
+        // Filter out deleted genders from sub-categories' applies_to
+        foreach ($subCategories as &$subCat) {
+            $subCatAppliesTo = json_decode($subCat['applies_to'] ?? '[]', true);
+            if (is_array($subCatAppliesTo)) {
+                $subCatAppliesTo = array_filter($subCatAppliesTo, function($gender) use ($validGenderNames) {
+                    return in_array(strtolower($gender), $validGenderNames);
+                });
+                $subCat['applies_to'] = json_encode(array_values($subCatAppliesTo));
+            }
+        }
+        
         // Get entity assignments for each attribute
         $assignments = $db->table('attribute_assignments')->get()->getResultArray();
         $assignmentMap = [];
