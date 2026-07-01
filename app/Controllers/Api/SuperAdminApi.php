@@ -3207,7 +3207,8 @@ class SuperAdminApi extends BaseApiController
                         $entityTypes = $data['entity_types'] ?? null;
                         $entityIds = $data['entity_ids'] ?? null;
                         
-                        if ($entityTypes && $entityIds && $attributeId) {
+                        // Only process entity linking if both entity_types and entity_ids are provided
+                        if (!empty($entityTypes) && !empty($entityIds) && $attributeId) {
                             // Delete existing assignments for this attribute
                             $db->table('attribute_assignments')->where('attribute_id', $attributeId)->delete();
                             
