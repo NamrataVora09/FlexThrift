@@ -2939,18 +2939,29 @@ class SuperAdminApi extends BaseApiController
                         } else {
                             // Blank gender validation: check if any sub-category with this category's gender exists
                             // If gender is blank and sub-category with this category's gender is also blank, skip
-                            $hasSubCategoriesWithBlankGender = $db->table('sub_categories')
-                                ->where('LOWER(category_name)', strtolower($name))
-                                ->where('applies_to', '[]')
-                                ->countAllResults() > 0;
                             
-                            if ($hasSubCategoriesWithBlankGender) {
-                                $skipped++;
-                                $errors[] = "Row {$row}: Gender is blank and sub-category with this category's gender is also blank. Skipping row.";
-                                continue 2;
+                            // Check if exists (case-insensitive by category_name) to get ID for sub-category check
+                            $existingCategory = $db->table('categories')->where('LOWER(category_name)', strtolower($name))->get()->getRowArray();
+                            
+                            if ($existingCategory) {
+                                // Check sub-categories that reference this category
+                                $hasSubCategoriesWithBlankGender = $db->table('sub_categories')
+                                    ->where("JSON_CONTAINS(category_ids, '\"{$existingCategory['id']}\"')")
+                                    ->groupStart()
+                                        ->where('applies_to', '[]')
+                                        ->orWhere('applies_to', '["N/A"]')
+                                    ->groupEnd()
+                                    ->countAllResults() > 0;
+                                
+                                if ($hasSubCategoriesWithBlankGender) {
+                                    $skipped++;
+                                    $errors[] = "Row {$row}: Gender is blank and sub-category with this category's gender is also blank. Skipping row.";
+                                    continue 2;
+                                }
                             }
                             
-                            // If no gender value is present, use "N/A"
+                            // If no gender value is present, use "N/A" only for new records
+                            // For existing records, preserve the existing applies_to value
                             $appliesTo = ['N/A'];
                         }
                         
@@ -2959,8 +2970,19 @@ class SuperAdminApi extends BaseApiController
                         $rec = [
                             'category_name' => $name,
                             'product_type_ids' => json_encode(is_array($ptIds) ? $ptIds : []),
-                            'applies_to' => json_encode(is_array($appliesTo) ? $appliesTo : []),
                         ];
+                        
+                        // Only update applies_to if it was provided in CSV
+                        if ($appliesToInput !== '') {
+                            $rec['applies_to'] = json_encode(is_array($appliesTo) ? $appliesTo : []);
+                        } elseif ($existing) {
+                            // Preserve existing applies_to when gender is blank and updating
+                            $rec['applies_to'] = $existing['applies_to'];
+                        } else {
+                            // New record with blank gender, use N/A
+                            $rec['applies_to'] = json_encode(['N/A']);
+                        }
+                        
                         if ($existing) {
                             $db->table('categories')->where('id', $existing['id'])->update($rec);
                             $updated++;
