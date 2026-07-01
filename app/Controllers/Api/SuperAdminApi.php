@@ -2730,12 +2730,20 @@ class SuperAdminApi extends BaseApiController
         // Validate that headers match the expected columns for the selected type
         $requiredHeaders = $expectedHeaders[$type] ?? [];
         $missingHeaders = array_diff($requiredHeaders, $header);
+        $extraHeaders = array_diff($header, $requiredHeaders);
         
-        if (!empty($missingHeaders)) {
+        if (!empty($missingHeaders) || !empty($extraHeaders)) {
             fclose($handle);
+            $errorMsg = 'CSV template does not match the selected type.';
+            if (!empty($missingHeaders)) {
+                $errorMsg .= ' Missing required columns: ' . implode(', ', $missingHeaders) . '.';
+            }
+            if (!empty($extraHeaders)) {
+                $errorMsg .= ' Extra columns found: ' . implode(', ', $extraHeaders) . '.';
+            }
             return $this->respond([
                 'success' => false, 
-                'message' => 'CSV template does not match the selected type. Missing required columns: ' . implode(', ', $missingHeaders),
+                'message' => $errorMsg,
                 'expected_columns' => $requiredHeaders,
                 'found_columns' => $header,
             ], 400);
