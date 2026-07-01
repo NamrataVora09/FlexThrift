@@ -3213,6 +3213,20 @@ class SuperAdminApi extends BaseApiController
                         $entityTypes = $data['entity_types'] ?? null;
                         $entityIds = $data['entity_ids'] ?? null;
                         
+                        // Try to decode JSON if entity_types/entity_ids are JSON strings
+                        if ($entityTypes && is_string($entityTypes)) {
+                            $decoded = json_decode($entityTypes, true);
+                            if (is_array($decoded)) {
+                                $entityTypes = $decoded;
+                            }
+                        }
+                        if ($entityIds && is_string($entityIds)) {
+                            $decoded = json_decode($entityIds, true);
+                            if (is_array($decoded)) {
+                                $entityIds = $decoded;
+                            }
+                        }
+                        
                         // Only process entity linking if both entity_types and entity_ids are provided
                         if (!empty($entityTypes) && !empty($entityIds) && $attributeId) {
                             // Delete existing assignments for this attribute
@@ -3549,6 +3563,35 @@ private function processImage($source, $subDir): ?string
         }
 
         $db->table('attributes')->insert($data);
+        $attributeId = $db->insertID();
+        
+        // Handle entity linking through attribute_assignments table
+        $entityTypes = $this->request->getPost('entity_types');
+        $entityIds = $this->request->getPost('entity_ids');
+
+        // Handle new array format (entity_types[] and entity_ids[])
+        if ($entityTypes !== null || $entityIds !== null) {
+            // Create new assignments for each entity_type and entity_id pair
+            if ($entityTypes && $entityIds) {
+                // Ensure both are arrays
+                $entityTypesArray = is_array($entityTypes) ? $entityTypes : [$entityTypes];
+                $entityIdsArray = is_array($entityIds) ? $entityIds : [$entityIds];
+
+                foreach ($entityTypesArray as $entityType) {
+                    foreach ($entityIdsArray as $entityId) {
+                        if ($entityType && $entityId) {
+                            $db->table('attribute_assignments')->insert([
+                                'attribute_id' => $attributeId,
+                                'entity_type' => $entityType,
+                                'entity_id' => $entityId,
+                                'created_at' => date('Y-m-d H:i:s'),
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+        
         return $this->respond(['success' => true, 'message' => 'Attribute added successfully.']);
     }
 
