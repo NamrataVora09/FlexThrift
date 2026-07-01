@@ -2643,8 +2643,80 @@ class SellerApi extends BaseApiController
     {
         $requiredAttributes = [];
         
-        // First check sub-category attributes (most specific)
+        // First check the new attributes table with entity linking
         if (!empty($subCategoryName)) {
+            $subCat = $db->table('sub_categories')
+                ->where('name', $subCategoryName)
+                ->get()
+                ->getRowArray();
+            
+            if ($subCat) {
+                $subCatId = $subCat['id'];
+                // Get attributes linked to this sub-category
+                $linkedAttrs = $db->table('attribute_assignments aa')
+                    ->join('attributes a', 'a.id = aa.attribute_id')
+                    ->where('aa.entity_type', 'sub_category')
+                    ->where('aa.entity_id', $subCatId)
+                    ->where('a.required', 1)
+                    ->get()
+                    ->getResultArray();
+                
+                foreach ($linkedAttrs as $attr) {
+                    $requiredAttributes[] = $attr['name'];
+                }
+            }
+        }
+        
+        // If no required attributes found in sub-category, check category
+        if (empty($requiredAttributes) && !empty($categoryName)) {
+            $cat = $db->table('categories')
+                ->where('category_name', $categoryName)
+                ->get()
+                ->getRowArray();
+            
+            if ($cat) {
+                $catId = $cat['id'];
+                // Get attributes linked to this category
+                $linkedAttrs = $db->table('attribute_assignments aa')
+                    ->join('attributes a', 'a.id = aa.attribute_id')
+                    ->where('aa.entity_type', 'category')
+                    ->where('aa.entity_id', $catId)
+                    ->where('a.required', 1)
+                    ->get()
+                    ->getResultArray();
+                
+                foreach ($linkedAttrs as $attr) {
+                    $requiredAttributes[] = $attr['name'];
+                }
+            }
+        }
+        
+        // If no required attributes found in category, check listing type
+        if (empty($requiredAttributes) && !empty($listingTypeCatName)) {
+            $lt = $db->table('listing_types')
+                ->where('type_name', $listingTypeCatName)
+                ->get()
+                ->getRowArray();
+            
+            if ($lt) {
+                $ltId = $lt['id'];
+                // Get attributes linked to this listing type
+                $linkedAttrs = $db->table('attribute_assignments aa')
+                    ->join('attributes a', 'a.id = aa.attribute_id')
+                    ->where('aa.entity_type', 'listing_type')
+                    ->where('aa.entity_id', $ltId)
+                    ->where('a.required', 1)
+                    ->get()
+                    ->getResultArray();
+                
+                foreach ($linkedAttrs as $attr) {
+                    $requiredAttributes[] = $attr['name'];
+                }
+            }
+        }
+        
+        // Also check field_config JSON for backward compatibility
+        if (empty($requiredAttributes) && !empty($subCategoryName)) {
             $subCat = $db->table('sub_categories')
                 ->where('name', $subCategoryName)
                 ->get()
@@ -2662,7 +2734,6 @@ class SellerApi extends BaseApiController
             }
         }
         
-        // If no required attributes found in sub-category, check category
         if (empty($requiredAttributes) && !empty($categoryName)) {
             $cat = $db->table('categories')
                 ->where('category_name', $categoryName)
@@ -2681,7 +2752,6 @@ class SellerApi extends BaseApiController
             }
         }
         
-        // If no required attributes found in category, check listing type
         if (empty($requiredAttributes) && !empty($listingTypeCatName)) {
             $lt = $db->table('listing_types')
                 ->where('type_name', $listingTypeCatName)
