@@ -523,10 +523,45 @@ class AuthApi extends BaseApiController
         // Check existing mobile
         $existingMobile = $this->userModel->where('mobile', $data['mobile'])->first();
         if ($existingMobile) {
+            $requestedType = $data['user_type'] ?? 'buyer';
+            $currentType   = $existingMobile['user_type'];
+
+            // Logic: Give error only if user already has this role or is 'both'
+            $alreadyHasRole = false;
+            if ($currentType === 'both') {
+                $alreadyHasRole = true;
+            } elseif ($currentType === $requestedType) {
+                $alreadyHasRole = true;
+            } elseif ($requestedType === 'both' && $currentType !== 'both') {
+                $alreadyHasRole = false; // upgrading from one role to both
+            }
+
+            if ($alreadyHasRole) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'This mobile number is already registered with the selected role.',
+                ], 409);
+            }
+
+            // Upgrade existing user to 'both'
+            $this->userModel->update($existingMobile['id'], [
+                'user_type'  => 'both',
+                'role'       => ($requestedType === 'both') ? 'buyer' : $requestedType,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            // Process referral for existing user if they haven't been referred yet
+            if (empty($existingMobile['referred_by']) && !empty($data['referred_by'])) {
+                $this->applyReferral($existingMobile['id'], $data['referred_by']);
+            }
+
+            $otp = $this->userModel->generateOTP($existingMobile['id']);
+            if ($otp) $this->sendOTPEmail($existingMobile['email'], $existingMobile['name'], $otp);
+
             return $this->respond([
-                'success' => false,
-                'message' => 'Mobile number already registered',
-            ], 409);
+                'success' => true,
+                'message' => 'Account upgraded successfully. OTP sent to your email.',
+            ], 200);
         }
 
         $referralCode = strtoupper(substr(md5(uniqid()), 0, 8));

@@ -1081,7 +1081,50 @@ class SharedApi extends BaseApiController
         $productTypes = $db->table('product_types')->get()->getResultArray();
         $genders = $db->table('genders')->get()->getResultArray();
         $colors = $db->table('colors')->get()->getResultArray();
+        $attributes = $db->table('attributes')->orderBy('created_at', 'DESC')->get()->getResultArray();
         $validationRules = $db->table('validation_rules')->where('is_active', 1)->get()->getResultArray();
+        
+        // Get entity assignments for each attribute
+        $assignments = $db->table('attribute_assignments')->get()->getResultArray();
+        $assignmentMap = [];
+        foreach ($assignments as $assignment) {
+            if (!isset($assignmentMap[$assignment['attribute_id']])) {
+                $assignmentMap[$assignment['attribute_id']] = [];
+            }
+            $assignmentMap[$assignment['attribute_id']][] = [
+                'entity_type' => $assignment['entity_type'],
+                'entity_id' => $assignment['entity_id'],
+            ];
+        }
+        
+        // Parse allowed_values JSON and add entity linking for each attribute
+        foreach ($attributes as &$attr) {
+            $attr['allowed_values'] = !empty($attr['allowed_values']) ? json_decode($attr['allowed_values'], true) : [];
+            
+            // Add entity linking information
+            if (isset($assignmentMap[$attr['id']]) && !empty($assignmentMap[$attr['id']])) {
+                $firstAssignment = $assignmentMap[$attr['id']][0];
+                $attr['entity_type'] = $firstAssignment['entity_type'];
+                $attr['entity_ids'] = array_column($assignmentMap[$attr['id']], 'entity_id');
+                
+                // Map entity_type to the appropriate ID column for frontend compatibility (backward compatibility)
+                if ($attr['entity_type'] === 'listing_type') {
+                    $attr['listing_type_id'] = $attr['entity_ids'][0] ?? null;
+                } elseif ($attr['entity_type'] === 'category') {
+                    $attr['category_id'] = $attr['entity_ids'][0] ?? null;
+                } elseif ($attr['entity_type'] === 'sub_category') {
+                    $attr['sub_category_id'] = $attr['entity_ids'][0] ?? null;
+                }
+            } else {
+                $attr['entity_type'] = null;
+                $attr['entity_ids'] = [];
+                $attr['entity_id'] = null;
+                $attr['listing_type_id'] = null;
+                $attr['category_id'] = null;
+                $attr['sub_category_id'] = null;
+            }
+        }
+        
         return $this->respond([
             'success' => true,
             'data' => [
@@ -1091,6 +1134,7 @@ class SharedApi extends BaseApiController
                 'product_types' => $productTypes,
                 'genders' => $genders,
                 'colors' => $colors,
+                'attributes' => $attributes,
                 'validation_rules' => $validationRules,
             ]
         ]);

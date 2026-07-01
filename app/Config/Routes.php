@@ -283,6 +283,7 @@ function register_api_routes($routes)
         $routes->post('add-category', 'Api\SuperAdminApi::addCategory');
         $routes->post('add-sub-category', 'Api\SuperAdminApi::addSubCategory');
         $routes->post('add-color', 'Api\SuperAdminApi::addColor');
+        $routes->post('add-attribute', 'Api\SuperAdminApi::addAttribute');
         $routes->post('remove-taxonomy/(:any)/(:num)', 'Api\SuperAdminApi::removeTaxonomy/$1/$2');
         $routes->post('update-listing-type/(:num)', 'Api\SuperAdminApi::updateListingType/$1');
         $routes->post('update-gender/(:num)', 'Api\SuperAdminApi::updateGender/$1');
@@ -290,6 +291,12 @@ function register_api_routes($routes)
         $routes->post('update-category/(:num)', 'Api\SuperAdminApi::updateCategory/$1');
         $routes->post('update-sub-category/(:num)', 'Api\SuperAdminApi::updateSubCategory/$1');
         $routes->post('update-color/(:num)', 'Api\SuperAdminApi::updateColor/$1');
+        $routes->post('update-attribute/(:num)', 'Api\SuperAdminApi::updateAttribute/$1');
+        // Attribute Assignments
+        $routes->get('attribute-assignments', 'Api\SuperAdminApi::attributeAssignments');
+        $routes->post('assign-attribute', 'Api\SuperAdminApi::assignAttribute');
+        $routes->post('update-attribute-assignment/(:num)', 'Api\SuperAdminApi::updateAttributeAssignment/$1');
+        $routes->post('remove-attribute-assignment/(:num)', 'Api\SuperAdminApi::removeAttributeAssignment/$1');
         // Brands
         $routes->get('brands', 'Api\SuperAdminApi::sellerBrands');
         $routes->post('create-brand', 'Api\SuperAdminApi::createSellerBrand');

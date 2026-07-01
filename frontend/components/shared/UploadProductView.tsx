@@ -32,7 +32,7 @@ interface FormMeta {
   listing_types: Array<{ id: number; type_name: string; usage_label?: string; field_config?: string }>;
   product_types: Array<{ id: number; name: string; listing_type_id: number }>;
   categories: Array<{ id: number; name: string; product_type_id?: number; product_type_ids?: string; applies_to?: string; field_config?: string }>;
-  sub_categories: Array<{ id: number; name: string; category_id?: number; category_ids?: string; field_config?: string }>;
+  sub_categories: Array<{ id: number; name: string; category_id?: number; category_ids?: string; field_config?: string; applies_to?: string }>;
   colors: Array<{ id: number; name: string; hex_code: string }>;
   genders: Array<{ id: number; name: string }>;
   original_brands: Array<{ id: number; brand_name: string; brand_image?: string; listing_type_id?: number | string | null; listing_type_ids?: string | null }>;
@@ -40,6 +40,11 @@ interface FormMeta {
   pricing_rules: PricingRule[];
   rental_pricing_rules: PricingRule[];
   validation_rules: ValidationRule[];
+  attributes: {
+    listing_type: Record<string, Attribute[]>;
+    category: Record<string, Attribute[]>;
+    sub_category: Record<string, Attribute[]>;
+  };
 }
 
 interface ValidationRule {
@@ -254,7 +259,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     }));
   }, [f.product_type, meta]);
 
-  // Cascade: category → sub_categories + filter genders by applies_to
+  // Cascade: category → sub_categories + filter genders by applies_to (category → sub-category fallback)
   const [filteredGenders, setFilteredGenders] = useState<Array<{ id: number; name: string }>>([]);
   useEffect(() => {
     if (!meta || !f.category_id) { setSubCategories([]); setFilteredGenders(meta?.genders || []); return; }
@@ -268,21 +273,38 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         return ids.includes(Number(f.category_id)) || ids.includes(String(f.category_id));
       } catch { return false; }
     }));
-    // Filter genders by category's applies_to
-    const selectedCat = meta.categories.find(c => String(c.id) === String(f.category_id));
-    if (selectedCat && selectedCat.applies_to && selectedCat.applies_to !== 'all') {
-      try {
-        const appliesTo = JSON.parse(selectedCat.applies_to);
-        if (Array.isArray(appliesTo) && appliesTo.length > 0) {
-          setFilteredGenders(meta.genders.filter(g => appliesTo.map((a: string) => a.toLowerCase()).includes(g.name.toLowerCase())));
-        } else {
-          setFilteredGenders(meta.genders);
-        }
-      } catch { setFilteredGenders(meta.genders); }
-    } else {
-      setFilteredGenders(meta.genders);
+
+    // First, check if sub-category has specific genders
+    if (f.sub_category_id) {
+      const selectedSubCat = meta.sub_categories.find(sc => String(sc.id) === String(f.sub_category_id));
+      if (selectedSubCat && selectedSubCat.applies_to && selectedSubCat.applies_to !== 'all') {
+        try {
+          const appliesTo = JSON.parse(selectedSubCat.applies_to);
+          if (Array.isArray(appliesTo) && appliesTo.length > 0 && !appliesTo.includes('N/A')) {
+            setFilteredGenders(meta.genders.filter(g => appliesTo.map((a: string) => a.toLowerCase()).includes(g.name.toLowerCase())));
+            return;
+          }
+        } catch { }
+      }
     }
-  }, [f.category_id, meta]);
+
+    // If sub-category has no specific genders, check category's applies_to
+    if (f.category_id) {
+      const selectedCat = meta.categories.find(c => String(c.id) === String(f.category_id));
+      if (selectedCat && selectedCat.applies_to && selectedCat.applies_to !== 'all') {
+        try {
+          const appliesTo = JSON.parse(selectedCat.applies_to);
+          if (Array.isArray(appliesTo) && appliesTo.length > 0 && !appliesTo.includes('N/A')) {
+            setFilteredGenders(meta.genders.filter(g => appliesTo.map((a: string) => a.toLowerCase()).includes(g.name.toLowerCase())));
+            return;
+          }
+        } catch { }
+      }
+    }
+
+    // If neither sub-category nor category has specific genders, show all genders
+    setFilteredGenders(meta.genders);
+  }, [f.category_id, f.sub_category_id, meta]);
 
   // Aggregate dynamic attributes from Listing Type, Category, and Sub-Category
   useEffect(() => {
@@ -290,7 +312,56 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     const attrs: Attribute[] = [];
     const seen = new Set<string>();
 
-    const add = (fc?: string) => {
+    // Add attributes from new attributes system
+    if (meta.attributes) {
+      // From listing type
+      if (f.listing_type_category && meta.attributes.listing_type[f.listing_type_category]) {
+        meta.attributes.listing_type[f.listing_type_category].forEach((attr: any) => {
+          if (attr.name && !seen.has(attr.name.toLowerCase())) {
+            attrs.push({
+              name: attr.name,
+              type: attr.type,
+              required: attr.required === 1,
+              options: attr.allowed_values ? attr.allowed_values.join(',') : '',
+            });
+            seen.add(attr.name.toLowerCase());
+          }
+        });
+      }
+
+      // From category
+      if (f.category_id && meta.attributes.category[f.category_id]) {
+        meta.attributes.category[f.category_id].forEach((attr: any) => {
+          if (attr.name && !seen.has(attr.name.toLowerCase())) {
+            attrs.push({
+              name: attr.name,
+              type: attr.type,
+              required: attr.required === 1,
+              options: attr.allowed_values ? attr.allowed_values.join(',') : '',
+            });
+            seen.add(attr.name.toLowerCase());
+          }
+        });
+      }
+
+      // From sub-category
+      if (f.sub_category_id && meta.attributes.sub_category[f.sub_category_id]) {
+        meta.attributes.sub_category[f.sub_category_id].forEach((attr: any) => {
+          if (attr.name && !seen.has(attr.name.toLowerCase())) {
+            attrs.push({
+              name: attr.name,
+              type: attr.type,
+              required: attr.required === 1,
+              options: attr.allowed_values ? attr.allowed_values.join(',') : '',
+            });
+            seen.add(attr.name.toLowerCase());
+          }
+        });
+      }
+    }
+
+    // Fallback: Also check field_config for backward compatibility
+    const addFromFieldConfig = (fc?: string) => {
       if (!fc) return;
       try {
         const config = JSON.parse(fc);
@@ -305,9 +376,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       } catch { }
     };
 
-    if (f.listing_type_category) add(meta.listing_types.find(lt => String(lt.id) === f.listing_type_category)?.field_config);
-    if (f.category_id) add(meta.categories.find(c => String(c.id) === f.category_id)?.field_config);
-    if (f.sub_category_id) add(meta.sub_categories.find(sc => String(sc.id) === f.sub_category_id)?.field_config);
+    if (f.listing_type_category) addFromFieldConfig(meta.listing_types.find(lt => String(lt.id) === f.listing_type_category)?.field_config);
+    if (f.category_id) addFromFieldConfig(meta.categories.find(c => String(c.id) === f.category_id)?.field_config);
+    if (f.sub_category_id) addFromFieldConfig(meta.sub_categories.find(sc => String(sc.id) === f.sub_category_id)?.field_config);
 
     setDynamicAttributes(attrs);
     // Initialize/clean attribute values

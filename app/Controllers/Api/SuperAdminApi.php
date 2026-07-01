@@ -799,13 +799,19 @@ class SuperAdminApi extends BaseApiController
         $name = $this->request->getPost('name');
         $ltId = $this->request->getPost('listing_type_id');
         if (!$name || !$ltId) return $this->respond(['success' => false, 'message' => 'Name and listing type are required.'], 400);
-        
-        // Check for duplicate (same name within same listing type)
-        $exists = $db->table('product_types')->where('name', $name)->where('listing_type_id', $ltId)->countAllResults();
-        if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Product type with this name already exists in this listing type.'], 400);
+
+        // Validate that listing_type_id exists in database
+        $existingLt = $db->table('listing_types')->where('id', $ltId)->select('id')->get()->getRowArray();
+        if (!$existingLt) {
+            return $this->respond(['success' => false, 'message' => 'Invalid listing type ID: ' . $ltId . '. This listing type does not exist in the database.'], 400);
         }
-        
+
+        // Check for duplicate globally by name only (case-insensitive)
+        $exists = $db->table('product_types')->where('LOWER(name)', strtolower($name))->countAllResults();
+        if ($exists) {
+            return $this->respond(['success' => false, 'message' => 'Product type with this name already exists. Product type names must be unique across all listing types.'], 400);
+        }
+
         $db->table('product_types')->insert(['name' => $name, 'listing_type_id' => $ltId, 'created_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => 'Product type added.']);
     }
@@ -817,6 +823,20 @@ class SuperAdminApi extends BaseApiController
         $ptIds = $this->request->getPost('product_type_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
         if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        
+        // Validate product_type_ids is not empty
+        if (empty($ptIds)) {
+            return $this->respond(['success' => false, 'message' => 'At least one product type is required.'], 400);
+        }
+        
+        // Validate that product_type_ids exist in database
+        $existingPtIds = $db->table('product_types')->whereIn('id', $ptIds)->select('id')->get()->getResultArray();
+        $validPtIds = array_column($existingPtIds, 'id');
+        $invalidPtIds = array_diff($ptIds, $validPtIds);
+        
+        if (!empty($invalidPtIds)) {
+            return $this->respond(['success' => false, 'message' => 'Invalid product type IDs: ' . implode(', ', $invalidPtIds) . '. These product types do not exist in the database.'], 400);
+        }
         
         // Check for duplicate
         $exists = $db->table('categories')->where('category_name', $name)->countAllResults();
@@ -842,6 +862,15 @@ class SuperAdminApi extends BaseApiController
         if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
         if (empty($catIds)) return $this->respond(['success' => false, 'message' => 'At least one Category is required.'], 400);
         
+        // Validate that category_ids exist in database
+        $existingCatIds = $db->table('categories')->whereIn('id', $catIds)->select('id')->get()->getResultArray();
+        $validCatIds = array_column($existingCatIds, 'id');
+        $invalidCatIds = array_diff($catIds, $validCatIds);
+        
+        if (!empty($invalidCatIds)) {
+            return $this->respond(['success' => false, 'message' => 'Invalid category IDs: ' . implode(', ', $invalidCatIds) . '. These categories do not exist in the database.'], 400);
+        }
+        
         // Check if selected categories have genders - if no genders in parent categories, gender is mandatory for sub-category
         $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
         $categoriesWithGenders = 0;
@@ -852,10 +881,11 @@ class SuperAdminApi extends BaseApiController
             }
         }
         
-        if ($categoriesWithGenders === 0) {
+        // Only make gender mandatory if categories are selected AND none of them have genders
+        if (!empty($categories) && $categoriesWithGenders === 0) {
             // All selected categories have no genders - sub-category must have genders
             if (empty($appliesTo)) {
-                return $this->respond(['success' => false, 'message' => 'Gender (Applies To) is mandatory when parent category has no genders.'], 400);
+                return $this->respond(['success' => false, 'message' => 'Since the selected parent category has no genders, you must select at least one gender for this sub-category.'], 400);
             }
         }
         // If at least one parent category has genders, gender is optional for sub-category
@@ -896,6 +926,12 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('type_name') ?? $this->request->getPost('name');
+        
+        // Validate name is not empty
+        if (empty($name)) {
+            return $this->respond(['success' => false, 'message' => 'Listing type name cannot be empty.'], 400);
+        }
+        
         $gender = strtolower(trim($this->request->getPost('gender_config') ?? 'optional'));
         
         // Validate gender_config value
@@ -949,6 +985,14 @@ class SuperAdminApi extends BaseApiController
         $name = $this->request->getPost('name');
         $ltId = $this->request->getPost('listing_type_id');
         
+        // Validate that listing_type_id exists in database
+        if ($ltId) {
+            $existingLt = $db->table('listing_types')->where('id', $ltId)->select('id')->get()->getRowArray();
+            if (!$existingLt) {
+                return $this->respond(['success' => false, 'message' => 'Invalid listing type ID: ' . $ltId . '. This listing type does not exist in the database.'], 400);
+            }
+        }
+        
         // Check for duplicate (same name within same listing type, excluding current record)
         $exists = $db->table('product_types')->where('name', $name)->where('listing_type_id', $ltId)->where('id !=', $id)->countAllResults();
         if ($exists) {
@@ -966,9 +1010,29 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('category_name');
+        
+        // Validate name is not empty
+        if (empty($name)) {
+            return $this->respond(['success' => false, 'message' => 'Category name cannot be empty.'], 400);
+        }
+        
         $ptIds = $this->request->getPost('product_type_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
         $attrs = $this->request->getPost('attributes');
+        
+        // Validate product_type_ids is not empty
+        if (empty($ptIds)) {
+            return $this->respond(['success' => false, 'message' => 'At least one product type is required.'], 400);
+        }
+        
+        // Validate that product_type_ids exist in database
+        $existingPtIds = $db->table('product_types')->whereIn('id', $ptIds)->select('id')->get()->getResultArray();
+        $validPtIds = array_column($existingPtIds, 'id');
+        $invalidPtIds = array_diff($ptIds, $validPtIds);
+        
+        if (!empty($invalidPtIds)) {
+            return $this->respond(['success' => false, 'message' => 'Invalid product type IDs: ' . implode(', ', $invalidPtIds) . '. These product types do not exist in the database.'], 400);
+        }
         
         // Check for duplicate (excluding current record)
         $exists = $db->table('categories')->where('category_name', $name)->where('id !=', $id)->countAllResults();
@@ -1008,11 +1072,26 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
+        
+        // Validate name is not empty
+        if (empty($name)) {
+            return $this->respond(['success' => false, 'message' => 'Sub-category name cannot be empty.'], 400);
+        }
+        
         $catIds = $this->request->getPost('category_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
         $attrs = $this->request->getPost('attributes');
         
         if (empty($catIds)) return $this->respond(['success' => false, 'message' => 'At least one Category is required.'], 400);
+        
+        // Validate that category_ids exist in database
+        $existingCatIds = $db->table('categories')->whereIn('id', $catIds)->select('id')->get()->getResultArray();
+        $validCatIds = array_column($existingCatIds, 'id');
+        $invalidCatIds = array_diff($catIds, $validCatIds);
+        
+        if (!empty($invalidCatIds)) {
+            return $this->respond(['success' => false, 'message' => 'Invalid category IDs: ' . implode(', ', $invalidCatIds) . '. These categories do not exist in the database.'], 400);
+        }
         
         // Check if selected categories have genders - if no genders in parent categories, gender is mandatory for sub-category
         $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
@@ -1024,10 +1103,11 @@ class SuperAdminApi extends BaseApiController
             }
         }
         
-        if ($categoriesWithGenders === 0) {
+        // Only make gender mandatory if categories are selected AND none of them have genders
+        if (!empty($categories) && $categoriesWithGenders === 0) {
             // All selected categories have no genders - sub-category must have genders
             if (empty($appliesTo)) {
-                return $this->respond(['success' => false, 'message' => 'Gender (Applies To) is mandatory when parent category has no genders.'], 400);
+                return $this->respond(['success' => false, 'message' => 'Since the selected parent category has no genders, you must select at least one gender for this sub-category.'], 400);
             }
         }
         // If at least one parent category has genders, gender is optional for sub-category
@@ -1117,11 +1197,40 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $brands = $db->table('brands b')
-            ->select('b.*, u.name as seller_name, u.mobile as seller_mobile, lt.type_name as listing_type_name')
+            ->select('b.*, u.name as seller_name, u.mobile as seller_mobile')
             ->join('users u', 'u.id = b.seller_id', 'left')
-            ->join('listing_types lt', 'lt.id = b.listing_type_id', 'left')
             ->orderBy('b.created_at', 'DESC')
             ->get()->getResultArray();
+
+        // Process brands to include listing type info
+        foreach ($brands as &$b) {
+            $listingTypeNames = [];
+            
+            // Check listing_type_ids (JSON array - primary)
+            if (!empty($b['listing_type_ids'])) {
+                try {
+                    $ltIds = json_decode($b['listing_type_ids'], true);
+                    if (is_array($ltIds)) {
+                        foreach ($ltIds as $ltId) {
+                            $lt = $db->table('listing_types')->where('id', $ltId)->select('type_name')->get()->getRowArray();
+                            if ($lt) $listingTypeNames[] = $lt['type_name'];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // JSON decode error, skip
+                }
+            }
+            
+            // Fallback to single listing_type_id (for backward compatibility)
+            if (empty($listingTypeNames) && !empty($b['listing_type_id'])) {
+                $lt = $db->table('listing_types')->where('id', $b['listing_type_id'])->get()->getRowArray();
+                if ($lt) $listingTypeNames[] = $lt['type_name'];
+            }
+            
+            $b['listing_type_names'] = $listingTypeNames;
+            $b['listing_type_ids'] = !empty($b['listing_type_ids']) ? json_decode($b['listing_type_ids'], true) : [];
+        }
+        
         return $this->respond(['success' => true, 'data' => $brands]);
     }
 
@@ -1131,7 +1240,6 @@ class SuperAdminApi extends BaseApiController
         $data = [
             'brand_name' => $this->request->getPost('brand_name'),
             'seller_id' => $this->request->getPost('seller_id'),
-            'listing_type_id' => $this->request->getPost('listing_type_id'),
             'description' => $this->request->getPost('description') ?? '',
             'created_by_admin' => 1,
             'created_at' => date('Y-m-d H:i:s'),
@@ -1139,6 +1247,29 @@ class SuperAdminApi extends BaseApiController
         if (!$data['brand_name'] || !$data['seller_id']) {
             return $this->respond(['success' => false, 'message' => 'Brand name and Seller are required.'], 400);
         }
+
+        // Handle multiple listing types
+        $ltIds = $this->request->getPost('listing_type_ids');
+        if ($ltIds) {
+            if (is_string($ltIds)) {
+                $ltIds = json_decode($ltIds, true);
+            }
+            if (is_array($ltIds) && !empty($ltIds)) {
+                $ltIds = array_filter(array_map('intval', $ltIds));
+                $data['listing_type_ids'] = json_encode(array_values($ltIds));
+                $data['listing_type_id'] = $ltIds[0] ?? null;
+            }
+        }
+
+        // Fallback: single listing_type_id if listing_type_ids not provided
+        if (empty($data['listing_type_ids'])) {
+            $ltId = $this->request->getPost('listing_type_id');
+            if ($ltId) {
+                $data['listing_type_id'] = $ltId;
+                $data['listing_type_ids'] = json_encode([(int)$ltId]);
+            }
+        }
+
         $db->table('brands')->insert($data);
         return $this->respond(['success' => true, 'message' => 'Seller brand created and assigned.']);
     }
@@ -1151,12 +1282,37 @@ class SuperAdminApi extends BaseApiController
         if ($name) $data['brand_name'] = $name;
         $sellerId = $this->request->getPost('seller_id');
         if ($sellerId !== null) $data['seller_id'] = $sellerId ?: null;
-        $ltId = $this->request->getPost('listing_type_id');
-        if ($ltId !== null) $data['listing_type_id'] = $ltId ?: null;
         $desc = $this->request->getPost('description');
         if ($desc !== null) $data['description'] = $desc;
         $isBlocked = $this->request->getPost('is_blocked');
         if ($isBlocked !== null) $data['is_blocked'] = $isBlocked;
+        $isActive = $this->request->getPost('is_active');
+        if ($isActive !== null) $data['is_active'] = $isActive;
+
+        // Handle multiple listing types
+        $ltIds = $this->request->getPost('listing_type_ids');
+        if ($ltIds !== null) {
+            if (is_string($ltIds)) {
+                $ltIds = json_decode($ltIds, true);
+            }
+            if (is_array($ltIds) && !empty($ltIds)) {
+                $ltIds = array_filter(array_map('intval', $ltIds));
+                $data['listing_type_ids'] = json_encode(array_values($ltIds));
+                $data['listing_type_id'] = $ltIds[0] ?? null;
+            } else {
+                $data['listing_type_ids'] = null;
+                $data['listing_type_id'] = null;
+            }
+        } else {
+            // Fallback: single listing_type_id if listing_type_ids not provided
+            $ltId = $this->request->getPost('listing_type_id');
+            if ($ltId !== null) {
+                $data['listing_type_id'] = $ltId ?: null;
+                if ($ltId) {
+                    $data['listing_type_ids'] = json_encode([(int)$ltId]);
+                }
+            }
+        }
 
         if (empty($data)) return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
         $db->table('brands')->where('id', $id)->update($data);
@@ -2547,10 +2703,21 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Please upload a valid CSV file.'], 400);
         }
 
-        $allowedTypes = ['listing_types', 'genders', 'product_types', 'categories', 'sub_categories', 'colors'];
+        $allowedTypes = ['listing_types', 'genders', 'product_types', 'categories', 'sub_categories', 'colors', 'attributes'];
         if (!in_array($type, $allowedTypes)) {
             return $this->respond(['success' => false, 'message' => 'Invalid catalogue type.'], 400);
         }
+
+        // Define expected headers for each type
+        $expectedHeaders = [
+            'listing_types' => ['name', 'gender_config', 'usage_label', 'attributes', 'image'],
+            'genders' => ['name'],
+            'product_types' => ['name', 'listing_type'],
+            'categories' => ['category_name', 'product_types', 'applies_to', 'attributes'],
+            'sub_categories' => ['name', 'categories', 'applies_to', 'attributes'],
+            'colors' => ['name', 'hex_code'],
+            'attributes' => ['name', 'type', 'required', 'allowed_values', 'placeholder', 'entity_types', 'entity_ids'],
+        ];
 
         $handle = fopen($file->getTempName(), 'r');
         if (!$handle) {
@@ -2563,6 +2730,20 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'CSV file is empty.'], 400);
         }
         $header = array_map('trim', array_map('strtolower', $header));
+
+        // Validate that headers match the expected columns for the selected type
+        $requiredHeaders = $expectedHeaders[$type] ?? [];
+        $missingHeaders = array_diff($requiredHeaders, $header);
+        
+        if (!empty($missingHeaders)) {
+            fclose($handle);
+            return $this->respond([
+                'success' => false, 
+                'message' => 'CSV template does not match the selected type. Missing required columns: ' . implode(', ', $missingHeaders),
+                'expected_columns' => $requiredHeaders,
+                'found_columns' => $header,
+            ], 400);
+        }
 
         $inserted = 0;
         $updated = 0;
@@ -2656,7 +2837,7 @@ class SuperAdminApi extends BaseApiController
                     case 'product_types':
                         $name = $data['name'] ?? '';
                         $ltId = $data['listing_type_id'] ?? '';
-                        
+
                         // Name lookup if ID missing
                         if (!$ltId && !empty($data['listing_type'])) {
                             $lt = $db->table('listing_types')->where('LOWER(type_name)', strtolower($data['listing_type']))->get()->getRowArray();
@@ -2664,9 +2845,9 @@ class SuperAdminApi extends BaseApiController
                         }
 
                         if (!$name || !$ltId) { $skipped++; $errors[] = "Row {$row}: Name or listing_type missing"; continue 2; }
-                        
-                        // Check if exists (case-insensitive by name and listing_type_id)
-                        $existing = $db->table('product_types')->where('LOWER(name)', strtolower($name))->where('listing_type_id', $ltId)->get()->getRowArray();
+
+                        // Check if exists globally by name only (case-insensitive)
+                        $existing = $db->table('product_types')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
                         if ($existing) {
                             $db->table('product_types')->where('id', $existing['id'])->update(['name' => $name, 'listing_type_id' => $ltId]);
                             $updated++;
@@ -2690,15 +2871,31 @@ class SuperAdminApi extends BaseApiController
                             $ptIds = array_column($pts, 'id');
                         }
 
+                        // Validate that product types exist
+                        if (empty($ptIds)) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: No valid product types found. Category cannot be created without product types.";
+                            continue 2;
+                        }
+
                         $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
                         
-                        // Validate applies_to gender values against existing genders
+                        // Handle applies_to gender values
                         if (!empty($appliesTo) && is_array($appliesTo)) {
+                            // Filter out "all" and convert to lowercase for comparison
+                            $appliesTo = array_filter(array_map('trim', $appliesTo), function($val) {
+                                return strtolower($val) !== 'all';
+                            });
+                            
+                            // Validate applies_to gender values against existing genders
                             $allGenders = $db->table('genders')->select('LOWER(name) as name')->get()->getResultArray();
                             $validGenderNames = array_map('strtolower', array_column($allGenders, 'name'));
                             $invalidGenders = [];
+                            $validGenders = [];
                             foreach ($appliesTo as $gender) {
-                                if (!in_array(strtolower($gender), $validGenderNames)) {
+                                if (in_array(strtolower($gender), $validGenderNames)) {
+                                    $validGenders[] = $gender;
+                                } else {
                                     $invalidGenders[] = $gender;
                                 }
                             }
@@ -2707,6 +2904,10 @@ class SuperAdminApi extends BaseApiController
                                 $errors[] = "Row {$row}: Invalid gender(s) in applies_to: " . implode(', ', $invalidGenders) . ". Valid genders are: " . implode(', ', array_map('ucfirst', $validGenderNames));
                                 continue 2;
                             }
+                            $appliesTo = $validGenders;
+                        } elseif (empty($appliesTo)) {
+                            // If no gender value is present, use "N/A"
+                            $appliesTo = ['N/A'];
                         }
                         
                         // Parse field_config/attributes if provided
@@ -2772,26 +2973,67 @@ class SuperAdminApi extends BaseApiController
                                     if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
                                 }
                                 if (!empty($missing)) {
-                                    $errors[] = "Row {$row}: Categories not found: " . implode(', ', $missing);
+                                    $skipped++;
+                                    $errors[] = "Row {$row}: Categories not found: " . implode(', ', $missing) . ". Sub-category cannot be created without valid categories.";
+                                    continue 2;
                                 }
+                            }
+                        }
+
+                        // Validate that categories exist
+                        if (empty($catIds)) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: No valid categories found. Sub-category cannot be created without categories.";
+                            continue 2;
+                        }
+
+                        // Check if parent categories have gender restrictions
+                        $parentCategories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
+                        $parentHasGenderRestriction = false;
+                        foreach ($parentCategories as $cat) {
+                            $appliesTo = json_decode($cat['applies_to'] ?? '[]', true);
+                            if (!empty($appliesTo) && !in_array('N/A', $appliesTo)) {
+                                $parentHasGenderRestriction = true;
+                                break;
                             }
                         }
 
                         $appliesTo = isset($data['applies_to']) ? json_decode($data['applies_to'], true) : [];
                         
-                        // Validate applies_to gender values against existing genders
+                        // Handle applies_to gender values
                         if (!empty($appliesTo) && is_array($appliesTo)) {
+                            // Filter out "all" and convert to lowercase for comparison
+                            $appliesTo = array_filter(array_map('trim', $appliesTo), function($val) {
+                                return strtolower($val) !== 'all';
+                            });
+                            
+                            // Validate applies_to gender values against existing genders
                             $allGenders = $db->table('genders')->select('LOWER(name) as name')->get()->getResultArray();
                             $validGenderNames = array_map('strtolower', array_column($allGenders, 'name'));
                             $invalidGenders = [];
+                            $validGenders = [];
                             foreach ($appliesTo as $gender) {
-                                if (!in_array(strtolower($gender), $validGenderNames)) {
+                                if (in_array(strtolower($gender), $validGenderNames)) {
+                                    $validGenders[] = $gender;
+                                } else {
                                     $invalidGenders[] = $gender;
                                 }
                             }
                             if (!empty($invalidGenders)) {
                                 $skipped++;
                                 $errors[] = "Row {$row}: Invalid gender(s) in applies_to: " . implode(', ', $invalidGenders) . ". Valid genders are: " . implode(', ', array_map('ucfirst', $validGenderNames));
+                                continue 2;
+                            }
+                            $appliesTo = $validGenders;
+                        } elseif (empty($appliesTo)) {
+                            // If no gender value is present
+                            if ($parentHasGenderRestriction) {
+                                // If parent categories have gender restrictions, use "N/A"
+                                $appliesTo = ['N/A'];
+                            } else {
+                                // If parent categories don't have gender restrictions, don't create
+                                $skipped++;
+                                $errors[] = "Row {$row}: No gender value provided and parent categories have no gender restrictions. Sub-category cannot be created.";
                                 continue 2;
                             }
                         }
@@ -2866,6 +3108,115 @@ class SuperAdminApi extends BaseApiController
                             $rec['created_at'] = $now;
                             $db->table('colors')->insert($rec);
                             $inserted++;
+                        }
+                        break;
+
+                    case 'attributes':
+                        $name = $data['name'] ?? '';
+                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
+                        
+                        $type = $data['type'] ?? '';
+                        if (!$type) { $skipped++; $errors[] = "Row {$row}: Type is required"; continue 2; }
+                        
+                        $allowedTypes = ['text', 'number', 'picklist'];
+                        if (!in_array($type, $allowedTypes)) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Invalid type '{$type}'. Must be one of: " . implode(', ', $allowedTypes);
+                            continue 2;
+                        }
+                        
+                        // For picklist type, allowed_values is required
+                        if ($type === 'picklist' && empty($data['allowed_values'])) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Allowed values are required for picklist type";
+                            continue 2;
+                        }
+                        
+                        $required = (int)($data['required'] ?? 0);
+                        $placeholder = $data['placeholder'] ?? null;
+                        
+                        $rec = [
+                            'name' => $name,
+                            'type' => $type,
+                            'required' => $required,
+                            'placeholder' => $placeholder,
+                        ];
+                        
+                        // Parse allowed_values for picklist type
+                        if ($type === 'picklist' && !empty($data['allowed_values'])) {
+                            $values = array_map('trim', explode(',', $data['allowed_values']));
+                            $rec['allowed_values'] = json_encode($values);
+                        }
+                        
+                        // Check if exists (case-insensitive by name)
+                        $existing = $db->table('attributes')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
+                        
+                        $attributeId = null;
+                        if ($existing) {
+                            $rec['updated_at'] = $now;
+                            $db->table('attributes')->where('id', $existing['id'])->update($rec);
+                            $attributeId = $existing['id'];
+                            $updated++;
+                        } else {
+                            $rec['created_at'] = $now;
+                            $db->table('attributes')->insert($rec);
+                            $attributeId = $db->insertID();
+                            $inserted++;
+                        }
+                        
+                        // Handle entity linking through attribute_assignments table
+                        $entityTypes = $data['entity_types'] ?? null;
+                        $entityIds = $data['entity_ids'] ?? null;
+                        
+                        if ($entityTypes && $entityIds && $attributeId) {
+                            // Delete existing assignments for this attribute
+                            $db->table('attribute_assignments')->where('attribute_id', $attributeId)->delete();
+                            
+                            // Parse entity_types (can be comma-separated or single)
+                            $entityTypesArray = is_array($entityTypes) ? $entityTypes : explode(',', $entityTypes);
+                            $entityTypesArray = array_map('trim', $entityTypesArray);
+                            
+                            // Parse entity_ids (can be comma-separated or single) - these are now names
+                            $entityNamesArray = is_array($entityIds) ? $entityIds : explode(',', $entityIds);
+                            $entityNamesArray = array_map('trim', $entityNamesArray);
+                            
+                            // Create assignments for each entity_type and entity_name pair
+                            foreach ($entityTypesArray as $entityType) {
+                                foreach ($entityNamesArray as $entityName) {
+                                    if ($entityType && $entityName) {
+                                        // Resolve entity name to ID based on entity_type
+                                        $entityId = null;
+                                        if ($entityType === 'listing_type') {
+                                            $entity = $db->table('listing_types')
+                                                ->where('LOWER(type_name)', strtolower($entityName))
+                                                ->orWhere('LOWER(name)', strtolower($entityName))
+                                                ->get()->getRowArray();
+                                            if ($entity) $entityId = $entity['id'];
+                                        } elseif ($entityType === 'category') {
+                                            $entity = $db->table('categories')
+                                                ->where('LOWER(category_name)', strtolower($entityName))
+                                                ->orWhere('LOWER(name)', strtolower($entityName))
+                                                ->get()->getRowArray();
+                                            if ($entity) $entityId = $entity['id'];
+                                        } elseif ($entityType === 'sub_category') {
+                                            $entity = $db->table('sub_categories')
+                                                ->where('LOWER(name)', strtolower($entityName))
+                                                ->get()->getRowArray();
+                                            if ($entity) $entityId = $entity['id'];
+                                        }
+                                        
+                                        // Only create assignment if entity was found
+                                        if ($entityId) {
+                                            $db->table('attribute_assignments')->insert([
+                                                'attribute_id' => $attributeId,
+                                                'entity_type' => $entityType,
+                                                'entity_id' => $entityId,
+                                                'created_at' => $now,
+                                            ]);
+                                        }
+                                    }
+                                }
+                            }
                         }
                         break;
                 }
@@ -2965,14 +3316,28 @@ private function processImage($source, $subDir): ?string
                 }
                 if ($sellerId) $rec['seller_id'] = $sellerId;
 
-                // Listing Type Resolution (by name or ID)
-                $ltId = $data['listing_type_id'] ?? '';
-                $ltName = $data['listing_type'] ?? '';
-                if (!$ltId && $ltName) {
-                    $lt = $db->table('listing_types')->where('LOWER(type_name)', strtolower($ltName))->get()->getRowArray();
-                    if ($lt) $ltId = $lt['id'];
+                // Listing Type Resolution (multiple types by comma-separated names or JSON array)
+                $ltIds = [];
+                $ltInput = $data['listing_types'] ?? $data['listing_type_ids'] ?? '';
+                if ($ltInput) {
+                    if (strpos($ltInput, '[') === 0) {
+                        $ltIds = json_decode($ltInput, true) ?: [];
+                    } else {
+                        $names = array_map('trim', explode(',', $ltInput));
+                        $lts = $db->table('listing_types')->whereIn('LOWER(type_name)', array_map('strtolower', $names))->get()->getResultArray();
+                        $ltIds = array_column($lts, 'id');
+                    }
+                    
+                    // Validation: If listing type was provided but not found, skip this row
+                    if (empty($ltIds)) {
+                        $skipped++;
+                        $errors[] = "Row {$row}: Listing type '{$ltInput}' not found. Please check the spelling.";
+                        continue;
+                    }
                 }
-                if ($ltId) $rec['listing_type_id'] = $ltId;
+                
+                $rec['listing_type_ids'] = json_encode(array_map('intval', $ltIds));
+                if (!empty($ltIds)) $rec['listing_type_id'] = $ltIds[0]; // For backward compatibility
 
                 if (!empty($data['description'])) $rec['description'] = $data['description'];
                 
@@ -3025,7 +3390,7 @@ private function processImage($source, $subDir): ?string
                 
                 $rec['listing_type_ids'] = json_encode(array_map('intval', $ltIds));
                 if (!empty($ltIds)) $rec['listing_type_id'] = $ltIds[0]; // For backward compatibility
-                
+
                 if (!empty($data['description'])) $rec['description'] = $data['description'];
 
                 $imageSource = $data['brand_image'] ?? $data['image'] ?? $data['logo'] ?? '';
@@ -3038,7 +3403,280 @@ private function processImage($source, $subDir): ?string
                 $inserted++;
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} brands inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} records inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
+    }
+
+    // ── Attributes Management ──────────────────────────────
+    public function attributes()
+    {
+        $db = \Config\Database::connect();
+        $attributes = $db->table('attributes')->orderBy('created_at', 'DESC')->get()->getResultArray();
+        
+        // Get entity assignments for each attribute
+        $assignments = $db->table('attribute_assignments')->get()->getResultArray();
+        $assignmentMap = [];
+        foreach ($assignments as $assignment) {
+            if (!isset($assignmentMap[$assignment['attribute_id']])) {
+                $assignmentMap[$assignment['attribute_id']] = [];
+            }
+            $assignmentMap[$assignment['attribute_id']][] = [
+                'entity_type' => $assignment['entity_type'],
+                'entity_id' => $assignment['entity_id'],
+            ];
+        }
+        
+        // Parse allowed_values JSON and add entity linking for each attribute
+        foreach ($attributes as &$attr) {
+            $attr['allowed_values'] = !empty($attr['allowed_values']) ? json_decode($attr['allowed_values'], true) : [];
+            
+            // Add entity linking information
+            if (isset($assignmentMap[$attr['id']]) && !empty($assignmentMap[$attr['id']])) {
+                $firstAssignment = $assignmentMap[$attr['id']][0];
+                $attr['entity_type'] = $firstAssignment['entity_type'];
+                $attr['entity_ids'] = array_column($assignmentMap[$attr['id']], 'entity_id');
+                
+                // Map entity_type to the appropriate ID column for frontend compatibility (backward compatibility)
+                if ($attr['entity_type'] === 'listing_type') {
+                    $attr['listing_type_id'] = $attr['entity_ids'][0] ?? null;
+                } elseif ($attr['entity_type'] === 'category') {
+                    $attr['category_id'] = $attr['entity_ids'][0] ?? null;
+                } elseif ($attr['entity_type'] === 'sub_category') {
+                    $attr['sub_category_id'] = $attr['entity_ids'][0] ?? null;
+                }
+            } else {
+                $attr['entity_type'] = null;
+                $attr['entity_ids'] = [];
+                $attr['entity_id'] = null;
+                $attr['listing_type_id'] = null;
+                $attr['category_id'] = null;
+                $attr['sub_category_id'] = null;
+            }
+        }
+        
+        return $this->respond(['success' => true, 'data' => $attributes]);
+    }
+
+    public function addAttribute()
+    {
+        $db = \Config\Database::connect();
+        $name = $this->request->getPost('name');
+        $type = $this->request->getPost('type') ?? 'text';
+        $required = (int)($this->request->getPost('required') ?? 0);
+        $allowedValues = $this->request->getPost('allowed_values');
+        $placeholder = $this->request->getPost('placeholder');
+
+        if (!$name) {
+            return $this->respond(['success' => false, 'message' => 'Attribute name is required.'], 400);
+        }
+
+        if (!$type) {
+            return $this->respond(['success' => false, 'message' => 'Attribute type is required.'], 400);
+        }
+
+        // Validate type value
+        $allowedTypes = ['text', 'number', 'picklist'];
+        if (!in_array($type, $allowedTypes)) {
+            return $this->respond(['success' => false, 'message' => 'Invalid type. Must be one of: ' . implode(', ', $allowedTypes)], 400);
+        }
+
+        // For picklist type, allowed_values is required
+        if ($type === 'picklist' && empty($allowedValues)) {
+            return $this->respond(['success' => false, 'message' => 'Allowed values are required for picklist type.'], 400);
+        }
+
+        $data = [
+            'name' => $name,
+            'type' => $type,
+            'required' => $required,
+            'placeholder' => $placeholder,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
+
+        // Parse allowed values (comma-separated or JSON)
+        if ($allowedValues) {
+            if (strpos($allowedValues, '[') === 0) {
+                $data['allowed_values'] = $allowedValues;
+            } else {
+                $values = array_map('trim', explode(',', $allowedValues));
+                $data['allowed_values'] = json_encode($values);
+            }
+        }
+
+        $db->table('attributes')->insert($data);
+        return $this->respond(['success' => true, 'message' => 'Attribute added successfully.']);
+    }
+
+    public function updateAttribute($id)
+    {
+        $db = \Config\Database::connect();
+        $data = [];
+        
+        $name = $this->request->getPost('name');
+        if ($name) $data['name'] = $name;
+
+        $type = $this->request->getPost('type');
+        if ($type) {
+            // Validate type value
+            $allowedTypes = ['text', 'number', 'picklist'];
+            if (!in_array($type, $allowedTypes)) {
+                return $this->respond(['success' => false, 'message' => 'Invalid type. Must be one of: ' . implode(', ', $allowedTypes)], 400);
+            }
+            $data['type'] = $type;
+        }
+
+        $required = $this->request->getPost('required');
+        if ($required !== null) $data['required'] = (int)$required;
+
+        $placeholder = $this->request->getPost('placeholder');
+        if ($placeholder !== null) $data['placeholder'] = $placeholder;
+        
+        $allowedValues = $this->request->getPost('allowed_values');
+        if ($allowedValues !== null) {
+            // If type is picklist, allowed_values is required
+            if (isset($data['type']) && $data['type'] === 'picklist' && empty($allowedValues)) {
+                return $this->respond(['success' => false, 'message' => 'Allowed values are required for picklist type.'], 400);
+            }
+            if (strpos($allowedValues, '[') === 0) {
+                $data['allowed_values'] = $allowedValues;
+            } else {
+                $values = array_map('trim', explode(',', $allowedValues));
+                $data['allowed_values'] = json_encode($values);
+            }
+        }
+
+        // Handle entity linking through attribute_assignments table
+        $entityTypes = $this->request->getPost('entity_types');
+        $entityIds = $this->request->getPost('entity_ids');
+
+        // Handle new array format (entity_types[] and entity_ids[])
+        if ($entityTypes !== null || $entityIds !== null) {
+            // Delete existing assignments for this attribute
+            $db->table('attribute_assignments')->where('attribute_id', $id)->delete();
+
+            // Create new assignments for each entity_type and entity_id pair
+            if ($entityTypes && $entityIds) {
+                // Ensure both are arrays
+                $entityTypesArray = is_array($entityTypes) ? $entityTypes : [$entityTypes];
+                $entityIdsArray = is_array($entityIds) ? $entityIds : [$entityIds];
+
+                foreach ($entityTypesArray as $entityType) {
+                    foreach ($entityIdsArray as $entityId) {
+                        if ($entityType && $entityId) {
+                            $db->table('attribute_assignments')->insert([
+                                'attribute_id' => $id,
+                                'entity_type' => $entityType,
+                                'entity_id' => $entityId,
+                                'created_at' => date('Y-m-d H:i:s'),
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (empty($data)) {
+            return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
+        }
+
+        $data['updated_at'] = date('Y-m-d H:i:s');
+        $db->table('attributes')->where('id', $id)->update($data);
+        return $this->respond(['success' => true, 'message' => 'Attribute updated successfully.']);
+    }
+
+    public function deleteAttribute($id)
+    {
+        $db = \Config\Database::connect();
+        $db->table('attribute_assignments')->where('attribute_id', $id)->delete();
+        $db->table('attributes')->where('id', $id)->delete();
+        return $this->respond(['success' => true, 'message' => 'Attribute deleted successfully.']);
+    }
+
+    // ── Attribute Assignments ─────────────────────────────
+    public function attributeAssignments()
+    {
+        $db = \Config\Database::connect();
+        $entityType = $this->request->getGet('entity_type');
+        $entityId = $this->request->getGet('entity_id');
+
+        $query = $db->table('attribute_assignments aa')
+            ->select('aa.*, a.name, a.type, a.required as global_required, a.allowed_values, a.placeholder')
+            ->join('attributes a', 'a.id = aa.attribute_id', 'inner')
+            ->orderBy('aa.sort_order', 'ASC');
+
+        if ($entityType) $query->where('aa.entity_type', $entityType);
+        if ($entityId) $query->where('aa.entity_id', $entityId);
+
+        $assignments = $query->get()->getResultArray();
+
+        // Parse allowed_values JSON
+        foreach ($assignments as &$assign) {
+            $assign['allowed_values'] = !empty($assign['allowed_values']) ? json_decode($assign['allowed_values'], true) : [];
+        }
+
+        return $this->respond(['success' => true, 'data' => $assignments]);
+    }
+
+    public function assignAttribute()
+    {
+        $db = \Config\Database::connect();
+        $attributeId = $this->request->getPost('attribute_id');
+        $entityType = $this->request->getPost('entity_type');
+        $entityId = $this->request->getPost('entity_id');
+        $required = $this->request->getPost('required') ?? 0;
+        $sortOrder = $this->request->getPost('sort_order') ?? 0;
+
+        if (!$attributeId || !$entityType || !$entityId) {
+            return $this->respond(['success' => false, 'message' => 'Attribute ID, entity type, and entity ID are required.'], 400);
+        }
+
+        // Check if assignment already exists
+        $existing = $db->table('attribute_assignments')
+            ->where('attribute_id', $attributeId)
+            ->where('entity_type', $entityType)
+            ->where('entity_id', $entityId)
+            ->get()->getRowArray();
+
+        if ($existing) {
+            return $this->respond(['success' => false, 'message' => 'Attribute is already assigned to this entity.'], 400);
+        }
+
+        $data = [
+            'attribute_id' => $attributeId,
+            'entity_type' => $entityType,
+            'entity_id' => $entityId,
+            'required' => $required,
+            'sort_order' => $sortOrder,
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
+
+        $db->table('attribute_assignments')->insert($data);
+        return $this->respond(['success' => true, 'message' => 'Attribute assigned successfully.']);
+    }
+
+    public function updateAttributeAssignment($id)
+    {
+        $db = \Config\Database::connect();
+        $data = [];
+        
+        $required = $this->request->getPost('required');
+        if ($required !== null) $data['required'] = $required;
+        
+        $sortOrder = $this->request->getPost('sort_order');
+        if ($sortOrder !== null) $data['sort_order'] = $sortOrder;
+
+        if (empty($data)) {
+            return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
+        }
+
+        $db->table('attribute_assignments')->where('id', $id)->update($data);
+        return $this->respond(['success' => true, 'message' => 'Assignment updated successfully.']);
+    }
+
+    public function removeAttributeAssignment($id)
+    {
+        $db = \Config\Database::connect();
+        $db->table('attribute_assignments')->where('id', $id)->delete();
+        return $this->respond(['success' => true, 'message' => 'Assignment removed successfully.']);
     }
 
     public function bulkUploadProducts()

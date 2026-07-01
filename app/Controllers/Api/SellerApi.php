@@ -241,6 +241,47 @@ class SellerApi extends BaseApiController
         $brands = $db->table('orignal_brands')->where('is_active', 1)->orderBy('brand_name', 'ASC')->get()->getResultArray();
         $validationRules = $db->table('validation_rules')->where('is_active', 1)->get()->getResultArray();
 
+        // Fetch attributes with their entity assignments
+        $attributes = $db->table('attributes')->get()->getResultArray();
+        $attributeAssignments = $db->table('attribute_assignments')->get()->getResultArray();
+
+        // Group attributes by entity
+        $attributesByEntity = [
+            'listing_type' => [],
+            'category' => [],
+            'sub_category' => [],
+        ];
+
+        foreach ($attributeAssignments as $assignment) {
+            $entityType = $assignment['entity_type'];
+            $entityId = $assignment['entity_id'];
+            $attributeId = $assignment['attribute_id'];
+
+            if (!isset($attributesByEntity[$entityType][$entityId])) {
+                $attributesByEntity[$entityType][$entityId] = [];
+            }
+
+            // Find the attribute details
+            $attr = null;
+            foreach ($attributes as $a) {
+                if ($a['id'] == $attributeId) {
+                    $attr = $a;
+                    break;
+                }
+            }
+
+            if ($attr) {
+                $attributesByEntity[$entityType][$entityId][] = [
+                    'id' => $attr['id'],
+                    'name' => $attr['name'],
+                    'type' => $attr['type'],
+                    'required' => (int)$attr['required'],
+                    'allowed_values' => $attr['allowed_values'] ? json_decode($attr['allowed_values'], true) : [],
+                    'placeholder' => $attr['placeholder'],
+                ];
+            }
+        }
+
         $settings = $db->table('system_settings')->get()->getResultArray();
         $config = [];
         foreach ($settings as $s)
@@ -284,6 +325,7 @@ class SellerApi extends BaseApiController
                 'config' => $config,
                 'pricing_rules' => $pricingRules,
                 'rental_pricing_rules' => $rentalPricingRules,
+                'attributes' => $attributesByEntity,
             ],
         ]);
     }
