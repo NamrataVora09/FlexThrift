@@ -97,7 +97,7 @@ export default function PricingRulesManager() {
       if (res.success && res.data) {
         setTaxonomy({
           listing_type: (res.data.listing_types || []).map((lt: any) => ({ id: lt.id, name: lt.type_name })),
-          category: (res.data.categories || []).map((c: any) => ({ id: c.id, name: c.category_name })),
+          category: (res.data.categories || []).map((c: any) => ({ id: c.id, name: c.name })),
           sub_category: (res.data.sub_categories || []).map((sc: any) => ({ id: sc.id, name: sc.name })),
         });
       }
