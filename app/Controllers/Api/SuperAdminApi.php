@@ -90,6 +90,12 @@ class SuperAdminApi extends BaseApiController
         $id = $data['id'] ?? null;
         $filterType = $data['filter_type'] ?? '';
         $filterValue = (int) ($data['filter_value'] ?? 0);
+        
+        // Validation: filter_value is mandatory when filter_type is selected
+        if (!empty($filterType) && empty($filterValue)) {
+            return $this->respond(['success' => false, 'message' => 'Filter value is required when filter type is selected'], 400);
+        }
+        
         $filterLabel = $this->resolveFilterLabel($filterType, $filterValue);
 
         $row = [
@@ -189,6 +195,12 @@ class SuperAdminApi extends BaseApiController
         $id = $data['id'] ?? null;
         $filterType = $data['filter_type'] ?? '';
         $filterValue = (int) ($data['filter_value'] ?? 0);
+        
+        // Validation: filter_value is mandatory when filter_type is selected
+        if (!empty($filterType) && empty($filterValue)) {
+            return $this->respond(['success' => false, 'message' => 'Filter value is required when filter type is selected'], 400);
+        }
+        
         $filterLabel = $this->resolveFilterLabel($filterType, $filterValue);
 
         $row = [
