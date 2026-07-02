@@ -1,0 +1,9 @@
+1. For Product Type Pairs with listing type clothings existed and then through csv when added pairs with listing type footwear it created a new Pairs Product Type rather than updating the existing record
+2. incorrect behaviour for Categories - refer SS4
+3. Incorrect behaviour for sub-categories, refer template of sub-category
+##################################################################################################################################################
+
+1. A listing type Clothings already existed and when tried bulk uploading listing type file with same listing type of Clothings, it still allowed, but it should have updated the record rather than creating a new one. 
+2. The values should be case insensitive. Lets say Clothings(capital C) exist and through csv trying to upload clothings(small c), then too it should update the Clothings record rather than creating a new clothings record
+3. The same issue of spelling mistake needs to be fixed in all of them: listing type, category, sub-category, color, etc
+4. When spelling of madatory was wrong for gender as 'Madaotry' and clicked on edit of listing type, it showed the correct picklist value of mandatory, now tried saving, still in UI table of listing type it showed old incorrect spelling of 'Madaotry'

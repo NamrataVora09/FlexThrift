@@ -3559,13 +3559,8 @@ private function processImage($source, $subDir): ?string
             $name = $data['brand_name'] ?? $data['name'] ?? '';
             if (!$name) { $skipped++; $errors[] = "Row {$row}: brand_name is empty"; continue; }
             
-            // Check if brand name already exists (unique validation)
+            // Check if brand name already exists (update if exists)
             $existingBrand = $db->table('orignal_brands')->where('LOWER(brand_name)', strtolower($name))->get()->getRowArray();
-            if ($existingBrand) {
-                $skipped++;
-                $errors[] = "Row {$row}: Brand name '{$name}' already exists. Skipping duplicate.";
-                continue;
-            }
             
             try {
                 $rec = ['brand_name' => $name, 'is_active' => 1, 'created_at' => $now];
@@ -3613,11 +3608,19 @@ private function processImage($source, $subDir): ?string
                     if ($processed) $rec['brand_image'] = $processed;
                 }
 
-                $db->table('orignal_brands')->insert($rec);
-                $inserted++;
+                if ($existingBrand) {
+                    // Update existing brand
+                    $rec['updated_at'] = $now;
+                    $db->table('orignal_brands')->where('id', $existingBrand['id'])->update($rec);
+                    $updated++;
+                } else {
+                    // Insert new brand
+                    $db->table('orignal_brands')->insert($rec);
+                    $inserted++;
+                }
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} records inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} records inserted, {$updated} updated, {$skipped} skipped.", 'inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     // ── Attributes Management ──────────────────────────────
