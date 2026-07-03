@@ -3568,33 +3568,39 @@ private function processImage($source, $subDir): ?string
                 // Listing Type Resolution with partial update
                 $ltIds = [];
                 $ltInput = $data['listing_types'] ?? $data['listing_type_ids'] ?? '';
-                if ($ltInput) {
-                    if (strpos($ltInput, '[') === 0) {
-                        $ltIds = json_decode($ltInput, true) ?: [];
-                    } else {
-                        $names = array_map('trim', explode(',', $ltInput));
-                        $lts = $db->table('listing_types')->whereIn('LOWER(type_name)', array_map('strtolower', $names))->get()->getResultArray();
-                        $foundNames = array_map('strtolower', array_column($lts, 'type_name'));
-                        $ltIds = array_column($lts, 'id');
-                        
-                        // Partial update: log invalid listing types but continue with valid ones
-                        if (count($ltIds) < count($names)) {
-                            $missing = [];
-                            foreach ($names as $n) {
-                                if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
-                            }
-                            if (!empty($missing)) {
-                                $errors[] = "Row {$row}: Invalid listing types skipped: " . implode(', ', $missing) . ". Proceeding with valid ones.";
-                            }
+                
+                // Validate that listing types are provided
+                if (empty($ltInput)) {
+                    $skipped++;
+                    $errors[] = "Row {$row}: listing_types is required. Brand cannot be created without listing types.";
+                    continue;
+                }
+                
+                if (strpos($ltInput, '[') === 0) {
+                    $ltIds = json_decode($ltInput, true) ?: [];
+                } else {
+                    $names = array_map('trim', explode(',', $ltInput));
+                    $lts = $db->table('listing_types')->whereIn('LOWER(type_name)', array_map('strtolower', $names))->get()->getResultArray();
+                    $foundNames = array_map('strtolower', array_column($lts, 'type_name'));
+                    $ltIds = array_column($lts, 'id');
+                    
+                    // Partial update: log invalid listing types but continue with valid ones
+                    if (count($ltIds) < count($names)) {
+                        $missing = [];
+                        foreach ($names as $n) {
+                            if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
+                        }
+                        if (!empty($missing)) {
+                            $errors[] = "Row {$row}: Invalid listing types skipped: " . implode(', ', $missing) . ". Proceeding with valid ones.";
                         }
                     }
-                    
-                    // Validate that at least one valid listing type exists
-                    if (empty($ltIds)) {
-                        $skipped++;
-                        $errors[] = "Row {$row}: No valid listing types found. Brand cannot be created without listing types.";
-                        continue;
-                    }
+                }
+                
+                // Validate that at least one valid listing type exists
+                if (empty($ltIds)) {
+                    $skipped++;
+                    $errors[] = "Row {$row}: No valid listing types found. Brand cannot be created without listing types.";
+                    continue;
                 }
                 
                 $rec['listing_type_ids'] = json_encode(array_map('intval', $ltIds));
