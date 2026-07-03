@@ -96,6 +96,17 @@ export default function DashboardTopbar({ onToggleSidebar }: Props) {
         <span className={`topbar-role-badge ${user.role === 'seller' ? 'bg-[#d96459]!' : 'bg-[#008080]!'}`}>
           {roleLabel} {process.env.NEXT_PUBLIC_PORTAL_NAME}
         </span>
+
+        {user.user_type === 'both' && (
+          <button
+            onClick={() => handleSwitch(user.role === 'seller' ? 'buyer' : 'seller')}
+            className="btn btn-sm btn-outline-primary ms-3 d-flex align-items-center gap-2"
+            title={`Switch to ${user.role === 'seller' ? 'Buyer' : 'Seller'} Portal`}
+          >
+            <i className="bi bi-arrow-left-right"></i>
+            <span className="small fw-semibold">Switch to {user.role === 'seller' ? 'Buyer' : 'Seller'}</span>
+          </button>
+        )}
       </div>
 
       {/* ── Right: shared profile dropdown ── */}
