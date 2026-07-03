@@ -174,7 +174,7 @@ export default function TaxonomyView() {
   const [csvType, setCsvType] = useState('genders');
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvUploading, setCsvUploading] = useState(false);
-  const [csvResult, setCsvResult] = useState<{ message: string; errors?: string[] } | null>(null);
+  const [csvResult, setCsvResult] = useState<{ message: string; errors?: string[]; isError?: boolean } | null>(null);
 
   const PAGE_SIZE = 10;
   const [ltPage, setLtPage] = useState(1);
@@ -237,15 +237,13 @@ export default function TaxonomyView() {
     const res = await api.upload<{ message: string; inserted: number; skipped: number; errors: string[] }>('/superadmin/bulk-upload-catalogue', fd);
     setCsvUploading(false);
     if (res.success) {
-      setCsvResult({ message: res.data?.message || res.message || 'Upload complete', errors: res.data?.errors });
+      setCsvResult({ message: res.data?.message || res.message || 'Upload complete', errors: res.data?.errors, isError: false });
       setCsvFile(null);
       const fileInput = document.getElementById('csvFileInput') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
       load();
     } else {
-      toast.error(res.message || 'Upload failed',{
-        style: { background: '#ff4444', color: '#fff' },
-      });
+      setCsvResult({ message: res.message || 'Upload failed', isError: true });
     }
   };
 
@@ -494,8 +492,8 @@ Material,text,0,,,`,
             </div>
 
             {csvResult && (
-              <div className={`alert ${csvResult.errors && csvResult.errors.length > 0 ? 'alert-warning' : 'alert-success'} mt-3 mb-0 border-0`} style={{ borderRadius: 10 }}>
-                <div className="fw-bold"><i className={`bi ${csvResult.errors && csvResult.errors.length > 0 ? 'bi-exclamation-triangle' : 'bi-check-circle'} me-2`}></i>{csvResult.message}</div>
+              <div className={`alert ${csvResult.isError ? 'alert-danger' : (csvResult.errors && csvResult.errors.length > 0 ? 'alert-warning' : 'alert-success')} mt-3 mb-0 border-0`} style={{ borderRadius: 10 }}>
+                <div className="fw-bold"><i className={`bi ${csvResult.isError ? 'bi-x-circle' : (csvResult.errors && csvResult.errors.length > 0 ? 'bi-exclamation-triangle' : 'bi-check-circle')} me-2`}></i>{csvResult.message}</div>
                 {csvResult.errors && csvResult.errors.length > 0 && (
                   <ul className="mb-0 mt-2 small">
                     {csvResult.errors.map((err, i) => <li key={i}>{err}</li>)}
