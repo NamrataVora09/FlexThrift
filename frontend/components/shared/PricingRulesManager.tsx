@@ -504,7 +504,7 @@ export default function PricingRulesManager() {
                     <td>{r.deposit_deduction_threshold}%</td>
                     <td>{r.depreciation_range_min} - {Number(r.depreciation_range_max) > 0 ? r.depreciation_range_max : '∞'}</td>
                     <td>{r.depreciation_amount}%</td>
-                    <td>{Number(r.max_cost_cap_per_day) > 0 ? `${r.max_cost_cap_per_day}%` : <span className="text-muted small">Global Fallback</span>}</td>
+                    <td>{Number(r.max_cost_cap_per_day) > 0 ? `${r.max_cost_cap_per_day}%` : <span className="text-muted small"></span>}</td>
                     <td>
                       <div className="form-check form-switch">
                         <input className="form-check-input" type="checkbox" checked={Number(r.is_active) === 1} onChange={() => toggleRuleStatus(r.id, 'rental')} />
@@ -678,7 +678,6 @@ export default function PricingRulesManager() {
                   <div className="col-md-12">
                     <label className="form-label small fw-bold">Max Rental Cost Cap (%)</label>
                     <input type="number" step="0.1" className="form-control" placeholder="Leave empty or 0 to use Global Setting" value={editingRentalRule.max_cost_cap_per_day} onChange={e => setEditingRentalRule({ ...editingRentalRule, max_cost_cap_per_day: e.target.value })} />
-                    <small className="text-muted">If set to 0 or empty, the global setting will be used.</small>
                   </div>
                   <div className="col-md-12"><hr /></div>
                   <div className="col-md-12 d-flex justify-content-between align-items-center mb-2">

@@ -925,13 +925,20 @@ class SuperAdminApi extends BaseApiController
         $hex = $this->request->getPost('hex_code');
         if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
         
-        // Check for duplicate by name or hex code
-        $exists = $db->table('colors')->groupStart()->where('name', $name)->orWhere('hex_code', $hex ?? '#000000')->groupEnd()->countAllResults();
-        if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Color with this name or hex code already exists.'], 400);
+        // Check for duplicate by name
+        $nameExists = $db->table('colors')->where('LOWER(name)', strtolower($name))->countAllResults();
+        if ($nameExists) {
+            return $this->respond(['success' => false, 'message' => 'Color with this name already exists.'], 400);
         }
         
-        $db->table('colors')->insert(['name' => $name, 'hex_code' => $hex ?? '#000000', 'created_at' => date('Y-m-d H:i:s')]);
+        // Check for duplicate by hex code
+        $hexCode = $hex ?? '#000000';
+        $hexExists = $db->table('colors')->where('hex_code', $hexCode)->countAllResults();
+        if ($hexExists) {
+            return $this->respond(['success' => false, 'message' => 'Color with this hex code already exists. Hex codes must be unique.'], 400);
+        }
+        
+        $db->table('colors')->insert(['name' => $name, 'hex_code' => $hexCode, 'created_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => 'Color added.']);
     }
 
@@ -1152,10 +1159,16 @@ class SuperAdminApi extends BaseApiController
         $name = $this->request->getPost('name');
         $hex = $this->request->getPost('hex_code');
         
-        // Check for duplicate by name or hex code (excluding current record)
-        $exists = $db->table('colors')->groupStart()->where('name', $name)->orWhere('hex_code', $hex)->groupEnd()->where('id !=', $id)->countAllResults();
-        if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Color with this name or hex code already exists.'], 400);
+        // Check for duplicate by name (excluding current record)
+        $nameExists = $db->table('colors')->where('LOWER(name)', strtolower($name))->where('id !=', $id)->countAllResults();
+        if ($nameExists) {
+            return $this->respond(['success' => false, 'message' => 'Color with this name already exists.'], 400);
+        }
+        
+        // Check for duplicate by hex code (excluding current record)
+        $hexExists = $db->table('colors')->where('hex_code', $hex)->where('id !=', $id)->countAllResults();
+        if ($hexExists) {
+            return $this->respond(['success' => false, 'message' => 'Color with this hex code already exists. Hex codes must be unique.'], 400);
         }
         
         $db->table('colors')->where('id', $id)->update([
@@ -3196,10 +3209,24 @@ class SuperAdminApi extends BaseApiController
                             continue 2;
                         }
                         
-                        // Check if exists (case-insensitive by name)
-                        $existing = $db->table('colors')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
+                        // Check if exists by name or hex code (hex code must be unique)
+                        $existing = $db->table('colors')
+                            ->groupStart()
+                            ->where('LOWER(name)', strtolower($name))
+                            ->orWhere('hex_code', $hex)
+                            ->groupEnd()
+                            ->get()
+                            ->getRowArray();
+                        
                         $rec = ['name' => $name, 'hex_code' => $hex];
                         if ($existing) {
+                            // If hex code matches but name is different, skip as hex must be unique
+                            if (strtolower($existing['hex_code']) === strtolower($hex) && strtolower($existing['name']) !== strtolower($name)) {
+                                $skipped++;
+                                $errors[] = "Row {$row}: Hex code '{$hex}' already exists for color '{$existing['name']}'. Hex codes must be unique.";
+                                continue 2;
+                            }
+                            // Update if name matches
                             $db->table('colors')->where('id', $existing['id'])->update($rec);
                             $updated++;
                         } else {

@@ -21,8 +21,9 @@ export const showToast = {
 
   error: (message: string) =>
     toast.error(message, {
-      style: { ...toastStyle, background: '#ef4444', color: '#fff' },
-      iconTheme: { primary: '#fff', secondary: '#ef4444' },
+      style: { ...toastStyle, background: '#dc2626', color: '#fff' },
+      iconTheme: { primary: '#fff', secondary: '#dc2626' },
+      icon: '✕',
       duration: 4000,
     }),
 
