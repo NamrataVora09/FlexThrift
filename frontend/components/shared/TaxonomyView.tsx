@@ -243,7 +243,9 @@ export default function TaxonomyView() {
       if (fileInput) fileInput.value = '';
       load();
     } else {
-      setCsvResult({ message: res.message || 'Upload failed' });
+      toast.error(res.message || 'Upload failed',{
+        style: { background: '#ff4444', color: '#fff' },
+      });
     }
   };
 
