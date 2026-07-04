@@ -1092,7 +1092,13 @@ class SuperAdminApi extends BaseApiController
                     if (in_array($id, $scCatIds)) {
                         $scAppliesTo = json_decode($sc['applies_to'] ?? '[]', true);
                         if (empty($scAppliesTo)) {
-                            return $this->respond(['success' => false, 'message' => 'Cannot remove genders: This category has sub-categories without genders. Please add genders to those sub-categories first.'], 400);
+                            // Check if this sub-category's parent categories also have hidden gender
+                            $scCatIdsArray = json_decode($sc['category_ids'] ?? '[]', true);
+                            $isScGenderRequired = $this->isGenderRequiredForCategories($scCatIdsArray);
+                            // Only block if the sub-category's gender is actually required
+                            if ($isScGenderRequired) {
+                                return $this->respond(['success' => false, 'message' => 'Cannot remove genders: This category has sub-categories without genders. Please add genders to those sub-categories first.'], 400);
+                            }
                         }
                     }
                 }
@@ -3417,7 +3423,7 @@ class SuperAdminApi extends BaseApiController
             ->getResultArray();
         
         if (empty($productTypes)) {
-            return true; // Default to required if no product types found
+            return false; // Default to not required if no product types found
         }
         
         $listingTypeIds = array_unique(array_column($productTypes, 'listing_type_id'));
@@ -3491,7 +3497,7 @@ class SuperAdminApi extends BaseApiController
             ->getResultArray();
         
         if (empty($categories)) {
-            return true; // Default to required if no categories found
+            return false; // Default to not required if no categories found
         }
         
         $productTypeIds = [];
@@ -3503,7 +3509,7 @@ class SuperAdminApi extends BaseApiController
         }
         
         if (empty($productTypeIds)) {
-            return true;
+            return false; // Default to not required if no product types found
         }
         
         return $this->isGenderRequiredForProductTypes($productTypeIds);
