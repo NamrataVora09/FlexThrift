@@ -150,7 +150,7 @@ function CheckboxGroup({ label, items, selected, onChange }: { label: string; it
         {filteredItems.length > 0 ? filteredItems.map((it) => (
           <div className="form-check" key={it.id}>
             <input className="form-check-input" type="checkbox" checked={selected.includes(it.id) || selected.includes(String(it.id))}
-              onChange={(e) => onChange(e.target.checked ? [...selected, it.id] : selected.filter((v) => v != it.id))} />
+              onChange={(e) => onChange(e.target.checked ? [...selected, it.id] : selected.filter((v) => String(v) !== String(it.id)))} />
             <label className="form-check-label small">{it.name}</label>
           </div>
         )) : (
