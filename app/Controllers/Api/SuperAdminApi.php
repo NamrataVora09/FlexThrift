@@ -775,6 +775,11 @@ class SuperAdminApi extends BaseApiController
             'field_config' => json_encode(['gender' => $gender]),
             'created_at' => date('Y-m-d H:i:s'),
         ];
+        
+        // Add gender_config column if it exists
+        if ($db->fieldExists('gender_config', 'listing_types')) {
+            $data['gender_config'] = $gender;
+        }
         $file = $this->request->getFile('image');
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
@@ -846,6 +851,15 @@ class SuperAdminApi extends BaseApiController
         
         if (!empty($invalidPtIds)) {
             return $this->respond(['success' => false, 'message' => 'Invalid product type IDs: ' . implode(', ', $invalidPtIds) . '. These product types do not exist in the database.'], 400);
+        }
+        
+        // Check if gender is required based on listing type's gender_config
+        $isGenderRequired = $this->isGenderRequiredForCategories($ptIds);
+        
+        // If gender is required and not provided, check if it's acceptable
+        if ($isGenderRequired && empty($appliesTo)) {
+            // Gender is required but not provided - this is acceptable if listing type allows it
+            // The validation will be enforced at product upload level, not at category level
         }
         
         // Check for duplicate
@@ -971,6 +985,11 @@ class SuperAdminApi extends BaseApiController
         }
         
         $data = ['type_name' => $name, 'field_config' => json_encode($config)];
+        
+        // Update gender_config column if it exists
+        if ($db->fieldExists('gender_config', 'listing_types')) {
+            $data['gender_config'] = $gender;
+        }
         $file = $this->request->getFile('image');
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
@@ -1060,15 +1079,21 @@ class SuperAdminApi extends BaseApiController
         }
         
         // Check if removing genders would affect sub-categories without genders
+        // Only enforce this if gender is required based on listing type's gender_config
         if (empty($appliesTo)) {
-            // User is removing all genders - check if any sub-categories exist without genders
-            $subCategories = $db->table('sub_categories')->get()->getResultArray();
-            foreach ($subCategories as $sc) {
-                $scCatIds = json_decode($sc['category_ids'] ?? '[]', true);
-                if (in_array($id, $scCatIds)) {
-                    $scAppliesTo = json_decode($sc['applies_to'] ?? '[]', true);
-                    if (empty($scAppliesTo)) {
-                        return $this->respond(['success' => false, 'message' => 'Cannot remove genders: This category has sub-categories without genders. Please add genders to those sub-categories first.'], 400);
+            $isGenderRequired = $this->isGenderRequiredForCategories($ptIds);
+            
+            // Only block if gender is actually required (not hidden or optional)
+            if ($isGenderRequired) {
+                // User is removing all genders - check if any sub-categories exist without genders
+                $subCategories = $db->table('sub_categories')->get()->getResultArray();
+                foreach ($subCategories as $sc) {
+                    $scCatIds = json_decode($sc['category_ids'] ?? '[]', true);
+                    if (in_array($id, $scCatIds)) {
+                        $scAppliesTo = json_decode($sc['applies_to'] ?? '[]', true);
+                        if (empty($scAppliesTo)) {
+                            return $this->respond(['success' => false, 'message' => 'Cannot remove genders: This category has sub-categories without genders. Please add genders to those sub-categories first.'], 400);
+                        }
                     }
                 }
             }
@@ -3442,11 +3467,11 @@ class SuperAdminApi extends BaseApiController
         
         // If any listing type has gender as optional (and none are mandatory), gender is not required
         if ($hasOptional) {
-            return true;
+            return false;
         }
         
         // Default to optional if no config found
-        return true;
+        return false;
     }
     
     private function isGenderRequiredForCategories(array $categoryIds): bool
