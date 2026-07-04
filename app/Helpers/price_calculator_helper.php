@@ -180,14 +180,14 @@ if (!function_exists('calculateRentalPricesWithRules')) {
 if (!function_exists('validateSalePriceWithRules')) {
     function validateSalePriceWithRules(float $originalPrice, float $salePrice, int $usedTimes = 0, $listingTypeId = null, $categoryId = null, $subCategoryId = null): bool
     {
-        log_message('info', "Pricing rule Validation - Original Price: {$originalPrice}, Sale Price: {$salePrice}, Used Times: {$usedTimes}, Listing Type ID: {$listingTypeId}, Category ID: {$categoryId}, Sub Category ID: {$subCategoryId}");
+        log_message('error', "Pricing rule Validation - Original Price: {$originalPrice}, Sale Price: {$salePrice}, Used Times: {$usedTimes}, Listing Type ID: {$listingTypeId}, Category ID: {$categoryId}, Sub Category ID: {$subCategoryId}");
         
         $ruleResult = getPricingRuleDeduction($listingTypeId, $categoryId, $subCategoryId, $usedTimes);
         
         if ($ruleResult['matched_rules'] > 0) {
             $baseThreshold = $ruleResult['base_threshold'];
             $maxAllowed = $originalPrice * (1 - ($baseThreshold / 100));
-                    log_message('info', "Pricing rule Validation with Max - Original Price: {$originalPrice}, Sale Price: {$salePrice}, Used Times: {$usedTimes}, Listing Type ID: {$listingTypeId}, Category ID: {$categoryId}, Sub Category ID: {$subCategoryId} , Max allowed price Is :{$maxAllowed}");
+                    log_message('error', "Pricing rule Validation with Max - Original Price: {$originalPrice}, Sale Price: {$salePrice}, Used Times: {$usedTimes}, Listing Type ID: {$listingTypeId}, Category ID: {$categoryId}, Sub Category ID: {$subCategoryId} , Max allowed price Is :{$maxAllowed}");
 
             return $salePrice <= ($maxAllowed + 0.01);
         }
