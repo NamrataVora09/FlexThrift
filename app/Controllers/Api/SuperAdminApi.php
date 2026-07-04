@@ -3397,35 +3397,56 @@ class SuperAdminApi extends BaseApiController
         
         $listingTypeIds = array_unique(array_column($productTypes, 'listing_type_id'));
         
+        // Check if gender_config column exists
+        $hasGenderConfig = $db->fieldExists('gender_config', 'listing_types');
+        $selectFields = $hasGenderConfig ? 'id, gender_config, field_config' : 'id, field_config';
+        
         // Get listing types with their gender_config
         $listingTypes = $db->table('listing_types')
             ->whereIn('id', $listingTypeIds)
-            ->select('id, field_config')
+            ->select($selectFields)
             ->get()
             ->getResultArray();
         
+        $hasMandatory = false;
+        $hasOptional = false;
+        $hasHidden = false;
+        
         foreach ($listingTypes as $lt) {
-            $config = json_decode($lt['field_config'] ?? '{}', true);
-            $genderConfig = $config['gender'] ?? 'optional';
+            // Use gender_config column if available, otherwise fall back to field_config JSON
+            if ($hasGenderConfig && !empty($lt['gender_config'])) {
+                $genderConfig = $lt['gender_config'];
+            } else {
+                $config = json_decode($lt['field_config'] ?? '{}', true);
+                $genderConfig = $config['gender'] ?? 'optional';
+            }
             
-            // If any listing type has gender as mandatory, gender is required
             if ($genderConfig === 'mandatory') {
-                return true;
-            }
-            
-            // If any listing type has gender as optional, gender is not mandatory
-            if ($genderConfig === 'optional') {
-                return false;
-            }
-            
-            // If gender is hidden, it's not required
-            if ($genderConfig === 'hidden') {
-                continue;
+                $hasMandatory = true;
+            } elseif ($genderConfig === 'optional') {
+                $hasOptional = true;
+            } elseif ($genderConfig === 'hidden') {
+                $hasHidden = true;
             }
         }
         
+        // If any listing type has gender as mandatory, gender is required
+        if ($hasMandatory) {
+            return true;
+        }
+        
         // If all listing types have gender hidden, gender is not required
-        return false;
+        if ($hasHidden && !$hasOptional) {
+            return false;
+        }
+        
+        // If any listing type has gender as optional (and none are mandatory), gender is not required
+        if ($hasOptional) {
+            return true;
+        }
+        
+        // Default to optional if no config found
+        return true;
     }
     
     private function isGenderRequiredForCategories(array $categoryIds): bool

@@ -775,6 +775,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     }
 
     const configs = getFieldConfigs();
+    // Only validate gender if it's mandatory (not hidden or optional)
     if (configs.gender === 'mandatory' && !f.gender) { setError('Gender is required'); setSubmitting(false); return; }
 
     // Validate original price doesn't exceed configured max
@@ -854,6 +855,8 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const fieldMap: Record<string, string> = { used_times: 'times_used', description: 'condition_description' };
       Object.entries(f).forEach(([k, v]) => {
         const key = fieldMap[k] || k;
+        // Skip gender field if it's hidden
+        if (k === 'gender' && fieldConfigs.gender === 'hidden') return;
         if (typeof v === 'boolean') { if (v) fd.append(key, '1'); } else fd.append(key, v);
       });
       files.forEach(file => fd.append('product_images[]', file));

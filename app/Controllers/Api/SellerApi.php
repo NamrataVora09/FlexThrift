@@ -232,7 +232,10 @@ class SellerApi extends BaseApiController
     {
         $db = \Config\Database::connect();
 
-        $listingTypes = $db->table('listing_types')->get()->getResultArray();
+        // Check if gender_config column exists, if not select without it
+        $hasGenderConfig = $db->fieldExists('gender_config', 'listing_types');
+        $selectFields = $hasGenderConfig ? 'id, type_name, gender_config, field_config, created_at' : 'id, type_name, field_config, created_at';
+        $listingTypes = $db->table('listing_types')->select($selectFields)->get()->getResultArray();
         $productTypes = $db->table('product_types')->get()->getResultArray();
         $categories = $db->table('categories')->select('id, category_name as name, field_config, product_type_id, product_type_ids, applies_to')->get()->getResultArray();
         $subCategories = $db->table('sub_categories')->get()->getResultArray();
