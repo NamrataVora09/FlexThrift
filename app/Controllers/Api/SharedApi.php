@@ -1085,7 +1085,7 @@ class SharedApi extends BaseApiController
         $productTypes = $db->table('product_types')->get()->getResultArray();
         $genders = $db->table('genders')->get()->getResultArray();
         $colors = $db->table('colors')->get()->getResultArray();
-        $attributes = $db->table('attributes')->orderBy('created_at', 'DESC')->get()->getResultArray();
+        $attributes = $db->table('attributes')->select('*')->orderBy('created_at', 'DESC')->get()->getResultArray();
         $validationRules = $db->table('validation_rules')->where('is_active', 1)->get()->getResultArray();
         
         // Get valid gender names for filtering
@@ -1129,28 +1129,70 @@ class SharedApi extends BaseApiController
         // Parse allowed_values JSON and add entity linking for each attribute
         foreach ($attributes as &$attr) {
             $attr['allowed_values'] = !empty($attr['allowed_values']) ? json_decode($attr['allowed_values'], true) : [];
+            // Ensure allowed_values is always an array
+            if (!is_array($attr['allowed_values'])) {
+                $attr['allowed_values'] = [];
+            }
+            
+            // Ensure required field exists and is a number
+            if (!isset($attr['required'])) {
+                $attr['required'] = 0;
+            }
+            
+            // Ensure type field exists
+            if (!isset($attr['type'])) {
+                $attr['type'] = 'text';
+            }
+            
+            // Ensure placeholder field exists
+            if (!isset($attr['placeholder'])) {
+                $attr['placeholder'] = '';
+            }
+            
+            // Initialize entity linking fields
+            $attr['entity_types'] = [];
+            $attr['entity_type'] = null;
+            $attr['entity_ids'] = [];
+            $attr['entity_id'] = null;
+            $attr['listing_type_id'] = null;
+            $attr['category_id'] = null;
+            $attr['sub_category_id'] = null;
             
             // Add entity linking information
             if (isset($assignmentMap[$attr['id']]) && !empty($assignmentMap[$attr['id']])) {
-                $firstAssignment = $assignmentMap[$attr['id']][0];
-                $attr['entity_type'] = $firstAssignment['entity_type'];
-                $attr['entity_ids'] = array_column($assignmentMap[$attr['id']], 'entity_id');
+                // Group entity IDs by entity type
+                $entityIdsByType = [
+                    'listing_type' => [],
+                    'category' => [],
+                    'sub_category' => []
+                ];
+                
+                foreach ($assignmentMap[$attr['id']] as $assignment) {
+                    $entityType = $assignment['entity_type'];
+                    $entityId = $assignment['entity_id'];
+                    if (isset($entityIdsByType[$entityType])) {
+                        $entityIdsByType[$entityType][] = $entityId;
+                    }
+                }
+                
+                // Extract all unique entity_types
+                $entityTypes = array_unique(array_column($assignmentMap[$attr['id']], 'entity_type'));
+                $attr['entity_types'] = array_values($entityTypes);
+                
+                // Return entity IDs grouped by type for frontend
+                $attr['entity_ids'] = array_merge(
+                    $entityIdsByType['listing_type'],
+                    $entityIdsByType['category'],
+                    $entityIdsByType['sub_category']
+                );
+                
+                // For backward compatibility, set single entity_type to first one
+                $attr['entity_type'] = $attr['entity_types'][0] ?? null;
                 
                 // Map entity_type to the appropriate ID column for frontend compatibility (backward compatibility)
-                if ($attr['entity_type'] === 'listing_type') {
-                    $attr['listing_type_id'] = $attr['entity_ids'][0] ?? null;
-                } elseif ($attr['entity_type'] === 'category') {
-                    $attr['category_id'] = $attr['entity_ids'][0] ?? null;
-                } elseif ($attr['entity_type'] === 'sub_category') {
-                    $attr['sub_category_id'] = $attr['entity_ids'][0] ?? null;
-                }
-            } else {
-                $attr['entity_type'] = null;
-                $attr['entity_ids'] = [];
-                $attr['entity_id'] = null;
-                $attr['listing_type_id'] = null;
-                $attr['category_id'] = null;
-                $attr['sub_category_id'] = null;
+                $attr['listing_type_id'] = $entityIdsByType['listing_type'][0] ?? null;
+                $attr['category_id'] = $entityIdsByType['category'][0] ?? null;
+                $attr['sub_category_id'] = $entityIdsByType['sub_category'][0] ?? null;
             }
         }
         

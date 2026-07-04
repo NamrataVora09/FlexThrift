@@ -303,7 +303,7 @@ Material,text,0,,,`,
       let entityTypes: string[] = [];
       let entityIds: (number | string)[] = [];
       // Handle new entity_types array
-      if (item.entity_types && item.entity_types.length > 0) {
+      if (item.entity_types && Array.isArray(item.entity_types) && item.entity_types.length > 0) {
         entityTypes = item.entity_types;
         entityIds = item.entity_ids || [];
       }
@@ -316,7 +316,11 @@ Material,text,0,,,`,
       else if (item.listing_type_id) { entityTypes = ['listing_type']; entityIds = [item.listing_type_id]; }
       else if (item.category_id) { entityTypes = ['category']; entityIds = [item.category_id]; }
       else if (item.sub_category_id) { entityTypes = ['sub_category']; entityIds = [item.sub_category_id]; }
-      setEditForm({ name: item.name, type: item.type, required: item.required, allowed_values: item.allowed_values || [], placeholder: item.placeholder, entity_types: entityTypes, entity_ids: entityIds });
+      
+      // Ensure allowed_values is an array
+      const allowedValues = Array.isArray(item.allowed_values) ? item.allowed_values : [];
+      
+      setEditForm({ name: item.name, type: item.type, required: item.required, allowed_values: allowedValues, placeholder: item.placeholder, entity_types: entityTypes, entity_ids: entityIds });
     }
   };
 
