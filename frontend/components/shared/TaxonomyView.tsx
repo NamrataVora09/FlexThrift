@@ -8,7 +8,7 @@ import { confirmToast } from '@/lib/toast-utils';
 import toast from 'react-hot-toast';
 import HexColorPicker from '@/components/shared/HexColorPicker';
 
-interface ListingType { id: number; type_name?: string; name?: string; image?: string; field_config?: string; created_at?: string; }
+interface ListingType { id: number; type_name?: string; name?: string; image?: string; field_config?: string; gender_config?: string; created_at?: string; }
 interface Gender { id: number; name: string; created_at?: string; }
 interface ProductType { id: number; name: string; listing_type_id: number; created_at?: string; }
 interface Category { id: number; category_name?: string; name?: string; product_type_ids?: string; product_type_id?: number; applies_to?: string; field_config?: string; created_at?: string; }

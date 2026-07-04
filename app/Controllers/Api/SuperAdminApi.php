@@ -3439,7 +3439,7 @@ class SuperAdminApi extends BaseApiController
         
         foreach ($listingTypes as $lt) {
             // Use gender_config column if available, otherwise fall back to field_config JSON
-            if ($hasGenderConfig && !empty($lt['gender_config'])) {
+            if ($hasGenderConfig && isset($lt['gender_config']) && $lt['gender_config'] !== '') {
                 $genderConfig = $lt['gender_config'];
             } else {
                 $config = json_decode($lt['field_config'] ?? '{}', true);
