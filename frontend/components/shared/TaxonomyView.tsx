@@ -961,21 +961,27 @@ Material,text,0,,,`,
               <div className="form-check">
                 <input className="form-check-input" type="checkbox" id="edit-entity-lt" checked={(editForm.entity_types || []).includes('listing_type')} onChange={(e) => {
                   const types = e.target.checked ? [...(editForm.entity_types || []), 'listing_type'] : (editForm.entity_types || []).filter((t: string) => t !== 'listing_type');
-                  setEditForm({ ...editForm, entity_types: types, entity_ids: [] });
+                  // Only clear listing type IDs, not all entity IDs
+                  const filteredIds = (editForm.entity_ids || []).filter((id: number | string) => !listing_types.find(l => l.id === id));
+                  setEditForm({ ...editForm, entity_types: types, entity_ids: filteredIds });
                 }} />
                 <label className="form-check-label" htmlFor="edit-entity-lt" style={{ fontSize: '0.875rem' }}>Listing Type</label>
               </div>
               <div className="form-check">
                 <input className="form-check-input" type="checkbox" id="edit-entity-cat" checked={(editForm.entity_types || []).includes('category')} onChange={(e) => {
                   const types = e.target.checked ? [...(editForm.entity_types || []), 'category'] : (editForm.entity_types || []).filter((t: string) => t !== 'category');
-                  setEditForm({ ...editForm, entity_types: types, entity_ids: [] });
+                  // Only clear category IDs, not all entity IDs
+                  const filteredIds = (editForm.entity_ids || []).filter((id: number | string) => !categories.find(c => c.id === id));
+                  setEditForm({ ...editForm, entity_types: types, entity_ids: filteredIds });
                 }} />
                 <label className="form-check-label" htmlFor="edit-entity-cat" style={{ fontSize: '0.875rem' }}>Category</label>
               </div>
               <div className="form-check">
                 <input className="form-check-input" type="checkbox" id="edit-entity-sc" checked={(editForm.entity_types || []).includes('sub_category')} onChange={(e) => {
                   const types = e.target.checked ? [...(editForm.entity_types || []), 'sub_category'] : (editForm.entity_types || []).filter((t: string) => t !== 'sub_category');
-                  setEditForm({ ...editForm, entity_types: types, entity_ids: [] });
+                  // Only clear sub-category IDs, not all entity IDs
+                  const filteredIds = (editForm.entity_ids || []).filter((id: number | string) => !sub_categories.find(s => s.id === id));
+                  setEditForm({ ...editForm, entity_types: types, entity_ids: filteredIds });
                 }} />
                 <label className="form-check-label" htmlFor="edit-entity-sc" style={{ fontSize: '0.875rem' }}>Sub-Category</label>
               </div>
