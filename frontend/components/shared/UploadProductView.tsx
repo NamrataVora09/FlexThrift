@@ -275,6 +275,8 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       } catch { return false; }
     }));
 
+    let filtered: Array<{ id: number; name: string }> = [];
+
     // First, check if sub-category has specific genders
     if (f.sub_category_id) {
       const selectedSubCat = meta.sub_categories.find(sc => String(sc.id) === String(f.sub_category_id));
@@ -282,30 +284,41 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         try {
           const appliesTo = JSON.parse(selectedSubCat.applies_to);
           if (Array.isArray(appliesTo) && appliesTo.length > 0 && !appliesTo.includes('N/A')) {
-            setFilteredGenders(meta.genders.filter(g => appliesTo.map((a: string) => a.toLowerCase()).includes(g.name.toLowerCase())));
-            return;
+            filtered = meta.genders.filter(g => appliesTo.map((a: string) => a.toLowerCase()).includes(g.name.toLowerCase()));
           }
         } catch { }
       }
     }
 
     // If sub-category has no specific genders, check category's applies_to
-    if (f.category_id) {
+    if (filtered.length === 0 && f.category_id) {
       const selectedCat = meta.categories.find(c => String(c.id) === String(f.category_id));
       if (selectedCat && selectedCat.applies_to && selectedCat.applies_to !== 'all') {
         try {
           const appliesTo = JSON.parse(selectedCat.applies_to);
           if (Array.isArray(appliesTo) && appliesTo.length > 0 && !appliesTo.includes('N/A')) {
-            setFilteredGenders(meta.genders.filter(g => appliesTo.map((a: string) => a.toLowerCase()).includes(g.name.toLowerCase())));
-            return;
+            filtered = meta.genders.filter(g => appliesTo.map((a: string) => a.toLowerCase()).includes(g.name.toLowerCase()));
           }
         } catch { }
       }
     }
 
     // If neither sub-category nor category has specific genders, show all genders
-    setFilteredGenders(meta.genders);
-  }, [f.category_id, f.sub_category_id, meta]);
+    if (filtered.length === 0) {
+      filtered = meta.genders;
+    }
+
+    // IMPORTANT: When editing, always include the product's current gender in the filtered list
+    // This ensures the gender field shows the correct value even if it doesn't match current category/sub-category config
+    if (f.gender && !filtered.some(g => g.name.toLowerCase() === f.gender.toLowerCase())) {
+      const currentGender = meta.genders.find(g => g.name.toLowerCase() === f.gender.toLowerCase());
+      if (currentGender) {
+        filtered = [...filtered, currentGender];
+      }
+    }
+
+    setFilteredGenders(filtered);
+  }, [f.category_id, f.sub_category_id, meta, f.gender]);
 
   // Aggregate dynamic attributes from Listing Type, Category, and Sub-Category
   useEffect(() => {
