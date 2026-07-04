@@ -3818,23 +3818,23 @@ private function processImage($source, $subDir): ?string
 
         // Handle new array format (entity_types[] and entity_ids[])
         if ($entityTypes !== null || $entityIds !== null) {
-            // Create new assignments for each entity_type and entity_id pair
-            if ($entityTypes && $entityIds) {
-                // Ensure both are arrays
-                $entityTypesArray = is_array($entityTypes) ? $entityTypes : [$entityTypes];
-                $entityIdsArray = is_array($entityIds) ? $entityIds : [$entityIds];
+            // Ensure both are arrays
+            $entityTypesArray = is_array($entityTypes) ? $entityTypes : [$entityTypes];
+            $entityIdsArray = is_array($entityIds) ? $entityIds : [$entityIds];
 
-                foreach ($entityTypesArray as $entityType) {
-                    foreach ($entityIdsArray as $entityId) {
-                        if ($entityType && $entityId) {
-                            $db->table('attribute_assignments')->insert([
-                                'attribute_id' => $attributeId,
-                                'entity_type' => $entityType,
-                                'entity_id' => $entityId,
-                                'created_at' => date('Y-m-d H:i:s'),
-                            ]);
-                        }
-                    }
+            // Create assignments by pairing entity_types with entity_ids by index
+            $maxCount = max(count($entityTypesArray), count($entityIdsArray));
+            for ($i = 0; $i < $maxCount; $i++) {
+                $entityType = $entityTypesArray[$i] ?? null;
+                $entityId = $entityIdsArray[$i] ?? null;
+                
+                if ($entityType && $entityId) {
+                    $db->table('attribute_assignments')->insert([
+                        'attribute_id' => $attributeId,
+                        'entity_type' => $entityType,
+                        'entity_id' => $entityId,
+                        'created_at' => date('Y-m-d H:i:s'),
+                    ]);
                 }
             }
         }
@@ -3889,23 +3889,23 @@ private function processImage($source, $subDir): ?string
             // Delete existing assignments for this attribute
             $db->table('attribute_assignments')->where('attribute_id', $id)->delete();
 
-            // Create new assignments for each entity_type and entity_id pair
-            if ($entityTypes && $entityIds) {
-                // Ensure both are arrays
-                $entityTypesArray = is_array($entityTypes) ? $entityTypes : [$entityTypes];
-                $entityIdsArray = is_array($entityIds) ? $entityIds : [$entityIds];
+            // Ensure both are arrays
+            $entityTypesArray = is_array($entityTypes) ? $entityTypes : [$entityTypes];
+            $entityIdsArray = is_array($entityIds) ? $entityIds : [$entityIds];
 
-                foreach ($entityTypesArray as $entityType) {
-                    foreach ($entityIdsArray as $entityId) {
-                        if ($entityType && $entityId) {
-                            $db->table('attribute_assignments')->insert([
-                                'attribute_id' => $id,
-                                'entity_type' => $entityType,
-                                'entity_id' => $entityId,
-                                'created_at' => date('Y-m-d H:i:s'),
-                            ]);
-                        }
-                    }
+            // Create assignments by pairing entity_types with entity_ids by index
+            $maxCount = max(count($entityTypesArray), count($entityIdsArray));
+            for ($i = 0; $i < $maxCount; $i++) {
+                $entityType = $entityTypesArray[$i] ?? null;
+                $entityId = $entityIdsArray[$i] ?? null;
+                
+                if ($entityType && $entityId) {
+                    $db->table('attribute_assignments')->insert([
+                        'attribute_id' => $id,
+                        'entity_type' => $entityType,
+                        'entity_id' => $entityId,
+                        'created_at' => date('Y-m-d H:i:s'),
+                    ]);
                 }
             }
         }

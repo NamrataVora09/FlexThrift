@@ -384,9 +384,33 @@ Material,text,0,,,`,
         fd.append('allowed_values', editForm.allowed_values.join(','));
       }
       if (editForm.entity_types && editForm.entity_types.length > 0) {
-        editForm.entity_types.forEach((type: string) => fd.append('entity_types[]', type));
-        if (editForm.entity_ids && editForm.entity_ids.length > 0) {
-          editForm.entity_ids.forEach((id: number | string) => fd.append('entity_ids[]', String(id)));
+        // Pair entity types with their corresponding entity IDs
+        const entityTypes = editForm.entity_types as string[];
+        const entityIds = editForm.entity_ids || [];
+        
+        // Create paired arrays by entity type
+        const ltIds = entityIds.filter((id: number | string) => listing_types.find(l => l.id === id));
+        const catIds = entityIds.filter((id: number | string) => categories.find(c => c.id === id));
+        const scIds = entityIds.filter((id: number | string) => sub_categories.find(s => s.id === id));
+        
+        // Send paired data
+        if (entityTypes.includes('listing_type')) {
+          ltIds.forEach((id: number | string) => {
+            fd.append('entity_types[]', 'listing_type');
+            fd.append('entity_ids[]', String(id));
+          });
+        }
+        if (entityTypes.includes('category')) {
+          catIds.forEach((id: number | string) => {
+            fd.append('entity_types[]', 'category');
+            fd.append('entity_ids[]', String(id));
+          });
+        }
+        if (entityTypes.includes('sub_category')) {
+          scIds.forEach((id: number | string) => {
+            fd.append('entity_types[]', 'sub_category');
+            fd.append('entity_ids[]', String(id));
+          });
         }
       }
       res = await api.upload(`/superadmin/update-attribute/${item.id}`, fd);
@@ -685,7 +709,32 @@ Material,text,0,,,`,
         {/* 7. Attributes */}
         <div className="card mb-4"><SectionHeader icon="bi bi-list-check" title="Attributes Management" />
           <div className="card-body">
-            <form className="row g-3 mb-3" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); attrEntityTypes.forEach((type) => fd.append('entity_types[]', type)); attrEntityIds.forEach((id) => fd.append('entity_ids[]', String(id))); submitForm('/superadmin/add-attribute', fd); e.currentTarget.reset(); setAttrEntityTypes([]); setAttrEntityIds([]); }}>
+            <form className="row g-3 mb-3" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); 
+              // Pair entity types with their corresponding entity IDs
+              const ltIds = attrEntityIds.filter((id: number | string) => listing_types.find(l => l.id === id));
+              const catIds = attrEntityIds.filter((id: number | string) => categories.find(c => c.id === id));
+              const scIds = attrEntityIds.filter((id: number | string) => sub_categories.find(s => s.id === id));
+              
+              // Send paired data
+              if (attrEntityTypes.includes('listing_type')) {
+                ltIds.forEach((id: number | string) => {
+                  fd.append('entity_types[]', 'listing_type');
+                  fd.append('entity_ids[]', String(id));
+                });
+              }
+              if (attrEntityTypes.includes('category')) {
+                catIds.forEach((id: number | string) => {
+                  fd.append('entity_types[]', 'category');
+                  fd.append('entity_ids[]', String(id));
+                });
+              }
+              if (attrEntityTypes.includes('sub_category')) {
+                scIds.forEach((id: number | string) => {
+                  fd.append('entity_types[]', 'sub_category');
+                  fd.append('entity_ids[]', String(id));
+                });
+              }
+              submitForm('/superadmin/add-attribute', fd); e.currentTarget.reset(); setAttrEntityTypes([]); setAttrEntityIds([]); }}>
               <div className="col-md-3"><input name="name" className="form-control" style={inputStyle} placeholder="Attribute Name (e.g., Size)" required /></div>
               <div className="col-md-2">
                 <select name="type" className="form-select" style={inputStyle} required>
