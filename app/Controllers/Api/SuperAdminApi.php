@@ -3738,19 +3738,50 @@ private function processImage($source, $subDir): ?string
             
             // Add entity linking information
             if (isset($assignmentMap[$attr['id']]) && !empty($assignmentMap[$attr['id']])) {
-                $firstAssignment = $assignmentMap[$attr['id']][0];
-                $attr['entity_type'] = $firstAssignment['entity_type'];
+                // Extract all unique entity_types
+                $entityTypes = array_unique(array_column($assignmentMap[$attr['id']], 'entity_type'));
+                $attr['entity_types'] = array_values($entityTypes);
                 $attr['entity_ids'] = array_column($assignmentMap[$attr['id']], 'entity_id');
                 
+                // For backward compatibility, set single entity_type to first one
+                $attr['entity_type'] = $attr['entity_types'][0] ?? null;
+                
                 // Map entity_type to the appropriate ID column for frontend compatibility (backward compatibility)
-                if ($attr['entity_type'] === 'listing_type') {
-                    $attr['listing_type_id'] = $attr['entity_ids'][0] ?? null;
-                } elseif ($attr['entity_type'] === 'category') {
-                    $attr['category_id'] = $attr['entity_ids'][0] ?? null;
-                } elseif ($attr['entity_type'] === 'sub_category') {
-                    $attr['sub_category_id'] = $attr['entity_ids'][0] ?? null;
+                if (in_array('listing_type', $attr['entity_types'])) {
+                    $ltIds = array_filter($attr['entity_ids'], function($id) use ($assignmentMap, $attr) {
+                        foreach ($assignmentMap[$attr['id']] as $assignment) {
+                            if ($assignment['entity_type'] === 'listing_type' && $assignment['entity_id'] == $id) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    });
+                    $attr['listing_type_id'] = $ltIds[0] ?? null;
+                }
+                if (in_array('category', $attr['entity_types'])) {
+                    $catIds = array_filter($attr['entity_ids'], function($id) use ($assignmentMap, $attr) {
+                        foreach ($assignmentMap[$attr['id']] as $assignment) {
+                            if ($assignment['entity_type'] === 'category' && $assignment['entity_id'] == $id) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    });
+                    $attr['category_id'] = $catIds[0] ?? null;
+                }
+                if (in_array('sub_category', $attr['entity_types'])) {
+                    $scIds = array_filter($attr['entity_ids'], function($id) use ($assignmentMap, $attr) {
+                        foreach ($assignmentMap[$attr['id']] as $assignment) {
+                            if ($assignment['entity_type'] === 'sub_category' && $assignment['entity_id'] == $id) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    });
+                    $attr['sub_category_id'] = $scIds[0] ?? null;
                 }
             } else {
+                $attr['entity_types'] = [];
                 $attr['entity_type'] = null;
                 $attr['entity_ids'] = [];
                 $attr['entity_id'] = null;
