@@ -29,7 +29,7 @@ interface PricingRule {
 }
 
 interface FormMeta {
-  listing_types: Array<{ id: number; type_name: string; usage_label?: string; field_config?: string }>;
+  listing_types: Array<{ id: number; type_name: string; usage_label?: string; field_config?: string; gender_config?: string }>;
   product_types: Array<{ id: number; name: string; listing_type_id: number }>;
   categories: Array<{ id: number; name: string; product_type_id?: number; product_type_ids?: string; applies_to?: string; field_config?: string }>;
   sub_categories: Array<{ id: number; name: string; category_id?: number; category_ids?: string; field_config?: string; applies_to?: string }>;
@@ -443,15 +443,21 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   const getFieldConfigs = () => {
     const lt = meta?.listing_types?.find(l => String(l.id) === f.listing_type_category);
-    if (!lt?.field_config) return { gender: 'optional' };
-    try {
-      const config = JSON.parse(lt.field_config);
-      return {
-        gender: config.gender || 'optional'
-      };
-    } catch {
-      return { gender: 'optional' };
+    // Use gender_config column if available, otherwise fall back to field_config JSON
+    if (lt?.gender_config) {
+      return { gender: lt.gender_config };
     }
+    if (lt?.field_config) {
+      try {
+        const config = JSON.parse(lt.field_config);
+        return {
+          gender: config.gender || 'optional'
+        };
+      } catch {
+        return { gender: 'optional' };
+      }
+    }
+    return { gender: 'optional' };
   };
   const fieldConfigs = getFieldConfigs();
 

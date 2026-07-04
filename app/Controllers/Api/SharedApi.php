@@ -1075,7 +1075,7 @@ class SharedApi extends BaseApiController
     public function taxonomy()
     {
         $db = \Config\Database::connect();
-        $listingTypes = $db->table('listing_types')->get()->getResultArray();
+        $listingTypes = $db->table('listing_types')->select('id, type_name, gender_config, field_config, created_at')->get()->getResultArray();
         $categories = $db->table('categories')->select('id, category_name as name, field_config, product_type_id, product_type_ids, applies_to, created_at')->get()->getResultArray();
         $subCategories = $db->table('sub_categories')->select('id, name, field_config, category_id, category_ids, applies_to, created_at')->get()->getResultArray();
         $productTypes = $db->table('product_types')->get()->getResultArray();
