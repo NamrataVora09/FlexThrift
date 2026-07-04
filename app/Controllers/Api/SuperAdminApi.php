@@ -3439,11 +3439,13 @@ class SuperAdminApi extends BaseApiController
         
         foreach ($listingTypes as $lt) {
             // Use gender_config column if available, otherwise fall back to field_config JSON
-            if ($hasGenderConfig && isset($lt['gender_config']) && $lt['gender_config'] !== '') {
+            if ($hasGenderConfig && isset($lt['gender_config']) && $lt['gender_config'] !== '' && $lt['gender_config'] !== null) {
                 $genderConfig = $lt['gender_config'];
+                log_message('info', "Using gender_config column: " . $genderConfig . " for listing type ID: " . $lt['id']);
             } else {
                 $config = json_decode($lt['field_config'] ?? '{}', true);
                 $genderConfig = $config['gender'] ?? 'optional';
+                log_message('info', "Using field_config JSON: " . json_encode($config) . " -> gender: " . $genderConfig . " for listing type ID: " . $lt['id']);
             }
             
             if ($genderConfig === 'mandatory') {
@@ -3454,6 +3456,8 @@ class SuperAdminApi extends BaseApiController
                 $hasHidden = true;
             }
         }
+        
+        log_message('info', "isGenderRequiredForProductTypes result - hasMandatory: " . ($hasMandatory ? 'true' : 'false') . ", hasOptional: " . ($hasOptional ? 'true' : 'false') . ", hasHidden: " . ($hasHidden ? 'true' : 'false'));
         
         // If any listing type has gender as mandatory, gender is required
         if ($hasMandatory) {
