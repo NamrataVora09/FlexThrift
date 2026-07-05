@@ -1410,7 +1410,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               <button type="button" className="btn" style={{ border: '2px dashed #ffc63a', background: 'rgba(255,198,58,0.05)', borderRadius: 12, padding: '20px', width: '100%', textAlign: 'center', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }} onClick={() => !submitting && imgRef.current?.click()} disabled={submitting}>
                 <i className="bi bi-cloud-arrow-up" style={{ fontSize: '2rem', color: '#ffc63a' }}></i>
                 <p className="mb-0 mt-1 fw-bold small">Click to upload images</p>
-                <p className="text-muted mb-0" style={{ fontSize: '0.75rem' }}>Up to {cfg.max_product_images || '7'} images (Max {cfg.max_image_size_mb || '2'}MB each)</p>
+                <p className="text-muted mb-0" style={{ fontSize: '0.75rem' }}>Up to {cfg.max_product_images || '2'} images (Max {cfg.max_image_size_mb || '2'}MB each)</p>
               </button>
               {fieldErrors.product_images && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.product_images}</small>}
               {previews.length > 0 && (

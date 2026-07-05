@@ -296,7 +296,7 @@ class SellerApi extends BaseApiController
             'rental_max_cost_cap_per_day' => 0,
             'fallback_rental_cost_per_day' => 0,
             'min_rental_days' => 0,
-            'max_product_images' => 0,
+            'max_product_images' => 2,
             'max_original_price' => 1000000000, // 100 Crore (platform ceiling)
         ];
         $config = array_merge($defaults, $config);

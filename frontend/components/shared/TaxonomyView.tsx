@@ -135,6 +135,9 @@ function EditModal({ title, open, onClose, children }: { title: string; open: bo
 function CheckboxGroup({ label, items, selected, onChange }: { label: string; items: { id: number; name: string }[]; selected: (number | string)[]; onChange: (v: (number | string)[]) => void }) {
   const [search, setSearch] = useState('');
   const filteredItems = items.filter(it => it.name.toLowerCase().includes(search.toLowerCase()));
+  
+  // Normalize selected array to always be numbers for consistent comparison
+  const normalizedSelected = selected.map(v => typeof v === 'string' ? parseInt(v, 10) : v);
 
   return (
     <div className="mb-3">
@@ -149,8 +152,16 @@ function CheckboxGroup({ label, items, selected, onChange }: { label: string; it
       <div className="form-control" style={{ ...modalInputStyle, height: 110, overflowY: 'auto' }}>
         {filteredItems.length > 0 ? filteredItems.map((it) => (
           <div className="form-check" key={it.id}>
-            <input className="form-check-input" type="checkbox" checked={selected.includes(it.id) || selected.includes(String(it.id))}
-              onChange={(e) => onChange(e.target.checked ? [...selected, it.id] : selected.filter((v) => String(v) !== String(it.id)))} />
+            <input className="form-check-input" type="checkbox" checked={normalizedSelected.includes(it.id)}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  // Always add as number to maintain consistency
+                  onChange([...normalizedSelected, it.id]);
+                } else {
+                  // Filter using normalized values
+                  onChange(normalizedSelected.filter(v => v !== it.id));
+                }
+              }} />
             <label className="form-check-label small">{it.name}</label>
           </div>
         )) : (
@@ -237,13 +248,13 @@ export default function TaxonomyView() {
     const res = await api.upload<{ message: string; inserted: number; skipped: number; errors: string[] }>('/superadmin/bulk-upload-catalogue', fd);
     setCsvUploading(false);
     if (res.success) {
-      setCsvResult({ message: res.data?.message || res.message || 'Upload complete', errors: res.data?.errors, isError: false });
+      toast.success(res.data?.message || res.message || 'Upload complete');
       setCsvFile(null);
       const fileInput = document.getElementById('csvFileInput') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
       load();
     } else {
-      setCsvResult({ message: res.message || 'Upload failed', isError: true });
+      toast.error(res.message || 'Upload failed');
     }
   };
 
@@ -293,12 +304,14 @@ Material,text,0,,,`,
       setEditForm({ name: item.name, listing_type_id: item.listing_type_id });
     } else if (type === 'category') {
       const ptIds = item.product_type_ids ? parseJson(item.product_type_ids) : (item.product_type_id ? [item.product_type_id] : []);
-      // Ensure ptIds is always an array and convert to numbers
+      // Keep IDs as numbers to match item.id type in CheckboxGroup
       const safePtIds = Array.isArray(ptIds) ? ptIds.map(id => Number(id)) : (ptIds ? [Number(ptIds)] : []);
       setEditForm({ name: item.category_name || item.name || '', product_type_ids: safePtIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
     } else if (type === 'sub_category') {
       const catIds = item.category_ids ? parseJson(item.category_ids) : (item.category_id ? [item.category_id] : []);
-      setEditForm({ name: item.name, category_ids: catIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
+      // Keep IDs as numbers to match item.id type in CheckboxGroup
+      const safeCatIds = Array.isArray(catIds) ? catIds.map(id => Number(id)) : (catIds ? [Number(catIds)] : []);
+      setEditForm({ name: item.name, category_ids: safeCatIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
     } else if (type === 'color') {
       setEditForm({ name: item.name, hex_code: item.hex_code });
     } else if (type === 'attribute') {
@@ -955,7 +968,7 @@ Material,text,0,,,`,
       <EditModal title="Edit Category" open={editModal?.type === 'category'} onClose={() => setEditModal(null)}>
         <div className="modal-body p-4">
           <div className="mb-3"><label style={modalLabelStyle}>Category Name</label><input className="form-control" style={modalInputStyle} value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></div>
-          <CheckboxGroup label="Product Types" items={product_types.map((pt) => ({ id: pt.id, name: pt.name }))} selected={editForm.product_type_ids || []} onChange={(v) => setEditForm({ ...editForm, product_type_ids: v })} />
+          <CheckboxGroup label="Product Types" items={product_types.map((pt) => ({ id: Number(pt.id), name: pt.name }))} selected={editForm.product_type_ids || []} onChange={(v) => setEditForm({ ...editForm, product_type_ids: v })} />
           <CheckboxGroup label="Applies To" items={genders.map((g) => ({ id: g.name as any, name: g.name }))} selected={editForm.applies_to || []} onChange={(v) => setEditForm({ ...editForm, applies_to: v })} />
         </div>
         <div className="modal-footer border-0 p-4 pt-0"><button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button><button className="btn sa-filter-btn" style={btnGold} onClick={saveEdit}>Save</button></div>
@@ -971,7 +984,7 @@ Material,text,0,,,`,
               No categories available. Please add a category first before creating sub-categories.
             </div>
           ) : (
-            <CheckboxGroup label="Categories" items={categories.map((c) => ({ id: c.id, name: (c.category_name || c.name) as string }))} selected={editForm.category_ids || []} onChange={(v) => setEditForm({ ...editForm, category_ids: v })} />
+            <CheckboxGroup label="Categories" items={categories.map((c) => ({ id: Number(c.id), name: (c.category_name || c.name) as string }))} selected={editForm.category_ids || []} onChange={(v) => setEditForm({ ...editForm, category_ids: v })} />
           )}
           {categories.length > 0 && (
             <CheckboxGroup label="Applies To" items={genders.map((g) => ({ id: g.name as any, name: g.name }))} selected={editForm.applies_to || []} onChange={(v) => setEditForm({ ...editForm, applies_to: v })} />

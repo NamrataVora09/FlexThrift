@@ -135,9 +135,25 @@ class ApiClient {
     try {
       data = await response.json();
     } catch {
+      // Provide specific error messages for common HTTP status codes
+      if (response.status === 413) {
+        return { success: false, message: 'Upload failed: The total file size exceeds the server limit. Please reduce the number of images or their file sizes.' };
+      } else if (response.status === 422) {
+        return { success: false, message: 'Upload failed: Validation error. Please check your input fields.' };
+      } else if (response.status === 500) {
+        return { success: false, message: 'Upload failed: Server error. Please try again later.' };
+      }
       return { success: false, message: `Upload failed (${response.status})` };
     }
     if (!response.ok) {
+      // Provide specific error messages for common HTTP status codes
+      if (response.status === 413) {
+        return { success: false, message: data.message || 'Upload failed: The total file size exceeds the server limit. Please reduce the number of images or their file sizes.', errors: data.errors };
+      } else if (response.status === 422) {
+        return { success: false, message: data.message || 'Upload failed: Validation error. Please check your input fields.', errors: data.errors };
+      } else if (response.status === 500) {
+        return { success: false, message: data.message || 'Upload failed: Server error. Please try again later.', errors: data.errors };
+      }
       return { success: false, message: data.message || 'Upload failed', errors: data.errors };
     }
     return data;
@@ -173,6 +189,14 @@ class ApiClient {
         try {
           data = JSON.parse(xhr.responseText);
         } catch {
+          // Provide specific error messages for common HTTP status codes
+          if (xhr.status === 413) {
+            resolve({ success: false, message: 'Upload failed: The total file size exceeds the server limit. Please reduce the number of images or their file sizes.' });
+          } else if (xhr.status === 422) {
+            resolve({ success: false, message: 'Upload failed: Validation error. Please check your input fields.' });
+          } else if (xhr.status === 500) {
+            resolve({ success: false, message: 'Upload failed: Server error. Please try again later.' });
+          }
           resolve({ success: false, message: `Upload failed (${xhr.status})` });
           return;
         }
@@ -180,11 +204,32 @@ class ApiClient {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(data);
         } else {
-          resolve({
-            success: false,
-            message: data.message || 'Upload failed',
-            errors: data.errors,
-          });
+          // Provide specific error messages for common HTTP status codes
+          if (xhr.status === 413) {
+            resolve({
+              success: false,
+              message: data.message || 'Upload failed: The total file size exceeds the server limit. Please reduce the number of images or their file sizes.',
+              errors: data.errors,
+            });
+          } else if (xhr.status === 422) {
+            resolve({
+              success: false,
+              message: data.message || 'Upload failed: Validation error. Please check your input fields.',
+              errors: data.errors,
+            });
+          } else if (xhr.status === 500) {
+            resolve({
+              success: false,
+              message: data.message || 'Upload failed: Server error. Please try again later.',
+              errors: data.errors,
+            });
+          } else {
+            resolve({
+              success: false,
+              message: data.message || 'Upload failed',
+              errors: data.errors,
+            });
+          }
         }
       };
 

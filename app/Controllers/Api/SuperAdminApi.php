@@ -1890,6 +1890,17 @@ class SuperAdminApi extends BaseApiController
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
         $updatedData = json_decode($request['updated_data'], true) ?: [];
+        
+        // Get current product data to preserve fields that weren't updated
+        $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+        
+        // Merge updated data with current product data, preserving fields that weren't in the update
+        foreach ($currentProduct as $key => $value) {
+            if (!isset($updatedData[$key])) {
+                $updatedData[$key] = $value;
+            }
+        }
+        
         // Force status back to approved after merging edit
         $updatedData['status'] = 'approved';
         $updatedData['updated_at'] = date('Y-m-d H:i:s');
@@ -2256,12 +2267,46 @@ class SuperAdminApi extends BaseApiController
         $row = $db->table('system_settings')->where('setting_key', 'offer_acceptance_limit_days')->get()->getRowArray();
         $limitDays = isset($row['setting_value']) ? (int) $row['setting_value'] : 7;
         $cutoff = date('Y-m-d H:i:s', strtotime("-{$limitDays} days"));
+        
+        // Get the offers that will be marked as missed before updating
+        $offersToMark = $db->table('offers')
+            ->where('status', 'pending')
+            ->where('created_at <', $cutoff)
+            ->get()->getResultArray();
+        
         $affected = $db->table('offers')
             ->where('status', 'pending')
             ->where('created_at <', $cutoff)
             ->update(['status' => 'missed', 'updated_at' => date('Y-m-d H:i:s')]);
         $count = $db->affectedRows();
-        return $this->respond(['success' => true, 'message' => "Marked {$count} expired offers as missed."]);
+        
+        // Send notifications to both seller and buyer for each missed offer
+        foreach ($offersToMark as $offer) {
+            $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+            $productTitle = $product['title'] ?? 'Product';
+            
+            // Notify seller
+            $db->table('notifications')->insert([
+                'user_id' => $offer['seller_id'],
+                'title' => 'Offer Expired',
+                'message' => "Your offer for \"{$productTitle}\" has expired and is now marked as missed.",
+                'type' => 'offer_missed',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+            
+            // Notify buyer
+            $db->table('notifications')->insert([
+                'user_id' => $offer['buyer_id'],
+                'title' => 'Offer Expired',
+                'message' => "Your offer for \"{$productTitle}\" has expired and is now marked as missed.",
+                'type' => 'offer_missed',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+        
+        return $this->respond(['success' => true, 'message' => "Marked {$count} expired offers as missed. Notifications sent to both sellers and buyers."]);
     }
 
     public function bulkDeleteRejected()
