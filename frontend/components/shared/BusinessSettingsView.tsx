@@ -509,7 +509,7 @@ export default function BusinessSettingsView() {
       <div className={`col-md-${colSize} mb-3`} key={key}>
         <label className="form-label" style={labelStyle}>{field.label}</label>
         <input type={key.includes('days') || key.includes('hours') || key.includes('rate') || key.includes('charge') || key.includes('value') || key.includes('amount') || key.includes('max') || key.includes('min') || key.includes('port') || key.includes('fee') || key.includes('discount') || key.includes('dep') || key.includes('percent') ? 'number' : 'text'}
-          className="form-control" style={inputStyle} value={val} step="0.1" onChange={(e) => update(key, e.target.value)} />
+          className="form-control" style={inputStyle} value={val} step={['offer_acceptance_limit_days', 'seller_rating_period_days', 'seller_rejection_window_hours', 'buyer_rating_period_days', 'min_rental_days'].includes(key) ? '1' : '0.1'} onChange={(e) => update(key, e.target.value)} />
         {field.hint && <div className="form-text small">{field.hint}</div>}
       </div>
     );

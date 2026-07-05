@@ -293,7 +293,9 @@ Material,text,0,,,`,
       setEditForm({ name: item.name, listing_type_id: item.listing_type_id });
     } else if (type === 'category') {
       const ptIds = item.product_type_ids ? parseJson(item.product_type_ids) : (item.product_type_id ? [item.product_type_id] : []);
-      setEditForm({ name: item.category_name || item.name || '', product_type_ids: ptIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
+      // Ensure ptIds is always an array and convert to numbers
+      const safePtIds = Array.isArray(ptIds) ? ptIds.map(id => Number(id)) : (ptIds ? [Number(ptIds)] : []);
+      setEditForm({ name: item.category_name || item.name || '', product_type_ids: safePtIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
     } else if (type === 'sub_category') {
       const catIds = item.category_ids ? parseJson(item.category_ids) : (item.category_id ? [item.category_id] : []);
       setEditForm({ name: item.name, category_ids: catIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
@@ -355,9 +357,10 @@ Material,text,0,,,`,
       // Gender validation is handled by backend
 
       fd.append('category_name', editForm.name);
-      (editForm.product_type_ids || []).forEach((id: number) => fd.append('product_type_ids[]', String(id)));
+      // Clear previous product_type_ids by sending as JSON array instead of multiple FormData entries
+      fd.append('product_type_ids', JSON.stringify(editForm.product_type_ids));
       if (editForm.applies_to && editForm.applies_to.length > 0) {
-        (editForm.applies_to || []).forEach((g: string) => fd.append('applies_to[]', g));
+        fd.append('applies_to', JSON.stringify(editForm.applies_to));
       }
       fd.append('attributes', JSON.stringify(editForm.attributes || []));
       res = await api.upload(`/superadmin/update-category/${item.id}`, fd);
@@ -369,9 +372,10 @@ Material,text,0,,,`,
       // Gender validation is handled by backend
 
       fd.append('name', editForm.name);
-      (editForm.category_ids || []).forEach((id: number) => fd.append('category_ids[]', String(id)));
+      // Send category_ids as JSON array instead of multiple FormData entries
+      fd.append('category_ids', JSON.stringify(editForm.category_ids));
       if (editForm.applies_to && editForm.applies_to.length > 0) {
-        (editForm.applies_to || []).forEach((g: string) => fd.append('applies_to[]', g));
+        fd.append('applies_to', JSON.stringify(editForm.applies_to));
       }
       fd.append('attributes', JSON.stringify(editForm.attributes || []));
       res = await api.upload(`/superadmin/update-sub-category/${item.id}`, fd);

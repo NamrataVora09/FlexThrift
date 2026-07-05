@@ -250,13 +250,18 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (!meta || !f.product_type) { setCategories([]); return; }
     setCategories(meta.categories.filter(c => {
       // Support both single product_type_id and JSON array product_type_ids
+      // Check product_type_ids JSON array first (primary source)
+      if (c.product_type_ids) {
+        try {
+          const ids = JSON.parse(c.product_type_ids || '[]');
+          return ids.includes(Number(f.product_type)) || ids.includes(String(f.product_type));
+        } catch { return false; }
+      }
+      // Fallback to single product_type_id
       if (c.product_type_id != null) {
         return String(c.product_type_id) === String(f.product_type);
       }
-      try {
-        const ids = JSON.parse(c.product_type_ids || '[]');
-        return ids.includes(Number(f.product_type)) || ids.includes(f.product_type);
-      } catch { return false; }
+      return false;
     }));
   }, [f.product_type, meta]);
 
@@ -266,13 +271,18 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (!meta || !f.category_id) { setSubCategories([]); setFilteredGenders(meta?.genders || []); return; }
     setSubCategories(meta.sub_categories.filter(sc => {
       // Support both single category_id and JSON array category_ids
+      // Check category_ids JSON array first (primary source)
+      if (sc.category_ids) {
+        try {
+          const ids = JSON.parse(sc.category_ids || '[]');
+          return ids.includes(Number(f.category_id)) || ids.includes(String(f.category_id));
+        } catch { return false; }
+      }
+      // Fallback to single category_id
       if (sc.category_id != null) {
         return String(sc.category_id) === String(f.category_id);
       }
-      try {
-        const ids = JSON.parse(sc.category_ids || '[]');
-        return ids.includes(Number(f.category_id)) || ids.includes(String(f.category_id));
-      } catch { return false; }
+      return false;
     }));
 
     let filtered: Array<{ id: number; name: string }> = [];

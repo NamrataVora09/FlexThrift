@@ -856,9 +856,12 @@ class SuperAdminApi extends BaseApiController
         // Check if gender is required based on listing type's gender_config
         $isGenderRequired = $this->isGenderRequiredForCategories($ptIds);
         
-        // If gender is required and not provided, check if it's acceptable
-        if ($isGenderRequired && empty($appliesTo)) {
-            // Gender is required but not provided - this is acceptable if listing type allows it
+        // If gender is optional or hidden, allow creating category without gender
+        // Only enforce gender requirement if it's mandatory
+        if (!$isGenderRequired && empty($appliesTo)) {
+            // Gender is optional or hidden, allow blank applies_to
+        } elseif ($isGenderRequired && empty($appliesTo)) {
+            // Gender is mandatory but not provided - allow at category level
             // The validation will be enforced at product upload level, not at category level
         }
         
@@ -898,8 +901,12 @@ class SuperAdminApi extends BaseApiController
         // Check if gender is required based on parent categories' listing types' gender_config
         $isGenderRequired = $this->isGenderRequiredForCategories($catIds);
         
-        if ($isGenderRequired && empty($appliesTo)) {
-            // Gender is required but not provided - check if parent categories have genders
+        // If gender is optional or hidden, allow creating sub-category without gender
+        // Only enforce gender requirement if it's mandatory
+        if (!$isGenderRequired && empty($appliesTo)) {
+            // Gender is optional or hidden, allow blank applies_to
+        } elseif ($isGenderRequired && empty($appliesTo)) {
+            // Gender is mandatory but not provided - check if parent categories have genders
             $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
             $categoriesWithGenders = 0;
             foreach ($categories as $cat) {
@@ -1054,8 +1061,27 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Category name cannot be empty.'], 400);
         }
         
-        $ptIds = $this->request->getPost('product_type_ids') ?? [];
-        $appliesTo = $this->request->getPost('applies_to') ?? [];
+        $ptIds = $this->request->getPost('product_type_ids');
+        // Handle JSON string format from frontend
+        if (is_string($ptIds)) {
+            $decoded = json_decode($ptIds, true);
+            $ptIds = is_array($decoded) ? $decoded : [];
+        }
+        // Ensure product_type_ids is always an array
+        if (!is_array($ptIds)) {
+            $ptIds = $ptIds ? [$ptIds] : [];
+        }
+        
+        $appliesTo = $this->request->getPost('applies_to');
+        // Handle JSON string format from frontend
+        if (is_string($appliesTo)) {
+            $decoded = json_decode($appliesTo, true);
+            $appliesTo = is_array($decoded) ? $decoded : [];
+        }
+        // Ensure applies_to is always an array
+        if (!is_array($appliesTo)) {
+            $appliesTo = $appliesTo ? [$appliesTo] : [];
+        }
         $attrs = $this->request->getPost('attributes');
         
         // Validate product_type_ids is not empty
@@ -1064,12 +1090,16 @@ class SuperAdminApi extends BaseApiController
         }
         
         // Validate that product_type_ids exist in database
-        $existingPtIds = $db->table('product_types')->whereIn('id', $ptIds)->select('id')->get()->getResultArray();
+        // Convert all IDs to integers for consistent comparison with database
+        $ptIdsInt = array_map('intval', $ptIds);
+        $existingPtIds = $db->table('product_types')->whereIn('id', $ptIdsInt)->select('id')->get()->getResultArray();
         $validPtIds = array_column($existingPtIds, 'id');
-        $invalidPtIds = array_diff($ptIds, $validPtIds);
         
-        if (!empty($invalidPtIds)) {
-            return $this->respond(['success' => false, 'message' => 'Invalid product type IDs: ' . implode(', ', $invalidPtIds) . '. These product types do not exist in the database.'], 400);
+        // Filter out invalid IDs instead of rejecting the entire request
+        $ptIdsInt = array_intersect($ptIdsInt, $validPtIds);
+        
+        if (empty($ptIdsInt)) {
+            return $this->respond(['success' => false, 'message' => 'None of the provided product type IDs exist in the database.'], 400);
         }
         
         // Check for duplicate (excluding current record)
@@ -1105,10 +1135,22 @@ class SuperAdminApi extends BaseApiController
             }
         }
         
+        // Use the filtered valid product_type_ids directly
+        // No need to merge since the frontend sends the complete selection
+        $finalPtIds = $ptIdsInt;
+        
+        // Check if we have any valid product type IDs left after filtering
+        if (empty($finalPtIds) || !is_array($finalPtIds)) {
+            return $this->respond(['success' => false, 'message' => 'None of the provided product type IDs are valid.'], 400);
+        }
+        
+        // Re-index array to ensure numeric keys
+        $finalPtIds = array_values($finalPtIds);
+        
         $data = [
             'category_name' => $name,
-            'product_type_ids' => json_encode($ptIds),
-            'product_type_id' => !empty($ptIds) ? $ptIds[0] : null,
+            'product_type_ids' => json_encode($finalPtIds),
+            'product_type_id' => !empty($finalPtIds) ? $finalPtIds[0] : null,
             'applies_to' => json_encode($appliesTo),
         ];
         if ($attrs !== null) {
@@ -1128,26 +1170,55 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Sub-category name cannot be empty.'], 400);
         }
         
-        $catIds = $this->request->getPost('category_ids') ?? [];
-        $appliesTo = $this->request->getPost('applies_to') ?? [];
+        $catIds = $this->request->getPost('category_ids');
+        // Handle JSON string format from frontend
+        if (is_string($catIds)) {
+            $decoded = json_decode($catIds, true);
+            $catIds = is_array($decoded) ? $decoded : [];
+        }
+        // Ensure category_ids is always an array
+        if (!is_array($catIds)) {
+            $catIds = $catIds ? [$catIds] : [];
+        }
+        
+        $appliesTo = $this->request->getPost('applies_to');
+        // Handle JSON string format from frontend
+        if (is_string($appliesTo)) {
+            $decoded = json_decode($appliesTo, true);
+            $appliesTo = is_array($decoded) ? $decoded : [];
+        }
+        // Ensure applies_to is always an array
+        if (!is_array($appliesTo)) {
+            $appliesTo = $appliesTo ? [$appliesTo] : [];
+        }
+        
         $attrs = $this->request->getPost('attributes');
         
         if (empty($catIds)) return $this->respond(['success' => false, 'message' => 'At least one Category is required.'], 400);
         
         // Validate that category_ids exist in database
-        $existingCatIds = $db->table('categories')->whereIn('id', $catIds)->select('id')->get()->getResultArray();
+        // Convert all IDs to integers for consistent comparison
+        $catIdsInt = array_map('intval', $catIds);
+        $existingCatIds = $db->table('categories')->whereIn('id', $catIdsInt)->select('id')->get()->getResultArray();
         $validCatIds = array_column($existingCatIds, 'id');
-        $invalidCatIds = array_diff($catIds, $validCatIds);
+        $invalidCatIds = array_diff($catIdsInt, $validCatIds);
         
-        if (!empty($invalidCatIds)) {
-            return $this->respond(['success' => false, 'message' => 'Invalid category IDs: ' . implode(', ', $invalidCatIds) . '. These categories do not exist in the database.'], 400);
+        // Filter out invalid category IDs instead of rejecting the entire request
+        $catIdsInt = array_intersect($catIdsInt, $validCatIds);
+        
+        if (empty($catIdsInt)) {
+            return $this->respond(['success' => false, 'message' => 'None of the provided category IDs exist in the database.'], 400);
         }
         
         // Check if gender is required based on parent categories' listing types' gender_config
         $isGenderRequired = $this->isGenderRequiredForCategories($catIds);
         
-        if ($isGenderRequired && empty($appliesTo)) {
-            // Gender is required but not provided - check if parent categories have genders
+        // If gender is optional or hidden, allow updating sub-category without gender
+        // Only enforce gender requirement if it's mandatory
+        if (!$isGenderRequired && empty($appliesTo)) {
+            // Gender is optional or hidden, allow blank applies_to
+        } elseif ($isGenderRequired && empty($appliesTo)) {
+            // Gender is mandatory but not provided - check if parent categories have genders
             $categories = $db->table('categories')->whereIn('id', $catIds)->get()->getResultArray();
             $categoriesWithGenders = 0;
             foreach ($categories as $cat) {
@@ -1171,10 +1242,21 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Sub-category with this name already exists.'], 400);
         }
         
+        // Use the filtered valid category_ids directly
+        $finalCatIds = $catIdsInt;
+        
+        // Check if we have any valid category IDs left after filtering
+        if (empty($finalCatIds) || !is_array($finalCatIds)) {
+            return $this->respond(['success' => false, 'message' => 'None of the provided category IDs are valid.'], 400);
+        }
+        
+        // Re-index array to ensure numeric keys
+        $finalCatIds = array_values($finalCatIds);
+        
         $data = [
             'name' => $name,
-            'category_ids' => json_encode($catIds),
-            'category_id' => !empty($catIds) ? $catIds[0] : null,
+            'category_ids' => json_encode($finalCatIds),
+            'category_id' => !empty($finalCatIds) ? $finalCatIds[0] : null,
             'applies_to' => json_encode($appliesTo),
         ];
         if ($attrs !== null) {
@@ -3466,23 +3548,19 @@ class SuperAdminApi extends BaseApiController
             }
         }
         
-        // If any listing type has gender as mandatory, gender is required
-        if ($hasMandatory) {
+        // If any listing type has gender as mandatory or optional, gender is required
+        // Only if ALL listing types have gender hidden, gender is not required
+        if ($hasMandatory || $hasOptional) {
             return true;
         }
         
         // If all listing types have gender hidden, gender is not required
-        if ($hasHidden && !$hasOptional) {
+        if ($hasHidden && !$hasOptional && !$hasMandatory) {
             return false;
         }
         
-        // If any listing type has gender as optional (and none are mandatory), gender is not required
-        if ($hasOptional) {
-            return false;
-        }
-        
-        // Default to optional if no config found
-        return false;
+        // Default: gender is required
+        return true;
     }
     
     private function isGenderRequiredForCategories(array $categoryIds): bool

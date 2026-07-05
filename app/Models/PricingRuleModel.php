@@ -24,7 +24,8 @@ class PricingRuleModel extends Model
     protected $returnType = 'array';
 
     /**
-     * Get all active rules for a given set of filter values
+     * Get all active rules for a given set of filter values with priority
+     * Priority: sub_category > category > listing_type > global
      * @param int|null $listingTypeId
      * @param int|null $categoryId
      * @param int|null $subCategoryId
@@ -34,24 +35,29 @@ class PricingRuleModel extends Model
     {
         $builder = $this->where('is_active', 1);
 
-        $conditions = [];
-        if ($listingTypeId) {
-            $conditions[] = "(filter_type = 'listing_type' AND filter_value = " . (int)$listingTypeId . ")";
-        }
-        if ($categoryId) {
-            $conditions[] = "(filter_type = 'category' AND filter_value = " . (int)$categoryId . ")";
-        }
+        // Priority-based matching: check sub_category first, then category, then listing_type
         if ($subCategoryId) {
-            $conditions[] = "(filter_type = 'sub_category' AND filter_value = " . (int)$subCategoryId . ")";
+            return $this->where('is_active', 1)
+                ->where('filter_type', 'sub_category')
+                ->where('filter_value', (int)$subCategoryId)
+                ->findAll();
         }
 
-        if (empty($conditions)) {
-            return [];
+        if ($categoryId) {
+            return $this->where('is_active', 1)
+                ->where('filter_type', 'category')
+                ->where('filter_value', (int)$categoryId)
+                ->findAll();
         }
 
-        return $this->where('is_active', 1)
-            ->where('(' . implode(' OR ', $conditions) . ')')
-            ->findAll();
+        if ($listingTypeId) {
+            return $this->where('is_active', 1)
+                ->where('filter_type', 'listing_type')
+                ->where('filter_value', (int)$listingTypeId)
+                ->findAll();
+        }
+
+        return [];
     }
 
     /**
