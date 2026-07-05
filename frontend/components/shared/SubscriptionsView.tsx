@@ -402,6 +402,9 @@ export default function SubscriptionsView({ role, userType }: Props) {
                           Valid For {active.duration_hours > 0 ? `${active.duration_hours} hour/s` : 'Unlimited hours'}
                         </span>
                       </div>
+                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '1rem' }}>
+                        Started at {new Date(active.starts_at.replace(' ', 'T')).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
                       <h2 style={{ fontSize: 'clamp(2rem,5vw,3.25rem)', fontWeight: 900, letterSpacing: '-0.04em', color: '#111', marginBottom: '0.6rem', lineHeight: 1 }}>{active.plan_name}</h2>
                       <p style={{ color: '#6b7280', fontSize: '0.88rem', maxWidth: '28rem', marginBottom: '2rem', textTransform: 'capitalize' }}>
                         {active.plan_type.toUpperCase()} BASED

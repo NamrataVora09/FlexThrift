@@ -566,7 +566,19 @@ class SellerApi extends BaseApiController
         $allFiles = $this->request->getFiles();
         // Support both 'product_images' (mobile payload key) and legacy 'images' key
         $imageFiles = $allFiles['product_images'] ?? $allFiles['images'] ?? null;
+        
+        // Get image settings
+        $maxImages = (int) getSystemSetting('max_product_images', 2);
+        $maxImageSizeMB = (float) getSystemSetting('max_image_size_mb', 2);
+        $maxImageSizeBytes = $maxImageSizeMB * 1024 * 1024;
+        
         if ($imageFiles) {
+            // Validate image count
+            $imageCount = is_array($imageFiles) ? count($imageFiles) : 1;
+            if ($imageCount > $maxImages) {
+                return $this->respond(['success' => false, 'message' => "Maximum {$maxImages} images allowed per product. You uploaded {$imageCount} images."], 422);
+            }
+            
             log_message('info', 'Processing product_images array');
             $uploadPath = FCPATH . 'uploads/products/';
             if (!is_dir($uploadPath))
@@ -576,6 +588,13 @@ class SellerApi extends BaseApiController
             foreach ($imageFiles as $img) {
                 log_message('info', 'Processing image: ' . ($img ? 'valid file' : 'null'));
                 if ($img && $img->isValid() && !$img->hasMoved()) {
+                    // Validate image size
+                    $imageSize = $img->getSize();
+                    if ($imageSize > $maxImageSizeBytes) {
+                        $imageSizeMB = round($imageSize / (1024 * 1024), 2);
+                        return $this->respond(['success' => false, 'message' => "Image size exceeds maximum limit of {$maxImageSizeMB}MB. Your image is {$imageSizeMB}MB."], 422);
+                    }
+                    
                     $newName = $img->getRandomName();
                     $img->move($uploadPath, $newName);
                     $db->table('product_images')->insert([
@@ -1664,13 +1683,32 @@ class SellerApi extends BaseApiController
         // Handle file uploads
         $files = $this->request->getFiles();
         $imageFiles = $files['product_images'] ?? $files['images'] ?? null;
+        
+        // Get image settings
+        $maxImages = (int) getSystemSetting('max_product_images', 2);
+        $maxImageSizeMB = (float) getSystemSetting('max_image_size_mb', 2);
+        $maxImageSizeBytes = $maxImageSizeMB * 1024 * 1024;
+        
         if ($imageFiles) {
+            // Validate image count
+            $imageCount = is_array($imageFiles) ? count($imageFiles) : 1;
+            if ($imageCount > $maxImages) {
+                return $this->respond(['success' => false, 'message' => "Maximum {$maxImages} images allowed per product. You uploaded {$imageCount} images."], 422);
+            }
+            
             $uploadPath = FCPATH . 'uploads/products/';
             if (!is_dir($uploadPath))
                 mkdir($uploadPath, 0777, true);
 
             foreach ($imageFiles as $file) {
                 if ($file->isValid() && !$file->hasMoved()) {
+                    // Validate image size
+                    $imageSize = $file->getSize();
+                    if ($imageSize > $maxImageSizeBytes) {
+                        $imageSizeMB = round($imageSize / (1024 * 1024), 2);
+                        return $this->respond(['success' => false, 'message' => "Image size exceeds maximum limit of {$maxImageSizeMB}MB. Your image is {$imageSizeMB}MB."], 422);
+                    }
+                    
                     $newName = $file->getRandomName();
                     $file->move($uploadPath, $newName);
 

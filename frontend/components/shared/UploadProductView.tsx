@@ -872,6 +872,24 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       files.forEach(file => fd.append('product_images[]', file));
       billFiles.forEach(file => fd.append('bill_images[]', file));
 
+      // Validate image count and size before upload
+      const maxImages = Number(cfg.max_product_images || 2);
+      const maxImageSizeMB = Number(cfg.max_image_size_mb || 2);
+      const maxImageSizeBytes = maxImageSizeMB * 1024 * 1024;
+      
+      if (files.length > maxImages) {
+        setError(`Maximum ${maxImages} images allowed per product. You selected ${files.length} images.`);
+        return;
+      }
+      
+      for (const file of files) {
+        if (file.size > maxImageSizeBytes) {
+          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+          setError(`Image size exceeds maximum limit of ${maxImageSizeMB}MB. Your image is ${fileSizeMB}MB.`);
+          return;
+        }
+      }
+
       // Include dynamic attributes
       fd.append('specifications', JSON.stringify(attributeValues));
 

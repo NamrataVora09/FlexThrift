@@ -299,7 +299,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
         </span>
       )
     },
-    { key: 'created_at', label: 'Date', render: (r) => <span className="small">{new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span> },
+    { key: 'created_at', label: 'Date', render: (r) => <span className="small">{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> },
   ];
 
   const RangePicker = ({ value, onChange }: { value: string, onChange: (v: string) => void }) => (

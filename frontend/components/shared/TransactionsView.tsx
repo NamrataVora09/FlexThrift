@@ -19,7 +19,7 @@ const columns: Column<Transaction>[] = [
   { key: 'description', label: 'Description' },
   { key: 'amount', label: 'Amount', render: (r) => <span className="fw-bold">₹{r.amount}</span> },
   { key: 'status', label: 'Status', render: (r) => <span className={`status-badge ${r.status}`}>{r.status}</span> },
-  { key: 'created_at', label: 'Date', render: (r) => <span className="normal_label_font">{new Date(r.created_at).toLocaleDateString('en-IN')}</span> },
+  { key: 'created_at', label: 'Date', render: (r) => <span className="normal_label_font">{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> },
 ];
 
 export default function TransactionsView({ role, apiPath }: Props) {
