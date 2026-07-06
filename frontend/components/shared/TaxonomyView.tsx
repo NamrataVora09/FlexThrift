@@ -279,9 +279,9 @@ T-Shirts,Casual Wear,"[""Male"",""Unisex""]"`,
 Crimson,#dc143c
 Navy Blue,#000080
 Forest Green,#228b22`,
-      attributes: `name,type,required,allowed_values,placeholder,entity_types,entity_ids
-Size,picklist,1,"Small,Medium,Large",,"listing_type","Clothing,Electronics"
-Color,text,0,,,category,"Casual Wear,Formal Wear"
+      attributes: `name,type,required,allowed_values,placeholder,entity_types
+Size,picklist,1,"Small,Medium,Large",,"[""listing_type:Clothing"", ""listing_type:Electronics""]"
+Color,text,0,,,"[""category:Casual Wear"", ""category:Formal Wear""]"
 Material,text,0,,,`,
     };
     const csv = templates[csvType] || '';

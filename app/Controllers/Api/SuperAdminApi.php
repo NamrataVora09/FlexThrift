@@ -2917,7 +2917,7 @@ class SuperAdminApi extends BaseApiController
             'categories' => ['category_name', 'product_types', 'applies_to'],
             'sub_categories' => ['name', 'categories', 'applies_to'],
             'colors' => ['name', 'hex_code'],
-            'attributes' => ['name', 'type', 'required', 'allowed_values', 'placeholder', 'entity_types', 'entity_ids'],
+            'attributes' => ['name', 'type', 'required', 'allowed_values', 'placeholder', 'entity_types'],
         ];
 
         $handle = fopen($file->getTempName(), 'r');
@@ -3115,7 +3115,7 @@ class SuperAdminApi extends BaseApiController
                         $appliesTo = [];
                         
                         if ($appliesToInput !== '') {
-                            // Try JSON decode first, then comma-separated, then single value
+                            // Try JSON decode first
                             $appliesTo = json_decode($appliesToInput, true);
                             if (!is_array($appliesTo)) {
                                 // Handle comma-separated or single value
@@ -3125,6 +3125,10 @@ class SuperAdminApi extends BaseApiController
                                     // Single value without brackets
                                     $appliesTo = [$appliesToInput];
                                 }
+                                // Strip quotes from individual values if present
+                                $appliesTo = array_map(function($val) {
+                                    return trim($val, '"\'');
+                                }, $appliesTo);
                             }
                             
                             // Filter out "all" and convert to lowercase for comparison
@@ -3266,7 +3270,7 @@ class SuperAdminApi extends BaseApiController
                         $appliesTo = [];
                         
                         if ($appliesToInput !== '') {
-                            // Try JSON decode first, then comma-separated, then single value
+                            // Try JSON decode first
                             $appliesTo = json_decode($appliesToInput, true);
                             if (!is_array($appliesTo)) {
                                 // Handle comma-separated or single value
@@ -3276,6 +3280,10 @@ class SuperAdminApi extends BaseApiController
                                     // Single value without brackets
                                     $appliesTo = [$appliesToInput];
                                 }
+                                // Strip quotes from individual values if present
+                                $appliesTo = array_map(function($val) {
+                                    return trim($val, '"\'');
+                                }, $appliesTo);
                             }
                             
                             // Filter out "all" and convert to lowercase for comparison
@@ -3473,18 +3481,29 @@ class SuperAdminApi extends BaseApiController
                         $entityTypes = $data['entity_types'] ?? null;
                         $entityIds = $data['entity_ids'] ?? null;
                         
-                        // Skip if entity_types or entity_ids are missing
-                        if (empty($entityTypes) || empty($entityIds)) {
-                            $skipped++;
-                            $errors[] = "Row {$row}: Entity types or entity IDs are missing. Skipping row.";
-                            continue 2;
+                        // Log the raw entity_types value for debugging
+                        if ($entityTypes !== null) {
+                            $errors[] = "Row {$row}: Raw entity_types value: '" . $entityTypes . "'";
+                        }
+                        
+                        // Skip entity linking if entity_types is missing or empty
+                        if (empty($entityTypes) || (is_string($entityTypes) && trim($entityTypes) === '')) {
+                            // If entity_types is empty, attribute is created but no assignments are made
+                            // Don't skip the row, just skip entity linking
+                            $errors[] = "Row {$row}: Entity types is empty, skipping entity linking";
+                            break;
                         }
                         
                         // Try to decode JSON if entity_types/entity_ids are JSON strings
                         if ($entityTypes && is_string($entityTypes)) {
                             $decoded = json_decode($entityTypes, true);
-                            if (is_array($decoded)) {
+                            if (json_last_error() !== JSON_ERROR_NONE) {
+                                $errors[] = "Row {$row}: JSON decode failed for entity_types: " . json_last_error_msg() . ". Trying comma-separated parsing.";
+                                // If JSON decode fails, try to parse as comma-separated
+                                $entityTypes = array_map('trim', explode(',', $entityTypes));
+                            } else {
                                 $entityTypes = $decoded;
+                                $errors[] = "Row {$row}: JSON decode successful, entity_types: " . json_encode($entityTypes);
                             }
                         }
                         if ($entityIds && is_string($entityIds)) {
@@ -3494,52 +3513,132 @@ class SuperAdminApi extends BaseApiController
                             }
                         }
                         
-                        // Only process entity linking if both entity_types and entity_ids are provided
-                        if (!empty($entityTypes) && !empty($entityIds) && $attributeId) {
+                        // Skip entity linking if still empty after parsing
+                        if (empty($entityTypes) || (is_array($entityTypes) && count($entityTypes) === 0)) {
+                            $errors[] = "Row {$row}: Entity types is empty after parsing, skipping entity linking";
+                            break;
+                        }
+                        
+                        // Only process entity linking if entity_types is provided
+                        if (!empty($entityTypes) && $attributeId) {
+                            $errors[] = "Row {$row}: Processing entity linking for attribute ID {$attributeId} with " . count($entityTypes) . " entity types";
                             // Delete existing assignments for this attribute
                             $db->table('attribute_assignments')->where('attribute_id', $attributeId)->delete();
                             
-                            // Parse entity_types (can be comma-separated or single)
-                            $entityTypesArray = is_array($entityTypes) ? $entityTypes : explode(',', $entityTypes);
-                            $entityTypesArray = array_map('trim', $entityTypesArray);
+                            // Check if using paired format ["category:dasdasd", "listing_type:abc"]
+                            $usePairedFormat = false;
+                            if (is_array($entityTypes) && count($entityTypes) > 0) {
+                                $firstItem = $entityTypes[0];
+                                $errors[] = "Row {$row}: First entity type item: '" . $firstItem . "'";
+                                if (is_string($firstItem) && strpos($firstItem, ':') !== false) {
+                                    $usePairedFormat = true;
+                                    $errors[] = "Row {$row}: Using paired format";
+                                } else {
+                                    $errors[] = "Row {$row}: Using Cartesian product format";
+                                }
+                            }
                             
-                            // Parse entity_ids (can be comma-separated or single) - these are now names
-                            $entityNamesArray = is_array($entityIds) ? $entityIds : explode(',', $entityIds);
-                            $entityNamesArray = array_map('trim', $entityNamesArray);
-                            
-                            // Create assignments for each entity_type and entity_name pair
-                            foreach ($entityTypesArray as $entityType) {
-                                foreach ($entityNamesArray as $entityName) {
-                                    if ($entityType && $entityName) {
-                                        // Resolve entity name to ID based on entity_type
-                                        $entityId = null;
-                                        if ($entityType === 'listing_type') {
-                                            $entity = $db->table('listing_types')
-                                                ->where('LOWER(type_name)', strtolower($entityName))
-                                                ->orWhere('LOWER(name)', strtolower($entityName))
-                                                ->get()->getRowArray();
-                                            if ($entity) $entityId = $entity['id'];
-                                        } elseif ($entityType === 'category') {
-                                            $entity = $db->table('categories')
-                                                ->where('LOWER(category_name)', strtolower($entityName))
-                                                ->orWhere('LOWER(name)', strtolower($entityName))
-                                                ->get()->getRowArray();
-                                            if ($entity) $entityId = $entity['id'];
-                                        } elseif ($entityType === 'sub_category') {
-                                            $entity = $db->table('sub_categories')
-                                                ->where('LOWER(name)', strtolower($entityName))
-                                                ->get()->getRowArray();
-                                            if ($entity) $entityId = $entity['id'];
-                                        }
+                            if ($usePairedFormat) {
+                                $errors[] = "Row {$row}: Processing paired format with " . count($entityTypes) . " pairs";
+                                // Use paired format: ["category:dasdasd", "listing_type:abc"]
+                                foreach ($entityTypes as $pair) {
+                                    $errors[] = "Row {$row}: Processing pair: '" . $pair . "'";
+                                    if (is_string($pair) && strpos($pair, ':') !== false) {
+                                        list($entityType, $entityName) = explode(':', $pair, 2);
+                                        $entityType = trim($entityType);
+                                        $entityName = trim($entityName);
+                                        $errors[] = "Row {$row}: Parsed - entity_type: '" . $entityType . "', entity_name: '" . $entityName . "'";
                                         
-                                        // Only create assignment if entity was found
-                                        if ($entityId) {
-                                            $db->table('attribute_assignments')->insert([
-                                                'attribute_id' => $attributeId,
-                                                'entity_type' => $entityType,
-                                                'entity_id' => $entityId,
-                                                'created_at' => $now,
-                                            ]);
+                                        if ($entityType && $entityName) {
+                                            // Resolve entity name to ID based on entity_type
+                                            $entityId = null;
+                                            if ($entityType === 'listing_type') {
+                                                $entity = $db->table('listing_types')
+                                                    ->where('LOWER(type_name)', strtolower($entityName))
+                                                    ->orWhere('LOWER(name)', strtolower($entityName))
+                                                    ->get()->getRowArray();
+                                                if ($entity) $entityId = $entity['id'];
+                                            } elseif ($entityType === 'category') {
+                                                $entity = $db->table('categories')
+                                                    ->where('LOWER(category_name)', strtolower($entityName))
+                                                    ->orWhere('LOWER(name)', strtolower($entityName))
+                                                    ->get()->getRowArray();
+                                                if ($entity) $entityId = $entity['id'];
+                                            } elseif ($entityType === 'sub_category') {
+                                                $entity = $db->table('sub_categories')
+                                                    ->where('LOWER(name)', strtolower($entityName))
+                                                    ->get()->getRowArray();
+                                                if ($entity) $entityId = $entity['id'];
+                                            }
+                                            
+                                            $errors[] = "Row {$row}: Entity ID resolved: " . ($entityId ?? 'null');
+                                            
+                                            // Only create assignment if entity was found
+                                            if ($entityId) {
+                                                $db->table('attribute_assignments')->insert([
+                                                    'attribute_id' => $attributeId,
+                                                    'entity_type' => $entityType,
+                                                    'entity_id' => $entityId,
+                                                    'created_at' => $now,
+                                                ]);
+                                                $errors[] = "Row {$row}: Assignment created for {$entityType}:{$entityName}";
+                                            } else {
+                                                $errors[] = "Row {$row}: Entity not found for {$entityType}:{$entityName}";
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Use old Cartesian product format (backward compatibility)
+                                // Skip if entity_ids is missing for old format
+                                if (empty($entityIds)) {
+                                    $skipped++;
+                                    $errors[] = "Row {$row}: Entity IDs are missing for non-paired format. Skipping row.";
+                                    continue 2;
+                                }
+                                
+                                // Parse entity_types (can be comma-separated or single)
+                                $entityTypesArray = is_array($entityTypes) ? $entityTypes : explode(',', $entityTypes);
+                                $entityTypesArray = array_map('trim', $entityTypesArray);
+                                
+                                // Parse entity_ids (can be comma-separated or single) - these are now names
+                                $entityNamesArray = is_array($entityIds) ? $entityIds : explode(',', $entityIds);
+                                $entityNamesArray = array_map('trim', $entityNamesArray);
+                                
+                                // Create assignments for each entity_type and entity_name pair
+                                foreach ($entityTypesArray as $entityType) {
+                                    foreach ($entityNamesArray as $entityName) {
+                                        if ($entityType && $entityName) {
+                                            // Resolve entity name to ID based on entity_type
+                                            $entityId = null;
+                                            if ($entityType === 'listing_type') {
+                                                $entity = $db->table('listing_types')
+                                                    ->where('LOWER(type_name)', strtolower($entityName))
+                                                    ->orWhere('LOWER(name)', strtolower($entityName))
+                                                    ->get()->getRowArray();
+                                                if ($entity) $entityId = $entity['id'];
+                                            } elseif ($entityType === 'category') {
+                                                $entity = $db->table('categories')
+                                                    ->where('LOWER(category_name)', strtolower($entityName))
+                                                    ->orWhere('LOWER(name)', strtolower($entityName))
+                                                    ->get()->getRowArray();
+                                                if ($entity) $entityId = $entity['id'];
+                                            } elseif ($entityType === 'sub_category') {
+                                                $entity = $db->table('sub_categories')
+                                                    ->where('LOWER(name)', strtolower($entityName))
+                                                    ->get()->getRowArray();
+                                                if ($entity) $entityId = $entity['id'];
+                                            }
+                                            
+                                            // Only create assignment if entity was found
+                                            if ($entityId) {
+                                                $db->table('attribute_assignments')->insert([
+                                                    'attribute_id' => $attributeId,
+                                                    'entity_type' => $entityType,
+                                                    'entity_id' => $entityId,
+                                                    'created_at' => $now,
+                                                ]);
+                                            }
                                         }
                                     }
                                 }
