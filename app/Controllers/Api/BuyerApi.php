@@ -485,7 +485,7 @@ class BuyerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         $offers = $db->table('offers o')
-            ->select('o.*, o.offer_price as offered_price,
+            ->select('o.*, o.offer_price as offered_price, o.message,
                 p.title as product_title, p.listing_type, p.original_price,
                 p.rental_cost as rental_cost,
                 p.dispatch_city, p.dispatch_state, p.dispatch_pin_code,
@@ -795,6 +795,7 @@ class BuyerApi extends BaseApiController
             'delivery_city' => $data['delivery_city'] ?? null,
             'delivery_state' => $data['delivery_state'] ?? null,
             'delivery_pin_code' => $data['delivery_pin_code'] ?? null,
+            'message' => $data['message'] ?? null,
             'status' => 'pending',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),

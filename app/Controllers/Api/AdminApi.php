@@ -604,7 +604,7 @@ class AdminApi extends BaseApiController
 
         // ── Received (admin is seller) – matches SellerApi::offers() ──
         $received = $db->table('offers o')
-            ->select('o.*, o.offer_price as offered_price,
+            ->select('o.*, o.offer_price as offered_price, o.message,
                 p.title as product_title, p.product_number, p.listing_type, p.original_price,
                 p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit,
                 p.views_count as product_views, p.dispatch_city, p.dispatch_state, p.dispatch_pin_code,
@@ -623,7 +623,7 @@ class AdminApi extends BaseApiController
 
         // ── Sent (admin is buyer) – matches BuyerApi::myOffers() ──
         $sent = $db->table('offers o')
-            ->select('o.*, o.offer_price as offered_price,
+            ->select('o.*, o.offer_price as offered_price, o.message,
                 p.title as product_title, p.listing_type, p.original_price, p.dispatch_city, p.dispatch_state, p.dispatch_pin_code,
                 p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit,
                 (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image,

@@ -893,6 +893,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
               }}
               onReject={o => { setActionModal({ id: o.id, action: 'reject', title: o.product_title, offer: o }); setRemarks(''); }}
               onRate={o => { setRatingModal({ id: o.id, title: o.product_title, target: 'buyer' }); setRatingValue(5); }}
+              user={user}
             />
           ) : perspective === 'buyer' ? (
             <BuyerView
@@ -1327,9 +1328,10 @@ interface SellerViewProps {
   onAccept: (o: Offer) => void;
   onReject: (o: Offer) => void;
   onRate: (o: Offer) => void;
+  user: { id: number } | null;
 }
 
-function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAccept, onReject, onRate }: SellerViewProps) {
+function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAccept, onReject, onRate, user }: SellerViewProps) {
   // group by product_id, each group sorted newest-first, groups ordered by their newest offer
   const grouped = useMemo(() => {
     const m: Record<number, Offer[]> = {};
@@ -1520,10 +1522,31 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                         </div>
                       )}
 
+                      {/* missed offer alert */}
+                      {isExpired && (
+                        <div className="alert alert-danger border-0 py-3 px-4 mb-3" style={{ background: '#fff5f5', borderRadius: 12 }}>
+                          <div className="d-flex align-items-start gap-2">
+                            <i className="bi bi-exclamation-triangle-fill text-danger mt-1" style={{ fontSize: '1.1rem' }}></i>
+                            <div>
+                              <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>Offer Missed</div>
+                              <div className="text-dark" style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>
+                                This offer expired on {expiryDate}. You did not respond within the acceptance window.
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* message */}
                       {offer.message && (
-                        <div className="alert alert-light border py-2 px-3 small fst-italic mb-3" style={{ background: '#fcfcfc' }}>
-                          <i className="bi bi-chat-quote me-1 text-muted"></i>"{offer.message}"
+                        <div className="alert alert-info border-0 py-3 px-4 mb-3" style={{ background: '#e3f2fd', borderRadius: 12 }}>
+                          <div className="d-flex align-items-start gap-2">
+                            <i className="bi bi-chat-quote-fill text-primary mt-1" style={{ fontSize: '1.1rem' }}></i>
+                            <div>
+                              <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>Buyer Message:</div>
+                              <div className="text-dark" style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>{offer.message}</div>
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -1568,7 +1591,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                     <div className="offer-actions" style={{ minWidth: 120, textAlign: 'right' }}>
                       {offer.status === 'pending' && (
                         <>
-                          {isExpired ? (
+                          {isExpired && user?.id === offer.seller_id ? (
                             <div className="text-danger small fw-bold">
                               <i className="bi bi-clock-fill"></i> Offer Missed
                               <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>Acceptance period expired on {expiryDate}</div>
@@ -1587,10 +1610,12 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                                   <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>These dates overlap with an accepted booking.</div>
                                 </div>
                               )}
-                              <div className="seller-action-group">
-                                <button className="btn-accept" onClick={() => onAccept(offer)}>Accept</button>
-                                <button className="btn-reject" onClick={() => onReject(offer)}>Reject</button>
-                              </div>
+                              {!isExpired && (
+                                <div className="seller-action-group">
+                                  <button className="btn-accept" onClick={() => onAccept(offer)}>Accept</button>
+                                  <button className="btn-reject" onClick={() => onReject(offer)}>Reject</button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </>

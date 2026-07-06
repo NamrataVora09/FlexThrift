@@ -332,8 +332,13 @@ Material,text,0,,,`,
       else if (item.category_id) { entityTypes = ['category']; entityIds = [item.category_id]; }
       else if (item.sub_category_id) { entityTypes = ['sub_category']; entityIds = [item.sub_category_id]; }
       
-      // Ensure allowed_values is an array
-      const allowedValues = Array.isArray(item.allowed_values) ? item.allowed_values : [];
+      // Ensure allowed_values is an array (handle both array and comma-separated string from backend)
+      let allowedValues: string[] = [];
+      if (Array.isArray(item.allowed_values)) {
+        allowedValues = item.allowed_values;
+      } else if (typeof item.allowed_values === 'string' && item.allowed_values) {
+        allowedValues = item.allowed_values.split(',').map((v: string) => v.trim()).filter(Boolean);
+      }
       
       setEditForm({ name: item.name, type: item.type, required: item.required, allowed_values: allowedValues, placeholder: item.placeholder, entity_types: entityTypes, entity_ids: entityIds });
     }
@@ -404,15 +409,33 @@ Material,text,0,,,`,
       if (editForm.allowed_values && editForm.allowed_values.length > 0) {
         fd.append('allowed_values', editForm.allowed_values.join(','));
       }
+      // Require at least one entity type to be selected
+      if (!editForm.entity_types || editForm.entity_types.length === 0) {
+        toastError('validation_error', 'Please select at least one entity type (Listing Type, Category, or Sub-Category)');
+        return;
+      }
       if (editForm.entity_types && editForm.entity_types.length > 0) {
-        // Pair entity types with their corresponding entity IDs
+        // Validate that entity types have corresponding entity IDs
         const entityTypes = editForm.entity_types as string[];
         const entityIds = editForm.entity_ids || [];
         
-        // Create paired arrays by entity type
-        const ltIds = entityIds.filter((id: number | string) => listing_types.find(l => l.id === id));
-        const catIds = entityIds.filter((id: number | string) => categories.find(c => c.id === id));
-        const scIds = entityIds.filter((id: number | string) => sub_categories.find(s => s.id === id));
+        const ltIds = entityIds.filter((id: number | string) => listing_types.find(l => Number(l.id) === Number(id)));
+        const catIds = entityIds.filter((id: number | string) => categories.find(c => Number(c.id) === Number(id)));
+        const scIds = entityIds.filter((id: number | string) => sub_categories.find(s => Number(s.id) === Number(id)));
+        
+        // Check if required entity IDs are missing
+        if (entityTypes.includes('listing_type') && ltIds.length === 0) {
+          toastError('validation_error', 'Please select at least one Listing Type');
+          return;
+        }
+        if (entityTypes.includes('category') && catIds.length === 0) {
+          toastError('validation_error', 'Please select at least one Category');
+          return;
+        }
+        if (entityTypes.includes('sub_category') && scIds.length === 0) {
+          toastError('validation_error', 'Please select at least one Sub-Category');
+          return;
+        }
         
         // Send paired data
         if (entityTypes.includes('listing_type')) {
@@ -1062,13 +1085,13 @@ Material,text,0,,,`,
               {(editForm.entity_types || []).includes('listing_type') && (
                 <CheckboxGroup 
                   label="Select Listing Types"
-                  items={listing_types.map(lt => ({ id: lt.id, name: lt.type_name || lt.name as string }))}
-                  selected={(editForm.entity_ids || []).filter((id: number | string) => {
-                    const lt = listing_types.find(l => l.id === id);
-                    return lt !== undefined;
+                  items={listing_types.map(lt => ({ id: Number(lt.id), name: lt.type_name || lt.name as string }))}
+                  selected={(editForm.entity_ids || []).map(Number).filter((id: number) => {
+                    return listing_types.some(l => Number(l.id) === id);
                   })}
                   onChange={(v) => {
-                    const otherIds = (editForm.entity_ids || []).filter((id: number | string) => !listing_types.find(l => l.id === id));
+                    const ltIds = listing_types.map(l => Number(l.id));
+                    const otherIds = (editForm.entity_ids || []).map(Number).filter((id: number) => !ltIds.includes(id));
                     setEditForm({ ...editForm, entity_ids: [...otherIds, ...v] });
                   }}
                 />
@@ -1076,13 +1099,13 @@ Material,text,0,,,`,
               {(editForm.entity_types || []).includes('category') && (
                 <CheckboxGroup 
                   label="Select Categories"
-                  items={categories.map(cat => ({ id: cat.id, name: (cat.category_name || cat.name) as string }))}
-                  selected={(editForm.entity_ids || []).filter((id: number | string) => {
-                    const cat = categories.find(c => c.id === id);
-                    return cat !== undefined;
+                  items={categories.map(cat => ({ id: Number(cat.id), name: (cat.category_name || cat.name) as string }))}
+                  selected={(editForm.entity_ids || []).map(Number).filter((id: number) => {
+                    return categories.some(c => Number(c.id) === id);
                   })}
                   onChange={(v) => {
-                    const otherIds = (editForm.entity_ids || []).filter((id: number | string) => !categories.find(c => c.id === id));
+                    const catIds = categories.map(c => Number(c.id));
+                    const otherIds = (editForm.entity_ids || []).map(Number).filter((id: number) => !catIds.includes(id));
                     setEditForm({ ...editForm, entity_ids: [...otherIds, ...v] });
                   }}
                 />
@@ -1090,29 +1113,29 @@ Material,text,0,,,`,
               {(editForm.entity_types || []).includes('sub_category') && (
                 <CheckboxGroup 
                   label="Select Sub-Categories"
-                  items={sub_categories.map(sc => ({ id: sc.id, name: sc.name }))}
-                  selected={(editForm.entity_ids || []).filter((id: number | string) => {
-                    const sc = sub_categories.find(s => s.id === id);
-                    return sc !== undefined;
+                  items={sub_categories.map(sc => ({ id: Number(sc.id), name: sc.name }))}
+                  selected={(editForm.entity_ids || []).map(Number).filter((id: number) => {
+                    return sub_categories.some(s => Number(s.id) === id);
                   })}
                   onChange={(v) => {
-                    const otherIds = (editForm.entity_ids || []).filter((id: number | string) => !sub_categories.find(s => s.id === id));
+                    const scIds = sub_categories.map(s => Number(s.id));
+                    const otherIds = (editForm.entity_ids || []).map(Number).filter((id: number) => !scIds.includes(id));
                     setEditForm({ ...editForm, entity_ids: [...otherIds, ...v] });
                   }}
                 />
               )}
             </>
           )}
-          {editForm.type === 'picklist' && (
+          <div className="mb-3">
+            <label style={modalLabelStyle}>Placeholder</label>
+            <input className="form-control" style={modalInputStyle} placeholder="e.g., Enter size" value={editForm.placeholder || ''} onChange={(e) => setEditForm({ ...editForm, placeholder: e.target.value })} />
+          </div>
+          {(editForm.type === 'picklist' || editForm.type === 'text') && (
             <div className="mb-3">
               <label style={modalLabelStyle}>Allowed Values (comma-separated)</label>
               <input className="form-control" style={modalInputStyle} placeholder="e.g., Small, Medium, Large" value={editForm.allowed_values?.join(', ') || ''} onChange={(e) => setEditForm({ ...editForm, allowed_values: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} />
             </div>
           )}
-          <div className="mb-3">
-            <label style={modalLabelStyle}>Placeholder</label>
-            <input className="form-control" style={modalInputStyle} placeholder="e.g., Enter size" value={editForm.placeholder || ''} onChange={(e) => setEditForm({ ...editForm, placeholder: e.target.value })} />
-          </div>
           <div className="mb-3">
             <div className="form-check">
               <input className="form-check-input" type="checkbox" id="attrRequired" checked={editForm.required == 1} onChange={(e) => setEditForm({ ...editForm, required: e.target.checked ? 1 : 0 })} />

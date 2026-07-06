@@ -174,6 +174,7 @@ const STATUS_FILTERS = ['all', 'pending', 'accepted', 'rejected'] as const;
 
 const pillStyles: Record<string, React.CSSProperties> = {
   pending: { background: '#f8f9fa', color: '#666', border: '1px solid #eee' },
+  missed: { background: '#fff5f5', color: '#d63031', border: '1px solid #ffeaea' },
   negotiating: { background: '', color: '#d97706', border: '1px solid #fde68a' },
   accepted: { background: '#eaffea', color: '#1a8a1a', border: '1px solid #c9f9c9' },
   rejected: { background: '#fff5f5', color: '#d63031', border: '1px solid #ffeaea' },
@@ -215,6 +216,7 @@ export default function Page() {
   const [minRentalDays, setMinRentalDays] = useState(3);
   const [cdPrice, setCdPrice] = useState('0');
   const [cdDailyRate, setCdDailyRate] = useState('0');
+  const [settings, setSettings] = useState({ acceptanceLimitDays: 7, ratingPeriod: 7, rejectionWindowHours: 24 });
 
   // Rating state
   const [ratingModal, setRatingModal] = useState<{ id: number; title: string } | null>(null);
@@ -232,6 +234,7 @@ export default function Page() {
       if (res.success && res.data) {
         setOffers(res.data);
         if (res.minRentalDays) setMinRentalDays(res.minRentalDays);
+        if (res.acceptanceLimitDays) setSettings(prev => ({ ...prev, acceptanceLimitDays: res.acceptanceLimitDays }));
       }
       setLoading(false);
     });
@@ -515,7 +518,18 @@ export default function Page() {
         {!loading && filtered.map((o) => {
           const offerType = o.offer_type || o.listing_type || 'buy';
           const price = o.offered_price || o.offer_price;
-          const statusLabel = o.status === 'negotiating' ? 'action required' : o.status;
+
+          // expiry logic
+          let isExpired = false;
+          let expiryDate: string | null = null;
+          if (o.status === 'pending' && o.created_at) {
+            const offerTime = new Date(o.created_at).getTime();
+            const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
+            isExpired = Date.now() > expiryTime;
+            expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+          }
+
+          const statusLabel = o.status === 'pending' && isExpired ? 'Missed' : (o.status === 'negotiating' ? 'action required' : o.status);
 
           const sellerName = o.seller_name || 'Seller';
           const avatarLetter = sellerName.charAt(0).toUpperCase();
@@ -605,78 +619,6 @@ export default function Page() {
                         <small className="text-muted">#REF-{o.id} &bull; {offerType.charAt(0).toUpperCase() + offerType.slice(1)}</small>
                       </div>
                     </div>
-
-                    {/* Action Buttons styled like Accept/Reject */}
-                    <div className="d-flex gap-2 align-items-center flex-wrap">
-                      {o.status === 'negotiating' && (
-                        <>
-                          <button
-                            className="btn px-4 py-2 rounded-pill fw-bold"
-                            style={{ background: '#ffc63a', border: 'none', color: '#fff', fontSize: '0.82rem' }}
-                            onClick={() => setActionModal({ id: o.id, action: 'accept_dates', title: o.product_title, message: o.message })}
-                          >
-                            Accept Dates
-                          </button>
-                          <button
-                            className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
-                            style={{ fontSize: '0.82rem' }}
-                            onClick={() => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
-                          >
-                            Reject
-                          </button>
-                          {offerType === 'rent' && (
-                            <button
-                              className="btn btn-outline-primary px-3 py-2 rounded-pill fw-bold"
-                              style={{ fontSize: '0.82rem' }}
-                              onClick={() => openChangeDates(o)}
-                            >
-                              Change Dates
-                            </button>
-                          )}
-                        </>
-                      )}
-                      {o.status === 'pending' && (
-                        <>
-                          <button
-                            className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
-                            style={{ fontSize: '0.82rem' }}
-                            onClick={() => setActionModal({ id: o.id, action: 'cancel', title: o.product_title })}
-                          >
-                            Cancel Offer
-                          </button>
-                          {offerType === 'rent' && (
-                            <button
-                              className="btn btn-outline-primary px-3 py-2 rounded-pill fw-bold"
-                              style={{ fontSize: '0.82rem' }}
-                              onClick={() => openChangeDates(o)}
-                            >
-                              Change Dates
-                            </button>
-                          )}
-                        </>
-                      )}
-                      {o.status === 'accepted' && !Number(o.buyer_rated_seller) && (
-                        <button
-                          className="btn px-4 py-2 rounded-pill fw-bold text-white"
-                          style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
-                          onClick={() => { setRatingModal({ id: o.id, title: o.product_title }); setRatingValue(5); }}
-                        >
-                          <i className="bi bi-star-fill me-1"></i> Rate Seller
-                        </button>
-                      )}
-                      {o.status === 'accepted' && Number(o.buyer_rated_seller) === 1 && (
-                        <span className="badge bg-light text-success border py-2 px-3 rounded-pill fw-bold" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem' }}>
-                          <i className="bi bi-check-circle-fill me-1"></i> Rated
-                        </span>
-                      )}
-                      <Link
-                        href={`/buyer/product/${o.product_id}`}
-                        className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
-                        style={{ fontSize: '0.82rem' }}
-                      >
-                        View Item
-                      </Link>
-                    </div>
                   </div>
 
                   {/* Rent Info Box */}
@@ -703,17 +645,35 @@ export default function Page() {
                   )}
 
                   {/* Message & Alerts */}
-                  {o.status === 'negotiating' && o.message && (
-                    <div className="alert alert-info py-2 px-3 mt-2 rounded-3 border-0 small mb-3">
-                      <i className="bi bi-info-circle-fill me-2"></i>
-                      <strong>Action Required:</strong> {o.message}
+                  {isExpired && (
+                    <div className="alert alert-danger border-0 py-3 px-4 mb-3" style={{ background: '#fff5f5', borderRadius: 12 }}>
+                      <div className="d-flex align-items-start gap-2">
+                        <i className="bi bi-exclamation-triangle-fill text-danger mt-1" style={{ fontSize: '1.1rem' }}></i>
+                        <div>
+                          <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>Offer Missed</div>
+                          <div className="text-dark" style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>
+                            This offer expired on {expiryDate}. The seller did not respond within the acceptance window.
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
-                  {o.message && o.status !== 'negotiating' && (
-                    <p className="mb-3 small text-muted fst-italic">
-                      <i className="bi bi-chat-left-dots me-1"></i>
-                      {o.message}
-                    </p>
+                  {o.message && (
+                    <div className="alert alert-info border-0 py-3 px-4 mb-3" style={{ background: '#e3f2fd', borderRadius: 12 }}>
+                      <div className="d-flex align-items-start gap-2">
+                        <i className="bi bi-chat-quote-fill text-primary mt-1" style={{ fontSize: '1.1rem' }}></i>
+                        <div>
+                          <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>Your Message:</div>
+                          <div className="text-dark" style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>{o.message}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {o.status === 'negotiating' && o.message && (
+                    <div className="alert alert-warning py-2 px-3 mt-2 rounded-3 border-0 small mb-3" style={{ background: '#fff3cd' }}>
+                      <i className="bi bi-info-circle-fill me-2"></i>
+                      <strong>Action Required:</strong> Seller has responded to your offer.
+                    </div>
                   )}
                   {o.seller_remarks && (
                     <div className="mb-3 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
@@ -798,164 +758,6 @@ export default function Page() {
           );
         })}
       </div>
-
-      {/* Action Confirmation Modal */}
-      {actionModal && (
-        <div
-          className="modal d-block"
-          tabIndex={-1}
-          style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }}
-          onClick={() => setActionModal(null)}
-        >
-          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem' }}>
-              <div className="modal-header border-bottom px-4 pt-4">
-                <h5 className="modal-title fw-bold">
-                  {actionModal.action === 'accept_dates' ? 'Accept Seller\'s Dates' : 'Cancel Proposal'}
-                </h5>
-                <button type="button" className="btn-close" onClick={() => setActionModal(null)}></button>
-              </div>
-              <div className="modal-body p-4">
-                {actionModal.action === 'accept_dates' ? (
-                  <>
-                    <p className="mb-2">
-                      The seller has suggested new dates for <strong>&ldquo;{actionModal.title}&rdquo;</strong>.
-                    </p>
-                    {actionModal.message && (
-                      <div className="alert alert-info border-0 rounded-3 small py-2 px-3 mb-2">
-                        <i className="bi bi-info-circle-fill me-2"></i>{actionModal.message}
-                      </div>
-                    )}
-                    <p className="mb-0 text-muted small">Accepting will finalise the deal on the seller&apos;s proposed dates.</p>
-                  </>
-                ) : (
-                  <p className="mb-0">
-                    Are you sure you want to withdraw your offer on <strong>&ldquo;{actionModal.title}&rdquo;</strong>?
-                    This action cannot be undone.
-                  </p>
-                )}
-              </div>
-              <div className="modal-footer border-0 p-4 pt-0">
-                <button className="btn btn-light" onClick={() => setActionModal(null)}>
-                  {actionModal.action === 'accept_dates' ? 'Not now' : 'No, keep it'}
-                </button>
-                {actionModal.action === 'accept_dates' ? (
-                  <button
-                    className="btn btn-success fw-bold"
-                    onClick={handleAcceptDates}
-                    disabled={actionLoading}
-                    style={{ borderRadius: '10px' }}
-                  >
-                    {actionLoading ? 'Processing...' : 'Yes, Accept Dates'}
-                  </button>
-                ) : (
-                  <button
-                    className="btn btn-danger fw-bold"
-                    onClick={handleCancel}
-                    disabled={actionLoading}
-                    style={{ borderRadius: '10px' }}
-                  >
-                    {actionLoading ? 'Processing...' : 'Yes, withdraw it!'}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Change Dates Modal */}
-      {changeDatesModal && (
-        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setChangeDatesModal(null)}>
-          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable" onClick={e => e.stopPropagation()}>
-            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem' }}>
-              <div className="modal-header border-bottom px-4 pt-4">
-                <h5 className="modal-title fw-bold">
-                  <i className="bi bi-calendar-event me-2" style={{ color: '#ffc63a' }}></i>
-                  Change Rental Dates
-                </h5>
-                <button type="button" className="btn-close" onClick={() => setChangeDatesModal(null)}></button>
-              </div>
-              <div className="modal-body p-4">
-                <p className="text-muted small mb-3">
-                  Offer: <strong>{changeDatesModal.title}</strong>
-                </p>
-                <RentalCalendar
-                  bookedRanges={cdBookedRanges}
-                  startDate={cdStart}
-                  endDate={cdEnd}
-                  onRangeChange={(s, e) => { setCdStart(s); setCdEnd(e); setCdError(null); }}
-                  minRentalDays={minRentalDays}
-                />
-                <div className="mt-4 bg-light p-3 rounded-3">
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="text-muted small">Updated Rental Price:</span>
-                    <span className="fw-bold h5 mb-0 text-dark">₹{Number(cdPrice).toLocaleString('en-IN')}</span>
-                  </div>
-                  {cdStart && cdEnd && (
-                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                      <i className="bi bi-info-circle me-1"></i>
-                      Calculated: ₹{cdDailyRate} × {Math.round((new Date(cdEnd).getTime() - new Date(cdStart).getTime()) / 86400000) + 1} days
-                    </div>
-                  )}
-                </div>
-                {cdError && (
-                  <div className="alert alert-danger border-0 rounded-3 small py-2 px-3 mt-3 mb-0">
-                    <i className="bi bi-exclamation-circle-fill me-2"></i>{cdError}
-                  </div>
-                )}
-              </div>
-              <div className="modal-footer border-0 p-4 pt-0">
-                <button className="btn btn-light rounded-3" onClick={() => setChangeDatesModal(null)}>Cancel</button>
-                <button
-                  className="btn btn-dark fw-bold rounded-3 px-4"
-                  onClick={handleChangeDates}
-                  disabled={cdLoading || !cdStart || !cdEnd}
-                >
-                  {cdLoading ? <><span className="spinner-border spinner-border-sm me-2" />Saving...</> : 'Save New Dates'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      {/* Rating Modal */}
-      {ratingModal && (
-        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 1060 }} onClick={() => setRatingModal(null)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
-            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1.25rem' }}>
-              <div className="modal-header border-0 px-4 pt-4">
-                <h5 className="modal-title fw-bold">Reward Seller</h5>
-                <button type="button" className="btn-close" onClick={() => setRatingModal(null)}></button>
-              </div>
-              <div className="modal-body p-4 text-center">
-                <p className="text-muted small mb-4">You are about to give <strong>+1 Point</strong> to the seller for <strong>{ratingModal.title}</strong>.</p>
-                <div className="d-flex justify-content-center mb-4">
-                  <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#ffc63a22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className="bi bi-star-fill" style={{ fontSize: '3rem', color: '#ffc63a' }}></i>
-                  </div>
-                </div>
-                <div className="h5 fw-bold mb-0">
-                  Give +1 Point!
-                </div>
-              </div>
-              <div className="modal-footer border-0 p-4 pt-0 mt-2">
-                <button type="button" className="btn btn-light rounded-pill px-4 fw-bold" onClick={() => setRatingModal(null)}>Cancel</button>
-                <button
-                  type="button"
-                  className="bg-gold text-white py-3 rounded-pill px-4 fw-bold"
-                  onClick={handleRateSubmit}
-                  disabled={ratingLoading}
-                >
-                  {ratingLoading ? 'Submitting…' : 'Yes, Give Point'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </DashboardLayout>
   );
 }

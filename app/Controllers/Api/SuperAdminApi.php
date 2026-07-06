@@ -390,7 +390,7 @@ class SuperAdminApi extends BaseApiController
 
         // ── Received (superadmin is seller) – matches SellerApi::offers() ──
         $received = $db->table('offers o')
-            ->select('o.*, o.offer_price as offered_price,
+            ->select('o.*, o.offer_price as offered_price, o.message,
                 p.title as product_title, p.product_number, p.listing_type, p.original_price,
                 p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit,
                 p.views_count as product_views, p.dispatch_city, p.dispatch_state, p.dispatch_pin_code,
@@ -409,7 +409,7 @@ class SuperAdminApi extends BaseApiController
 
         // ── Sent (superadmin is buyer) – matches BuyerApi::myOffers() ──
         $sent = $db->table('offers o')
-            ->select('o.*, o.offer_price as offered_price,
+            ->select('o.*, o.offer_price as offered_price, o.message,
                 p.title as product_title, p.listing_type, p.original_price, p.dispatch_city, p.dispatch_state, p.dispatch_pin_code,
                 p.rental_cost as product_rental_cost, p.rental_deposit as product_rental_deposit,
                 (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.display_order ASC LIMIT 1) as product_image,
@@ -2280,12 +2280,12 @@ class SuperAdminApi extends BaseApiController
             ->update(['status' => 'missed', 'updated_at' => date('Y-m-d H:i:s')]);
         $count = $db->affectedRows();
         
-        // Send notifications to both seller and buyer for each missed offer
+        // Send notifications only to sellers for each missed offer
         foreach ($offersToMark as $offer) {
             $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
             $productTitle = $product['title'] ?? 'Product';
             
-            // Notify seller
+            // Notify seller only
             $db->table('notifications')->insert([
                 'user_id' => $offer['seller_id'],
                 'title' => 'Offer Expired',
@@ -2294,19 +2294,9 @@ class SuperAdminApi extends BaseApiController
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
-            
-            // Notify buyer
-            $db->table('notifications')->insert([
-                'user_id' => $offer['buyer_id'],
-                'title' => 'Offer Expired',
-                'message' => "Your offer for \"{$productTitle}\" has expired and is now marked as missed.",
-                'type' => 'offer_missed',
-                'is_read' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
         }
         
-        return $this->respond(['success' => true, 'message' => "Marked {$count} expired offers as missed. Notifications sent to both sellers and buyers."]);
+        return $this->respond(['success' => true, 'message' => "Marked {$count} expired offers as missed. Notifications sent to sellers."]);
     }
 
     public function bulkDeleteRejected()
@@ -3399,7 +3389,7 @@ class SuperAdminApi extends BaseApiController
                         if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
                         
                         $type = $data['type'] ?? '';
-                        if (!$type) { $skipped++; $errors[] = "Row {$row}: Type is required"; continue 2; }
+                        if (!$type) { $skipped++; $errors[] = "Row {$row}: Type is required. Skipping row."; continue 2; }
                         
                         $allowedTypes = ['text', 'number', 'picklist'];
                         if (!in_array($type, $allowedTypes)) {
@@ -3408,11 +3398,14 @@ class SuperAdminApi extends BaseApiController
                             continue 2;
                         }
                         
-                        // For picklist type, allowed_values is required
-                        if ($type === 'picklist' && empty($data['allowed_values'])) {
-                            $skipped++;
-                            $errors[] = "Row {$row}: Allowed values are required for picklist type";
-                            continue 2;
+                        // For picklist type, allowed_values is required - skip if blank or missing
+                        if ($type === 'picklist') {
+                            $allowedValues = trim($data['allowed_values'] ?? '');
+                            if (empty($allowedValues)) {
+                                $skipped++;
+                                $errors[] = "Row {$row}: Allowed values are required for picklist type but is blank/missing. Skipping row.";
+                                continue 2;
+                            }
                         }
                         
                         $required = (int)($data['required'] ?? 0);
@@ -3431,13 +3424,26 @@ class SuperAdminApi extends BaseApiController
                             $rec['allowed_values'] = json_encode($values);
                         }
                         
-                        // Check if exists (case-insensitive by name)
-                        $existing = $db->table('attributes')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
+                        // Check if exists by both name AND type (case-insensitive)
+                        $existing = $db->table('attributes')
+                            ->where('LOWER(name)', strtolower($name))
+                            ->where('LOWER(type)', strtolower($type))
+                            ->get()->getRowArray();
                         
                         $attributeId = null;
                         if ($existing) {
-                            $rec['updated_at'] = $now;
-                            $db->table('attributes')->where('id', $existing['id'])->update($rec);
+                            // When updating, exclude name and type from the update
+                            $updateRec = [
+                                'required' => $required,
+                                'placeholder' => $placeholder,
+                                'updated_at' => $now,
+                            ];
+                            // Only update allowed_values if provided
+                            if ($type === 'picklist' && !empty($data['allowed_values'])) {
+                                $values = array_map('trim', explode(',', $data['allowed_values']));
+                                $updateRec['allowed_values'] = json_encode($values);
+                            }
+                            $db->table('attributes')->where('id', $existing['id'])->update($updateRec);
                             $attributeId = $existing['id'];
                             $updated++;
                         } else {
@@ -3450,6 +3456,13 @@ class SuperAdminApi extends BaseApiController
                         // Handle entity linking through attribute_assignments table
                         $entityTypes = $data['entity_types'] ?? null;
                         $entityIds = $data['entity_ids'] ?? null;
+                        
+                        // Skip if entity_types or entity_ids are missing
+                        if (empty($entityTypes) || empty($entityIds)) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Entity types or entity IDs are missing. Skipping row.";
+                            continue 2;
+                        }
                         
                         // Try to decode JSON if entity_types/entity_ids are JSON strings
                         if ($entityTypes && is_string($entityTypes)) {
