@@ -3115,9 +3115,16 @@ class SuperAdminApi extends BaseApiController
                         $appliesTo = [];
                         
                         if ($appliesToInput !== '') {
+                            // Try JSON decode first, then comma-separated, then single value
                             $appliesTo = json_decode($appliesToInput, true);
                             if (!is_array($appliesTo)) {
-                                $appliesTo = array_map('trim', explode(',', $appliesToInput));
+                                // Handle comma-separated or single value
+                                if (strpos($appliesToInput, ',') !== false) {
+                                    $appliesTo = array_map('trim', explode(',', $appliesToInput));
+                                } else {
+                                    // Single value without brackets
+                                    $appliesTo = [$appliesToInput];
+                                }
                             }
                             
                             // Filter out "all" and convert to lowercase for comparison
@@ -3138,7 +3145,7 @@ class SuperAdminApi extends BaseApiController
                                 }
                             }
                             if (!empty($invalidGenders)) {
-                                $errors[] = "Row {$row}: Invalid gender(s) skipped: " . implode(', ', $invalidGenders) . ". Proceeding with valid ones.";
+                                $errors[] = "Row {$row}: Invalid gender(s) skipped: " . implode(', ', $invalidGenders) . ". These gender names do not exist in the database. Proceeding with valid ones.";
                             }
                             $appliesTo = $validGenders;
                         } else {
@@ -3259,9 +3266,16 @@ class SuperAdminApi extends BaseApiController
                         $appliesTo = [];
                         
                         if ($appliesToInput !== '') {
+                            // Try JSON decode first, then comma-separated, then single value
                             $appliesTo = json_decode($appliesToInput, true);
                             if (!is_array($appliesTo)) {
-                                $appliesTo = array_map('trim', explode(',', $appliesToInput));
+                                // Handle comma-separated or single value
+                                if (strpos($appliesToInput, ',') !== false) {
+                                    $appliesTo = array_map('trim', explode(',', $appliesToInput));
+                                } else {
+                                    // Single value without brackets
+                                    $appliesTo = [$appliesToInput];
+                                }
                             }
                             
                             // Filter out "all" and convert to lowercase for comparison
@@ -3282,7 +3296,7 @@ class SuperAdminApi extends BaseApiController
                                 }
                             }
                             if (!empty($invalidGenders)) {
-                                $errors[] = "Row {$row}: Invalid gender(s) skipped: " . implode(', ', $invalidGenders) . ". Proceeding with valid ones.";
+                                $errors[] = "Row {$row}: Invalid gender(s) skipped: " . implode(', ', $invalidGenders) . ". These gender names do not exist in the database. Proceeding with valid ones.";
                             }
                             $appliesTo = $validGenders;
                         } else {
@@ -3296,8 +3310,8 @@ class SuperAdminApi extends BaseApiController
                                 // Gender is required - check if category with this sub-category's gender is also blank
                                 $hasCategoriesWithBlankGender = false;
                                 foreach ($parentCategories as $cat) {
-                                    $appliesTo = json_decode($cat['applies_to'] ?? '[]', true);
-                                    if (empty($appliesTo) || (count($appliesTo) === 1 && $appliesTo[0] === 'N/A')) {
+                                    $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
+                                    if (empty($catAppliesTo) || (count($catAppliesTo) === 1 && $catAppliesTo[0] === 'N/A')) {
                                         $hasCategoriesWithBlankGender = true;
                                         break;
                                     }
@@ -3309,17 +3323,8 @@ class SuperAdminApi extends BaseApiController
                                     continue 2;
                                 }
                                 
-                                // If no gender value is present
-                                if ($parentHasGenderRestriction) {
-                                    // If parent categories have gender restrictions, use "N/A"
-                                    $appliesTo = ['N/A'];
-                                } else {
-                                    // If parent categories don't have gender restrictions, don't create
-                                    $skipped++;
-                                $errors[] = "Row {$row}: No gender value provided and parent categories have no gender restrictions. Sub-category cannot be created.";
-                                continue 2;
+                                // If no gender value is present, will be handled below with existing check
                             }
-                        }
                         }
                         
                         // Check if exists (case-insensitive by name)
@@ -3327,8 +3332,19 @@ class SuperAdminApi extends BaseApiController
                         $rec = [
                             'name' => $name,
                             'category_ids' => json_encode(is_array($catIds) ? $catIds : []),
-                            'applies_to' => json_encode(is_array($appliesTo) ? $appliesTo : []),
                         ];
+                        
+                        // Only update applies_to if it was provided in CSV
+                        if ($appliesToInput !== '') {
+                            $rec['applies_to'] = json_encode(is_array($appliesTo) ? $appliesTo : []);
+                        } elseif ($existing) {
+                            // Preserve existing applies_to when gender is blank and updating
+                            $rec['applies_to'] = $existing['applies_to'];
+                        } else {
+                            // New record with blank gender, use N/A
+                            $rec['applies_to'] = json_encode(['N/A']);
+                        }
+                        
                         if ($existing) {
                             $db->table('sub_categories')->where('id', $existing['id'])->update($rec);
                             $updated++;
