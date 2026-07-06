@@ -21,7 +21,7 @@ export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename,
   const { toastSuccess, toastError } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [result, setResult] = useState<{ message: string; errors?: string[] } | null>(null);
+  const [result, setResult] = useState<{ message: string; errors?: string[]; debug?: any } | null>(null);
 
   const handleUpload = async () => {
     if (!file) return;
@@ -34,18 +34,19 @@ export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename,
         fd.append(key, value);
       });
     }
-    const res = await api.upload<{ message: string; inserted: number; skipped: number; errors: string[] }>(endpoint, fd);
+    const res = await api.upload<{ message: string; inserted: number; skipped: number; updated: number; errors: string[]; debug?: any }>(endpoint, fd);
     setUploading(false);
+    console.log('Upload response:', res);
     if (res.success) {
       toastSuccess('bulk_upload_success', res.data?.message || res.message || 'Upload complete');
-      setResult({ message: res.data?.message || res.message || 'Upload complete', errors: res.data?.errors });
+      setResult({ message: res.data?.message || res.message || 'Upload complete', errors: res.data?.errors, debug: res.data?.debug });
       setFile(null);
       const input = document.getElementById(`csvInput-${templateFilename}`) as HTMLInputElement;
       if (input) input.value = '';
       if (onSuccess) await onSuccess();
     } else {
       toastError('bulk_upload_failed', res.message || 'Upload failed');
-      setResult({ message: res.message || 'Upload failed' });
+      setResult({ message: res.message || 'Upload failed', errors: res.data?.errors, debug: res.data?.debug });
     }
   };
 
@@ -95,6 +96,9 @@ export default function BulkCsvUpload({ endpoint, templateCsv, templateFilename,
         {result && (
           <div className={`alert ${result.errors && result.errors.length > 0 ? 'alert-warning' : 'alert-success'} mt-3 mb-0 border-0`} style={{ borderRadius: 10 }}>
             <div className="fw-bold"><i className={`bi ${result.errors && result.errors.length > 0 ? 'bi-exclamation-triangle' : 'bi-check-circle'} me-2`}></i>{result.message}</div>
+            {result.debug && (
+              <div className="mt-2 small text-muted">Total debug messages: {result.debug.total_errors}</div>
+            )}
             {result.errors && result.errors.length > 0 && (
               <ul className="mb-0 mt-2 small">{result.errors.map((err, i) => <li key={i}>{err}</li>)}</ul>
             )}

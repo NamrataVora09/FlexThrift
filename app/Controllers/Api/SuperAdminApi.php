@@ -3448,16 +3448,17 @@ class SuperAdminApi extends BaseApiController
                             $rec['allowed_values'] = json_encode($values);
                         }
                         
-                        // Check if exists by both name AND type (case-insensitive)
+                        // Check if exists by name only (case-insensitive)
                         $existing = $db->table('attributes')
                             ->where('LOWER(name)', strtolower($name))
-                            ->where('LOWER(type)', strtolower($type))
                             ->get()->getRowArray();
-                        
+
                         $attributeId = null;
                         if ($existing) {
-                            // When updating, exclude name and type from the update
+                            // When updating, include name and type in the update
                             $updateRec = [
+                                'name' => $name,
+                                'type' => $type,
                                 'required' => $required,
                                 'placeholder' => $placeholder,
                                 'updated_at' => $now,
@@ -3481,10 +3482,8 @@ class SuperAdminApi extends BaseApiController
                         $entityTypes = $data['entity_types'] ?? null;
                         $entityIds = $data['entity_ids'] ?? null;
                         
-                        // Log the raw entity_types value for debugging
-                        if ($entityTypes !== null) {
-                            $errors[] = "Row {$row}: Raw entity_types value: '" . $entityTypes . "'";
-                        }
+                        // Always log entity linking status
+                        $errors[] = "Row {$row}: Entity linking - entity_types: " . ($entityTypes ?? 'null') . ", entity_ids: " . ($entityIds ?? 'null');
                         
                         // Skip entity linking if entity_types is missing or empty
                         if (empty($entityTypes) || (is_string($entityTypes) && trim($entityTypes) === '')) {
@@ -3561,14 +3560,18 @@ class SuperAdminApi extends BaseApiController
                                             } elseif ($entityType === 'category') {
                                                 $entity = $db->table('categories')
                                                     ->where('LOWER(category_name)', strtolower($entityName))
-                                                    ->orWhere('LOWER(name)', strtolower($entityName))
                                                     ->get()->getRowArray();
                                                 if ($entity) $entityId = $entity['id'];
                                             } elseif ($entityType === 'sub_category') {
                                                 $entity = $db->table('sub_categories')
                                                     ->where('LOWER(name)', strtolower($entityName))
                                                     ->get()->getRowArray();
-                                                if ($entity) $entityId = $entity['id'];
+                                                if ($entity) {
+                                                    $entityId = $entity['id'];
+                                                    $errors[] = "Row {$row}: Found sub_category '{$entityName}' with ID {$entityId}";
+                                                } else {
+                                                    $errors[] = "Row {$row}: Sub_category '{$entityName}' not found. Available sub_categories: " . json_encode(array_column($db->table('sub_categories')->get()->getResultArray(), 'name'));
+                                                }
                                             }
                                             
                                             $errors[] = "Row {$row}: Entity ID resolved: " . ($entityId ?? 'null');
@@ -3583,7 +3586,7 @@ class SuperAdminApi extends BaseApiController
                                                 ]);
                                                 $errors[] = "Row {$row}: Assignment created for {$entityType}:{$entityName}";
                                             } else {
-                                                $errors[] = "Row {$row}: Entity not found for {$entityType}:{$entityName}";
+                                                $errors[] = "Row {$row}: Entity not found for {$entityType}:{$entityName}. Please check if this exists in the database.";
                                             }
                                         }
                                     }
@@ -3620,14 +3623,18 @@ class SuperAdminApi extends BaseApiController
                                             } elseif ($entityType === 'category') {
                                                 $entity = $db->table('categories')
                                                     ->where('LOWER(category_name)', strtolower($entityName))
-                                                    ->orWhere('LOWER(name)', strtolower($entityName))
                                                     ->get()->getRowArray();
                                                 if ($entity) $entityId = $entity['id'];
                                             } elseif ($entityType === 'sub_category') {
                                                 $entity = $db->table('sub_categories')
                                                     ->where('LOWER(name)', strtolower($entityName))
                                                     ->get()->getRowArray();
-                                                if ($entity) $entityId = $entity['id'];
+                                                if ($entity) {
+                                                    $entityId = $entity['id'];
+                                                    $errors[] = "Row {$row}: Found sub_category '{$entityName}' with ID {$entityId}";
+                                                } else {
+                                                    $errors[] = "Row {$row}: Sub_category '{$entityName}' not found. Available sub_categories: " . json_encode(array_column($db->table('sub_categories')->get()->getResultArray(), 'name'));
+                                                }
                                             }
                                             
                                             // Only create assignment if entity was found
@@ -3654,6 +3661,7 @@ class SuperAdminApi extends BaseApiController
 
         fclose($handle);
 
+        // Always include errors in response for debugging
         return $this->respond([
             'success' => true,
             'message' => "{$inserted} records inserted, {$updated} records updated, {$skipped} skipped.",
@@ -3661,6 +3669,10 @@ class SuperAdminApi extends BaseApiController
             'updated' => $updated,
             'skipped' => $skipped,
             'errors' => $errors,
+            'debug' => [
+                'total_errors' => count($errors),
+                'error_sample' => array_slice($errors, 0, 5)
+            ]
         ]);
     }
 

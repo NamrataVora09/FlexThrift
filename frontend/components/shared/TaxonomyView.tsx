@@ -132,12 +132,23 @@ function EditModal({ title, open, onClose, children }: { title: string; open: bo
 }
 
 // Multi-checkbox select for modal
-function CheckboxGroup({ label, items, selected, onChange }: { label: string; items: { id: number; name: string }[]; selected: (number | string)[]; onChange: (v: (number | string)[]) => void }) {
+function CheckboxGroup({ label, items, selected, onChange }: { label: string; items: { id: number | string; name: string }[]; selected: (number | string)[]; onChange: (v: (number | string)[]) => void }) {
   const [search, setSearch] = useState('');
   const filteredItems = items.filter(it => it.name.toLowerCase().includes(search.toLowerCase()));
+
+  // Normalize selected array to match the type of item IDs
+  const hasStringIds = items.length > 0 && typeof items[0].id === 'string';
+  const normalizedSelected: (number | string)[] = hasStringIds
+    ? selected.map(v => String(v)).filter(v => v !== '')
+    : selected.map(v => typeof v === 'string' ? parseInt(v, 10) : v).filter((v: any) => !isNaN(v));
   
-  // Normalize selected array to always be numbers for consistent comparison
-  const normalizedSelected = selected.map(v => typeof v === 'string' ? parseInt(v, 10) : v);
+  // For gender selection (string IDs), ensure exact string matching
+  const isChecked = (itemId: number | string) => {
+    if (hasStringIds) {
+      return normalizedSelected.some(s => String(s) === String(itemId));
+    }
+    return normalizedSelected.includes(itemId as number);
+  };
 
   return (
     <div className="mb-3">
@@ -152,14 +163,12 @@ function CheckboxGroup({ label, items, selected, onChange }: { label: string; it
       <div className="form-control" style={{ ...modalInputStyle, height: 110, overflowY: 'auto' }}>
         {filteredItems.length > 0 ? filteredItems.map((it) => (
           <div className="form-check" key={it.id}>
-            <input className="form-check-input" type="checkbox" checked={normalizedSelected.includes(it.id)}
+            <input className="form-check-input" type="checkbox" checked={isChecked(it.id)}
               onChange={(e) => {
                 if (e.target.checked) {
-                  // Always add as number to maintain consistency
                   onChange([...normalizedSelected, it.id]);
                 } else {
-                  // Filter using normalized values
-                  onChange(normalizedSelected.filter(v => v !== it.id));
+                  onChange(normalizedSelected.filter(v => String(v) !== String(it.id)));
                 }
               }} />
             <label className="form-check-label small">{it.name}</label>
@@ -306,12 +315,28 @@ Material,text,0,,,`,
       const ptIds = item.product_type_ids ? parseJson(item.product_type_ids) : (item.product_type_id ? [item.product_type_id] : []);
       // Keep IDs as numbers to match item.id type in CheckboxGroup
       const safePtIds = Array.isArray(ptIds) ? ptIds.map(id => Number(id)) : (ptIds ? [Number(ptIds)] : []);
-      setEditForm({ name: item.category_name || item.name || '', product_type_ids: safePtIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
+      // Normalize applies_to to ensure it matches gender names as strings
+      const rawAppliesTo = parseJson(item.applies_to);
+      const availableGenders = data?.genders?.map((g: Gender) => g.name) || [];
+      const appliesTo = Array.isArray(rawAppliesTo) 
+        ? rawAppliesTo
+            .map((v: any) => String(v).trim())
+            .filter((v: string) => v !== '' && availableGenders.includes(v))
+        : [];
+      setEditForm({ name: item.category_name || item.name || '', product_type_ids: safePtIds, applies_to: appliesTo, attributes: getAttributes(item.field_config) });
     } else if (type === 'sub_category') {
       const catIds = item.category_ids ? parseJson(item.category_ids) : (item.category_id ? [item.category_id] : []);
       // Keep IDs as numbers to match item.id type in CheckboxGroup
       const safeCatIds = Array.isArray(catIds) ? catIds.map(id => Number(id)) : (catIds ? [Number(catIds)] : []);
-      setEditForm({ name: item.name, category_ids: safeCatIds, applies_to: parseJson(item.applies_to), attributes: getAttributes(item.field_config) });
+      // Normalize applies_to to ensure it matches gender names as strings
+      const rawAppliesTo = parseJson(item.applies_to);
+      const availableGenders = data?.genders?.map((g: Gender) => g.name) || [];
+      const appliesTo = Array.isArray(rawAppliesTo) 
+        ? rawAppliesTo
+            .map((v: any) => String(v).trim())
+            .filter((v: string) => v !== '' && availableGenders.includes(v))
+        : [];
+      setEditForm({ name: item.name, category_ids: safeCatIds, applies_to: appliesTo, attributes: getAttributes(item.field_config) });
     } else if (type === 'color') {
       setEditForm({ name: item.name, hex_code: item.hex_code });
     } else if (type === 'attribute') {
