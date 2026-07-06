@@ -141,7 +141,6 @@ export default function PricingRulesManager() {
   const saveSaleRule = async () => {
     if (!editingSaleRule) return;
     const { filter_type, filter_value, deduction_threshold } = editingSaleRule;
-    if (!deduction_threshold) { showToast.warning(getMsg('rule_threshold_required', 'Deduction Threshold is required')); return; }
     // Validate no overlapping ranges
     for (let i = 0; i < saleDepRanges.length - 1; i++) {
       const cur = saleDepRanges[i];
