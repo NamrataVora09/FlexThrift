@@ -32,6 +32,7 @@ interface AuthContextType {
   logout: () => void;
   switchRole: (role: string) => Promise<{ success: boolean; message?: string }>;
   refreshKey: number;
+  triggerRefresh: () => void;
 }
 
 interface RegisterData {
@@ -159,6 +160,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: false, message: res.message };
   }, []);
 
+  const triggerRefresh = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -175,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         switchRole,
         refreshKey,
+        triggerRefresh,
       }}
     >
       {children}

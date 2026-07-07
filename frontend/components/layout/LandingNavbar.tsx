@@ -225,7 +225,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                       user.role === 'seller' ? '/seller/profile' :
                         user.role === 'delivery' ? '/delivery/profile' : '/buyer/profile'
                 }
-                profileLabel={user.name}
+                profileLabel="My Portal/Profile"
                 extraItems={
                   <>
                     {user.user_type === 'both' && user.role === 'buyer' && (

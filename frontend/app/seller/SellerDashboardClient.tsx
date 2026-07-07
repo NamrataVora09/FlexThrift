@@ -51,11 +51,15 @@ export default function SellerDashboardClient() {
     return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  useEffect(() => {
+  const loadDashboardData = useCallback(() => {
+    setLoading(true);
     api.get<SellerData>('/seller/dashboard').then((res) => {
       if (res.success && res.data) setData(res.data);
       setLoading(false);
     });
+  }, []);
+
+  const loadSubscriptionData = useCallback(() => {
     api.get<{ active: Subscription | null; history: Subscription[] }>('/shared/subscriptions/seller').then((res) => {
       if (res.success && res.data) {
         const a = res.data.active;
@@ -66,12 +70,17 @@ export default function SellerDashboardClient() {
         }
       }
     });
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData();
+    loadSubscriptionData();
     api.get<Record<string, string>>('/landing-content').then((res) => {
       if (res.success && res.data?.seller_dashboard_subtitle) {
         setSubtitle(res.data.seller_dashboard_subtitle);
       }
     });
-  }, [refreshKey]);
+  }, [refreshKey, loadDashboardData, loadSubscriptionData]);
 
   const uploadsLeft = activeSub
     ? (Number(activeSub.limit_value) === 0 ? '∞' : String(Math.max(0, Number(activeSub.limit_value) - Number(activeSub.usage_count))))

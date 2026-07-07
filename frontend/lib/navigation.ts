@@ -36,7 +36,7 @@ export function getNavigation(role: string): NavSection[] {
         {
           items: [
             { label: 'Dashboard', href: '/seller', icon: 'fa fa-chart-pie' },
-            { label: 'Profile', href: '/seller/profile', icon: 'fa fa-user' },
+            { label: 'My Portal/Profile', href: '/seller/profile', icon: 'fa fa-user' },
             { label: 'Subscription', href: '/seller/subscriptions', icon: 'fa fa-credit-card' },
             { label: 'Upload Product', href: '/seller/upload-product', icon: 'fa fa-upload' },
             { label: 'My Products', href: '/seller/my-products', icon: 'fa fa-box' },
@@ -46,6 +46,12 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'Referral Program', href: '/seller/referral', icon: 'fa fa-gift' },
             { label: 'Transactions / Reports', href: '/seller/transactions', icon: 'fa fa-receipt' },
             { label: 'Help & Support', href: '/seller/help', icon: 'fa fa-circle-question' },
+          ],
+        },
+        {
+          title: 'Quick Links',
+          items: [
+            { label: 'Browse Market', href: '/buyer/browse', icon: 'bi bi-shop-window', target: '_blank' },
           ],
         },
       ];
@@ -141,7 +147,7 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'Zone Management', href: '/superadmin/zones', icon: 'bi bi-geo-alt-fill' },
             { label: 'Registration Heatmap', href: '/superadmin/heatmap', icon: 'bi bi-map-fill' },
             { label: 'System Settings', href: '/superadmin/settings', icon: 'bi bi-gear-fill' },
-            { label: 'Error Messages', href: '/superadmin/error-messages', icon: 'bi bi-chat-square-text' },
+            { label: 'App Messages', href: '/superadmin/app-messages', icon: 'bi bi-chat-square-text' },
             { label: 'CMS Pages', href: '/superadmin/cms', icon: 'bi bi-file-earmark-richtext-fill' },
             { label: 'SEO Settings', href: '/superadmin/seo', icon: 'bi bi-search' },
           ],

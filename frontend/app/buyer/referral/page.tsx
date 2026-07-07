@@ -284,14 +284,14 @@ export default function BuyerReferralPage() {
               {/* Left Column */}
               <div className="col-lg-8">
                 {/* How it works */}
-                <div className="info-card" style={{ height: 'auto' }}>
-                  <h5 style={{ fontWeight: 800, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <i className="bi bi-info-circle-fill" style={{ color: '#ffc63a' }}></i>
-                    How It Works
-                  </h5>
-                  <div className="steps-container">
-                    {(stats.how_it_works && stats.how_it_works.length > 0) ? (
-                      stats.how_it_works.map((step, idx) => {
+                {stats.how_it_works && stats.how_it_works.length > 0 && (
+                  <div className="info-card" style={{ height: 'auto' }}>
+                    <h5 style={{ fontWeight: 800, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <i className="bi bi-info-circle-fill" style={{ color: '#ffc63a' }}></i>
+                      How It Works
+                    </h5>
+                    <div className="steps-container">
+                      {stats.how_it_works.map((step, idx) => {
                         const works = stats.how_it_works || [];
                         return (
                           <div key={idx} className="step-item">
@@ -305,63 +305,23 @@ export default function BuyerReferralPage() {
                             </div>
                           </div>
                         );
-                      })
-                    ) : (
-                      <>
-                        <div className="step-item">
-                          <div className="step-num-wrap">
-                            <div className="step-num">1</div>
-                            <div className="step-line"></div>
-                          </div>
-                          <div className="step-text" style={{ paddingBottom: '24px' }}>
-                            <h6>Share Your Code</h6>
-                            <p>Invite your friends to Flex using your unique referral code.</p>
-                          </div>
-                        </div>
-                        <div className="step-item">
-                          <div className="step-num-wrap">
-                            <div className="step-num">2</div>
-                            <div className="step-line"></div>
-                          </div>
-                          <div className="step-text" style={{ paddingBottom: '24px' }}>
-                            <h6>Friends Join Flex</h6>
-                            <p>Your friend registers on Flex and enters your referral code during sign-up.</p>
-                          </div>
-                        </div>
-                        <div className="step-item">
-                          <div className="step-num-wrap">
-                            <div className="step-num">3</div>
-                          </div>
-                          <div className="step-text">
-                            <h6>They Purchase a Plan</h6>
-                            <p>When your friend buys their first subscription plan, the reward is unlocked.</p>
-                          </div>
-                        </div>
-                      </>
-                    )}
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Terms */}
-                <div className="info-card" style={{ height: 'auto' }}>
-                  <h5 style={{ fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <i className="bi bi-shield-check" style={{ color: '#ffc63a' }}></i>
-                    Terms & Conditions
-                  </h5>
-                  <ul className="terms-list">
-                    {(stats.terms && stats.terms.length > 0) ? (
-                      stats.terms.map((term, i) => <li key={i}>{term}</li>)
-                    ) : (
-                      <>
-                        <li>Reward is credited when referred friend makes their first subscription purchase.</li>
-                        <li>Referral balance is automatically applied at checkout.</li>
-                        <li>Each user can only use one referral code during registration.</li>
-                        <li>Referral rewards cannot be transferred or withdrawn as cash.</li>
-                        <li>Flex reserves the right to modify or cancel the program at any time.</li>
-                      </>
-                    )}
-                  </ul>
-                </div>
+                {stats.terms && stats.terms.length > 0 && (
+                  <div className="info-card" style={{ height: 'auto' }}>
+                    <h5 style={{ fontWeight: 800, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <i className="bi bi-shield-check" style={{ color: '#ffc63a' }}></i>
+                      Terms & Conditions
+                    </h5>
+                    <ul className="terms-list">
+                      {stats.terms.map((term, i) => <li key={i}>{term}</li>)}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Right Column */}

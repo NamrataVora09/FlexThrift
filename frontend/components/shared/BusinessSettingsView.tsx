@@ -63,7 +63,6 @@ const TABS = [
   { key: 'offers', label: 'Offer Settings', icon: 'bi-chat-left-quote' },
   { key: 'images', label: 'Image Settings', icon: 'bi-images' },
   { key: 'smtp', label: 'SMTP Settings', icon: 'bi-envelope-at' },
-  { key: 'messages', label: 'App Messages', icon: 'bi-chat-dots' },
   { key: 'payment', label: 'Payment Integration', icon: 'bi-phone' },
   { key: 'charges', label: 'Fee Management', icon: 'bi-receipt' },
   { key: 'referral', label: 'Referral Program', icon: 'bi-person-plus' },
@@ -129,7 +128,6 @@ const TAB_FIELDS: Record<string, string[]> = {
   offers: ['offer_acceptance_limit_days', 'seller_rating_period_days', 'seller_rejection_window_hours', 'buyer_rating_period_days', 'min_rental_days'],
   images: ['max_product_images', 'max_image_size_mb', 'image_upload_guidelines'],
   smtp: ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name'],
-  messages: [],
   payment: ['phonepe_env', 'phonepe_merchant_id', 'phonepe_client_id', 'phonepe_client_secret', 'phonepe_client_version'],
   referral: [],
   upgrades: [],
@@ -738,166 +736,6 @@ export default function BusinessSettingsView() {
                 </div>
               )}
             </div>
-          </div>
-        ) : activeTab === 'messages' ? (
-          <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <div className="card-header bg-white d-flex justify-content-between align-items-center" style={{ borderBottom: '1px solid #f1f2f4', padding: '0.75rem 1.25rem', borderRadius: '0.75rem 0.75rem 0 0' }}>
-              <div className="d-flex align-items-center gap-2">
-                <i className="bi bi-chat-dots" style={{ color: '#ffc63a' }}></i>
-                <h5 style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', color: '#1e2022' }}>Application Messages</h5>
-                <span className="badge bg-dark rounded-pill" style={{ fontSize: '0.7rem' }}>{appMessages.length}</span>
-              </div>
-              <button className="btn btn-sm " onClick={() => { setShowAddMsg(true); setNewMsg({ message_key: '', message_value: '', category: 'general' }); }} style={{ background: '#ffc63a', color: '#ffff' }}>
-                <i className="bi bi-plus-lg me-1"></i>Add Message
-              </button>
-            </div>
-            <div className="card-body" style={{ padding: '1.25rem' }}>
-              {/* Filter */}
-              <div className="d-flex gap-2 mb-3">
-                {['', 'general', 'error', 'success'].map(cat => (
-                  <button key={cat} className={`btn btn-sm ${msgFilter === cat ? 'btn-dark' : 'btn-outline-secondary'}`}
-                    onClick={() => setMsgFilter(cat)} style={{ borderRadius: 20, fontSize: '0.78rem', padding: '4px 14px' }}>
-                    {cat || 'All'}
-                  </button>
-                ))}
-              </div>
-
-              {/* Keys Reference Panel */}
-              <div style={{ background: '#fafbff', border: '1px solid #e8ecff', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1a1a1a', marginBottom: 6 }}>
-                  <i className="bi bi-bookmark-fill me-2" style={{ color: '#ffc63a' }}></i>
-                  Message Keys Reference
-                  <span className="text-muted fw-normal ms-2" style={{ fontSize: '0.72rem' }}>— click a key to filter</span>
-                </div>
-                <div className="d-flex flex-wrap gap-2">
-                  {(appMessages.length > 0
-                    ? Array.from(new Set(appMessages.map(m => m.message_key))).sort()
-                    : [
-                      'auth_login_required', 'already_rated_seller', 'booking_conflict',
-                      'dates_update_success', 'min_rental_duration', 'offer_cancelled_success',
-                      'offer_not_found', 'offer_sent_success', 'order_cancel_success',
-                      'order_not_found', 'payment_success', 'product_not_found',
-                      'rating_window_expired', 'review_submit_success'
-                    ]
-                  ).map(key => {
-                    const cat = appMessages.find(m => m.message_key === key)?.category || '';
-                    const isActive = appMessages.find(m => m.message_key === key && (!msgFilter || m.category === msgFilter));
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setMsgFilter(cat)}
-                        title={`Category: ${cat || 'unknown'}`}
-                        style={{
-                          background: isActive ? '#ffc63a' : '#fff',
-                          border: `1px solid ${isActive ? '#ffc63a' : '#dde2f0'}`,
-                          padding: '4px 10px',
-                          borderRadius: 6,
-                          fontSize: '0.72rem',
-                          color: isActive ? '#fff' : '#000',
-                          cursor: 'pointer',
-                          fontFamily: 'monospace',
-                          fontWeight: isActive ? 700 : 400,
-                          transition: 'all 0.15s'
-                        }}
-                      >
-                        {key}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="table-responsive" style={{ maxHeight: 500, overflowY: 'auto' }}>
-                <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-                  <thead className="bg-light" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                    <tr>
-                      <th style={{ fontWeight: 600, fontSize: '0.72rem', textTransform: 'uppercase', color: '#677788', width: 180 }}>Key</th>
-                      <th style={{ fontWeight: 600, fontSize: '0.72rem', textTransform: 'uppercase', color: '#677788', width: 80 }}>Category</th>
-                      <th style={{ fontWeight: 600, fontSize: '0.72rem', textTransform: 'uppercase', color: '#677788' }}>Message</th>
-                      <th style={{ width: 80 }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {appMessages.filter(m => !msgFilter || m.category === msgFilter).map(m => (
-                      <tr key={m.id}>
-                        <td><code className="small" style={{ color: '#ffc63a', fontWeight: 700 }}>{m.message_key}</code></td>
-                        <td><span className={`badge bg-${m.category === 'error' ? 'danger' : m.category === 'success' ? 'success' : 'secondary'}`} style={{ fontSize: '0.65rem' }}>{m.category}</span></td>
-                        <td>
-                          <textarea className="form-control form-control-sm" style={{ ...inputStyle, fontSize: '0.82rem' }} rows={1} value={m.message_value}
-                            onChange={e => setAppMessages(prev => prev.map(p => p.id === m.id ? { ...p, message_value: e.target.value } : p))}
-                            onBlur={async () => {
-                              await api.post(`/shared/update-app-message/${m.id}`, { message_value: m.message_value });
-                            }} />
-                        </td>
-                        <td>
-                          <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => {
-                            confirmToast(`Delete "${m.message_key}"?`, async () => {
-                              const res = await api.post(`/shared/delete-app-message/${m.id}`);
-                              if (res.success) setAppMessages(prev => prev.filter(p => p.id !== m.id));
-                            }, 'Delete');
-                          }}><i className="bi bi-trash3"></i></button>
-                        </td>
-                      </tr>
-                    ))}
-                    {appMessages.filter(m => !msgFilter || m.category === msgFilter).length === 0 && (
-                      <tr><td colSpan={4} className="text-center text-muted py-4">
-                        <i className="bi bi-chat-square-text" style={{ fontSize: '2rem', opacity: 0.3 }}></i>
-                        <p className="mt-2 mb-0">No messages found. Click "Add Message" to create one.</p>
-                      </td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Add Message Modal */}
-            {showAddMsg && (
-              <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setShowAddMsg(false)}>
-                <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
-                  <div className="modal-content" style={{ borderRadius: '0.75rem' }}>
-                    <div className="modal-header">
-                      <h5 className="modal-title fw-bold">Add Application Message</h5>
-                      <button type="button" className="btn-close" onClick={() => setShowAddMsg(false)}></button>
-                    </div>
-                    <div className="modal-body">
-                      <div className="mb-3">
-                        <label className="form-label fw-bold small">Message Key <span className="text-danger">*</span></label>
-                        <input className="form-control" placeholder="e.g. auth_login_required" value={newMsg.message_key}
-                          onChange={e => setNewMsg(p => ({ ...p, message_key: e.target.value }))} />
-                        <div className="form-text">Unique identifier, use snake_case.</div>
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label fw-bold small">Category</label>
-                        <select className="form-select" value={newMsg.category} onChange={e => setNewMsg(p => ({ ...p, category: e.target.value }))}>
-                          <option value="general">General</option>
-                          <option value="error">Error</option>
-                          <option value="success">Success</option>
-                        </select>
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label fw-bold small">Message <span className="text-danger">*</span></label>
-                        <textarea className="form-control" rows={3} placeholder="The message text..." value={newMsg.message_value}
-                          onChange={e => setNewMsg(p => ({ ...p, message_value: e.target.value }))} />
-                      </div>
-                    </div>
-                    <div className="modal-footer">
-                      <button className="btn btn-secondary" onClick={() => setShowAddMsg(false)}>Cancel</button>
-                      <button className="btn btn-primary" disabled={!newMsg.message_key || !newMsg.message_value} onClick={async () => {
-                        const res = await api.post<{ id: number }>('/shared/add-app-message', newMsg);
-                        if (res.success) {
-                          setAppMessages(prev => [...prev, { id: res.data?.id || Date.now(), ...newMsg }]);
-                          setShowAddMsg(false);
-                          showToast.success('Message added!');
-                        } else {
-                          showToast.error(res.message || 'Failed to add');
-                        }
-                      }}><i className="bi bi-plus-lg me-1"></i>Add Message</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         ) : activeTab === 'referral' ? (
           <div className="card border-0" style={{ borderRadius: '0.75rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>

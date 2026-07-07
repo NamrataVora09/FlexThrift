@@ -84,7 +84,7 @@ Blue Denim Jacket,admin@example.com,sell,2500,1800,,,Stylish denim jacket,Levi's
 export default function UploadProductView({ role, apiBasePath, redirectPath }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, triggerRefresh } = useAuth();
   const { settings } = useSystem();
   const { toastSuccess, toastError, toastWarning } = useToast();
   const imgRef = useRef<HTMLInputElement>(null);
@@ -936,6 +936,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         toastSuccess('product_upload_success', res.message || successMessage);
         setSuccess(res.message || successMessage);
         setFieldErrors({});
+
+        // Trigger refresh to update subscription quota on dashboard
+        if (!isEditMode && role === 'seller') {
+          triggerRefresh();
+        }
+
         setTimeout(() => router.push(redirectPath), 1500);
       }
       else {
