@@ -95,7 +95,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
   }
 
   // Reject modal
-  const [rejectModal, setRejectModal] = useState<{ id: number; title: string; type: 'product' | 'edit' } | null>(null);
+  const [rejectModal, setRejectModal] = useState<{ id: number; title: string; type: 'product' | 'edit_request' | 'admin_edit' } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
   const [templateDropdownOpen, setTemplateDropdownOpen] = useState(false);
@@ -166,24 +166,38 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
     if (selectedTemplateId) {
       payload.template_id = selectedTemplateId;
     }
-    let res;
+    let res: { success: boolean; message?: string } | null = null;
     if (rejectModal.type === 'product') {
-      res = await api.post(`/shared/reject-product/${rejectModal.id}`, payload);
-    } else {
+      // New product pending approval – uses shared reject-product endpoint with product ID
+      res = await api.post<any>(`/shared/reject-product/${rejectModal.id}`, payload);
+    } else if (rejectModal.type === 'edit_request') {
+      // Seller edit request – id is product_edit_requests.id
       const baseApiPath = role === 'super_admin' ? '/superadmin' : '/admin';
-      res = await api.post(`${baseApiPath}/reject-edit-request/${rejectModal.id}`, payload);
+      res = await api.post<any>(`${baseApiPath}/reject-edit-request/${rejectModal.id}`, payload);
+    } else {
+      // Admin/superadmin direct edit (admin_edit) – id is product ID, use product-level reject endpoint
+      const baseApiPath = role === 'super_admin' ? '/superadmin' : '/admin';
+      res = await api.post<any>(`${baseApiPath}/reject-admin-edit/${rejectModal.id}`, payload);
     }
+    if (!res) return;
     if (res.success) {
-      toastSuccess(rejectModal.type === 'product' ? 'product_reject_success' : 'edit_request_reject_success', rejectModal.type === 'product' ? 'Product rejected' : 'Edit request rejected');
+      toastSuccess(
+        rejectModal.type === 'product' ? 'product_reject_success' : 'edit_request_reject_success',
+        rejectModal.type === 'product' ? 'Product rejected' : 'Edit request rejected'
+      );
       setRejectModal(null);
       setRejectReason('');
       setSelectedTemplateId(null);
       setTemplateSearchInput('');
       load();
     } else {
-      toastError(rejectModal.type === 'product' ? 'product_reject_failed' : 'edit_request_reject_failed', res.message || 'Rejection failed');
+      toastError(
+        rejectModal.type === 'product' ? 'product_reject_failed' : 'edit_request_reject_failed',
+        res.message || 'Rejection failed'
+      );
     }
   };
+
 
   const filteredTemplates = useMemo(() => {
     const q = templateSearchInput.toLowerCase();
@@ -462,7 +476,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
                           <div className="row g-2">
                             <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => openComparison(r.id)}><i className="bi bi-eye me-1"></i>Review</button></div>
-                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: r.id, title: r.original_title, type: 'edit' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: r.id, title: r.original_title, type: 'edit_request' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
                           </div>
                           <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => openComparison(r.id)}>
                             <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
@@ -675,7 +689,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
                           <div className="row g-2">
                             <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => openComparison(r.id)}><i className="bi bi-eye me-1"></i>Approve</button></div>
-                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: r.id, title: r.original_title, type: 'edit' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: r.id, title: r.original_title, type: 'edit_request' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
                           </div>
                           <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => openComparison(r.id)}>
                             <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
@@ -1144,7 +1158,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
               <div className="modal-footer border-top p-4 d-flex justify-content-between">
                 <button className="btn btn-outline-secondary px-4 fw-bold" onClick={() => setComparison(null)}>Close</button>
                 <div className="d-flex gap-2">
-                  <button className="btn px-4 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: comp.request.id, title: 'Edit Request', type: 'edit' }); setRejectReason(''); setComparison(null); }}>Reject Changes</button>
+                  <button className="btn px-4 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: comp.request.id, title: 'Edit Request', type: 'edit_request' }); setRejectReason(''); setComparison(null); }}>Reject Changes</button>
                   <button className="btn px-4 fw-bold" style={btnApprove} onClick={() => approveEdit(comp.request.id)}>Approve & Merge Changes</button>
                 </div>
               </div>
@@ -1299,7 +1313,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                 <div className="modal-footer border-top p-4 d-flex justify-content-between">
                   <button className="btn btn-outline-secondary px-4 fw-bold" onClick={() => setAdminEditDiff(null)}>Close</button>
                   <div className="d-flex gap-2">
-                    <button className="btn px-4 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: adminEditDiff.id, title: adminEditDiff.title, type: 'edit' }); setRejectReason(''); setAdminEditDiff(null); }}>
+                    <button className="btn px-4 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: adminEditDiff.id, title: adminEditDiff.title, type: 'admin_edit' }); setRejectReason(''); setAdminEditDiff(null); }}>
                       <i className="bi bi-x-lg me-1"></i>Reject Changes
                     </button>
                     <button className="btn px-4 fw-bold" style={btnApprove} onClick={() => { setApproveModal({ id: adminEditDiff.id, title: adminEditDiff.title }); setAdminEditDiff(null); }}>

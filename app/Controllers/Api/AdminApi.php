@@ -460,96 +460,103 @@ class AdminApi extends BaseApiController
      * POST /api/v1/admin/reject-edit-request/:id
      * Rejects an edit request
      */
+    /**
+     * POST /api/v1/admin/reject-edit-request/:id
+     * Rejects a seller edit request by product_edit_requests.id
+     */
     public function rejectEditRequest($id)
     {
         $db = \Config\Database::connect();
         $remarks = $this->request->getJsonVar('remarks') ?? '';
 
-        // Check if this is a product_edit_request ID (for seller edits) - check this FIRST to avoid ID collision with products
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-        if ($request) {
-            $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => date('Y-m-d H:i:s')]);
-
-            // Restore product to its original approved state (it was set to pending when edit was submitted)
-            $db->table('products')->where('id', $request['product_id'])->update([
-                'status' => 'approved',
-                'edit_request' => 0,
-                'pending_reason' => null,
-                'previous_data' => null,
-                'admin_remarks' => $remarks,
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
-            // Notify the seller
-            $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
-            if ($product) {
-                $db->table('notifications')->insert([
-                    'user_id' => $request['seller_id'],
-                    'title' => 'Edit Request Rejected',
-                    'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" was rejected. Reason: ' . ($remarks ?: 'No reason provided'),
-                    'type' => 'product_edit',
-                    'is_read' => 0,
-                    'created_at' => date('Y-m-d H:i:s'),
-                ]);
-            }
-
-            return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
+        if (!$request) {
+            return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
         }
 
-        // Fallback: Check if this is a product ID (for seller edits) - check this second
+        // Mark the edit request as rejected
+        $db->table('product_edit_requests')->where('id', $id)->update([
+            'status' => 'rejected',
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // Restore product to approved state (clear pending edit flags)
+        $db->table('products')->where('id', $request['product_id'])->update([
+            'status' => 'approved',
+            'edit_request' => 0,
+            'pending_reason' => null,
+            'previous_data' => null,
+            'admin_remarks' => $remarks,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        // Notify the seller
+        $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+        if ($product) {
+            $db->table('notifications')->insert([
+                'user_id' => $request['seller_id'],
+                'title' => 'Edit Request Rejected',
+                'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" was rejected by Admin. Reason: ' . ($remarks ?: 'No reason provided'),
+                'type' => 'product_edit',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
+    }
+
+    /**
+     * POST /api/v1/admin/reject-admin-edit/:id
+     * Rejects an admin/superadmin edit on a product by product.id (where pending_reason is set)
+     */
+    public function rejectAdminEdit($id)
+    {
+        $db = \Config\Database::connect();
+        $remarks = $this->request->getJsonVar('remarks') ?? '';
+
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
-        if ($product && in_array($product['pending_reason'] ?? '', ['seller_edit', 'both_edit'])) {
-            // Restore product from previous_data snapshot
-            if (!empty($product['previous_data'])) {
-                $previousData = json_decode($product['previous_data'], true);
-                if (is_array($previousData)) {
-                    // Restore the fields from previous_data
-                    $restoreFields = [
-                        'title', 'description', 'listing_type', 'listing_type_category',
-                        'product_type', 'category', 'sub_category', 'color', 'gender',
-                        'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
-                        'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                        'has_bill', 'allow_alter_fitting',
-                    ];
-                    $updateData = [];
-                    foreach ($restoreFields as $field) {
-                        if (isset($previousData[$field])) {
-                            $updateData[$field] = $previousData[$field];
-                        }
+        if (!$product || !in_array($product['pending_reason'] ?? '', ['admin_edit', 'seller_edit', 'both_edit'])) {
+            return $this->respond(['success' => false, 'message' => 'Product pending edit not found'], 404);
+        }
+
+        // Restore product from previous_data snapshot
+        if (!empty($product['previous_data'])) {
+            $previousData = json_decode($product['previous_data'], true);
+            if (is_array($previousData)) {
+                $restoreFields = [
+                    'title', 'description', 'listing_type', 'listing_type_category',
+                    'product_type', 'category', 'sub_category', 'color', 'gender',
+                    'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
+                    'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
+                    'has_bill', 'allow_alter_fitting',
+                ];
+                $updateData = [];
+                foreach ($restoreFields as $field) {
+                    if (isset($previousData[$field])) {
+                        $updateData[$field] = $previousData[$field];
                     }
-                    // Restore images from snapshot
-                    if (isset($previousData['_images']) && is_array($previousData['_images'])) {
-                        // Delete current images
-                        $db->table('product_images')->where('product_id', $id)->delete();
-                        // Restore previous images
-                        foreach ($previousData['_images'] as $idx => $imgPath) {
-                            $db->table('product_images')->insert([
-                                'product_id' => $id,
-                                'image_path' => $imgPath,
-                                'display_order' => $idx,
-                                'created_at' => date('Y-m-d H:i:s'),
-                            ]);
-                        }
-                    }
-                    $updateData['status'] = 'approved';
-                    $updateData['edit_request'] = 0;
-                    $updateData['pending_reason'] = null;
-                    $updateData['previous_data'] = null;
-                    $updateData['admin_remarks'] = $remarks;
-                    $updateData['updated_at'] = date('Y-m-d H:i:s');
-                    $db->table('products')->where('id', $id)->update($updateData);
-                } else {
-                    // If previous_data is invalid, just clear pending status
-                    $db->table('products')->where('id', $id)->update([
-                        'status' => 'approved',
-                        'edit_request' => 0,
-                        'pending_reason' => null,
-                        'previous_data' => null,
-                        'admin_remarks' => $remarks,
-                        'updated_at' => date('Y-m-d H:i:s'),
-                    ]);
                 }
+                // Restore images from snapshot
+                if (isset($previousData['_images']) && is_array($previousData['_images'])) {
+                    $db->table('product_images')->where('product_id', $id)->delete();
+                    foreach ($previousData['_images'] as $idx => $imgPath) {
+                        $db->table('product_images')->insert([
+                            'product_id' => $id,
+                            'image_path' => $imgPath,
+                            'display_order' => $idx,
+                            'created_at' => date('Y-m-d H:i:s'),
+                        ]);
+                    }
+                }
+                $updateData['status'] = 'approved';
+                $updateData['edit_request'] = 0;
+                $updateData['pending_reason'] = null;
+                $updateData['previous_data'] = null;
+                $updateData['admin_remarks'] = $remarks;
+                $updateData['updated_at'] = date('Y-m-d H:i:s');
+                $db->table('products')->where('id', $id)->update($updateData);
             } else {
-                // No previous_data, just clear pending status
                 $db->table('products')->where('id', $id)->update([
                     'status' => 'approved',
                     'edit_request' => 0,
@@ -559,22 +566,31 @@ class AdminApi extends BaseApiController
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
             }
-
-            // Notify the seller
-            $db->table('notifications')->insert([
-                'user_id' => $product['seller_id'],
-                'title' => 'Product Edit Rejected',
-                'message' => "Your edit request for product \"" . ($product['title'] ?? 'ID:' . $id) . "\" was rejected by Admin. Reason: " . ($remarks ?: 'No reason provided'),
-                'type' => 'product_edit',
-                'is_read' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
+        } else {
+            $db->table('products')->where('id', $id)->update([
+                'status' => 'approved',
+                'edit_request' => 0,
+                'pending_reason' => null,
+                'previous_data' => null,
+                'admin_remarks' => $remarks,
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
-
-            return $this->respond(['success' => true, 'message' => 'Product edit rejected and restored.']);
         }
 
-        return $this->respond(['success' => false, 'message' => 'Edit request or product not found'], 404);
+        // Notify the seller
+        $db->table('notifications')->insert([
+            'user_id' => $product['seller_id'],
+            'title' => 'Product Edit Rejected',
+            'message' => 'Your edit request for "' . ($product['title'] ?? 'ID:' . $id) . '" was rejected by Admin. Reason: ' . ($remarks ?: 'No reason provided'),
+            'type' => 'product_edit',
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'Product edit rejected and restored.']);
     }
+
+
 
     /**
      * GET /api/v1/admin/all-offers

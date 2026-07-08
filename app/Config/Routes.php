@@ -214,6 +214,7 @@ function register_api_routes($routes)
         $routes->get('get-edit-comparison/(:num)', 'Api\AdminApi::getEditComparison/$1');
         $routes->post('approve-edit-request/(:num)', 'Api\AdminApi::approveEditRequest/$1');
         $routes->post('reject-edit-request/(:num)', 'Api\AdminApi::rejectEditRequest/$1');
+        $routes->post('reject-admin-edit/(:num)', 'Api\AdminApi::rejectAdminEdit/$1');
         $routes->get('all-offers', 'Api\AdminApi::allOffers');
         $routes->get('personal-offers', 'Api\AdminApi::personalOffers');
         $routes->post('toggle-user-status/(:num)', 'Api\AdminApi::toggleUserStatus/$1');
@@ -276,6 +277,7 @@ function register_api_routes($routes)
         $routes->get('get-edit-comparison/(:num)', 'Api\SuperAdminApi::getEditComparison/$1');
         $routes->post('approve-edit-request/(:num)', 'Api\SuperAdminApi::approveEditRequest/$1');
         $routes->post('reject-edit-request/(:num)', 'Api\SuperAdminApi::rejectEditRequest/$1');
+        $routes->post('reject-admin-edit/(:num)', 'Api\SuperAdminApi::rejectAdminEdit/$1');
         // Taxonomy CRUD
         $routes->post('add-listing-type', 'Api\SuperAdminApi::addListingType');
         $routes->post('add-gender', 'Api\SuperAdminApi::addGender');
