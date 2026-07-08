@@ -476,37 +476,35 @@ class AuthApi extends BaseApiController
             'is_allowed' => 1,
             'zone_id'    => $detectedZone['id'] ?? null,
         ]);
-        // Check existing email
-        $existingUser = $this->userModel->getUserByEmail($data['email']);
-        if ($existingUser) {
-            $requestedType = $data['user_type'] ?? 'buyer';
-            $currentType   = $existingUser['user_type'];
+        // --- Duplicate detection: check email and phone upfront ---
+        $existingByEmail  = $this->userModel->getUserByEmail($data['email']);
+        $existingByMobile = $this->userModel->where('mobile', $data['mobile'])->first();
+        $requestedType    = $data['user_type'] ?? 'buyer';
 
-            // Logic: Give error only if user already has this role or is 'both'
-            $alreadyHasRole = false;
-            if ($currentType === 'both') {
-                $alreadyHasRole = true;
-            } elseif ($currentType === $requestedType) {
-                $alreadyHasRole = true;
-            } elseif ($requestedType === 'both' && $currentType !== 'both') {
-                $alreadyHasRole = false; // upgrading from one role to both
-            }
+        // Case A: Both email AND phone belong to the SAME existing account → possible upgrade
+        if ($existingByEmail && $existingByMobile && $existingByEmail['id'] === $existingByMobile['id']) {
+            $existingUser = $existingByEmail;
+            $currentType  = $existingUser['user_type'];
+
+            // Block if the account already covers the requested type
+            $alreadyHasRole = ($currentType === 'both')
+                || ($currentType === $requestedType)
+                || ($requestedType !== 'both' && $currentType === 'both');
 
             if ($alreadyHasRole) {
                 return $this->respond([
                     'success' => false,
-                    'message' => 'This email is already registered with the selected role.',
+                    'message' => 'An account with this email and mobile number already exists.',
                 ], 409);
             }
 
-            // Upgrade existing user to 'both'
+            // Upgrade existing single-role account to 'both'
             $this->userModel->update($existingUser['id'], [
                 'user_type'  => 'both',
                 'role'       => ($requestedType === 'both') ? 'buyer' : $requestedType,
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
 
-            // Process referral for existing user if they haven't been referred yet
             if (empty($existingUser['referred_by']) && !empty($data['referred_by'])) {
                 $this->applyReferral($existingUser['id'], $data['referred_by']);
             }
@@ -520,48 +518,84 @@ class AuthApi extends BaseApiController
             ], 200);
         }
 
-        // Check existing mobile
-        $existingMobile = $this->userModel->where('mobile', $data['mobile'])->first();
-        if ($existingMobile) {
-            $requestedType = $data['user_type'] ?? 'buyer';
-            $currentType   = $existingMobile['user_type'];
+        // Case B: Email belongs to one account, phone belongs to a DIFFERENT account → conflict
+        if ($existingByEmail && $existingByMobile && $existingByEmail['id'] !== $existingByMobile['id']) {
+            return $this->respond([
+                'success' => false,
+                'message' => 'This email address and mobile number are each associated with different existing accounts. Please use credentials that belong to a single account.',
+            ], 409);
+        }
 
-            // Logic: Give error only if user already has this role or is 'both'
-            $alreadyHasRole = false;
-            if ($currentType === 'both') {
-                $alreadyHasRole = true;
-            } elseif ($currentType === $requestedType) {
-                $alreadyHasRole = true;
-            } elseif ($requestedType === 'both' && $currentType !== 'both') {
-                $alreadyHasRole = false; // upgrading from one role to both
-            }
+        // Case C: Only email matches an existing account
+        if ($existingByEmail && !$existingByMobile) {
+            $currentType = $existingByEmail['user_type'];
+
+            $alreadyHasRole = ($currentType === 'both')
+                || ($currentType === $requestedType);
 
             if ($alreadyHasRole) {
                 return $this->respond([
                     'success' => false,
-                    'message' => 'This mobile number is already registered with the selected role.',
+                    'message' => 'This email address is already registered.',
                 ], 409);
             }
 
-            // Upgrade existing user to 'both'
-            $this->userModel->update($existingMobile['id'], [
-                'user_type'  => 'both',
-                'role'       => ($requestedType === 'both') ? 'buyer' : $requestedType,
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
+            // Upgrade single-role → both (email matches, phone is new — only allow if requestedType adds a new role)
+            if ($requestedType === 'both' || $requestedType !== $currentType) {
+                $this->userModel->update($existingByEmail['id'], [
+                    'user_type'  => 'both',
+                    'role'       => ($requestedType === 'both') ? 'buyer' : $requestedType,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
 
-            // Process referral for existing user if they haven't been referred yet
-            if (empty($existingMobile['referred_by']) && !empty($data['referred_by'])) {
-                $this->applyReferral($existingMobile['id'], $data['referred_by']);
+                if (empty($existingByEmail['referred_by']) && !empty($data['referred_by'])) {
+                    $this->applyReferral($existingByEmail['id'], $data['referred_by']);
+                }
+
+                $otp = $this->userModel->generateOTP($existingByEmail['id']);
+                if ($otp) $this->sendOTPEmail($existingByEmail['email'], $existingByEmail['name'], $otp);
+
+                return $this->respond([
+                    'success' => true,
+                    'message' => 'Account upgraded successfully. OTP sent to your email.',
+                ], 200);
+            }
+        }
+
+        // Case D: Only phone matches an existing account
+        if (!$existingByEmail && $existingByMobile) {
+            $currentType = $existingByMobile['user_type'];
+
+            $alreadyHasRole = ($currentType === 'both')
+                || ($currentType === $requestedType);
+
+            if ($alreadyHasRole) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'This mobile number is already registered.',
+                ], 409);
             }
 
-            $otp = $this->userModel->generateOTP($existingMobile['id']);
-            if ($otp) $this->sendOTPEmail($existingMobile['email'], $existingMobile['name'], $otp);
+            // Upgrade single-role → both
+            if ($requestedType === 'both' || $requestedType !== $currentType) {
+                $this->userModel->update($existingByMobile['id'], [
+                    'user_type'  => 'both',
+                    'role'       => ($requestedType === 'both') ? 'buyer' : $requestedType,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
 
-            return $this->respond([
-                'success' => true,
-                'message' => 'Account upgraded successfully. OTP sent to your email.',
-            ], 200);
+                if (empty($existingByMobile['referred_by']) && !empty($data['referred_by'])) {
+                    $this->applyReferral($existingByMobile['id'], $data['referred_by']);
+                }
+
+                $otp = $this->userModel->generateOTP($existingByMobile['id']);
+                if ($otp) $this->sendOTPEmail($existingByMobile['email'], $existingByMobile['name'], $otp);
+
+                return $this->respond([
+                    'success' => true,
+                    'message' => 'Account upgraded successfully. OTP sent to your email.',
+                ], 200);
+            }
         }
 
         $referralCode = strtoupper(substr(md5(uniqid()), 0, 8));

@@ -2116,11 +2116,19 @@ class BuyerApi extends BaseApiController
         $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
         $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
 
+        log_message('error', "Referral check - Balance: {$referralBalance}, Expiry: {$expiry}, Plan Price: {$plan['price']}, Min Purchase: {$minPurchase}, Max Percent: {$maxPercent}");
+
         if ($referralBalance > 0 && (float)$plan['price'] >= $minPurchase) {
             if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
-                // Max discount = percentage of the wallet balance that can be used
-                $referralDiscount = round(($referralBalance * $maxPercent) / 100, 2);
+                // Max discount = percentage of the plan price, capped at actual referral balance
+                $maxDiscountFromPlan = round((float) $plan['price'] * $maxPercent / 100, 2);
+                $referralDiscount = min($referralBalance, $maxDiscountFromPlan);
+                log_message('error', "Referral discount applied - Max from plan: {$maxDiscountFromPlan}, Final discount: {$referralDiscount}");
+            } else {
+                log_message('error', "Referral expired - Expiry: {$expiry}, Current time: " . date('Y-m-d H:i:s'));
             }
+        } else {
+            log_message('error', "Referral conditions not met - Balance > 0: " . ($referralBalance > 0 ? 'yes' : 'no') . ", Plan price >= Min purchase: " . ((float)$plan['price'] >= $minPurchase ? 'yes' : 'no'));
         }
 
         $total = max(0, (float) $plan['price'] + $totalCharges - $referralDiscount);
@@ -2141,6 +2149,17 @@ class BuyerApi extends BaseApiController
                 'referral_min_purchase' => $minPurchase,
                 'total_referral_balance' => $referralBalance,
                 'total' => $total,
+                'debug' => [
+                    'referral_balance' => $referralBalance,
+                    'referral_expiry' => $expiry,
+                    'plan_price' => (float) $plan['price'],
+                    'min_purchase' => $minPurchase,
+                    'max_percent' => $maxPercent,
+                    'balance_check' => $referralBalance > 0 ? 'yes' : 'no',
+                    'price_check' => (float)$plan['price'] >= $minPurchase ? 'yes' : 'no',
+                    'expiry_check' => (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) ? 'valid' : 'expired',
+                    'current_time' => date('Y-m-d H:i:s'),
+                ],
             ],
         ]);
     }

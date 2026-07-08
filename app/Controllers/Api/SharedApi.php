@@ -580,7 +580,26 @@ class SharedApi extends BaseApiController
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
 
+        // Validate certain integer fields
+        $intFields = [
+            'min_rental_days',
+            'offer_acceptance_limit_days',
+            'seller_rating_period_days',
+            'seller_rejection_window_hours',
+            'buyer_rating_period_days'
+        ];
+
         foreach ($data as $key => $value) {
+            if (in_array($key, $intFields)) {
+                $valInt = filter_var($value, FILTER_VALIDATE_INT);
+                if ($valInt === false || $valInt < 1) {
+                    $fieldName = str_replace('_', ' ', $key);
+                    $fieldName = ucwords($fieldName);
+                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be an integer greater than or equal to 1."], 400);
+                }
+                $value = (string)$valInt;
+            }
+
             $existing = $db->table('system_settings')->where('setting_key', $key)->get()->getRowArray();
             if ($existing) {
                 $db->table('system_settings')->where('setting_key', $key)->update(['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);

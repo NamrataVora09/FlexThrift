@@ -403,6 +403,27 @@ export default function BusinessSettingsView() {
 
   // ==================== SETTINGS SAVE ====================
   const handleSave = async () => {
+    // Validate integer fields
+    const intFields = [
+      'min_rental_days',
+      'offer_acceptance_limit_days',
+      'seller_rating_period_days',
+      'seller_rejection_window_hours',
+      'buyer_rating_period_days'
+    ];
+
+    for (const key of intFields) {
+      if (config[key] !== undefined && config[key] !== null) {
+        const valStr = String(config[key]).trim();
+        const valNum = Number(valStr);
+        if (valStr === '' || isNaN(valNum) || valNum < 1 || !Number.isInteger(valNum)) {
+          const fieldName = FIELD_MAP[key]?.label || key;
+          showToast.error(`${fieldName} must be a whole number greater than or equal to 1`);
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     const payload: Record<string, string> = { ...config };
     const res = await api.post('/shared/business-settings', payload);

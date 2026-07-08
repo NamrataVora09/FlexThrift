@@ -285,38 +285,42 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       return false;
     }));
 
-    let filtered: Array<{ id: number; name: string }> = [];
+    // Build a UNION of genders from both the selected category AND sub-category.
+    // This ensures that if Lehenga Choli has [Female, Girls] and Mirror Work has [Red],
+    // the user sees all three options — not just the sub-category's set.
+    const genderNamesInFilter = new Set<string>();
 
-    // First, check if sub-category has specific genders
+    // Collect genders from the selected sub-category (if any)
     if (f.sub_category_id) {
       const selectedSubCat = meta.sub_categories.find(sc => String(sc.id) === String(f.sub_category_id));
       if (selectedSubCat && selectedSubCat.applies_to && selectedSubCat.applies_to !== 'all') {
         try {
           const appliesTo = JSON.parse(selectedSubCat.applies_to);
           if (Array.isArray(appliesTo) && appliesTo.length > 0 && !appliesTo.includes('N/A')) {
-            filtered = meta.genders.filter(g => appliesTo.map((a: string) => a.toLowerCase()).includes(g.name.toLowerCase()));
+            appliesTo.forEach((a: string) => genderNamesInFilter.add(a.toLowerCase()));
           }
         } catch { }
       }
     }
 
-    // If sub-category has no specific genders, check category's applies_to
-    if (filtered.length === 0 && f.category_id) {
+    // Collect genders from the selected category (always, so category genders are never hidden)
+    if (f.category_id) {
       const selectedCat = meta.categories.find(c => String(c.id) === String(f.category_id));
       if (selectedCat && selectedCat.applies_to && selectedCat.applies_to !== 'all') {
         try {
           const appliesTo = JSON.parse(selectedCat.applies_to);
           if (Array.isArray(appliesTo) && appliesTo.length > 0 && !appliesTo.includes('N/A')) {
-            filtered = meta.genders.filter(g => appliesTo.map((a: string) => a.toLowerCase()).includes(g.name.toLowerCase()));
+            appliesTo.forEach((a: string) => genderNamesInFilter.add(a.toLowerCase()));
           }
         } catch { }
       }
     }
 
-    // If neither sub-category nor category has specific genders, show all genders
-    if (filtered.length === 0) {
-      filtered = meta.genders;
-    }
+    // Build the filtered list from the union, preserving the original gender objects
+    let filtered: Array<{ id: number; name: string }> =
+      genderNamesInFilter.size > 0
+        ? meta.genders.filter(g => genderNamesInFilter.has(g.name.toLowerCase()))
+        : meta.genders; // If neither level has specific genders, show all
 
     // IMPORTANT: When editing, always include the product's current gender in the filtered list
     // This ensures the gender field shows the correct value even if it doesn't match current category/sub-category config

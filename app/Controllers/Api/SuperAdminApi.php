@@ -1109,26 +1109,22 @@ class SuperAdminApi extends BaseApiController
         }
         
         // Check if removing genders would affect sub-categories without genders
-        // Only enforce this if gender is required based on listing type's gender_config
+        // Use isGenderRequiredForProductTypes because $ptIdsInt contains product type IDs, not category IDs
         if (empty($appliesTo)) {
-            $isGenderRequired = $this->isGenderRequiredForCategories($ptIds);
+            $isGenderRequired = $this->isGenderRequiredForProductTypes($ptIdsInt);
             
-            // Only block if gender is actually required (not hidden or optional)
+            // Only block if gender is not hidden
             if ($isGenderRequired) {
-                // User is removing all genders - check if any sub-categories exist without genders
+                // User is removing all genders from category - check if any linked sub-categories also have no genders
                 $subCategories = $db->table('sub_categories')->get()->getResultArray();
                 foreach ($subCategories as $sc) {
                     $scCatIds = json_decode($sc['category_ids'] ?? '[]', true);
-                    if (in_array($id, $scCatIds)) {
+                    // Use loose in_array to handle int/string mismatches
+                    if (in_array((int)$id, array_map('intval', (array)$scCatIds))) {
                         $scAppliesTo = json_decode($sc['applies_to'] ?? '[]', true);
                         if (empty($scAppliesTo)) {
-                            // Check if this sub-category's parent categories also have hidden gender
-                            $scCatIdsArray = json_decode($sc['category_ids'] ?? '[]', true);
-                            $isScGenderRequired = $this->isGenderRequiredForCategories($scCatIdsArray);
-                            // Only block if the sub-category's gender is actually required
-                            if ($isScGenderRequired) {
-                                return $this->respond(['success' => false, 'message' => 'Cannot remove genders: This category has sub-categories without genders. Please add genders to those sub-categories first.'], 400);
-                            }
+                            // Both category AND this sub-category have no genders — block
+                            return $this->respond(['success' => false, 'message' => 'Cannot remove genders from "' . $name . '": the sub-category "' . $sc['name'] . '" also has no genders assigned. At least one level (category or sub-category) must have genders. Please add genders to the sub-category first.'], 400);
                         }
                     }
                 }
@@ -2252,7 +2248,25 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
+
+        $intFields = [
+            'min_rental_days',
+            'offer_acceptance_limit_days',
+            'seller_rating_period_days',
+            'seller_rejection_window_hours',
+            'buyer_rating_period_days'
+        ];
+
         foreach ($data as $key => $value) {
+            if (in_array($key, $intFields)) {
+                $valInt = filter_var($value, FILTER_VALIDATE_INT);
+                if ($valInt === false || $valInt < 1) {
+                    $fieldName = ucwords(str_replace('_', ' ', $key));
+                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be an integer greater than or equal to 1."], 400);
+                }
+                $value = (string)$valInt;
+            }
+
             $exists = $db->table('system_settings')->where('setting_key', $key)->countAllResults();
             if ($exists) $db->table('system_settings')->where('setting_key', $key)->update(['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
             else $db->table('system_settings')->insert(['setting_key' => $key, 'setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);

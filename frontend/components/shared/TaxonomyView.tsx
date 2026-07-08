@@ -402,9 +402,8 @@ Material,text,0,,,`,
       fd.append('category_name', editForm.name);
       // Clear previous product_type_ids by sending as JSON array instead of multiple FormData entries
       fd.append('product_type_ids', JSON.stringify(editForm.product_type_ids));
-      if (editForm.applies_to && editForm.applies_to.length > 0) {
-        fd.append('applies_to', JSON.stringify(editForm.applies_to));
-      }
+      // Always send applies_to (even empty) so backend can validate
+      fd.append('applies_to', JSON.stringify(editForm.applies_to || []));
       fd.append('attributes', JSON.stringify(editForm.attributes || []));
       res = await api.upload(`/superadmin/update-category/${item.id}`, fd);
     } else if (type === 'sub_category') {
@@ -417,9 +416,8 @@ Material,text,0,,,`,
       fd.append('name', editForm.name);
       // Send category_ids as JSON array instead of multiple FormData entries
       fd.append('category_ids', JSON.stringify(editForm.category_ids));
-      if (editForm.applies_to && editForm.applies_to.length > 0) {
-        fd.append('applies_to', JSON.stringify(editForm.applies_to));
-      }
+      // Always send applies_to (even empty) so backend can validate
+      fd.append('applies_to', JSON.stringify(editForm.applies_to || []));
       fd.append('attributes', JSON.stringify(editForm.attributes || []));
       res = await api.upload(`/superadmin/update-sub-category/${item.id}`, fd);
     } else if (type === 'color') {
