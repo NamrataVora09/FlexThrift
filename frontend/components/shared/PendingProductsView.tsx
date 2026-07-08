@@ -185,6 +185,14 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
         rejectModal.type === 'product' ? 'product_reject_success' : 'edit_request_reject_success',
         rejectModal.type === 'product' ? 'Product rejected' : 'Edit request rejected'
       );
+      // Optimistically remove the item from local state immediately so it
+      // disappears from the UI right away, without waiting for load() to
+      // complete (which caused the "still shows on first try" ghost behaviour).
+      if (rejectModal.type === 'product') {
+        setProducts(prev => prev.filter(p => p.id !== rejectModal.id));
+      } else if (rejectModal.type === 'edit_request') {
+        setEditRequests(prev => prev.filter(r => r.id !== rejectModal.id));
+      }
       setRejectModal(null);
       setRejectReason('');
       setSelectedTemplateId(null);
