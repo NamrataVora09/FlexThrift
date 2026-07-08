@@ -18,7 +18,7 @@ export function getNavigation(role: string): NavSection[] {
         {
           items: [
             { label: 'Dashboard', href: '/buyer', icon: 'fa fa-chart-pie' },
-            { label: 'Profile', href: '/buyer/profile', icon: 'fa fa-user' },
+            { label: 'My Portal/Profile', href: '/buyer/profile', icon: 'fa fa-user' },
             { label: 'Subscription', href: '/buyer/subscriptions', icon: 'fa fa-credit-card' },
             { label: 'Browse Market', href: '/buyer/browse', icon: 'fa-solid fa-magnifying-glass', target: '_blank' },
             { label: 'Contacts', href: '/buyer/contacts', icon: 'fa-solid fa-address-book' },
@@ -61,7 +61,7 @@ export function getNavigation(role: string): NavSection[] {
         {
           items: [
             { label: 'Dashboard', href: '/admin', icon: 'bi bi-speedometer2' },
-            { label: 'Profile', href: '/admin/profile', icon: 'fa fa-user' },
+            { label: 'My Portal/Profile', href: '/admin/profile', icon: 'fa fa-user' },
             { label: 'Subscription', href: '/admin/subscriptions', icon: 'fa fa-credit-card' },
             { label: 'Transactions / Reports', href: '/admin/transactions', icon: 'fa fa-receipt' },
           ],
@@ -103,7 +103,7 @@ export function getNavigation(role: string): NavSection[] {
           items: [
             { label: 'Dashboard', href: '/superadmin', icon: 'bi bi-grid-fill' },
             { label: 'Offers', href: '/superadmin/personal-offers', icon: 'bi bi-tags' },
-            { label: 'Profile', href: '/superadmin/profile', icon: 'fa fa-user' },
+            { label: 'My Portal/Profile', href: '/superadmin/profile', icon: 'fa fa-user' },
 
 
           ],
