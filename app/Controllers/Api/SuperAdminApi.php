@@ -1947,9 +1947,12 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
         }
 
-        // Mark the edit request as rejected
+        // Mark the edit request as rejected and store the admin's remarks so the
+        // seller's "My Products" query (which reads per.admin_remarks as edit_remarks)
+        // can display the rejection reason to the seller.
         $db->table('product_edit_requests')->where('id', $id)->update([
             'status' => 'rejected',
+            'admin_remarks' => $remarks,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
