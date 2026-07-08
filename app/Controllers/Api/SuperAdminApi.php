@@ -1953,10 +1953,15 @@ class SuperAdminApi extends BaseApiController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        // Restore product to approved state (clear pending edit flags)
+        // Restore product to approved state (clear pending edit flags).
+        // Keep edit_request = 1 so the seller's "My Products" query can still
+        // read the rejected status from product_edit_requests via edit_status.
+        // Setting it to 0 would cause the seller to see 'approved' instead of
+        // the rejected-edit status, because the listing logic only overrides
+        // the displayed status when edit_request == 1.
         $db->table('products')->where('id', $request['product_id'])->update([
             'status' => 'approved',
-            'edit_request' => 0,
+            'edit_request' => 1,
             'pending_reason' => null,
             'previous_data' => null,
             'admin_remarks' => $remarks,
