@@ -139,6 +139,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const [previousOffer, setPreviousOffer] = useState<any | null>(null);
   const [rentalExpired, setRentalExpired] = useState(false);
   const [activeOffers, setActiveOffers] = useState<any[]>([]);
+  const [offerExpired, setOfferExpired] = useState(false);
 
   const datesSelected = product.listing_type !== 'rent' || (!!offerForm.rental_start_date && !!offerForm.rental_end_date);
 
@@ -146,7 +147,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
     const token = typeof window !== 'undefined' ? localStorage.getItem('flex_token') : null;
     if (!token) return;
     try {
-      const res = await api.get<{ has_offer: boolean, offer: any, rental_period_ended: boolean, active_offers?: any[] }>(`/buyer/offer-status/${product.id}`);
+      const res = await api.get<{ has_offer: boolean, offer: any, rental_period_ended: boolean, active_offers?: any[], acceptance_limit_days?: number }>(`/buyer/offer-status/${product.id}`);
       if (res.success) {
         const hasActive = !!res.data?.active_offers && res.data.active_offers.length > 0;
         setOfferSuccess(hasActive);
@@ -158,7 +159,19 @@ export default function ProductDetailClient({ product, images, similarProducts =
           const off = res.data.offer;
           setPreviousOffer(off);
 
-          if (off.status === 'rejected' && !hasActive) {
+          // Detect expired pending offer: backend now excludes expired offers from active_offers,
+          // so if the most recent offer is still 'pending' but active_offers is empty → it expired.
+          if (off.status === 'pending' && !hasActive) {
+            setOfferExpired(true);
+            setOfferForm(f => ({
+              ...f,
+              offer_price: off.offer_price,
+              delivery_state: off.delivery_state || '',
+              delivery_city: off.delivery_city || '',
+              delivery_pin_code: off.delivery_pin_code || '',
+              delivery_address: off.delivery_address || '',
+            }));
+          } else if (off.status === 'rejected' && !hasActive) {
             setOfferForm(f => ({
               ...f,
               offer_price: off.offer_price,
@@ -680,6 +693,15 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       <i className="bi bi-x-circle-fill" style={{ color: '#ef4444', fontSize: '1rem', flexShrink: 0 }}></i>
                       <span style={{ color: '#991b1b', fontSize: '0.82rem', fontWeight: 500 }}>
                         Your previous offer was rejected. You can submit a new offer below.
+                      </span>
+                    </div>
+                  )}
+
+                  {offerExpired && (
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <i className="bi bi-clock-history" style={{ color: '#f59e0b', fontSize: '1rem', flexShrink: 0 }}></i>
+                      <span style={{ color: '#92400e', fontSize: '0.82rem', fontWeight: 500 }}>
+                        Your previous offer has expired. You can submit a new offer below.
                       </span>
                     </div>
                   )}

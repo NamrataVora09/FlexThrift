@@ -342,28 +342,47 @@ export default function Page() {
   };
 
 
+  const getOfferDisplayStatus = (o: Offer) => {
+    // Check if expired
+    let isExpired = false;
+    if (o.status === 'pending' && o.created_at) {
+      const offerTime = new Date(o.created_at).getTime();
+      const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
+      isExpired = Date.now() > expiryTime;
+    }
+    const isProductSold = Number((o as any).is_product_sold ?? 0) > 0;
+    const isRentalBlocked = Number((o as any).is_rental_blocked ?? 0) > 0;
+
+    if (o.status === 'pending') {
+      if (isExpired || isProductSold || isRentalBlocked) {
+        return 'rejected';
+      }
+    }
+    return o.status;
+  };
+
   const filtered = useMemo(() => {
     const list = offers || [];
-    if (filter !== 'all') return list.filter((o) => o.status === filter);
+    if (filter !== 'all') return list.filter((o) => getOfferDisplayStatus(o) === filter);
     const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     const REJECTED = ['rejected', 'cancelled', 'missed'];
     return [
-      ...list.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime),
-      ...list.filter(o => REJECTED.includes(o.status)).sort(byTime),
-      ...list.filter(o => o.status === 'accepted').sort(byTime),
+      ...list.filter(o => ['pending', 'negotiating'].includes(getOfferDisplayStatus(o))).sort(byTime),
+      ...list.filter(o => REJECTED.includes(getOfferDisplayStatus(o))).sort(byTime),
+      ...list.filter(o => getOfferDisplayStatus(o) === 'accepted').sort(byTime),
     ];
-  }, [offers, filter]);
+  }, [offers, filter, settings.acceptanceLimitDays]);
 
   const counts = useMemo(() => {
     const list = offers || [];
     return {
       all: list.length,
-      pending: list.filter((o) => o.status === 'pending').length,
-      negotiating: list.filter((o) => o.status === 'negotiating').length,
-      accepted: list.filter((o) => o.status === 'accepted').length,
-      rejected: list.filter((o) => o.status === 'rejected').length,
+      pending: list.filter((o) => getOfferDisplayStatus(o) === 'pending').length,
+      negotiating: list.filter((o) => getOfferDisplayStatus(o) === 'negotiating').length,
+      accepted: list.filter((o) => getOfferDisplayStatus(o) === 'accepted').length,
+      rejected: list.filter((o) => getOfferDisplayStatus(o) === 'rejected').length,
     }
-  }, [offers]);
+  }, [offers, settings.acceptanceLimitDays]);
 
   return (
     <DashboardLayout requiredRoles={['buyer', 'super_admin']}>
@@ -529,7 +548,17 @@ export default function Page() {
             expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
           }
 
-          const statusLabel = o.status === 'pending' && isExpired ? 'Missed' : (o.status === 'negotiating' ? 'action required' : o.status);
+          const isProductSold = Number((o as any).is_product_sold ?? 0) > 0;
+          const isRentalBlocked = Number((o as any).is_rental_blocked ?? 0) > 0;
+          const displayStatus = getOfferDisplayStatus(o);
+
+          const statusLabel = (() => {
+            if (o.status === 'pending' && isExpired) return 'Missed';
+            if (o.status === 'pending' && isProductSold && (o.offer_type ?? o.listing_type) === 'sell') return 'Sold Out';
+            if (o.status === 'pending' && isRentalBlocked) return 'Dates Booked';
+            if (o.status === 'negotiating') return 'action required';
+            return o.status;
+          })();
 
           const sellerName = o.seller_name || 'Seller';
           const avatarLetter = sellerName.charAt(0).toUpperCase();
@@ -607,7 +636,7 @@ export default function Page() {
                     <div>
                       <div className="d-flex align-items-center gap-2">
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>OFFERED PRICE</span>
-                        <span className="status-pill" style={pillStyles[o.status] || pillStyles.pending}>
+                        <span className="status-pill" style={pillStyles[displayStatus] || pillStyles.pending}>
                           {statusLabel}
                         </span>
                       </div>

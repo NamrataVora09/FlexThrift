@@ -658,10 +658,19 @@ class BuyerApi extends BaseApiController
             }
         }
 
+        $limit = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $expiryCutoff = date('Y-m-d H:i:s', time() - (int)($limit * 86400));
+
         $activeOffers = $db->table('offers')
             ->where('product_id', $productId)
             ->where('buyer_id', $jwtUser['user_id'])
-            ->whereIn('status', ['pending', 'accepted'])
+            ->groupStart()
+                ->where('status', 'accepted')
+                ->orGroupStart()
+                    ->where('status', 'pending')
+                    ->where('created_at >=', $expiryCutoff)
+                ->groupEnd()
+            ->groupEnd()
             ->get()->getResultArray();
 
         return $this->respond([
@@ -671,6 +680,7 @@ class BuyerApi extends BaseApiController
                 'offer' => $offer ?: null,
                 'rental_period_ended' => $rentalPeriodEnded,
                 'active_offers' => $activeOffers,
+                'acceptance_limit_days' => $limit,
             ],
         ]);
     }

@@ -486,6 +486,14 @@ class AuthApi extends BaseApiController
             $existingUser = $existingByEmail;
             $currentType  = $existingUser['user_type'];
 
+            // Verify password to confirm it's the same person attempting the upgrade
+            if (!password_verify($data['password'], $existingUser['password'])) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'An account with this email and mobile number already exists.',
+                ], 409);
+            }
+
             // Block if the account already covers the requested type
             $alreadyHasRole = ($currentType === 'both')
                 || ($currentType === $requestedType)
@@ -530,6 +538,14 @@ class AuthApi extends BaseApiController
         if ($existingByEmail && !$existingByMobile) {
             $currentType = $existingByEmail['user_type'];
 
+            // If password doesn't match, it's a different person using the same email → conflict
+            if (!password_verify($data['password'], $existingByEmail['password'])) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'This email address is already registered.',
+                ], 409);
+            }
+
             $alreadyHasRole = ($currentType === 'both')
                 || ($currentType === $requestedType);
 
@@ -540,10 +556,11 @@ class AuthApi extends BaseApiController
                 ], 409);
             }
 
-            // Upgrade single-role → both (email matches, phone is new — only allow if requestedType adds a new role)
+            // Upgrade single-role → both (same person adding a second role with a new phone number)
             if ($requestedType === 'both' || $requestedType !== $currentType) {
                 $this->userModel->update($existingByEmail['id'], [
                     'user_type'  => 'both',
+                    'mobile'     => $data['mobile'],
                     'role'       => ($requestedType === 'both') ? 'buyer' : $requestedType,
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
@@ -566,6 +583,14 @@ class AuthApi extends BaseApiController
         if (!$existingByEmail && $existingByMobile) {
             $currentType = $existingByMobile['user_type'];
 
+            // If password doesn't match, it's a different person using the same phone → conflict
+            if (!password_verify($data['password'], $existingByMobile['password'])) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'This mobile number is already registered.',
+                ], 409);
+            }
+
             $alreadyHasRole = ($currentType === 'both')
                 || ($currentType === $requestedType);
 
@@ -576,10 +601,11 @@ class AuthApi extends BaseApiController
                 ], 409);
             }
 
-            // Upgrade single-role → both
+            // Upgrade single-role → both (same person adding a second role with a new email)
             if ($requestedType === 'both' || $requestedType !== $currentType) {
                 $this->userModel->update($existingByMobile['id'], [
                     'user_type'  => 'both',
+                    'email'      => $data['email'],
                     'role'       => ($requestedType === 'both') ? 'buyer' : $requestedType,
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
