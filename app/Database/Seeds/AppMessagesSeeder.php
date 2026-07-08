@@ -11,7 +11,11 @@ class AppMessagesSeeder extends Seeder
 {
     public function run()
     {
-        // Require/bootstrap the migration classes if not autoloaded
+        // Manually require the migration files since migrations are not autoloaded by namespace in CI4
+        require_once APPPATH . 'Database/Migrations/2026-05-15-000000_SeedAllAppMessages.php';
+        require_once APPPATH . 'Database/Migrations/2026-06-24-111000_SeedMappedAppMessages.php';
+        require_once APPPATH . 'Database/Migrations/2026-06-24-120000_SeedAllApiResponseMessages.php';
+
         $migrations = [
             new SeedAllAppMessages(),
             new SeedMappedAppMessages(),
