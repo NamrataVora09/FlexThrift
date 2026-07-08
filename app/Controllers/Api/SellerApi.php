@@ -1029,6 +1029,7 @@ class SellerApi extends BaseApiController
             $db->table('offers')->where('id', $id)->update([
                 'status' => 'rejected',
                 'seller_remarks' => $data['remarks'] ?? '',
+                'rejected_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
             $db->table('notifications')->insert([
@@ -1047,7 +1048,12 @@ class SellerApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Only pending or accepted (within window) offers can be rejected'], 400);
         }
 
-        $db->table('offers')->where('id', $id)->update(['status' => 'rejected', 'seller_remarks' => $data['remarks'] ?? '', 'updated_at' => date('Y-m-d H:i:s')]);
+        $db->table('offers')->where('id', $id)->update([
+            'status' => 'rejected',
+            'seller_remarks' => $data['remarks'] ?? '',
+            'rejected_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
 
         // Notify buyer
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
