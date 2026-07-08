@@ -15,6 +15,9 @@ interface Product {
   image: string; created_at: string; rental_cost: string;
   pending_reason?: string;
   edit_request?: 'pending' | 'approved' | 'rejected' | null;
+  // Populated only when product is rejected at product level (e.g. brand block) AND
+  // also has a separately-rejected edit request — so seller sees both reasons.
+  edit_rejection_remarks?: string | null;
 }
 
 interface Props { role: string; apiPath: string; uploadPath: string; }
@@ -297,6 +300,16 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                                     return (
                                       <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: 4, maxWidth: 150, wordBreak: 'break-word' }}>
                                         <i className="bi bi-info-circle me-1"></i>{remark}
+                                      </div>
+                                    );
+                                  })()}
+                                  {/* Second rejection reason: edit-request was also rejected alongside a product-level rejection */}
+                                  {p.edit_rejection_remarks && (() => {
+                                    const editRemark = String(p.edit_rejection_remarks).trim();
+                                    if (!editRemark) return null;
+                                    return (
+                                      <div style={{ fontSize: '0.7rem', color: '#b45309', marginTop: 3, maxWidth: 150, wordBreak: 'break-word', borderTop: '1px dashed #fcd34d', paddingTop: 3 }}>
+                                        <i className="bi bi-pencil-square me-1"></i><strong>Edit rejected:</strong> {editRemark}
                                       </div>
                                     );
                                   })()}
