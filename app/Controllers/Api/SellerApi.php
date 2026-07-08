@@ -107,15 +107,24 @@ class SellerApi extends BaseApiController
             $p['offer_count'] = $db->table('offers')->where('product_id', $p['id'])->countAllResults();
             $p['views_count'] = $p['views_count'] ?? 0;
             // If edit_request = 1 and there's a pending or rejected edit request, show edit status.
-            // IMPORTANT: Only override when the product itself is NOT already rejected at the
-            // product level (e.g. by a brand block). A product-level rejection always takes
-            // priority so the seller sees the real reason (brand block, etc.) rather than
-            // the edit-request rejection message which would otherwise mask it.
-            if ($p['edit_request'] == 1 && !empty($p['edit_status']) && $p['status'] !== 'rejected') {
-                $p['status'] = $p['edit_status'];
-                // If rejected, include the admin remarks as rejection reason
-                if ($p['edit_status'] === 'rejected') {
-                    $p['admin_remarks'] = $p['edit_remarks'] ?? 'Edit request rejected';
+            // When the product is already rejected at product level (e.g. brand block), keep that
+            // status and admin_remarks as the primary message. But also expose the edit-request
+            // rejection reason separately as `edit_rejection_remarks` so both can be shown to the seller.
+            $p['edit_rejection_remarks'] = null; // default: no separate edit rejection message
+            if ($p['edit_request'] == 1 && !empty($p['edit_status'])) {
+                if ($p['status'] === 'rejected') {
+                    // Product is already rejected at product level (brand block, etc.).
+                    // Keep product-level status & admin_remarks, but surface the edit-request
+                    // rejection reason as a secondary message so the seller sees both.
+                    if ($p['edit_status'] === 'rejected' && !empty($p['edit_remarks'])) {
+                        $p['edit_rejection_remarks'] = $p['edit_remarks'];
+                    }
+                } else {
+                    // No product-level rejection — let edit-request status/remarks take over.
+                    $p['status'] = $p['edit_status'];
+                    if ($p['edit_status'] === 'rejected') {
+                        $p['admin_remarks'] = $p['edit_remarks'] ?? 'Edit request rejected';
+                    }
                 }
             }
             // Normalize status: if NULL or empty (legacy data), treat as 'pending'
