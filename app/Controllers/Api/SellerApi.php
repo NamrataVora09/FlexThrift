@@ -106,8 +106,12 @@ class SellerApi extends BaseApiController
             $p['image_count'] = $db->table('product_images')->where('product_id', $p['id'])->countAllResults();
             $p['offer_count'] = $db->table('offers')->where('product_id', $p['id'])->countAllResults();
             $p['views_count'] = $p['views_count'] ?? 0;
-            // If edit_request = 1 and there's a pending or rejected edit request, show edit status
-            if ($p['edit_request'] == 1 && !empty($p['edit_status'])) {
+            // If edit_request = 1 and there's a pending or rejected edit request, show edit status.
+            // IMPORTANT: Only override when the product itself is NOT already rejected at the
+            // product level (e.g. by a brand block). A product-level rejection always takes
+            // priority so the seller sees the real reason (brand block, etc.) rather than
+            // the edit-request rejection message which would otherwise mask it.
+            if ($p['edit_request'] == 1 && !empty($p['edit_status']) && $p['status'] !== 'rejected') {
                 $p['status'] = $p['edit_status'];
                 // If rejected, include the admin remarks as rejection reason
                 if ($p['edit_status'] === 'rejected') {
