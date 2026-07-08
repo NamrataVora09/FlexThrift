@@ -940,9 +940,14 @@ class AdminApi extends BaseApiController
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
             
-            // Mark referral as used if discount was applied
-            if ($dbSub['referral_discount_applied'] > 0) {
-                $db->table('users')->where('id', $dbSub['user_id'])->update(['has_used_referral' => 1, 'referral_balance' => 0]);
+            // Deduct only the used referral discount from balance (not zero the whole balance)
+            if ((float) $dbSub['referral_discount_applied'] > 0) {
+                $subUser = $db->table('users')->where('id', $dbSub['user_id'])->get()->getRowArray();
+                $newBalance = max(0, (float)($subUser['referral_balance'] ?? 0) - (float)$dbSub['referral_discount_applied']);
+                $db->table('users')->where('id', $dbSub['user_id'])->update([
+                    'referral_balance' => $newBalance,
+                    'updated_at'       => date('Y-m-d H:i:s'),
+                ]);
             }
             
             $db->table('transactions')->insert([

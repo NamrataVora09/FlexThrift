@@ -113,7 +113,7 @@ export default function DashboardTopbar({ onToggleSidebar }: Props) {
       <ProfileDropdown
         user={user}
         profileHref={profileHref}
-        profileLabel="My Profile"
+        profileLabel="My Portal/Profile"
         showHeader
         extraItems={switchItems}
         onLogout={() =>
