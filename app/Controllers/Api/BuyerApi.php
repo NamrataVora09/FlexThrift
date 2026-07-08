@@ -823,6 +823,7 @@ class BuyerApi extends BaseApiController
         if ($previousOffers == 1 && $jwtUser['role'] !== 'super_admin') {
             // This is the first offer to this seller, deduct subscription
             $activeSub = $db->table('user_subscriptions us')
+                ->select('us.*, sp.plan_type, sp.limit_value')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)

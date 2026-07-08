@@ -465,7 +465,37 @@ class AdminApi extends BaseApiController
         $db = \Config\Database::connect();
         $remarks = $this->request->getJsonVar('remarks') ?? '';
 
-        // First check if this is a product ID (for seller edits) - check this first since seller edits use product ID
+        // Check if this is a product_edit_request ID (for seller edits) - check this FIRST to avoid ID collision with products
+        $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
+        if ($request) {
+            $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => date('Y-m-d H:i:s')]);
+
+            // Restore product to its original approved state (it was set to pending when edit was submitted)
+            $db->table('products')->where('id', $request['product_id'])->update([
+                'status' => 'approved',
+                'edit_request' => 0,
+                'pending_reason' => null,
+                'previous_data' => null,
+                'admin_remarks' => $remarks,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            // Notify the seller
+            $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+            if ($product) {
+                $db->table('notifications')->insert([
+                    'user_id' => $request['seller_id'],
+                    'title' => 'Edit Request Rejected',
+                    'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" was rejected. Reason: ' . ($remarks ?: 'No reason provided'),
+                    'type' => 'product_edit',
+                    'is_read' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
+        }
+
+        // Fallback: Check if this is a product ID (for seller edits) - check this second
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
         if ($product && in_array($product['pending_reason'] ?? '', ['seller_edit', 'both_edit'])) {
             // Restore product from previous_data snapshot
@@ -541,36 +571,6 @@ class AdminApi extends BaseApiController
             ]);
 
             return $this->respond(['success' => true, 'message' => 'Product edit rejected and restored.']);
-        }
-
-        // If not found as product with pending_reason, check if this is a product_edit_request ID (for seller edits)
-        $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-        if ($request) {
-            $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'rejected', 'updated_at' => date('Y-m-d H:i:s')]);
-
-            // Restore product to its original approved state (it was set to pending when edit was submitted)
-            $db->table('products')->where('id', $request['product_id'])->update([
-                'status' => 'approved',
-                'edit_request' => 0,
-                'pending_reason' => null,
-                'previous_data' => null,
-                'admin_remarks' => $remarks,
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
-            // Notify the seller
-            $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
-            if ($product) {
-                $db->table('notifications')->insert([
-                    'user_id' => $request['seller_id'],
-                    'title' => 'Edit Request Rejected',
-                    'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" was rejected. Reason: ' . ($remarks ?: 'No reason provided'),
-                    'type' => 'product_edit',
-                    'is_read' => 0,
-                    'created_at' => date('Y-m-d H:i:s'),
-                ]);
-            }
-
-            return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
         }
 
         return $this->respond(['success' => false, 'message' => 'Edit request or product not found'], 404);

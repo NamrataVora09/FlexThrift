@@ -542,6 +542,7 @@ class SellerApi extends BaseApiController
         // Deduct from quantity-based seller subscription (only on product creation, not editing)
         if ($jwtUser['role'] !== 'super_admin') {
             $activeSub = $db->table('user_subscriptions us')
+                ->select('us.*, sp.plan_type, sp.limit_value')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $userId)
                 ->where('us.is_active', 1)
