@@ -72,6 +72,9 @@ export default function RegisterPage() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       setEmailError(value.length > 0 && !emailRegex.test(value));
     }
+    if (name === 'referred_by') {
+      processedValue = value.toUpperCase();
+    }
     
     setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
@@ -243,6 +246,11 @@ export default function RegisterPage() {
             <div className="input-group">
               <label>State</label>
               <input className="input-field" type="text" name="state" placeholder="Enter State" value={formData.state} onChange={handleChange} required />
+            </div>
+
+            <div className="input-group">
+              <label>Referral Code (Optional)</label>
+              <input className="input-field" type="text" name="referred_by" placeholder="Enter referral code" value={formData.referred_by} onChange={handleChange} />
             </div>
 
             <div className="terms-group">

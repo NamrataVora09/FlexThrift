@@ -105,7 +105,7 @@ export default function SellerCheckoutPlanPage() {
       toast.error(res.message || 'Failed to initiate payment. Please try again.');
       setPaying(false);
     }
-  }, [checkoutData, planId, appliedCoupon]);
+  }, [checkoutData, planId, appliedCoupon, useReferral]);
 
   if (loading) {
     return (

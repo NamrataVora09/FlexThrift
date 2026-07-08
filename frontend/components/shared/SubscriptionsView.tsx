@@ -223,7 +223,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
       setPaying(false);
       setModalOpen(false);
     }
-  }, [checkoutData, selectedPlan, appliedCoupon, role]);
+  }, [checkoutData, selectedPlan, appliedCoupon, role, useReferral]);
 
   const basePrice = Number(checkoutData?.plan?.price ?? 0);
   const totalCharges = checkoutData?.total_charges ?? 0;
@@ -817,7 +817,25 @@ export default function SubscriptionsView({ role, userType }: Props) {
                               </div>
                             </div>
                           </div>
-                       
+                          {basePrice >= (checkoutData.referral_min_purchase || 0) && (
+                            <button
+                              onClick={() => setUseReferral(prev => !prev)}
+                              style={{
+                                background: useReferral ? 'rgba(239,68,68,0.08)' : '#10b981',
+                                color: useReferral ? '#ef4444' : '#fff',
+                                border: `1px solid ${useReferral ? 'rgba(239,68,68,0.2)' : '#10b981'}`,
+                                borderRadius: '8px',
+                                padding: '5px 14px',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {useReferral ? 'Remove' : 'Apply'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}

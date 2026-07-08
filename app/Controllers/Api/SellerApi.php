@@ -2261,6 +2261,9 @@ class SellerApi extends BaseApiController
         $referralDiscount = 0;
         $referralBalance = (float) ($user['referral_balance'] ?? 0);
         $expiry = $user['referral_expires_at'] ?? null;
+        if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+            $referralBalance = 0.0;
+        }
 
         $settingsRows = $db->table('system_settings')
             ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
@@ -2276,10 +2279,10 @@ class SellerApi extends BaseApiController
 
         if ($referralBalance > 0 && (float) $plan['price'] >= $minPurchase) {
             if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
-                // Max discount = percentage of the plan price, capped at actual referral balance
-                $maxDiscountFromPlan = round((float) $plan['price'] * $maxPercent / 100, 2);
-                $referralDiscount = min($referralBalance, $maxDiscountFromPlan);
-                log_message('error', "Referral discount applied - Max from plan: {$maxDiscountFromPlan}, Final discount: {$referralDiscount}");
+                // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
+                $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                $referralDiscount = min($rawDiscount, (float)$plan['price']);
+                log_message('error', "Referral discount applied - Raw discount: {$rawDiscount}, Final discount: {$referralDiscount}");
             } else {
                 log_message('error', "Referral expired - Expiry: {$expiry}, Current time: " . date('Y-m-d H:i:s'));
             }
@@ -2435,6 +2438,9 @@ class SellerApi extends BaseApiController
         if ($useReferral) {
             $referralBalance = (float) ($user['referral_balance'] ?? 0);
             $expiry = $user['referral_expires_at'] ?? null;
+            if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+                $referralBalance = 0.0;
+            }
 
             if ($referralBalance > 0) {
                 if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
@@ -2445,12 +2451,13 @@ class SellerApi extends BaseApiController
                     foreach ($settingsRows as $s)
                         $cfg[$s['setting_key']] = $s['setting_value'];
 
-                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
-                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+                    $maxPercent  = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                    $minPurchase = (float) ((isset($cfg['referral_min_purchase'])         && $cfg['referral_min_purchase'] !== '')         ? $cfg['referral_min_purchase']         : 0);
 
                     if ($basePrice >= $minPurchase) {
-                        // Max discount = percentage of the wallet balance that can be used
-                        $referralDiscountApplied = round(($referralBalance * $maxPercent) / 100, 2);
+                        // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
+                        $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                        $referralDiscountApplied = min($rawDiscount, $basePrice);
                         $finalAmount -= $referralDiscountApplied;
                     }
                 }

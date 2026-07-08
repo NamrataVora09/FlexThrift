@@ -754,13 +754,24 @@ class AdminApi extends BaseApiController
             $breakdown[] = ['name' => $charge['charge_name'], 'type' => $charge['charge_type'], 'value' => $charge['charge_value'], 'amount' => $amt];
         }
 
+        $settingsRows = $db->table('system_settings')
+            ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+            ->get()->getResultArray();
+        $cfg = [];
+        foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+        $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+
         $referralDiscount = 0;
         $referralBalance = (float)($user['referral_balance'] ?? 0);
         $hasUsed = (int)($user['has_used_referral'] ?? 0);
         $expiry = $user['referral_expires_at'] ?? null;
+        if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+            $referralBalance = 0.0;
+        }
         if ($referralBalance > 0 && $hasUsed === 0) {
             if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
-                $referralDiscount = $referralBalance;
+                $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                $referralDiscount = min($rawDiscount, $basePrice);
             }
         }
 
@@ -772,7 +783,7 @@ class AdminApi extends BaseApiController
                 'charge_breakdown' => $breakdown,
                 'total_charges' => $totalCharges,
                 'referral_discount' => $referralDiscount,
-                'total_referral_balance' => (float)($user['referral_balance'] ?? 0),
+                'total_referral_balance' => $referralBalance,
                 'referral_min_purchase' => 0,
                 'total' => max(0, $basePrice + $totalCharges - $referralDiscount)
             ]
@@ -835,10 +846,22 @@ class AdminApi extends BaseApiController
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         $referralDiscount = 0;
-        if ($useReferral && (float)($user['referral_balance'] ?? 0) > 0 && (int)($user['has_used_referral'] ?? 0) === 0) {
-            $exp = $user['referral_expires_at'] ?? null;
+        $referralBalance = (float)($user['referral_balance'] ?? 0);
+        $exp = $user['referral_expires_at'] ?? null;
+        if ($exp && $exp !== '0000-00-00 00:00:00' && strtotime($exp) <= time()) {
+            $referralBalance = 0.0;
+        }
+        if ($useReferral && $referralBalance > 0 && (int)($user['has_used_referral'] ?? 0) === 0) {
             if (!$exp || $exp === '0000-00-00 00:00:00' || strtotime($exp) > time()) {
-                $referralDiscount = (float)$user['referral_balance'];
+                $settingsRows = $db->table('system_settings')
+                    ->whereIn('setting_key', ['referral_max_discount_percent'])
+                    ->get()->getResultArray();
+                $cfg = [];
+                foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+                $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+
+                $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                $referralDiscount = min($rawDiscount, $basePrice);
             }
         }
 

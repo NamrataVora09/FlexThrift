@@ -743,18 +743,24 @@ class AuthApi extends BaseApiController
             }
         }
 
+        $referralBalance = (float) ($user['referral_balance'] ?? 0);
+        $expiry = $user['referral_expires_at'] ?? null;
+        if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+            $referralBalance = 0.0;
+        }
+
         // Total ever earned = current balance remaining + amount already spent as referral discounts
         $discountUsed = (float) ($db->table('user_subscriptions')
             ->selectSum('referral_discount_applied')
             ->where('user_id', $user['id'])
             ->get()->getRowArray()['referral_discount_applied'] ?? 0);
-        $totalEarned = (float) ($user['referral_balance'] ?? 0) + $discountUsed;
+        $totalEarned = $referralBalance + $discountUsed;
 
         return $this->respond([
             'success' => true,
             'data'    => [
                 'referral_code'     => $user['referral_code'] ?? '',
-                'referral_balance'  => (float) ($user['referral_balance'] ?? 0),
+                'referral_balance'  => $referralBalance,
                 'has_used_referral' => (int) ($user['has_used_referral'] ?? 0),
                 'referral_expires_at' => $user['referral_expires_at'] ?? null,
                 'referred_by'       => $user['referred_by'] ?? null,

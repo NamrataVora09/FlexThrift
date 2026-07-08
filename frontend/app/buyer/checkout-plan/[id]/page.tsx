@@ -113,7 +113,7 @@ export default function CheckoutPlanPage() {
       toast.error(res.message || 'Failed to initiate payment. Please try again.');
       setPaying(false);
     }
-  }, [checkoutData, planId, appliedCoupon]);
+  }, [checkoutData, planId, appliedCoupon, useReferral]);
 
   /* ---- Render ---- */
   if (loading) {
