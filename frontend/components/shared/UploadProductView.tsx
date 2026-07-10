@@ -332,7 +332,13 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     }
 
     setFilteredGenders(filtered);
-  }, [f.category_id, f.sub_category_id, meta, f.gender]);
+
+    // In new-upload mode: auto-clear gender if the current selection is no longer in the filtered list
+    // In edit mode: keep the saved gender (it was already added above if missing from filtered)
+    if (!isEditMode && f.gender && !filtered.some(g => g.name.toLowerCase() === f.gender.toLowerCase())) {
+      setF(prev => ({ ...prev, gender: '' }));
+    }
+  }, [f.category_id, f.sub_category_id, meta, f.gender, isEditMode]);
 
   // Aggregate dynamic attributes from Listing Type, Category, and Sub-Category
   useEffect(() => {
@@ -570,9 +576,14 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         next.sub_category_id = '';
       } else if (name === 'category_id') {
         next.sub_category_id = '';
-        next.gender = '';
+        // Only reset gender when not in edit mode; in edit mode the saved gender is preserved
+        // via the filteredGenders useEffect which always includes the product's current gender
+        if (!isEditMode) {
+          next.gender = '';
+        }
       } else if (name === 'sub_category_id') {
-        next.gender = '';
+        // Do NOT reset gender here — the filteredGenders useEffect already recomputes
+        // the available gender options and keeps the current selection if still valid.
       }
 
       return next;
@@ -1215,7 +1226,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Sub-Category <small>(Optional)</small></label>
                   <select className="form-select" style={inputStyle} name="sub_category_id" value={f.sub_category_id} onChange={handleChange} disabled={!subCategories.length}>
-                    <option value="">{subCategories.length ? 'Select' : 'Select Category first'}</option>
+                    <option value="">{subCategories.length ? 'Select (Optional)' : (f.category_id ? 'No sub-categories available' : 'Select Category first')}</option>
                     {subCategories.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
                   </select>
                   {fieldErrors.sub_category_id && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.sub_category_id}</small>}

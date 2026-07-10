@@ -372,6 +372,24 @@ Material,text,0,,,`,
   const saveEdit = async () => {
     if (!editModal) return;
     const { type, item } = editModal;
+
+    // Validate custom attributes if they exist
+    if (editForm.attributes) {
+      const invalidPicklist = editForm.attributes.find((attr: any) => {
+        if (attr.type === 'picklist') {
+          const vals = Array.isArray(attr.allowed_values)
+            ? attr.allowed_values
+            : (attr.allowed_values ? String(attr.allowed_values).split(',') : []);
+          return vals.map((v: any) => String(v).trim()).filter(Boolean).length === 0;
+        }
+        return false;
+      });
+      if (invalidPicklist) {
+        toastError('validation_error', `Allowed values are required for Picklist attribute "${invalidPicklist.name || 'Unnamed'}"`);
+        return;
+      }
+    }
+
     const fd = new FormData();
     let res;
 
@@ -464,18 +482,27 @@ Material,text,0,,,`,
       fd.append('hex_code', editForm.hex_code);
       res = await api.upload(`/superadmin/update-color/${item.id}`, fd);
     } else if (type === 'attribute') {
-      fd.append('name', editForm.name);
-      fd.append('type', editForm.type);
-      fd.append('required', String(editForm.required));
-      fd.append('placeholder', editForm.placeholder || '');
-      if (editForm.allowed_values) {
+      if (editForm.type === 'picklist') {
         const cleanValues = typeof editForm.allowed_values === 'string'
           ? editForm.allowed_values.split(',').map((v: string) => v.trim()).filter(Boolean)
-          : editForm.allowed_values;
+          : (Array.isArray(editForm.allowed_values) ? editForm.allowed_values : []);
+        if (cleanValues.length === 0) {
+          toastError('validation_error', 'Allowed values are required for Picklist type');
+          return;
+        }
+        fd.append('allowed_values', cleanValues.join(','));
+      } else if (editForm.allowed_values) {
+        const cleanValues = typeof editForm.allowed_values === 'string'
+          ? editForm.allowed_values.split(',').map((v: string) => v.trim()).filter(Boolean)
+          : (Array.isArray(editForm.allowed_values) ? editForm.allowed_values : []);
         if (cleanValues.length > 0) {
           fd.append('allowed_values', cleanValues.join(','));
         }
       }
+      fd.append('name', editForm.name);
+      fd.append('type', editForm.type);
+      fd.append('required', String(editForm.required));
+      fd.append('placeholder', editForm.placeholder || '');
       // Require at least one entity type to be selected
       if (!editForm.entity_types || editForm.entity_types.length === 0) {
         toastError('validation_error', 'Please select at least one entity type (Listing Type, Category, or Sub-Category)');
@@ -821,6 +848,15 @@ Material,text,0,,,`,
         <div className="card mb-4"><SectionHeader icon="bi bi-list-check" title="Attributes Management" />
           <div className="card-body">
             <form className="row g-3 mb-3" onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); 
+              const attrType = fd.get('type') as string;
+              const allowedVals = fd.get('allowed_values') as string;
+              if (attrType === 'picklist') {
+                const cleanVals = allowedVals ? allowedVals.split(',').map((v: string) => v.trim()).filter(Boolean) : [];
+                if (cleanVals.length === 0) {
+                  toastError('validation_error', 'Allowed values are required for Picklist type');
+                  return;
+                }
+              }
               // Pair entity types with their corresponding entity IDs
               const ltIds = attrEntityIds.filter((id: number | string) => listing_types.find(l => l.id === id));
               const catIds = attrEntityIds.filter((id: number | string) => categories.find(c => c.id === id));
