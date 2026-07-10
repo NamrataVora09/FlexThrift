@@ -39,7 +39,7 @@ export default function CartPage() {
   const handleCheckout = (item: CartItem) => {
     if (!isAuthenticated) {
       sessionStorage.setItem('redirect_after_login', `/buyer/product/${item.id}`);
-      router.push('/login');
+      router.push('/');
       return;
     }
     router.push(`/buyer/product/${item.id}`);
@@ -70,7 +70,7 @@ export default function CartPage() {
                   <i className="bi bi-person me-1"></i> My Portal
                 </Link>
               ) : (
-                <Link href="/login" className="btn" style={{ background: '#ffc63a', borderRadius: 10, fontWeight: 600 }}>
+                <Link href="/" className="btn" style={{ background: '#ffc63a', borderRadius: 10, fontWeight: 600 }}>
                   <i className="bi bi-person me-1"></i> Sign In
                 </Link>
               )}
@@ -172,7 +172,7 @@ export default function CartPage() {
                   <i className="bi bi-x-circle me-1"></i> Clear Wishlist
                 </button>
                 {!isAuthenticated && (
-                  <Link href="/login" className="btn" style={{ background: '#ffc63a', borderRadius: 10, fontWeight: 700, padding: '10px 30px' }}>
+                  <Link href="/" className="btn" style={{ background: '#ffc63a', borderRadius: 10, fontWeight: 700, padding: '10px 30px' }}>
                     <i className="bi bi-box-arrow-in-right me-2"></i> Sign In to Checkout
                   </Link>
                 )}

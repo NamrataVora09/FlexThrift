@@ -134,34 +134,34 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
   const [footerDescription, setFooterDescription] = useState('Premium curated marketplace for the elite. Discover high-end fashion, electronics, and lifestyle essentials reserved for those who value quality.');
   const [sectionTitleCategories, setSectionTitleCategories] = useState('Browse by Essence.');
   const [sectionTitleProducts, setSectionTitleProducts] = useState('Elite Drops.');
-  const [footerQuickLinks, setFooterQuickLinks] = useState<{label:string;href:string}[]>([
-    {label:'Home',href:'/'},{label:'About',href:'/'},{label:'Sell',href:'/seller/upload-product'},{label:'Rent',href:'/buyer/browse?listing_type=rent'},{label:'Explore',href:'/buyer/browse'}
+  const [footerQuickLinks, setFooterQuickLinks] = useState<{ label: string; href: string }[]>([
+    { label: 'Home', href: '/' }, { label: 'About', href: '/' }, { label: 'Sell', href: '/seller/upload-product' }, { label: 'Rent', href: '/buyer/browse?listing_type=rent' }, { label: 'Explore', href: '/buyer/browse' }
   ]);
-  const [footerPolicyLinks, setFooterPolicyLinks] = useState<{label:string;href:string}[]>([
-    {label:'Return policies',href:'#'},{label:'Cancellation policies',href:'#'},{label:'Terms of use',href:'#'}
+  const [footerPolicyLinks, setFooterPolicyLinks] = useState<{ label: string; href: string }[]>([
+    { label: 'Return policies', href: '#' }, { label: 'Cancellation policies', href: '#' }, { label: 'Terms of use', href: '#' }
   ]);
-  const [footerSocialLinks, setFooterSocialLinks] = useState<{icon:string;href:string}[]>([
-    {icon:'bi-facebook',href:'#'},{icon:'bi-twitter',href:'#'},{icon:'bi-instagram',href:'#'},{icon:'bi-linkedin',href:'#'}
+  const [footerSocialLinks, setFooterSocialLinks] = useState<{ icon: string; href: string }[]>([
+    { icon: 'bi-facebook', href: '#' }, { icon: 'bi-twitter', href: '#' }, { icon: 'bi-instagram', href: '#' }, { icon: 'bi-linkedin', href: '#' }
   ]);
-  const [howSteps, setHowSteps] = useState<{num:string;icon:string;title:string;desc:string}[]>([
-    {num:'01',icon:'bi-search',title:'Discover',desc:'Browse thousands of curated products from verified sellers across all categories.'},
-    {num:'02',icon:'bi-heart',title:'Wishlist',desc:'Save your favorite items to your wishlist. No account needed to explore and shortlist.'},
-    {num:'03',icon:'bi-person-check',title:'Sign In & Offer',desc:'Create an account or sign in when you\'re ready. Make an offer on the product.'},
-    {num:'04',icon:'bi-box-seam',title:'Get It Delivered',desc:'Once the seller accepts, your item is on its way. Track and confirm delivery.'},
+  const [howSteps, setHowSteps] = useState<{ num: string; icon: string; title: string; desc: string }[]>([
+    { num: '01', icon: 'bi-search', title: 'Discover', desc: 'Browse thousands of curated products from verified sellers across all categories.' },
+    { num: '02', icon: 'bi-heart', title: 'Wishlist', desc: 'Save your favorite items to your wishlist. No account needed to explore and shortlist.' },
+    { num: '03', icon: 'bi-person-check', title: 'Sign In & Offer', desc: 'Create an account or sign in when you\'re ready. Make an offer on the product.' },
+    { num: '04', icon: 'bi-box-seam', title: 'Get It Delivered', desc: 'Once the seller accepts, your item is on its way. Track and confirm delivery.' },
   ]);
-  const [statsBanner, setStatsBanner] = useState<{value:string;label:string}[]>([
-    {value:'10K+',label:'Products Listed'},{value:'5K+',label:'Happy Buyers'},{value:'2K+',label:'Verified Sellers'},{value:'98%',label:'Satisfaction Rate'},
+  const [statsBanner, setStatsBanner] = useState<{ value: string; label: string }[]>([
+    { value: '10K+', label: 'Products Listed' }, { value: '5K+', label: 'Happy Buyers' }, { value: '2K+', label: 'Verified Sellers' }, { value: '98%', label: 'Satisfaction Rate' },
   ]);
-  const [trustFeatures, setTrustFeatures] = useState<{icon:string;title:string;desc:string}[]>([
-    {icon:'bi-shield-check',title:'Verified Sellers',desc:'Every seller is verified for authenticity and reliability.'},
-    {icon:'bi-lock',title:'Secure Payments',desc:'Your transactions are protected with industry-grade encryption.'},
-    {icon:'bi-arrow-repeat',title:'Easy Returns',desc:'Hassle-free returns within the policy period, no questions asked.'},
-    {icon:'bi-headset',title:'24/7 Support',desc:'Our dedicated team is always ready to help you out.'},
+  const [trustFeatures, setTrustFeatures] = useState<{ icon: string; title: string; desc: string }[]>([
+    { icon: 'bi-shield-check', title: 'Verified Sellers', desc: 'Every seller is verified for authenticity and reliability.' },
+    { icon: 'bi-lock', title: 'Secure Payments', desc: 'Your transactions are protected with industry-grade encryption.' },
+    { icon: 'bi-arrow-repeat', title: 'Easy Returns', desc: 'Hassle-free returns within the policy period, no questions asked.' },
+    { icon: 'bi-headset', title: '24/7 Support', desc: 'Our dedicated team is always ready to help you out.' },
   ]);
-  const [testimonials, setTestimonials] = useState<{name:string;role:string;avatar:string;text:string;stars:number}[]>([
-    {name:'Priya Sharma',role:'Buyer',avatar:'PS',text:'Flex Market made it so easy to find exactly what I was looking for. The quality of sellers here is unmatched. I rented a designer dress for my event and it was flawless!',stars:5},
-    {name:'Arjun Mehta',role:'Seller',avatar:'AM',text:'As a seller, the platform gives me incredible visibility. My products get seen by the right audience and the offer system is brilliant. Revenue has been consistently growing.',stars:5},
-    {name:'Sneha Patel',role:'Buyer & Seller',avatar:'SP',text:'I love the dual functionality. I can sell items I no longer need and find amazing deals from other sellers. The whole experience feels premium and trustworthy.',stars:4},
+  const [testimonials, setTestimonials] = useState<{ name: string; role: string; avatar: string; text: string; stars: number }[]>([
+    { name: 'Priya Sharma', role: 'Buyer', avatar: 'PS', text: 'Flex Market made it so easy to find exactly what I was looking for. The quality of sellers here is unmatched. I rented a designer dress for my event and it was flawless!', stars: 5 },
+    { name: 'Arjun Mehta', role: 'Seller', avatar: 'AM', text: 'As a seller, the platform gives me incredible visibility. My products get seen by the right audience and the offer system is brilliant. Revenue has been consistently growing.', stars: 5 },
+    { name: 'Sneha Patel', role: 'Buyer & Seller', avatar: 'SP', text: 'I love the dual functionality. I can sell items I no longer need and find amazing deals from other sellers. The whole experience feels premium and trustworthy.', stars: 4 },
   ]);
 
   // Edit modal state
@@ -195,20 +195,20 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
   useEffect(() => {
     if (isrData?.landingContent) {
       const d = isrData.landingContent;
-      if (d.hero_slides) try { setHeroSlides(JSON.parse(d.hero_slides)); } catch {}
-      if (d.display_categories) try { setDisplayCategories(JSON.parse(d.display_categories)); } catch {}
+      if (d.hero_slides) try { setHeroSlides(JSON.parse(d.hero_slides)); } catch { }
+      if (d.display_categories) try { setDisplayCategories(JSON.parse(d.display_categories)); } catch { }
       if (d.cta_title) setCtaTitle(d.cta_title);
       if (d.cta_subtitle) setCtaSubtitle(d.cta_subtitle);
       if (d.footer_description) setFooterDescription(d.footer_description);
       if (d.section_title_categories) setSectionTitleCategories(d.section_title_categories);
       if (d.section_title_products) setSectionTitleProducts(d.section_title_products);
-      if (d.how_it_works_steps) try { setHowSteps(JSON.parse(d.how_it_works_steps)); } catch {}
-      if (d.stats_banner) try { setStatsBanner(JSON.parse(d.stats_banner)); } catch {}
-      if (d.trust_features) try { setTrustFeatures(JSON.parse(d.trust_features)); } catch {}
-      if (d.testimonials) try { setTestimonials(JSON.parse(d.testimonials)); } catch {}
-      if (d.footer_quick_links) try { setFooterQuickLinks(JSON.parse(d.footer_quick_links)); } catch {}
-      if (d.footer_policy_links) try { setFooterPolicyLinks(JSON.parse(d.footer_policy_links)); } catch {}
-      if (d.footer_social_links) try { setFooterSocialLinks(JSON.parse(d.footer_social_links)); } catch {}
+      if (d.how_it_works_steps) try { setHowSteps(JSON.parse(d.how_it_works_steps)); } catch { }
+      if (d.stats_banner) try { setStatsBanner(JSON.parse(d.stats_banner)); } catch { }
+      if (d.trust_features) try { setTrustFeatures(JSON.parse(d.trust_features)); } catch { }
+      if (d.testimonials) try { setTestimonials(JSON.parse(d.testimonials)); } catch { }
+      if (d.footer_quick_links) try { setFooterQuickLinks(JSON.parse(d.footer_quick_links)); } catch { }
+      if (d.footer_policy_links) try { setFooterPolicyLinks(JSON.parse(d.footer_policy_links)); } catch { }
+      if (d.footer_social_links) try { setFooterSocialLinks(JSON.parse(d.footer_social_links)); } catch { }
       return;
     }
     fetch(`${API_BASE}/landing-content`)
@@ -216,23 +216,23 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
       .then(res => {
         if (res.success && res.data) {
           const d = res.data;
-          if (d.hero_slides) try { setHeroSlides(JSON.parse(d.hero_slides)); } catch {}
-          if (d.display_categories) try { setDisplayCategories(JSON.parse(d.display_categories)); } catch {}
+          if (d.hero_slides) try { setHeroSlides(JSON.parse(d.hero_slides)); } catch { }
+          if (d.display_categories) try { setDisplayCategories(JSON.parse(d.display_categories)); } catch { }
           if (d.cta_title) setCtaTitle(d.cta_title);
           if (d.cta_subtitle) setCtaSubtitle(d.cta_subtitle);
           if (d.footer_description) setFooterDescription(d.footer_description);
           if (d.section_title_categories) setSectionTitleCategories(d.section_title_categories);
           if (d.section_title_products) setSectionTitleProducts(d.section_title_products);
-          if (d.how_it_works_steps) try { setHowSteps(JSON.parse(d.how_it_works_steps)); } catch {}
-          if (d.stats_banner) try { setStatsBanner(JSON.parse(d.stats_banner)); } catch {}
-          if (d.trust_features) try { setTrustFeatures(JSON.parse(d.trust_features)); } catch {}
-          if (d.testimonials) try { setTestimonials(JSON.parse(d.testimonials)); } catch {}
-          if (d.footer_quick_links) try { setFooterQuickLinks(JSON.parse(d.footer_quick_links)); } catch {}
-          if (d.footer_policy_links) try { setFooterPolicyLinks(JSON.parse(d.footer_policy_links)); } catch {}
-          if (d.footer_social_links) try { setFooterSocialLinks(JSON.parse(d.footer_social_links)); } catch {}
+          if (d.how_it_works_steps) try { setHowSteps(JSON.parse(d.how_it_works_steps)); } catch { }
+          if (d.stats_banner) try { setStatsBanner(JSON.parse(d.stats_banner)); } catch { }
+          if (d.trust_features) try { setTrustFeatures(JSON.parse(d.trust_features)); } catch { }
+          if (d.testimonials) try { setTestimonials(JSON.parse(d.testimonials)); } catch { }
+          if (d.footer_quick_links) try { setFooterQuickLinks(JSON.parse(d.footer_quick_links)); } catch { }
+          if (d.footer_policy_links) try { setFooterPolicyLinks(JSON.parse(d.footer_policy_links)); } catch { }
+          if (d.footer_social_links) try { setFooterSocialLinks(JSON.parse(d.footer_social_links)); } catch { }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [isrData]);
 
   useEffect(() => {
@@ -246,7 +246,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
           setFeaturedProducts(res.data.slice(0, 8));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     // Fetch taxonomy — skip if ISR already provided enriched data with product_types
     if (isrData?.listingTypes && isrData.listingTypes.length > 0 && isrData.listingTypes[0]?.product_types) {
       // ISR already provided full taxonomy — no client fetch needed
@@ -268,7 +268,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
             setListingTypes(enriched);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, []);
 
@@ -698,7 +698,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
             <div className="landing-nav-actions">
               {/* Cart Icon */}
               <Link href="/cart" className="position-relative text-dark" style={{ fontSize: '1.3rem' }}>
-              <i className="bi bi-heart"></i>
+                <i className="bi bi-heart"></i>
                 {cartCount > 0 && (
                   <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill" style={{ background: '#ffc63a', color: '#000', fontSize: '0.65rem' }}>
                     {cartCount}
@@ -771,7 +771,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                   )}
                 </div>
               ) : (
-                <Link href="/login" className="user-action-link">
+                <Link href="/" className="user-action-link">
                   <i className="bi bi-person-circle" style={{ fontSize: '1.2rem' }}></i>
                   <span>Sign In</span>
                 </Link>
@@ -853,7 +853,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                   My Offers
                 </Link>
                 <Link href="/cart" className="mobile-nav-item" onClick={() => setMobileNavOpen(false)}>
-              <i className="bi bi-heart"></i>
+                  <i className="bi bi-heart"></i>
                   Wishlist {cartCount > 0 && <span className="badge rounded-pill" style={{ background: 'var(--primary-yellow)', color: '#000', fontSize: '0.7rem' }}>{cartCount}</span>}
                 </Link>
                 {user.user_type === 'both' && (
@@ -874,7 +874,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
               </>
             ) : (
               <>
-                <Link href="/login" className="mobile-nav-item" onClick={() => setMobileNavOpen(false)}>
+                <Link href="/" className="mobile-nav-item" onClick={() => setMobileNavOpen(false)}>
                   <i className="bi bi-person-circle" style={{ color: 'var(--primary-yellow)' }}></i>
                   Sign In
                 </Link>
@@ -1109,57 +1109,57 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                   View All <i className="bi bi-arrow-right"></i>
                 </Link>
               </div>
-            {featuredProducts.map((p) => (
-              <div key={p.id} className="col-md-6 col-lg-3">
-                <Link href={`/buyer/product/${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <div className="product-card-elite">
-                    <div className="product-img-elite">
-                      {(p.image || p.primary_image) ? (
-                        <img
-                          src={(() => { const img = p.image || p.primary_image; if (!img) return ''; return img.startsWith('http') ? img : img.startsWith('uploads/') ? `http://localhost:8080/${img}` : `http://localhost:8080/uploads/products/${img}`; })()}
-                          alt={p.title}
-                        />
-                      ) : (
-                        <i className="bi bi-image" style={{ fontSize: '3rem', color: '#ccc' }}></i>
-                      )}
-                    </div>
-                    <div className="ps-2">
-                      <span
-                        className="badge bg-light text-dark mb-2 text-uppercase fw-bold"
-                        style={{ fontSize: 10 }}
-                      >
-                        {p.listing_type}
-                      </span>
-                      <div className="d-flex gap-2 flex-wrap mb-1">
-                        {(p.brand_name || p.brand) && (
-                          <span className="badge bg-white text-dark border text-uppercase" style={{ fontSize: 9 }}>
-                            <i className="bi bi-award me-1" style={{ color: '#ffc63a' }}></i>
-                            {p.brand_name || p.brand}
-                          </span>
+              {featuredProducts.map((p) => (
+                <div key={p.id} className="col-md-6 col-lg-3">
+                  <Link href={`/buyer/product/${p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div className="product-card-elite">
+                      <div className="product-img-elite">
+                        {(p.image || p.primary_image) ? (
+                          <img
+                            src={(() => { const img = p.image || p.primary_image; if (!img) return ''; return img.startsWith('http') ? img : img.startsWith('uploads/') ? `http://localhost:8080/${img}` : `http://localhost:8080/uploads/products/${img}`; })()}
+                            alt={p.title}
+                          />
+                        ) : (
+                          <i className="bi bi-image" style={{ fontSize: '3rem', color: '#ccc' }}></i>
                         )}
                       </div>
-                      <h6 className="fw-800 mb-1 text-truncate">{p.title}</h6>
-                      <div className="d-flex justify-content-between align-items-center mt-3">
-                        <span className="fw-900" style={{ fontSize: '1.25rem' }}>
-                          &#8377;{Number(
-                            p.listing_type === 'sell'
-                              ? (p.selling_price || p.price || p.original_price || 0)
-                              : (p.rental_cost || p.price || 0)
-                          ).toLocaleString('en-IN')}
+                      <div className="ps-2">
+                        <span
+                          className="badge bg-light text-dark mb-2 text-uppercase fw-bold"
+                          style={{ fontSize: 10 }}
+                        >
+                          {p.listing_type}
                         </span>
-                        <i className="bi bi-heart text-muted"></i>
+                        <div className="d-flex gap-2 flex-wrap mb-1">
+                          {(p.brand_name || p.brand) && (
+                            <span className="badge bg-white text-dark border text-uppercase" style={{ fontSize: 9 }}>
+                              <i className="bi bi-award me-1" style={{ color: '#ffc63a' }}></i>
+                              {p.brand_name || p.brand}
+                            </span>
+                          )}
+                        </div>
+                        <h6 className="fw-800 mb-1 text-truncate">{p.title}</h6>
+                        <div className="d-flex justify-content-between align-items-center mt-3">
+                          <span className="fw-900" style={{ fontSize: '1.25rem' }}>
+                            &#8377;{Number(
+                              p.listing_type === 'sell'
+                                ? (p.selling_price || p.price || p.original_price || 0)
+                                : (p.rental_cost || p.price || 0)
+                            ).toLocaleString('en-IN')}
+                          </span>
+                          <i className="bi bi-heart text-muted"></i>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              </div>
-            ))}
-            {featuredProducts.length === 0 && (
-              <div className="col-12 text-center py-5">
-                <i className="bi bi-search" style={{ fontSize: '3rem', color: '#ddd' }}></i>
-                <p className="text-muted mt-3">No products available yet.</p>
-              </div>
-            )}
+                  </Link>
+                </div>
+              ))}
+              {featuredProducts.length === 0 && (
+                <div className="col-12 text-center py-5">
+                  <i className="bi bi-search" style={{ fontSize: '3rem', color: '#ddd' }}></i>
+                  <p className="text-muted mt-3">No products available yet.</p>
+                </div>
+              )}
             </div>
           </div>
         </section>

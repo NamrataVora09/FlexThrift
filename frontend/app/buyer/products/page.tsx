@@ -110,7 +110,7 @@ export default async function ProductsPage({
               <Link href="/buyer/browse" className="fw-semibold text-decoration-none text-dark">
                 <i className="bi bi-search me-1"></i> Search
               </Link>
-              <Link href="/login" className="btn btn-dark rounded-pill px-4" style={{ fontFamily: '"Maven Pro", sans-serif' }}>
+              <Link href="/" className="btn btn-dark rounded-pill px-4" style={{ fontFamily: '"Maven Pro", sans-serif' }}>
                 Join Community
               </Link>
             </div>

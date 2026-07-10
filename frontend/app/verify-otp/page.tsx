@@ -20,7 +20,7 @@ export default function VerifyOtpPage() {
 
   useEffect(() => {
     const savedEmail = sessionStorage.getItem('otp_email');
-    if (!savedEmail) { router.push('/login'); return; }
+    if (!savedEmail) { router.push('/'); return; }
     setEmail(savedEmail);
   }, [router]);
 

@@ -188,7 +188,7 @@ export default function ForgotPasswordPage() {
                 </button>
               </form>
 
-              <Link href="/login" className="back-link" id="back-to-login">
+              <Link href="/" className="back-link" id="back-to-login">
                 <i className="bi bi-arrow-left"></i> Back to Login
               </Link>
             </>
@@ -298,7 +298,7 @@ export default function ForgotPasswordPage() {
                 <h1 style={{ fontSize: '1.8rem' }}>Password Updated!</h1>
                 <p>Your password has been reset successfully. You can now log in using your new password.</p>
               </div>
-              <Link href="/login" className="submit-btn" style={{ textDecoration: 'none' }} id="go-to-login-btn">
+              <Link href="/" className="submit-btn" style={{ textDecoration: 'none' }} id="go-to-login-btn">
                 Back to Login
               </Link>
             </div>

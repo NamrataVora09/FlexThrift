@@ -14,8 +14,8 @@ export default function AuthNavbar() {
             </li>
           </ul>
           <div className="d-flex align-items-center">
-            <Link href="/login" className="login-links">
-              <i className="bi bi-person-fill"></i> <span>LOGIN / REGISTER</span>
+            <Link href="/register" className="login-links">
+              <i className="bi bi-person-fill"></i> <span>REGISTER</span>
             </Link>
           </div>
         </div>

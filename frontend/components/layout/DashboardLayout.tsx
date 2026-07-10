@@ -42,7 +42,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
       showToast.error("Your buyer privileges have been restricted by the administrator.");
     }
   }, [isSellerRestricted, isBuyerRestricted, user, router]);
-  
+
   // Initialize from global variable if it exists, otherwise default to true
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -52,7 +52,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
     }
     return true;
   });
-  
+
   const [isMobile, setIsMobile] = useState(false);
 
   // Desktop (≥992px): sidebar always open, no toggle.
@@ -102,7 +102,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push('/');
     }
   }, [isLoading, isAuthenticated, router]);
 

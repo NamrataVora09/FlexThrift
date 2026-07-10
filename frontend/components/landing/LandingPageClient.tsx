@@ -9,10 +9,10 @@ const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:80
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
 
 /* ─── Types ───────────────────────────────────────────────────────────── */
-interface Category    { id: number; category_name?: string; name?: string; product_type_id: number; }
+interface Category { id: number; category_name?: string; name?: string; product_type_id: number; }
 interface ProductType { id: number; name: string; listing_type_id: number; categories?: Category[]; }
 interface ListingType { id: number; type_name: string; image?: string; product_types?: ProductType[]; }
-interface Product     {
+interface Product {
   id: number; title: string; price: number; rental_cost?: number;
   listing_type: string; primary_image?: string;
 }
@@ -43,15 +43,15 @@ export default function LandingPageClient() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const router = useRouter();
 
-  const [listingTypes,     setListingTypes]     = useState<ListingType[]>([]);
+  const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
   const [browseCategories, setBrowseCategories] = useState<Category[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [currentSlide,     setCurrentSlide]     = useState(0);
-  const [showMegaMenu,     setShowMegaMenu]      = useState(false);
-  const [showUserDropdown, setShowUserDropdown]  = useState(false);
-  const [navOpen,          setNavOpen]           = useState(false);
-  const [searchQuery,      setSearchQuery]       = useState('');
-  const [loaded,           setLoaded]            = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [showMegaMenu, setShowMegaMenu] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loaded, setLoaded] = useState(false);
   const slideTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* ── Access control ───────────────────────────────────────────────── */
@@ -92,7 +92,7 @@ export default function LandingPageClient() {
           setBrowseCategories(categories as Category[]);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   /* ── Featured products ────────────────────────────────────────────── */
@@ -103,7 +103,7 @@ export default function LandingPageClient() {
         const list = res.data?.products || res.data || res.products || [];
         if (Array.isArray(list)) setFeaturedProducts(list.slice(0, 8));
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   /* ── Carousel auto-play ───────────────────────────────────────────── */
@@ -126,7 +126,7 @@ export default function LandingPageClient() {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest('.lp-user-dd'))   setShowUserDropdown(false);
+      if (!t.closest('.lp-user-dd')) setShowUserDropdown(false);
       if (!t.closest('.lp-mega-wrap')) setShowMegaMenu(false);
     };
     document.addEventListener('mousedown', handler);
@@ -142,9 +142,9 @@ export default function LandingPageClient() {
   /* ── Helpers ──────────────────────────────────────────────────────── */
   const isAdminOrSA = user?.role === 'super_admin' || user?.role === 'admin';
   const roleBadgeLabel = user?.role === 'super_admin' ? 'SA' : user?.role === 'admin' ? 'Admin' : null;
-  const roleBadgeBg    = user?.role === 'super_admin' ? '#1e293b' : user?.role === 'admin' ? '#6366f1' : '#000';
-  const portalHref     = user?.role === 'super_admin' ? '/superadmin' : user?.role === 'admin' ? '/admin' : '/buyer/dashboard';
-  const avatarUrl      = user ? `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=000&color=fff&bold=true` : '';
+  const roleBadgeBg = user?.role === 'super_admin' ? '#1e293b' : user?.role === 'admin' ? '#6366f1' : '#000';
+  const portalHref = user?.role === 'super_admin' ? '/superadmin' : user?.role === 'admin' ? '/admin' : '/buyer/dashboard';
+  const avatarUrl = user ? `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=000&color=fff&bold=true` : '';
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -647,7 +647,7 @@ export default function LandingPageClient() {
                   )}
                 </div>
               ) : (
-                <Link href="/login" className="lp-signin-link">
+                <Link href="/" className="lp-signin-link">
                   <i className="bi bi-person-circle" style={{ fontSize: '1.2rem' }}></i>
                   <span>Sign In</span>
                 </Link>
@@ -680,7 +680,7 @@ export default function LandingPageClient() {
                   </button>
                 </>
               ) : (
-                <Link href="/login" className="lp-m-link" onClick={() => setNavOpen(false)}>Sign In</Link>
+                <Link href="/" className="lp-m-link" onClick={() => setNavOpen(false)}>Sign In</Link>
               )}
             </div>
           </div>
