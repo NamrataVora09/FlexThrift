@@ -89,7 +89,7 @@ function AttributeEditor({ attributes, onChange }: { attributes: Attribute[]; on
                   {attr.type === 'picklist' && (
                     <div className="col-12 mt-1">
                       <input className="form-control form-control-sm" style={inputStyle} placeholder="Options (comma-separated, e.g. Full, Half, Short)"
-                        value={attr.allowed_values?.join(',') || ''} onChange={(e) => update(originalIndex, 'allowed_values', e.target.value.split(',').map(s => s.trim()))} />
+                        value={Array.isArray(attr.allowed_values) ? attr.allowed_values.join(',') : (attr.allowed_values || '')} onChange={(e) => update(originalIndex, 'allowed_values', e.target.value.split(','))} />
                     </div>
                   )}
                   <div className="col-12 mt-1">
@@ -357,15 +357,15 @@ Material,text,0,,,`,
       else if (item.category_id) { entityTypes = ['category']; entityIds = [item.category_id]; }
       else if (item.sub_category_id) { entityTypes = ['sub_category']; entityIds = [item.sub_category_id]; }
       
-      // Ensure allowed_values is an array (handle both array and comma-separated string from backend)
-      let allowedValues: string[] = [];
+      // Ensure allowed_values is a comma-separated string for easy editing without cursor jumping
+      let allowedValuesStr = '';
       if (Array.isArray(item.allowed_values)) {
-        allowedValues = item.allowed_values;
-      } else if (typeof item.allowed_values === 'string' && item.allowed_values) {
-        allowedValues = item.allowed_values.split(',').map((v: string) => v.trim()).filter(Boolean);
+        allowedValuesStr = item.allowed_values.join(', ');
+      } else if (typeof item.allowed_values === 'string') {
+        allowedValuesStr = item.allowed_values;
       }
       
-      setEditForm({ name: item.name, type: item.type, required: item.required, allowed_values: allowedValues, placeholder: item.placeholder, entity_types: entityTypes, entity_ids: entityIds });
+      setEditForm({ name: item.name, type: item.type, required: item.required, allowed_values: allowedValuesStr, placeholder: item.placeholder, entity_types: entityTypes, entity_ids: entityIds });
     }
   };
 
@@ -376,9 +376,22 @@ Material,text,0,,,`,
     let res;
 
     if (type === 'listing_type') {
+      // Clean attributes before saving
+      const cleanAttrs = (editForm.attributes || []).map((attr: any) => {
+        if (attr.allowed_values) {
+          const vals = Array.isArray(attr.allowed_values)
+            ? attr.allowed_values
+            : String(attr.allowed_values).split(',');
+          return {
+            ...attr,
+            allowed_values: vals.map((v: any) => String(v).trim()).filter(Boolean)
+          };
+        }
+        return attr;
+      });
       fd.append('type_name', editForm.name);
       fd.append('gender_config', editForm.gender_config);
-      fd.append('attributes', JSON.stringify(editForm.attributes || []));
+      fd.append('attributes', JSON.stringify(cleanAttrs));
       if (editForm.image) fd.append('image', editForm.image);
       res = await api.upload(`/superadmin/update-listing-type/${item.id}`, fd);
     } else if (type === 'gender') {
@@ -401,10 +414,23 @@ Material,text,0,,,`,
 
       fd.append('category_name', editForm.name);
       // Clear previous product_type_ids by sending as JSON array instead of multiple FormData entries
-      fd.append('product_type_ids', JSON.stringify(editForm.product_type_ids));
-      // Always send applies_to (even empty) so backend can validate
+      fd.append('product_type_ids', JSON.stringify(editForm.product_type_ids || []));
       fd.append('applies_to', JSON.stringify(editForm.applies_to || []));
-      fd.append('attributes', JSON.stringify(editForm.attributes || []));
+
+      // Clean attributes before saving
+      const cleanAttrs = (editForm.attributes || []).map((attr: any) => {
+        if (attr.allowed_values) {
+          const vals = Array.isArray(attr.allowed_values)
+            ? attr.allowed_values
+            : String(attr.allowed_values).split(',');
+          return {
+            ...attr,
+            allowed_values: vals.map((v: any) => String(v).trim()).filter(Boolean)
+          };
+        }
+        return attr;
+      });
+      fd.append('attributes', JSON.stringify(cleanAttrs));
       res = await api.upload(`/superadmin/update-category/${item.id}`, fd);
     } else if (type === 'sub_category') {
       if (!editForm.category_ids || editForm.category_ids.length === 0) {
@@ -417,8 +443,21 @@ Material,text,0,,,`,
       // Send category_ids as JSON array instead of multiple FormData entries
       fd.append('category_ids', JSON.stringify(editForm.category_ids));
       // Always send applies_to (even empty) so backend can validate
+      // Clean attributes before saving
+      const cleanAttrs = (editForm.attributes || []).map((attr: any) => {
+        if (attr.allowed_values) {
+          const vals = Array.isArray(attr.allowed_values)
+            ? attr.allowed_values
+            : String(attr.allowed_values).split(',');
+          return {
+            ...attr,
+            allowed_values: vals.map((v: any) => String(v).trim()).filter(Boolean)
+          };
+        }
+        return attr;
+      });
       fd.append('applies_to', JSON.stringify(editForm.applies_to || []));
-      fd.append('attributes', JSON.stringify(editForm.attributes || []));
+      fd.append('attributes', JSON.stringify(cleanAttrs));
       res = await api.upload(`/superadmin/update-sub-category/${item.id}`, fd);
     } else if (type === 'color') {
       fd.append('name', editForm.name);
@@ -429,8 +468,13 @@ Material,text,0,,,`,
       fd.append('type', editForm.type);
       fd.append('required', String(editForm.required));
       fd.append('placeholder', editForm.placeholder || '');
-      if (editForm.allowed_values && editForm.allowed_values.length > 0) {
-        fd.append('allowed_values', editForm.allowed_values.join(','));
+      if (editForm.allowed_values) {
+        const cleanValues = typeof editForm.allowed_values === 'string'
+          ? editForm.allowed_values.split(',').map((v: string) => v.trim()).filter(Boolean)
+          : editForm.allowed_values;
+        if (cleanValues.length > 0) {
+          fd.append('allowed_values', cleanValues.join(','));
+        }
       }
       // Require at least one entity type to be selected
       if (!editForm.entity_types || editForm.entity_types.length === 0) {
@@ -1156,7 +1200,7 @@ Material,text,0,,,`,
           {(editForm.type === 'picklist' || editForm.type === 'text') && (
             <div className="mb-3">
               <label style={modalLabelStyle}>Allowed Values (comma-separated)</label>
-              <input className="form-control" style={modalInputStyle} placeholder="e.g., Small, Medium, Large" value={editForm.allowed_values?.join(', ') || ''} onChange={(e) => setEditForm({ ...editForm, allowed_values: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })} />
+              <input className="form-control" style={modalInputStyle} placeholder="e.g., Small, Medium, Large" value={editForm.allowed_values || ''} onChange={(e) => setEditForm({ ...editForm, allowed_values: e.target.value })} />
             </div>
           )}
           <div className="mb-3">

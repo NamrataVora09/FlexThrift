@@ -741,19 +741,34 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   };
 
   const validateForm = (): boolean => {
-    if (!meta?.validation_rules) return true;
     const errors: Record<string, string> = {};
     let isValid = true;
 
-    // Validate each field based on rules
-    meta.validation_rules.forEach(rule => {
-      if (!rule.is_active) return;
-      const fieldName = rule.field_name;
-      const value = f[fieldName as keyof typeof f];
-      const error = validateField(fieldName, value);
-      if (error) {
-        errors[fieldName] = error;
-        isValid = false;
+    // Validate each field based on validation_rules
+    if (meta?.validation_rules) {
+      meta.validation_rules.forEach(rule => {
+        if (!rule.is_active) return;
+        const fieldName = rule.field_name;
+        const value = f[fieldName as keyof typeof f];
+        const error = validateField(fieldName, value);
+        if (error) {
+          errors[fieldName] = error;
+          isValid = false;
+        }
+      });
+    }
+
+    // Validate required dynamic attributes (text, number, picklist)
+    dynamicAttributes.forEach(attr => {
+      if (attr.required) {
+        const val = (attributeValues[attr.name] || '').trim();
+        if (!val) {
+          errors[`attr_${attr.name}`] = `${attr.name} is required`;
+          isValid = false;
+        } else if (attr.type === 'number' && isNaN(Number(val))) {
+          errors[`attr_${attr.name}`] = `${attr.name} must be a valid number`;
+          isValid = false;
+        }
       }
     });
 
@@ -1125,9 +1140,18 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
 
           {error && (
-            <div className="alert alert-danger mb-4 shadow-sm border-0 d-flex align-items-center" style={{ borderRadius: 12, background: '#fee2e2', color: '#991b1b', padding: '12px 20px' }}>
-              <i className="bi bi-exclamation-circle-fill me-2" style={{ fontSize: '1.1rem' }}></i>
-              <span className="fw-medium">{error}</span>
+            <div className="alert alert-danger mb-4 shadow-sm border-0" style={{ borderRadius: 12, background: '#fee2e2', color: '#991b1b', padding: '15px 20px' }}>
+              <div className="d-flex align-items-center mb-1">
+                <i className="bi bi-exclamation-circle-fill me-2" style={{ fontSize: '1.1rem' }}></i>
+                <span className="fw-bold">{error}</span>
+              </div>
+              {Object.keys(fieldErrors).length > 0 && (
+                <ul className="mb-0 mt-2 ps-3 small" style={{ listStyleType: 'disc' }}>
+                  {Object.entries(fieldErrors).map(([field, msg]) => (
+                    <li key={field} className="fw-medium">{msg}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
           {success && <div className="alert alert-success border-0 shadow-sm" style={{ borderRadius: 12 }}><i className="bi bi-check-circle-fill me-2"></i>{success}</div>}
@@ -1179,12 +1203,14 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                     <option value="">{productTypes.length ? 'Select' : 'Select Listing Type first'}</option>
                     {productTypes.map(pt => <option key={pt.id} value={pt.id}>{pt.name}</option>)}
                   </select>
+                  {fieldErrors.product_type && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.product_type}</small>}
                 </div>
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Category <span className="text-danger">*</span></label>
                   <select className="form-select" style={inputStyle} name="category_id" value={f.category_id} onChange={handleChange} disabled={!categories.length}>
                     <option value="">{categories.length ? 'Select' : 'Select Product Type first'}</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
+                  {fieldErrors.category_id && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.category_id}</small>}
                 </div>
 
                 <div className="col-md-3"><label className="form-label" style={labelStyle}>Sub-Category <small>(Optional)</small></label>
@@ -1192,6 +1218,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                     <option value="">{subCategories.length ? 'Select' : 'Select Category first'}</option>
                     {subCategories.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
                   </select>
+                  {fieldErrors.sub_category_id && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.sub_category_id}</small>}
                 </div>
                 {fieldConfigs.gender !== 'hidden' && (
                   <div className="col-md-3">
@@ -1202,6 +1229,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                       <option value="">{f.category_id ? 'Select Gender' : 'Select Category first'}</option>
                       {filteredGenders.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                     </select>
+                    {fieldErrors.gender && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.gender}</small>}
                   </div>
                 )}
                 <div className="col-md-3">
@@ -1230,6 +1258,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                       </div>
                     )}
                   </div>
+                  {fieldErrors.orignal_brand_id && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.orignal_brand_id}</small>}
                 </div>
 
                 <div className="col-md-12"><label className="form-label" style={labelStyle}>Description <span className="text-danger">*</span></label><textarea className="form-control" style={inputStyle} name="description" rows={4} value={f.description} onChange={handleChange} />
@@ -1278,33 +1307,58 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                 </div>
 
                 {/* Dynamic taxonomy attributes */}
-                {dynamicAttributes.map((attr, i) => (
-                  <div key={i} className="col-md-3">
-                    <label className="form-label" style={labelStyle}>
-                      {attr.name} {attr.required && <span className="text-danger">*</span>}
-                    </label>
-                    {attr.type === 'picklist' ? (
-                      <select
-                        className="form-select" style={inputStyle}
-                        value={attributeValues[attr.name] || ''}
-                        onChange={(e) => setAttributeValues(prev => ({ ...prev, [attr.name]: e.target.value }))}
-                      >
-                        <option value="">Select {attr.name}</option>
-                        {(attr.options || '').split(',').map((o: string) => o.trim()).filter(Boolean).map((opt: string, idx: number) => (
-                          <option key={idx} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type={attr.type === 'number' ? 'number' : 'text'}
-                        className="form-control" style={inputStyle}
-                        placeholder={attr.name}
-                        value={attributeValues[attr.name] || ''}
-                        onChange={(e) => setAttributeValues(prev => ({ ...prev, [attr.name]: e.target.value }))}
-                      />
-                    )}
-                  </div>
-                ))}
+                {dynamicAttributes.map((attr, i) => {
+                  const attrKey = `attr_${attr.name}`;
+                  const attrError = fieldErrors[attrKey];
+                  return (
+                    <div key={i} className="col-md-3">
+                      <label className="form-label" style={labelStyle}>
+                        {attr.name} {attr.required && <span className="text-danger">*</span>}
+                      </label>
+                      {attr.type === 'picklist' ? (
+                        <select
+                          className={`form-select${attrError ? ' is-invalid' : ''}`}
+                          style={inputStyle}
+                          value={attributeValues[attr.name] || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAttributeValues(prev => ({ ...prev, [attr.name]: val }));
+                            if (attr.required && !val) {
+                              setFieldErrors(prev => ({ ...prev, [attrKey]: `${attr.name} is required` }));
+                            } else {
+                              setFieldErrors(prev => { const n = { ...prev }; delete n[attrKey]; return n; });
+                            }
+                          }}
+                        >
+                          <option value="">Select {attr.name}</option>
+                          {(attr.options || '').split(',').map((o: string) => o.trim()).filter(Boolean).map((opt: string, idx: number) => (
+                            <option key={idx} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={attr.type === 'number' ? 'number' : 'text'}
+                          className={`form-control${attrError ? ' is-invalid' : ''}`}
+                          style={inputStyle}
+                          placeholder={attr.name}
+                          value={attributeValues[attr.name] || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAttributeValues(prev => ({ ...prev, [attr.name]: val }));
+                            if (attr.required && !val.trim()) {
+                              setFieldErrors(prev => ({ ...prev, [attrKey]: `${attr.name} is required` }));
+                            } else if (attr.type === 'number' && val.trim() && isNaN(Number(val))) {
+                              setFieldErrors(prev => ({ ...prev, [attrKey]: `${attr.name} must be a valid number` }));
+                            } else {
+                              setFieldErrors(prev => { const n = { ...prev }; delete n[attrKey]; return n; });
+                            }
+                          }}
+                        />
+                      )}
+                      {attrError && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{attrError}</small>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1338,6 +1392,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                       Must be at least {salePriceSuggestion ? salePriceSuggestion.deductionThreshold : (cfg.sale_base_discount || '0')}% less than original price
                       {salePriceSuggestion && ` (Max: ₹${salePriceSuggestion.maxAllowedPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                     </small>
+                    {fieldErrors.price && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.price}</small>}
                   </div>
                 </div>
               </div>
@@ -1379,6 +1434,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                       {rentalPriceSuggestion?.deductionThreshold ? `At least ${rentalPriceSuggestion.deductionThreshold}% less than original` : 'Maximum allowed is original price'}
                       {origPrice > 0 && ` (Max: ₹${(origPrice - (origPrice * (rentalPriceSuggestion?.deductionThreshold ?? 0) / 100)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
                     </small>
+                    {fieldErrors.rental_deposit && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.rental_deposit}</small>}
                   </div>
                   <div className="col-md-4">
                     <label className="form-label" style={labelStyle}>Rental Cost (per day)</label>
@@ -1396,6 +1452,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                         return `Max ${cap}% of deposit per day`;
                       })()}
                     </small>
+                    {fieldErrors.rental_cost && <small className="text-danger" style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.rental_cost}</small>}
                   </div>
                   <div className="col-md-12">
                     <div className="form-check"><input className="form-check-input" type="checkbox" name="allow_alter_fitting" checked={f.allow_alter_fitting as boolean} onChange={handleChange} /><label className="form-check-label">Allow buyer to alter the fitting</label></div>
