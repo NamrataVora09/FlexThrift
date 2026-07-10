@@ -3446,24 +3446,25 @@ class SuperAdminApi extends BaseApiController
 
                     case 'attributes':
                         $name = $data['name'] ?? '';
-                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
-                        
+                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty, skipping."; continue 2; }
+
                         $type = $data['type'] ?? '';
-                        if (!$type) { $skipped++; $errors[] = "Row {$row}: Type is required. Skipping row."; continue 2; }
-                        
+                        if (!$type) { $skipped++; $errors[] = "Row {$row}: Type is required, skipping."; continue 2; }
+
                         $allowedTypes = ['text', 'number', 'picklist'];
                         if (!in_array($type, $allowedTypes)) {
                             $skipped++;
                             $errors[] = "Row {$row}: Invalid type '{$type}'. Must be one of: " . implode(', ', $allowedTypes);
                             continue 2;
                         }
-                        
-                        // For picklist type, allowed_values is required - skip if blank or missing
+
+                        // For picklist type, allowed_values is required.
+                        // Use === '' instead of empty() so "0" is treated as a valid value, not blank.
                         if ($type === 'picklist') {
-                            $allowedValues = trim($data['allowed_values'] ?? '');
-                            if (empty($allowedValues)) {
+                            $allowedValuesRaw = trim($data['allowed_values'] ?? '');
+                            if ($allowedValuesRaw === '') {
                                 $skipped++;
-                                $errors[] = "Row {$row}: Allowed values are required for picklist type but is blank/missing. Skipping row.";
+                                $errors[] = "Row {$row}: Picklist type requires at least one allowed value. Skipping.";
                                 continue 2;
                             }
                         }
@@ -3479,9 +3480,9 @@ class SuperAdminApi extends BaseApiController
                         ];
                         
                         // Parse allowed_values for picklist type
-                        if ($type === 'picklist' && !empty($data['allowed_values'])) {
-                            $values = array_map('trim', explode(',', $data['allowed_values']));
-                            $rec['allowed_values'] = json_encode($values);
+                        if ($type === 'picklist') {
+                            $values = array_filter(array_map('trim', explode(',', $allowedValuesRaw)), fn($v) => $v !== '');
+                            $rec['allowed_values'] = json_encode(array_values($values));
                         }
                         
                         // Check if exists by name only (case-insensitive)
@@ -3499,10 +3500,10 @@ class SuperAdminApi extends BaseApiController
                                 'placeholder' => $placeholder,
                                 'updated_at' => $now,
                             ];
-                            // Only update allowed_values if provided
-                            if ($type === 'picklist' && !empty($data['allowed_values'])) {
-                                $values = array_map('trim', explode(',', $data['allowed_values']));
-                                $updateRec['allowed_values'] = json_encode($values);
+                            // Always update allowed_values for picklist (already validated non-empty above)
+                            if ($type === 'picklist') {
+                                $values = array_filter(array_map('trim', explode(',', $allowedValuesRaw)), fn($v) => $v !== '');
+                                $updateRec['allowed_values'] = json_encode(array_values($values));
                             }
                             $db->table('attributes')->where('id', $existing['id'])->update($updateRec);
                             $attributeId = $existing['id'];
@@ -3514,177 +3515,86 @@ class SuperAdminApi extends BaseApiController
                             $inserted++;
                         }
                         
-                        // Handle entity linking through attribute_assignments table
-                        $entityTypes = $data['entity_types'] ?? null;
-                        $entityIds = $data['entity_ids'] ?? null;
-                        
-                        // Always log entity linking status
-                        $errors[] = "Row {$row}: Entity linking - entity_types: " . ($entityTypes ?? 'null') . ", entity_ids: " . ($entityIds ?? 'null');
-                        
-                        // Skip entity linking if entity_types is missing or empty
-                        if (empty($entityTypes) || (is_string($entityTypes) && trim($entityTypes) === '')) {
-                            // If entity_types is empty, attribute is created but no assignments are made
-                            // Don't skip the row, just skip entity linking
-                            $errors[] = "Row {$row}: Entity types is empty, skipping entity linking";
-                            break;
+                        // ── Parse & resolve entity_types ──────────────────────────────────────
+                        $entityTypesRaw = $data['entity_types'] ?? null;
+                        $entityPairs    = []; // [['type'=>..., 'name'=>...], ...]
+
+                        if (!empty($entityTypesRaw) && trim((string)$entityTypesRaw) !== '') {
+                            $decoded     = json_decode($entityTypesRaw, true);
+                            $parsedList  = (json_last_error() === JSON_ERROR_NONE && is_array($decoded))
+                                ? $decoded
+                                : array_map('trim', explode(',', $entityTypesRaw));
+
+                            $validEntityTypes = ['listing_type', 'category', 'sub_category'];
+
+                            foreach ($parsedList as $item) {
+                                $item = trim((string)$item);
+                                if (strpos($item, ':') !== false) {
+                                    [$et, $en] = explode(':', $item, 2);
+                                    $et = strtolower(trim($et));
+                                    $en = trim($en);
+
+                                    if (!in_array($et, $validEntityTypes)) {
+                                        // Unknown entity_type key — warn and skip only this pair
+                                        $errors[] = "Row {$row}: Unknown entity_type '{$et}' in '{$item}' — skipping this pair.";
+                                        continue;
+                                    }
+                                    if ($en !== '') {
+                                        $entityPairs[] = ['type' => $et, 'name' => $en];
+                                    }
+                                }
+                            }
                         }
-                        
-                        // Try to decode JSON if entity_types/entity_ids are JSON strings
-                        if ($entityTypes && is_string($entityTypes)) {
-                            $decoded = json_decode($entityTypes, true);
-                            if (json_last_error() !== JSON_ERROR_NONE) {
-                                $errors[] = "Row {$row}: JSON decode failed for entity_types: " . json_last_error_msg() . ". Trying comma-separated parsing.";
-                                // If JSON decode fails, try to parse as comma-separated
-                                $entityTypes = array_map('trim', explode(',', $entityTypes));
+
+                        // Resolve each pair to a real DB id
+                        $resolvedAssignments = [];
+                        foreach ($entityPairs as $pair) {
+                            $et = $pair['type'];
+                            $en = $pair['name'];
+                            $entityId = null;
+
+                            if ($et === 'listing_type') {
+                                $entity = $db->table('listing_types')
+                                    ->where('LOWER(type_name)', strtolower($en))
+                                    ->get()->getRowArray();
+                                if ($entity) $entityId = $entity['id'];
+                            } elseif ($et === 'category') {
+                                $entity = $db->table('categories')
+                                    ->where('LOWER(category_name)', strtolower($en))
+                                    ->get()->getRowArray();
+                                if ($entity) $entityId = $entity['id'];
+                            } elseif ($et === 'sub_category') {
+                                $entity = $db->table('sub_categories')
+                                    ->where('LOWER(name)', strtolower($en))
+                                    ->get()->getRowArray();
+                                if ($entity) $entityId = $entity['id'];
+                            }
+
+                            if ($entityId) {
+                                $resolvedAssignments[] = ['entity_type' => $et, 'entity_id' => $entityId];
                             } else {
-                                $entityTypes = $decoded;
-                                $errors[] = "Row {$row}: JSON decode successful, entity_types: " . json_encode($entityTypes);
+                                $errors[] = "Row {$row}: '{$et}:{$en}' not found in the database — skipping this pair.";
                             }
                         }
-                        if ($entityIds && is_string($entityIds)) {
-                            $decoded = json_decode($entityIds, true);
-                            if (is_array($decoded)) {
-                                $entityIds = $decoded;
-                            }
+
+                        // If entity_types were provided but NONE resolved → skip the whole row
+                        if (!empty($entityPairs) && empty($resolvedAssignments)) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: All entity references are invalid/not found. Skipping row entirely.";
+                            continue 2;
                         }
-                        
-                        // Skip entity linking if still empty after parsing
-                        if (empty($entityTypes) || (is_array($entityTypes) && count($entityTypes) === 0)) {
-                            $errors[] = "Row {$row}: Entity types is empty after parsing, skipping entity linking";
-                            break;
-                        }
-                        
-                        // Only process entity linking if entity_types is provided
-                        if (!empty($entityTypes) && $attributeId) {
-                            $errors[] = "Row {$row}: Processing entity linking for attribute ID {$attributeId} with " . count($entityTypes) . " entity types";
-                            // Delete existing assignments for this attribute
+
+                        // ── Write assignments (only when there are resolved ones) ─────────────
+                        if (!empty($resolvedAssignments) && $attributeId) {
+                            // Delete stale assignments only now that we have valid replacements
                             $db->table('attribute_assignments')->where('attribute_id', $attributeId)->delete();
-                            
-                            // Check if using paired format ["category:dasdasd", "listing_type:abc"]
-                            $usePairedFormat = false;
-                            if (is_array($entityTypes) && count($entityTypes) > 0) {
-                                $firstItem = $entityTypes[0];
-                                $errors[] = "Row {$row}: First entity type item: '" . $firstItem . "'";
-                                if (is_string($firstItem) && strpos($firstItem, ':') !== false) {
-                                    $usePairedFormat = true;
-                                    $errors[] = "Row {$row}: Using paired format";
-                                } else {
-                                    $errors[] = "Row {$row}: Using Cartesian product format";
-                                }
-                            }
-                            
-                            if ($usePairedFormat) {
-                                $errors[] = "Row {$row}: Processing paired format with " . count($entityTypes) . " pairs";
-                                // Use paired format: ["category:dasdasd", "listing_type:abc"]
-                                foreach ($entityTypes as $pair) {
-                                    $errors[] = "Row {$row}: Processing pair: '" . $pair . "'";
-                                    if (is_string($pair) && strpos($pair, ':') !== false) {
-                                        list($entityType, $entityName) = explode(':', $pair, 2);
-                                        $entityType = trim($entityType);
-                                        $entityName = trim($entityName);
-                                        $errors[] = "Row {$row}: Parsed - entity_type: '" . $entityType . "', entity_name: '" . $entityName . "'";
-                                        
-                                        if ($entityType && $entityName) {
-                                            // Resolve entity name to ID based on entity_type
-                                            $entityId = null;
-                                            if ($entityType === 'listing_type') {
-                                                $entity = $db->table('listing_types')
-                                                    ->where('LOWER(type_name)', strtolower($entityName))
-                                                    ->orWhere('LOWER(name)', strtolower($entityName))
-                                                    ->get()->getRowArray();
-                                                if ($entity) $entityId = $entity['id'];
-                                            } elseif ($entityType === 'category') {
-                                                $entity = $db->table('categories')
-                                                    ->where('LOWER(category_name)', strtolower($entityName))
-                                                    ->get()->getRowArray();
-                                                if ($entity) $entityId = $entity['id'];
-                                            } elseif ($entityType === 'sub_category') {
-                                                $entity = $db->table('sub_categories')
-                                                    ->where('LOWER(name)', strtolower($entityName))
-                                                    ->get()->getRowArray();
-                                                if ($entity) {
-                                                    $entityId = $entity['id'];
-                                                    $errors[] = "Row {$row}: Found sub_category '{$entityName}' with ID {$entityId}";
-                                                } else {
-                                                    $errors[] = "Row {$row}: Sub_category '{$entityName}' not found. Available sub_categories: " . json_encode(array_column($db->table('sub_categories')->get()->getResultArray(), 'name'));
-                                                }
-                                            }
-                                            
-                                            $errors[] = "Row {$row}: Entity ID resolved: " . ($entityId ?? 'null');
-                                            
-                                            // Only create assignment if entity was found
-                                            if ($entityId) {
-                                                $db->table('attribute_assignments')->insert([
-                                                    'attribute_id' => $attributeId,
-                                                    'entity_type' => $entityType,
-                                                    'entity_id' => $entityId,
-                                                    'created_at' => $now,
-                                                ]);
-                                                $errors[] = "Row {$row}: Assignment created for {$entityType}:{$entityName}";
-                                            } else {
-                                                $errors[] = "Row {$row}: Entity not found for {$entityType}:{$entityName}. Please check if this exists in the database.";
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                // Use old Cartesian product format (backward compatibility)
-                                // Skip if entity_ids is missing for old format
-                                if (empty($entityIds)) {
-                                    $skipped++;
-                                    $errors[] = "Row {$row}: Entity IDs are missing for non-paired format. Skipping row.";
-                                    continue 2;
-                                }
-                                
-                                // Parse entity_types (can be comma-separated or single)
-                                $entityTypesArray = is_array($entityTypes) ? $entityTypes : explode(',', $entityTypes);
-                                $entityTypesArray = array_map('trim', $entityTypesArray);
-                                
-                                // Parse entity_ids (can be comma-separated or single) - these are now names
-                                $entityNamesArray = is_array($entityIds) ? $entityIds : explode(',', $entityIds);
-                                $entityNamesArray = array_map('trim', $entityNamesArray);
-                                
-                                // Create assignments for each entity_type and entity_name pair
-                                foreach ($entityTypesArray as $entityType) {
-                                    foreach ($entityNamesArray as $entityName) {
-                                        if ($entityType && $entityName) {
-                                            // Resolve entity name to ID based on entity_type
-                                            $entityId = null;
-                                            if ($entityType === 'listing_type') {
-                                                $entity = $db->table('listing_types')
-                                                    ->where('LOWER(type_name)', strtolower($entityName))
-                                                    ->orWhere('LOWER(name)', strtolower($entityName))
-                                                    ->get()->getRowArray();
-                                                if ($entity) $entityId = $entity['id'];
-                                            } elseif ($entityType === 'category') {
-                                                $entity = $db->table('categories')
-                                                    ->where('LOWER(category_name)', strtolower($entityName))
-                                                    ->get()->getRowArray();
-                                                if ($entity) $entityId = $entity['id'];
-                                            } elseif ($entityType === 'sub_category') {
-                                                $entity = $db->table('sub_categories')
-                                                    ->where('LOWER(name)', strtolower($entityName))
-                                                    ->get()->getRowArray();
-                                                if ($entity) {
-                                                    $entityId = $entity['id'];
-                                                    $errors[] = "Row {$row}: Found sub_category '{$entityName}' with ID {$entityId}";
-                                                } else {
-                                                    $errors[] = "Row {$row}: Sub_category '{$entityName}' not found. Available sub_categories: " . json_encode(array_column($db->table('sub_categories')->get()->getResultArray(), 'name'));
-                                                }
-                                            }
-                                            
-                                            // Only create assignment if entity was found
-                                            if ($entityId) {
-                                                $db->table('attribute_assignments')->insert([
-                                                    'attribute_id' => $attributeId,
-                                                    'entity_type' => $entityType,
-                                                    'entity_id' => $entityId,
-                                                    'created_at' => $now,
-                                                ]);
-                                            }
-                                        }
-                                    }
-                                }
+                            foreach ($resolvedAssignments as $asgn) {
+                                $db->table('attribute_assignments')->insert([
+                                    'attribute_id' => $attributeId,
+                                    'entity_type'  => $asgn['entity_type'],
+                                    'entity_id'    => $asgn['entity_id'],
+                                    'created_at'   => $now,
+                                ]);
                             }
                         }
                         break;
