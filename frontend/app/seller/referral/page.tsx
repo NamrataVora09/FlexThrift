@@ -265,7 +265,7 @@ export default function SellerReferralPage() {
                   <div className="stat-icon" style={{ background: 'rgba(99,102,241,0.1)' }}>
                     <i className="bi bi-wallet2" style={{ color: '#6366f1' }}></i>
                   </div>
-                  <div className="stat-value">₹{stats.referral_balance.toFixed(0)}</div>
+                  <div className="stat-value">₹{stats.referral_balance.toFixed(2)}</div>
                   <div className="stat-label">Current Balance</div>
                 </div>
               </div>
