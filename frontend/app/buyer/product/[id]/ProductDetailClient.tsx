@@ -11,6 +11,7 @@ import Footer from '@/components/layout/Footer';
 import AdBanner from '@/components/shared/AdBanner';
 import { RentalCalendar } from '@/components/shared/RentalCalendar';
 import { useToast } from '@/lib/toast';
+import { useSystem } from '@/lib/system-context';
 
 interface Product {
   id: number;
@@ -102,6 +103,7 @@ const BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080'
 
 export default function ProductDetailClient({ product, images, similarProducts = [], minRentalDays = 3 }: Props) {
   const { toastSuccess, toastError, toastWarning } = useToast();
+  const { getMsg } = useSystem();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isPreview = searchParams.get('preview') === 'true';
@@ -296,7 +298,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
       return;
     }
     if (user.user_type === 'seller' && !['admin', 'super_admin'].includes(user.role || '')) {
-      setOfferError('Sellers cannot make offers on products. Please use your buyer account to make offers.');
+      setOfferError(getMsg('seller_cannot_make_offer', 'Sellers cannot make offers on products. Please use your buyer account to make offers.'));
       return;
     }
     if (Number(user.blocked_buyer) === 1) {

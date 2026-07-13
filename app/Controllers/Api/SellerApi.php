@@ -2648,9 +2648,9 @@ class SellerApi extends BaseApiController
                                 ? $cfg['referral_referrer_reward']
                                 : (isset($cfg['referral_reward_amount']) && $cfg['referral_reward_amount'] !== '' ? $cfg['referral_reward_amount'] : 50)
                             );
-                            $expiryDays = (int) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
+                            $expiryDays = (float) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
                             $newBalance = (float) ($referrer['referral_balance'] ?? 0) + $rewardAmount;
-                            $expiresAt = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
+                            $expiresAt = date('Y-m-d H:i:s', time() + (int)($expiryDays * 86400));
 
                             $db->table('users')->where('id', $referrer['id'])->update([
                                 'referral_balance' => $newBalance,

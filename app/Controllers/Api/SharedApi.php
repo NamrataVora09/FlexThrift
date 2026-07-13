@@ -583,10 +583,17 @@ class SharedApi extends BaseApiController
         // Validate certain integer fields
         $intFields = [
             'min_rental_days',
-            'offer_acceptance_limit_days',
             'seller_rating_period_days',
             'seller_rejection_window_hours',
             'buyer_rating_period_days'
+        ];
+
+        // Validate certain float fields (positive floats)
+        $floatFields = [
+            'offer_acceptance_limit_days',
+            'offer_acceptance_limit_val',
+            'referral_expiry_days',
+            'referral_expiry_val'
         ];
 
         foreach ($data as $key => $value) {
@@ -598,6 +605,14 @@ class SharedApi extends BaseApiController
                     return $this->respond(['success' => false, 'message' => "{$fieldName} must be an integer greater than or equal to 1."], 400);
                 }
                 $value = (string)$valInt;
+            } elseif (in_array($key, $floatFields)) {
+                $valFloat = filter_var($value, FILTER_VALIDATE_FLOAT);
+                if ($valFloat === false || $valFloat <= 0) {
+                    $fieldName = str_replace('_', ' ', $key);
+                    $fieldName = ucwords($fieldName);
+                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be a number greater than 0."], 400);
+                }
+                $value = (string)$valFloat;
             }
 
             $existing = $db->table('system_settings')->where('setting_key', $key)->get()->getRowArray();

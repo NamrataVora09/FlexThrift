@@ -381,13 +381,21 @@ export default function BusinessSettingsView() {
           referral_receiver_reward: '50',
           referral_max_discount_percent: '50',
           referral_expiry_days: '7',
-          referral_min_purchase: '0'
+          referral_min_purchase: '0',
+          referral_expiry_val: fullConfig['referral_expiry_val'] || fullConfig['referral_expiry_days'] || '7',
+          referral_expiry_uni: fullConfig['referral_expiry_uni'] || 'days',
         };
         Object.keys(referralDefaults).forEach(key => {
           if (fullConfig[key] === undefined || fullConfig[key] === null) {
             fullConfig[key] = referralDefaults[key];
           }
         });
+        if (fullConfig['offer_acceptance_limit_val'] === undefined || fullConfig['offer_acceptance_limit_val'] === null) {
+          fullConfig['offer_acceptance_limit_val'] = fullConfig['offer_acceptance_limit_days'] || '7';
+        }
+        if (fullConfig['offer_acceptance_limit_uni'] === undefined || fullConfig['offer_acceptance_limit_uni'] === null) {
+          fullConfig['offer_acceptance_limit_uni'] = 'days';
+        }
         setConfig(fullConfig);
         // Load app messages
         if (r.data.app_messages) setAppMessages(r.data.app_messages);
@@ -406,7 +414,6 @@ export default function BusinessSettingsView() {
     // Validate integer fields
     const intFields = [
       'min_rental_days',
-      'offer_acceptance_limit_days',
       'seller_rating_period_days',
       'seller_rejection_window_hours',
       'buyer_rating_period_days'
@@ -419,6 +426,24 @@ export default function BusinessSettingsView() {
         if (valStr === '' || isNaN(valNum) || valNum < 1 || !Number.isInteger(valNum)) {
           const fieldName = FIELD_MAP[key]?.label || key;
           showToast.error(`${fieldName} must be a whole number greater than or equal to 1`);
+          return;
+        }
+      }
+    }
+
+    // Validate positive decimal fields
+    const decimalFields = [
+      'offer_acceptance_limit_val',
+      'referral_expiry_val'
+    ];
+
+    for (const key of decimalFields) {
+      if (config[key] !== undefined && config[key] !== null) {
+        const valStr = String(config[key]).trim();
+        const valNum = Number(valStr);
+        if (valStr === '' || isNaN(valNum) || valNum <= 0) {
+          const label = key === 'offer_acceptance_limit_val' ? 'Offer Acceptance Window' : 'Reward Expiry';
+          showToast.error(`${label} must be a number greater than 0`);
           return;
         }
       }
@@ -771,7 +796,50 @@ export default function BusinessSettingsView() {
                 {renderField('referral_referrer_reward')}
                 {renderField('referral_receiver_reward')}
                 {renderField('referral_max_discount_percent')}
-                {renderField('referral_expiry_days')}
+                <div className="col-md-4 mb-3">
+                  <label className="form-label" style={labelStyle}>Reward Expiry</label>
+                  <div className="input-group">
+                    <input
+                      type="number"
+                      step="any"
+                      className="form-control"
+                      style={inputStyle}
+                      placeholder="Expiry Value"
+                      value={config['referral_expiry_val'] !== undefined ? config['referral_expiry_val'] : (config['referral_expiry_days'] || '7')}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const unit = config['referral_expiry_uni'] || 'days';
+                        const valNum = parseFloat(val);
+                        const days = unit === 'minutes' ? (valNum / 1440) : valNum;
+                        setConfig(c => ({
+                          ...c,
+                          referral_expiry_val: val,
+                          referral_expiry_days: isNaN(days) ? '' : String(days)
+                        }));
+                      }}
+                    />
+                    <select
+                      className="form-select"
+                      style={{ ...inputStyle, maxWidth: '120px' }}
+                      value={config['referral_expiry_uni'] || 'days'}
+                      onChange={(e) => {
+                        const unit = e.target.value;
+                        const valStr = config['referral_expiry_val'] !== undefined ? config['referral_expiry_val'] : (config['referral_expiry_days'] || '7');
+                        const valNum = parseFloat(valStr);
+                        const days = unit === 'minutes' ? (valNum / 1440) : valNum;
+                        setConfig(c => ({
+                          ...c,
+                          referral_expiry_uni: unit,
+                          referral_expiry_days: isNaN(days) ? '' : String(days)
+                        }));
+                      }}
+                    >
+                      <option value="days">Days</option>
+                      <option value="minutes">Minutes</option>
+                    </select>
+                  </div>
+                  <div className="form-text small">Time until earned referral rewards expire. Currently: {parseFloat(config['referral_expiry_days'] || '0').toFixed(4)} days</div>
+                </div>
                 {renderField('referral_min_purchase')}
               </div>
               <div className="row">
@@ -1005,7 +1073,57 @@ export default function BusinessSettingsView() {
             </div>
             <div className="card-body" style={{ padding: '1.25rem' }}>
               <div className="row">
-                {(TAB_FIELDS[activeTab] || []).map((key) => renderField(key))}
+                {(TAB_FIELDS[activeTab] || []).map((key) => {
+                  if (key === 'offer_acceptance_limit_days') {
+                    return (
+                      <div className="col-md-4 mb-3" key={key}>
+                        <label className="form-label" style={labelStyle}>Offer Acceptance Window</label>
+                        <div className="input-group">
+                          <input
+                            type="number"
+                            step="any"
+                            className="form-control"
+                            style={inputStyle}
+                            placeholder="Window Value"
+                            value={config['offer_acceptance_limit_val'] !== undefined ? config['offer_acceptance_limit_val'] : (config['offer_acceptance_limit_days'] || '7')}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const unit = config['offer_acceptance_limit_uni'] || 'days';
+                              const valNum = parseFloat(val);
+                              const days = unit === 'minutes' ? (valNum / 1440) : valNum;
+                              setConfig(c => ({
+                                ...c,
+                                offer_acceptance_limit_val: val,
+                                offer_acceptance_limit_days: isNaN(days) ? '' : String(days)
+                              }));
+                            }}
+                          />
+                          <select
+                            className="form-select"
+                            style={{ ...inputStyle, maxWidth: '120px' }}
+                            value={config['offer_acceptance_limit_uni'] || 'days'}
+                            onChange={(e) => {
+                              const unit = e.target.value;
+                              const valStr = config['offer_acceptance_limit_val'] !== undefined ? config['offer_acceptance_limit_val'] : (config['offer_acceptance_limit_days'] || '7');
+                              const valNum = parseFloat(valStr);
+                              const days = unit === 'minutes' ? (valNum / 1440) : valNum;
+                              setConfig(c => ({
+                                ...c,
+                                offer_acceptance_limit_uni: unit,
+                                offer_acceptance_limit_days: isNaN(days) ? '' : String(days)
+                              }));
+                            }}
+                          >
+                            <option value="days">Days</option>
+                            <option value="minutes">Minutes</option>
+                          </select>
+                        </div>
+                        <div className="form-text small">Seller window to accept/reject an offer. Currently: {parseFloat(config['offer_acceptance_limit_days'] || '0').toFixed(4)} days</div>
+                      </div>
+                    );
+                  }
+                  return renderField(key);
+                })}
                 {(TAB_FIELDS[activeTab] || []).length === 0 && (
                   <div className="text-center text-muted py-4"><i className="bi bi-gear" style={{ fontSize: '2rem', color: '#ddd' }}></i><p className="mt-2">No configurable fields in this section yet.</p></div>
                 )}

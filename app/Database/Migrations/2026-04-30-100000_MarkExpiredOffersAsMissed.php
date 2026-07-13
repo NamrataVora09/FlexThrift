@@ -14,9 +14,9 @@ class MarkExpiredOffersAsMissed extends Migration
         $row = $db->table('system_settings')
             ->where('setting_key', 'offer_acceptance_limit_days')
             ->get()->getRowArray();
-        $limitDays = isset($row['setting_value']) ? (int) $row['setting_value'] : 7;
+        $limitDays = isset($row['setting_value']) ? (float) $row['setting_value'] : 7;
 
-        $cutoff = date('Y-m-d H:i:s', strtotime("-{$limitDays} days"));
+        $cutoff = date('Y-m-d H:i:s', time() - (int)($limitDays * 86400));
 
         // Mark all pending offers older than the limit as missed
         $db->table('offers')

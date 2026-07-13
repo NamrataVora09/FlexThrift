@@ -2301,8 +2301,8 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $row = $db->table('system_settings')->where('setting_key', 'offer_acceptance_limit_days')->get()->getRowArray();
-        $limitDays = isset($row['setting_value']) ? (int) $row['setting_value'] : 7;
-        $cutoff = date('Y-m-d H:i:s', strtotime("-{$limitDays} days"));
+        $limitDays = isset($row['setting_value']) ? (float) $row['setting_value'] : 7;
+        $cutoff = date('Y-m-d H:i:s', time() - (int)($limitDays * 86400));
         
         // Get the offers that will be marked as missed before updating
         $offersToMark = $db->table('offers')

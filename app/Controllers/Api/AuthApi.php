@@ -833,8 +833,8 @@ class AuthApi extends BaseApiController
 
             if (($cfg['referral_enabled'] ?? '1') === '1') {
                 $receiverReward = (float) ((isset($cfg['referral_receiver_reward']) && $cfg['referral_receiver_reward'] !== '') ? $cfg['referral_receiver_reward'] : 50);
-                $expiryDays     = (int)   ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
-                $expiresAt      = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
+                $expiryDays     = (float) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
+                $expiresAt      = date('Y-m-d H:i:s', time() + (int)($expiryDays * 86400));
 
                 // Credit the receiver immediately
                 $db->table('users')->where('id', $userId)->update([

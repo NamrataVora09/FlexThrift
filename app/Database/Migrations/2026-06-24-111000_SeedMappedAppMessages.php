@@ -36,6 +36,7 @@ class SeedMappedAppMessages extends Migration
         ['message_key' => 'overlap_dates_offer_exists', 'message_value' => 'You already have an active offer overlapping with these dates.', 'category' => 'error'],
         ['message_key' => 'active_offer_already_exists', 'message_value' => 'You already have an active offer on this product.', 'category' => 'error'],
         ['message_key' => 'buyer_subscription_required', 'message_value' => 'You need an active buyer subscription to make offers. Please subscribe to a buyer plan.', 'category' => 'error'],
+        ['message_key' => 'seller_cannot_make_offer',     'message_value' => 'Sellers cannot make offers on products. Please use your buyer account to make offers.', 'category' => 'error'],
         ['message_key' => 'offer_status_not_pending', 'message_value' => 'Offer status is not pending', 'category' => 'error'],
         ['message_key' => 'action_not_allowed', 'message_value' => 'Action not allowed', 'category' => 'error'],
         ['message_key' => 'review_already_submitted', 'message_value' => 'Review already submitted', 'category' => 'error'],
