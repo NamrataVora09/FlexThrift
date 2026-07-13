@@ -399,7 +399,7 @@ class BuyerApi extends BaseApiController
             'data' => [
                 'product' => $product,
                 'images' => $images,
-                'min_rental_days' => (int) getSystemSetting('min_rental_days', 3),
+                'min_rental_days' => (float) getSystemSetting('min_rental_days', 3),
             ],
         ]);
     }
@@ -522,7 +522,7 @@ class BuyerApi extends BaseApiController
         return $this->respond([
             'success' => true,
             'data' => $offers,
-            'minRentalDays' => (int) getSystemSetting('min_rental_days', 3),
+            'minRentalDays' => (float) getSystemSetting('min_rental_days', 3),
             'acceptanceLimitDays' => (float) getSystemSetting('offer_acceptance_limit_days', 7),
             'ratingPeriod' => (float) getSystemSetting('buyer_rating_period_days', 7),
             'rejectionWindowHours' => (float) getSystemSetting('seller_rejection_window_hours', 24),
@@ -775,7 +775,7 @@ class BuyerApi extends BaseApiController
             $start = new \DateTime($data['rental_start_date']);
             $end   = new \DateTime($data['rental_end_date']);
             $days  = (int) $start->diff($end)->days + 1;
-            $minDays = (int) getSystemSetting('min_rental_days', 3);
+            $minDays = (float) getSystemSetting('min_rental_days', 3);
             if ($days < $minDays) {
                 return $this->respond(['success' => false, 'message_key' => 'rental_min_days_error', 'message_params' => ['min' => $minDays, 'selected' => $days]], 400);
             }
@@ -905,7 +905,7 @@ class BuyerApi extends BaseApiController
 
             // Enforce minimum rental days from system settings
             helper('price_calculator');
-            $minDays = (int) getSystemSetting('min_rental_days', 3);
+            $minDays = (float) getSystemSetting('min_rental_days', 3);
             $days = (int)ceil((strtotime($endDate) - strtotime($startDate)) / 86400) + 1; // inclusive
             if ($days < $minDays) {
                 return $this->respond(['success' => false, 'message_key' => 'rental_min_days_error', 'message_params' => ['min' => $minDays, 'selected' => $days]], 400);

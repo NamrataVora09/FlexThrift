@@ -580,18 +580,26 @@ class SharedApi extends BaseApiController
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
 
-        // Validate certain integer fields
+        // Validate certain integer fields (Referral Tab integer fields, no decimals allowed)
         $intFields = [
-            'min_rental_days',
-            'seller_rating_period_days',
-            'seller_rejection_window_hours',
-            'buyer_rating_period_days'
+            'referral_referrer_reward',
+            'referral_receiver_reward',
+            'referral_max_discount_percent',
+            'referral_min_purchase'
         ];
 
         // Validate certain float fields (positive floats)
         $floatFields = [
             'offer_acceptance_limit_days',
             'offer_acceptance_limit_val',
+            'seller_rating_period_days',
+            'seller_rating_period_val',
+            'seller_rejection_window_hours',
+            'seller_rejection_window_val',
+            'buyer_rating_period_days',
+            'buyer_rating_period_val',
+            'min_rental_days',
+            'min_rental_val',
             'referral_expiry_days',
             'referral_expiry_val'
         ];
@@ -599,10 +607,11 @@ class SharedApi extends BaseApiController
         foreach ($data as $key => $value) {
             if (in_array($key, $intFields)) {
                 $valInt = filter_var($value, FILTER_VALIDATE_INT);
-                if ($valInt === false || $valInt < 1) {
+                // Also ensure there is no decimal point in input string to block 25.0
+                if ($valInt === false || $valInt < 0 || strpos((string)$value, '.') !== false) {
                     $fieldName = str_replace('_', ' ', $key);
                     $fieldName = ucwords($fieldName);
-                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be an integer greater than or equal to 1."], 400);
+                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be a whole number (no decimals allowed)."], 400);
                 }
                 $value = (string)$valInt;
             } elseif (in_array($key, $floatFields)) {

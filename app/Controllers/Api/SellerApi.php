@@ -184,7 +184,7 @@ class SellerApi extends BaseApiController
         $acceptanceLimitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
         $ratingPeriod = (float) getSystemSetting('seller_rating_period_days', 7);
         $rejectionWindowHours = (float) getSystemSetting('seller_rejection_window_hours', 24);
-        $minRentalDays = (int) getSystemSetting('min_rental_days', 3);
+        $minRentalDays = (float) getSystemSetting('min_rental_days', 3);
 
         return $this->respond([
             'success' => true,
@@ -865,7 +865,7 @@ class SellerApi extends BaseApiController
 
         // Enforce minimum rental days from system settings
         helper('price_calculator');
-        $minDays = (int) getSystemSetting('min_rental_days', 3);
+        $minDays = (float) getSystemSetting('min_rental_days', 3);
         $days = (int) ceil((strtotime($newEnd) - strtotime($newStart)) / 86400) + 1; // inclusive
         if ($days < $minDays) {
             return $this->respond(['success' => false, 'message_key' => 'rental_min_days_error', 'message_params' => ['min' => $minDays, 'selected' => $days]], 400);

@@ -390,12 +390,23 @@ export default function BusinessSettingsView() {
             fullConfig[key] = referralDefaults[key];
           }
         });
-        if (fullConfig['offer_acceptance_limit_val'] === undefined || fullConfig['offer_acceptance_limit_val'] === null) {
-          fullConfig['offer_acceptance_limit_val'] = fullConfig['offer_acceptance_limit_days'] || '7';
-        }
-        if (fullConfig['offer_acceptance_limit_uni'] === undefined || fullConfig['offer_acceptance_limit_uni'] === null) {
-          fullConfig['offer_acceptance_limit_uni'] = 'days';
-        }
+        const offerKeys = [
+          { val: 'offer_acceptance_limit_val', daysKey: 'offer_acceptance_limit_days', defaultVal: '7', defaultUni: 'days' },
+          { val: 'seller_rating_period_val', daysKey: 'seller_rating_period_days', defaultVal: '7', defaultUni: 'days' },
+          { val: 'seller_rejection_window_val', daysKey: 'seller_rejection_window_hours', defaultVal: '24', defaultUni: 'hours' },
+          { val: 'buyer_rating_period_val', daysKey: 'buyer_rating_period_days', defaultVal: '7', defaultUni: 'days' },
+          { val: 'min_rental_val', daysKey: 'min_rental_days', defaultVal: '3', defaultUni: 'days' }
+        ];
+        offerKeys.forEach(item => {
+          const valKey = item.val;
+          const uniKey = valKey.replace('_val', '_uni');
+          if (fullConfig[valKey] === undefined || fullConfig[valKey] === null) {
+            fullConfig[valKey] = fullConfig[item.daysKey] || item.defaultVal;
+          }
+          if (fullConfig[uniKey] === undefined || fullConfig[uniKey] === null) {
+            fullConfig[uniKey] = item.defaultUni;
+          }
+        });
         setConfig(fullConfig);
         // Load app messages
         if (r.data.app_messages) setAppMessages(r.data.app_messages);
@@ -411,40 +422,55 @@ export default function BusinessSettingsView() {
 
   // ==================== SETTINGS SAVE ====================
   const handleSave = async () => {
-    // Validate integer fields
-    const intFields = [
-      'min_rental_days',
-      'seller_rating_period_days',
-      'seller_rejection_window_hours',
-      'buyer_rating_period_days'
-    ];
-
-    for (const key of intFields) {
-      if (config[key] !== undefined && config[key] !== null) {
-        const valStr = String(config[key]).trim();
-        const valNum = Number(valStr);
-        if (valStr === '' || isNaN(valNum) || valNum < 1 || !Number.isInteger(valNum)) {
-          const fieldName = FIELD_MAP[key]?.label || key;
-          showToast.error(`${fieldName} must be a whole number greater than or equal to 1`);
-          return;
-        }
-      }
-    }
-
-    // Validate positive decimal fields
+    // Validate positive decimal fields (Offer Expiries and Referral Expiry)
     const decimalFields = [
       'offer_acceptance_limit_val',
+      'seller_rating_period_val',
+      'seller_rejection_window_val',
+      'buyer_rating_period_val',
+      'min_rental_val',
       'referral_expiry_val'
     ];
+
+    const labelMap: Record<string, string> = {
+      offer_acceptance_limit_val: 'Offer Acceptance Window',
+      seller_rating_period_val: 'Seller Rating Window',
+      seller_rejection_window_val: 'Seller Rejection Window',
+      buyer_rating_period_val: 'Buyer Rating Window',
+      min_rental_val: 'Min Rental Period',
+      referral_expiry_val: 'Reward Expiry'
+    };
 
     for (const key of decimalFields) {
       if (config[key] !== undefined && config[key] !== null) {
         const valStr = String(config[key]).trim();
         const valNum = Number(valStr);
         if (valStr === '' || isNaN(valNum) || valNum <= 0) {
-          const label = key === 'offer_acceptance_limit_val' ? 'Offer Acceptance Window' : 'Reward Expiry';
+          const label = labelMap[key] || key;
           showToast.error(`${label} must be a number greater than 0`);
           return;
+        }
+      }
+    }
+
+    // Validate Referral integer fields (no decimals allowed!)
+    const referralIntFields = [
+      'referral_referrer_reward',
+      'referral_receiver_reward',
+      'referral_max_discount_percent',
+      'referral_min_purchase'
+    ];
+
+    for (const key of referralIntFields) {
+      if (config[key] !== undefined && config[key] !== null) {
+        const valStr = String(config[key]).trim();
+        if (valStr !== '') {
+          const valNum = Number(valStr);
+          if (isNaN(valNum) || valNum < 0 || !Number.isInteger(valNum) || valStr.includes('.')) {
+            const fieldName = FIELD_MAP[key]?.label || key;
+            showToast.error(`${fieldName} must be a whole number (no decimals allowed)`);
+            return;
+          }
         }
       }
     }
@@ -1074,51 +1100,108 @@ export default function BusinessSettingsView() {
             <div className="card-body" style={{ padding: '1.25rem' }}>
               <div className="row">
                 {(TAB_FIELDS[activeTab] || []).map((key) => {
-                  if (key === 'offer_acceptance_limit_days') {
+                  const OFFER_UNIT_FIELDS: Record<string, {
+                    valKey: string;
+                    uniKey: string;
+                    label: string;
+                    hint?: string;
+                    defaultUnit: 'days' | 'hours';
+                  }> = {
+                    offer_acceptance_limit_days: {
+                      valKey: 'offer_acceptance_limit_val',
+                      uniKey: 'offer_acceptance_limit_uni',
+                      label: 'Offer Acceptance Window',
+                      hint: 'Seller window to accept/reject an offer.',
+                      defaultUnit: 'days'
+                    },
+                    seller_rating_period_days: {
+                      valKey: 'seller_rating_period_val',
+                      uniKey: 'seller_rating_period_uni',
+                      label: 'Seller Rating Window',
+                      hint: 'Days an accepted seller has to rate a buyer.',
+                      defaultUnit: 'days'
+                    },
+                    seller_rejection_window_hours: {
+                      valKey: 'seller_rejection_window_val',
+                      uniKey: 'seller_rejection_window_uni',
+                      label: 'Seller Rejection Window',
+                      hint: 'Hours a seller has to reject after accepting.',
+                      defaultUnit: 'hours'
+                    },
+                    buyer_rating_period_days: {
+                      valKey: 'buyer_rating_period_val',
+                      uniKey: 'buyer_rating_period_uni',
+                      label: 'Buyer Rating Window',
+                      hint: 'Days an accepted buyer has to rate a seller.',
+                      defaultUnit: 'days'
+                    },
+                    min_rental_days: {
+                      valKey: 'min_rental_val',
+                      uniKey: 'min_rental_uni',
+                      label: 'Min Rental Period',
+                      hint: 'Minimum rental days enforced.',
+                      defaultUnit: 'days'
+                    }
+                  };
+
+                  if (OFFER_UNIT_FIELDS[key]) {
+                    const fieldMeta = OFFER_UNIT_FIELDS[key];
+                    const valKey = fieldMeta.valKey;
+                    const uniKey = fieldMeta.uniKey;
+                    const defaultUnit = fieldMeta.defaultUnit;
+
+                    const currentVal = config[valKey] !== undefined ? config[valKey] : (config[key] || '');
+                    const currentUni = config[uniKey] || defaultUnit;
+
+                    const factor = defaultUnit === 'hours' ? 60 : 1440;
+                    const unitLabel = defaultUnit === 'hours' ? 'Hours' : 'Days';
+
                     return (
                       <div className="col-md-4 mb-3" key={key}>
-                        <label className="form-label" style={labelStyle}>Offer Acceptance Window</label>
+                        <label className="form-label" style={labelStyle}>{fieldMeta.label}</label>
                         <div className="input-group">
                           <input
                             type="number"
                             step="any"
                             className="form-control"
                             style={inputStyle}
-                            placeholder="Window Value"
-                            value={config['offer_acceptance_limit_val'] !== undefined ? config['offer_acceptance_limit_val'] : (config['offer_acceptance_limit_days'] || '7')}
+                            placeholder="Value"
+                            value={currentVal}
                             onChange={(e) => {
                               const val = e.target.value;
-                              const unit = config['offer_acceptance_limit_uni'] || 'days';
+                              const unit = config[uniKey] || defaultUnit;
                               const valNum = parseFloat(val);
-                              const days = unit === 'minutes' ? (valNum / 1440) : valNum;
+                              const calculatedDays = unit === 'minutes' ? (valNum / factor) : valNum;
                               setConfig(c => ({
                                 ...c,
-                                offer_acceptance_limit_val: val,
-                                offer_acceptance_limit_days: isNaN(days) ? '' : String(days)
+                                [valKey]: val,
+                                [key]: isNaN(calculatedDays) ? '' : String(calculatedDays)
                               }));
                             }}
                           />
                           <select
                             className="form-select"
                             style={{ ...inputStyle, maxWidth: '120px' }}
-                            value={config['offer_acceptance_limit_uni'] || 'days'}
+                            value={currentUni}
                             onChange={(e) => {
                               const unit = e.target.value;
-                              const valStr = config['offer_acceptance_limit_val'] !== undefined ? config['offer_acceptance_limit_val'] : (config['offer_acceptance_limit_days'] || '7');
+                              const valStr = config[valKey] !== undefined ? config[valKey] : (config[key] || '');
                               const valNum = parseFloat(valStr);
-                              const days = unit === 'minutes' ? (valNum / 1440) : valNum;
+                              const calculatedDays = unit === 'minutes' ? (valNum / factor) : valNum;
                               setConfig(c => ({
                                 ...c,
-                                offer_acceptance_limit_uni: unit,
-                                offer_acceptance_limit_days: isNaN(days) ? '' : String(days)
+                                [uniKey]: unit,
+                                [key]: isNaN(calculatedDays) ? '' : String(calculatedDays)
                               }));
                             }}
                           >
-                            <option value="days">Days</option>
+                            <option value={defaultUnit}>{unitLabel}</option>
                             <option value="minutes">Minutes</option>
                           </select>
                         </div>
-                        <div className="form-text small">Seller window to accept/reject an offer. Currently: {parseFloat(config['offer_acceptance_limit_days'] || '0').toFixed(4)} days</div>
+                        <div className="form-text small">
+                          {fieldMeta.hint} Currently: {parseFloat(config[key] || '0').toFixed(4)} {defaultUnit}.
+                        </div>
                       </div>
                     );
                   }
