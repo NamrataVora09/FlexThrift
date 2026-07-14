@@ -90,6 +90,7 @@ const pillStyles: Record<string, React.CSSProperties> = {
   accepted: { background: '#eaffea', color: '#1a8a1a', border: '1px solid #c9f9c9' },
   rejected: { background: '#fff5f5', color: '#d63031', border: '1px solid #ffeaea' },
   cancelled: { background: '#f8f9fa', color: '#999', border: '1px solid #eee' },
+  missed: { background: '#fff3cd', color: '#856404', border: '1px solid #ffeeba' },
 };
 
 /* ─────────────────────────── helpers ───────────────────────── */
@@ -240,6 +241,7 @@ const CSS = `
   .status-pending   { background: #f3f4f6; color: #6b7280; }
   .status-accepted  { background: #dcfce7; color: #15803d; }
   .status-rejected  { background: #fee2e2; color: #dc2626; }
+  .status-missed    { background: #fff3cd; color: #856404; }
   .status-negotiating { background: #E1F5FE; color: #01579B; }
   .status-cancelled { background: #f1f3f5; color: #868e96; }
 
@@ -264,6 +266,7 @@ const CSS = `
   .pill-accepted    { background: #eaffea; color: #1a8a1a; border: 1px solid #c9f9c9; }
   .pill-rejected    { background: #fff5f5; color: #d63031; border: 1px solid #ffeaea; }
   .pill-cancelled   { background: #f1f3f5; color: #868e96; border: 1px solid #dee2e6; }
+  .pill-missed      { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
   .pill-negotiating { background: #ffc63a; color: #000; border: 1px solid #ffdb7e; }
 
   .price-badge { font-size: 1.5rem; font-weight: 800; color: #000; }
@@ -1425,7 +1428,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
 
                 // display status (matching PHP logic)
                 const displayStatus = (() => {
-                  if (offer.status === 'pending' && isExpired) return 'rejected';
+                  if (offer.status === 'pending' && isExpired) return 'missed';
                   if (offer.status === 'pending' && isGroupSold && (offer.offer_type ?? offer.listing_type) === 'sell') return 'rejected';
                   if (offer.status === 'pending' && isBlockedRental) return 'rejected';
                   return offer.status;
