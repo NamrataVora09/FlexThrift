@@ -72,6 +72,7 @@ interface TaxonomyData {
   product_types: TaxonomyProductType[];
   categories: TaxonomyCategory[];
   sub_categories: TaxonomySubCategory[];
+  attributes?: any[];
 }
 
 interface FilterOptions {
@@ -383,72 +384,44 @@ export default function BrowsePage() {
     return [];
   }, [visibleSubCategories, filterOptions, filters.categoryIds]);
 
-  // ── Dynamic attributes from field_config (merged from all selected levels) ──
+  // ── Dynamic attributes from taxonomy.attributes ──
   useEffect(() => {
-    const parseAttrs = (fc: string | null | undefined): DynamicAttribute[] => {
-      if (!fc) return [];
-      try { const cfg = JSON.parse(fc); return Array.isArray(cfg.attributes) && cfg.attributes.length ? cfg.attributes : []; } catch { return []; }
-    };
-    const parseOpts = (o: string[] | string | undefined): string[] => {
-      if (!o) return [];
-      if (Array.isArray(o)) return o;
-      return o.split(',').map(s => s.trim()).filter(Boolean);
-    };
+    if (!taxonomy || !taxonomy.attributes) { setDynamicAttrs([]); return; }
 
-    if (!taxonomy) { setDynamicAttrs([]); return; }
+    const activeSubCatIds = filters.subCategoryIds.map(String);
+    const activeCatIds = filters.categoryIds.map(String);
+    const selectedListingTypeId = selectedListingType ? String(selectedListingType.id) : null;
 
-    const merged: Record<string, DynamicAttribute> = {};
-    const merge = (attrs: DynamicAttribute[]) => {
-      attrs.forEach(attr => {
-        if (!merged[attr.name]) {
-          merged[attr.name] = { ...attr };
-        } else {
-          const existOpts = parseOpts(merged[attr.name].options);
-          const newOpts = parseOpts(attr.options);
-          merged[attr.name] = {
-            ...merged[attr.name],
-            options: Array.from(new Set([...existOpts, ...newOpts]))
-          };
-        }
-      });
-    };
+    const filteredAttrs = taxonomy.attributes.filter((attr: any) => {
+      const assignments = attr.entity_ids ? attr.entity_ids.map(String) : [];
+      
+      // If we have selected a sub-category:
+      if (activeSubCatIds.length > 0) {
+        return assignments.some((id: string) => activeSubCatIds.includes(id));
+      }
+      
+      // If we have selected a category:
+      if (activeCatIds.length > 0) {
+        return assignments.some((id: string) => activeCatIds.includes(id));
+      }
+      
+      // If we have selected a listing type:
+      if (selectedListingTypeId) {
+        return assignments.some((id: string) => id === selectedListingTypeId);
+      }
+      
+      // Default: show all attributes
+      return true;
+    });
 
-    // 1. Merge from selected sub-categories
-    if (filters.subCategoryIds.length > 0) {
-      filters.subCategoryIds.forEach(id => {
-        const sub = taxonomy.sub_categories.find(s => String(s.id) === id);
-        if (sub) merge(parseAttrs(sub.field_config));
-      });
-    }
+    const mapped: DynamicAttribute[] = filteredAttrs.map((attr: any) => ({
+      name: attr.name,
+      type: attr.type || 'picklist',
+      options: attr.allowed_values || []
+    }));
 
-    // 2. Merge from selected categories
-    if (filters.categoryIds.length > 0) {
-      filters.categoryIds.forEach(id => {
-        const cat = taxonomy.categories.find(c => String(c.id) === id);
-        if (cat) merge(parseAttrs(cat.field_config));
-      });
-    } else if (filters.productTypeIds.length > 0) {
-        // Merge from selected product types
-        filters.productTypeIds.forEach(id => {
-            const pt = taxonomy.product_types.find(p => String(p.id) === id);
-            if (pt) merge(parseAttrs(pt.field_config));
-        });
-    }
-
-    // 3. Merge from selected listing type
-    if (selectedListingType) {
-      merge(parseAttrs(selectedListingType.field_config));
-    }
-
-    // 4. Fallback: if no specific filters or they have no attributes, merge from all visible items
-    if (Object.keys(merged).length === 0) {
-      [...visibleProductTypes, ...visibleCategories, ...visibleSubCategories].forEach(item => {
-        merge(parseAttrs((item as any).field_config ?? null));
-      });
-    }
-
-    setDynamicAttrs(Object.values(merged));
-  }, [filters.subCategoryIds, filters.categoryIds, filters.productTypeIds, selectedListingType, taxonomy, visibleCategories, visibleSubCategories, visibleProductTypes]);
+    setDynamicAttrs(mapped);
+  }, [filters.subCategoryIds, filters.categoryIds, selectedListingType, taxonomy]);
 
   // ── URL building ──────────────────────────────────────────────────────────
   const buildUrl = (type: string, s: string, f: ActiveFilters): string => {
