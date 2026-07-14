@@ -1724,7 +1724,39 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
         const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
         const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
 
-        const statusLabel = o.status === 'negotiating' ? 'action required' : o.status;
+        // expiry logic — covers both backend-confirmed 'missed' and frontend-detected pending expiry
+        const offerTime = o.created_at ? new Date(o.created_at).getTime() : Date.now();
+        const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
+        // isExpired is true when: backend set status to 'missed' OR offer is pending and time window passed
+        const isExpired = o.status === 'missed' || (o.status === 'pending' && Date.now() > expiryTime);
+        // expiryDate: for backend-missed offers we may not know exact expiry so compute from creation + limit
+        const expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+        const isProductSold = Number((o as any).is_product_sold ?? 0) > 0;
+        const isRentalBlocked = Number((o as any).is_rental_blocked ?? 0) > 0;
+
+        const statusLabel = (() => {
+          // Backend-confirmed missed (most reliable)
+          if (o.status === 'missed') return 'Missed';
+          // Frontend-detected expiry on a still-pending offer
+          if (o.status === 'pending' && isExpired) return 'Missed';
+          if (o.status === 'pending' && isProductSold && (o.offer_type ?? o.listing_type) === 'sell') return 'Sold Out';
+          if (o.status === 'pending' && isRentalBlocked) return 'Dates Booked';
+          if (o.status === 'negotiating') return 'Action Required';
+          if (o.status === 'accepted') return 'Accepted';
+          if (o.status === 'rejected') return 'Rejected';
+          if (o.status === 'cancelled') return 'Cancelled';
+          // fallback capitalise
+          return o.status.charAt(0).toUpperCase() + o.status.slice(1);
+        })();
+
+        const displayStatus = (() => {
+          if (o.status === 'missed') return 'missed';
+          if (o.status === 'pending' && isExpired) return 'missed';
+          if (o.status === 'cancelled') return 'rejected';
+          return o.status;
+        })();
+
         const offerType = o.offer_type || o.listing_type || 'buy';
 
         const sellerName = o.seller_name || 'Seller';
@@ -1798,7 +1830,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                 <div>
                   <div className="d-flex align-items-center gap-2">
                     <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.5px' }}>OFFERED PRICE</span>
-                    <span className="status-pill" style={pillStyles[o.status] || pillStyles.pending}>
+                    <span className="status-pill" style={pillStyles[displayStatus] || pillStyles.pending}>
                       {statusLabel}
                     </span>
                   </div>
@@ -1825,7 +1857,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
 
                 {/* Action Buttons styled like Accept/Reject */}
                 <div className="d-flex gap-2 align-items-center flex-wrap">
-                  {isAdmin && o.status === 'pending' && (
+                  {isAdmin && o.status === 'pending' && !isExpired && !isProductSold && !isRentalBlocked && (
                     <>
                       <button
                         className="btn px-4 py-2 rounded-pill fw-bold text-white"
@@ -1842,6 +1874,24 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                         Reject
                       </button>
                     </>
+                  )}
+                  {isAdmin && o.status === 'pending' && isExpired && (
+                    <div className="text-danger small fw-bold">
+                      <i className="bi bi-clock-fill"></i> Offer Missed
+                      <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>Acceptance period expired on {expiryDate}</div>
+                    </div>
+                  )}
+                  {isAdmin && o.status === 'pending' && isProductSold && (o.offer_type ?? o.listing_type) === 'sell' && (
+                    <div className="text-danger small fw-bold">
+                      <i className="bi bi-slash-circle-fill"></i> Already Sold
+                      <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>This product is sold to another buyer.</div>
+                    </div>
+                  )}
+                  {isAdmin && o.status === 'pending' && isRentalBlocked && (
+                    <div className="text-danger small fw-bold">
+                      <i className="bi bi-calendar-x-fill"></i> Dates Booked
+                      <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>These dates overlap with an accepted booking.</div>
+                    </div>
                   )}
                   {o.status === 'negotiating' && (
                     <>
@@ -1861,7 +1911,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                       </button>
                     </>
                   )}
-                  {(o.status === 'pending' || o.status === 'rejected' || o.status === 'negotiating') && !isAdmin && (
+                  {(o.status === 'pending' || o.status === 'rejected' || o.status === 'negotiating') && !isAdmin && !isExpired && (
                     <>
                       {o.status === 'rejected' ? (
                         <button
