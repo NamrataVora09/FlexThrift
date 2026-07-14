@@ -1366,15 +1366,20 @@ class SellerApi extends BaseApiController
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
 
-        log_message('info', 'editProduct called for product_id: ' . $id . ' by user_id: ' . $jwtUser['user_id']);
+        log_message('info', 'editProduct called for product_id: ' . $id . ' by user_id: ' . $jwtUser['user_id'] . ' role: ' . $jwtUser['role']);
 
-        // Check if seller is blocked
+        // Check if seller is blocked (only for regular sellers)
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($currentUser && !empty($currentUser['blocked_seller'])) {
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $currentUser && !empty($currentUser['blocked_seller'])) {
             return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
         }
 
-        $product = $db->table('products')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
+        // Admins/superadmins can edit any product, sellers can only edit their own
+        if (in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin'])) {
+            $product = $db->table('products')->where('id', $id)->get()->getRowArray();
+        } else {
+            $product = $db->table('products')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
+        }
         if (!$product)
             return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
@@ -1659,10 +1664,10 @@ class SellerApi extends BaseApiController
         $hasImageChanges = ($imageFiles && count($imageFiles) > 0) || ($deletedIds && !empty($deletedIds));
         $hasDataChanges = !empty($updateData) && count($updateData) > 0;
 
-        // If this is a seller (not admin/superadmin) and review is required, use edit request workflow
+        // If review is required, use edit request workflow for ALL users (including admins)
         // to keep old values visible in browse until approved
         // This applies to both data changes AND image-only changes
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $reviewRequired) {
+        if ($reviewRequired) {
             // Use the editProduct workflow instead - create edit request, don't modify actual product
             // The editProduct method will handle the data from the request directly
             return $this->editProduct($id);
