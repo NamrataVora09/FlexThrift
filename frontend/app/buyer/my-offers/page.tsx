@@ -273,7 +273,7 @@ export default function Page() {
     setRatingLoading(true);
     const res = await api.post<any>('/buyer/rate-seller', {
       offer_id: ratingModal.id,
-      rating: 5
+      rating: ratingValue
     });
     setRatingLoading(false);
     if (res.success) {
@@ -644,6 +644,83 @@ export default function Page() {
                         <small className="text-muted">#REF-{o.id} &bull; {offerType.charAt(0).toUpperCase() + offerType.slice(1)}</small>
                       </div>
                     </div>
+
+                    {/* Action Buttons */}
+                    <div className="d-flex gap-2 align-items-center flex-wrap">
+                      {(o.status === 'pending' || o.status === 'rejected' || o.status === 'negotiating') && !isExpired && (
+                        <>
+                          {o.status === 'rejected' ? (
+                            <button
+                              className="btn px-4 py-2 rounded-pill fw-bold text-white"
+                              style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
+                              onClick={() => openChangeDates(o)}
+                            >
+                              Make Offer
+                            </button>
+                          ) : (o.offer_type ?? o.listing_type) === 'rent' && (
+                            <button
+                              className="btn btn-outline-primary px-3 py-2 rounded-pill fw-bold"
+                              style={{ fontSize: '0.82rem' }}
+                              onClick={() => openChangeDates(o)}
+                            >
+                              Change Dates
+                            </button>
+                          )}
+                          
+                          {o.status === 'negotiating' && (
+                            <button
+                              className="btn px-4 py-2 rounded-pill fw-bold text-white"
+                              style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
+                              onClick={() => setActionModal({ id: o.id, action: 'accept_dates', title: o.product_title, message: 'Are you sure you want to accept the seller\'s suggested dates?' })}
+                            >
+                              Accept Dates
+                            </button>
+                          )}
+
+                          <button
+                            className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
+                            style={{ fontSize: '0.82rem' }}
+                            onClick={() => setActionModal({ id: o.id, action: 'cancel', title: o.product_title, message: 'Are you sure you want to cancel this offer?' })}
+                          >
+                            {o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}
+                          </button>
+                        </>
+                      )}
+
+                      {(() => {
+                        const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
+                        const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
+                        const canRate = o.status === 'accepted' && !o.buyer_rated_seller && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
+                        
+                        if (canRate) {
+                          return (
+                            <button
+                              className="btn px-4 py-2 rounded-pill fw-bold text-white"
+                              style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
+                              onClick={() => setRatingModal({ id: o.id, title: o.product_title })}
+                            >
+                              <i className="bi bi-star-fill me-1"></i> Rate Seller
+                            </button>
+                          );
+                        }
+                        if (o.status === 'accepted' && o.buyer_rated_seller) {
+                          return (
+                            <span className="badge bg-light text-success border py-2 px-3 rounded-pill fw-bold" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem' }}>
+                              <i className="bi bi-check-circle-fill me-1"></i> Rated
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      <Link
+                        href={`/buyer/product/${o.product_id}`}
+                        className="btn btn-outline-secondary px-4 py-2 rounded-pill fw-bold"
+                        style={{ fontSize: '0.82rem', textDecoration: 'none' }}
+                      >
+                        View Item
+                      </Link>
+                    </div>
                   </div>
 
                   {/* Rent Info Box */}
@@ -783,6 +860,170 @@ export default function Page() {
           );
         })}
       </div>
+
+      {/* ── Confirm Action Modal (Cancel / Accept Dates) ── */}
+      {actionModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: '32px', maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: '1.6rem', marginBottom: 16, textAlign: 'center' }}>
+              {actionModal.action === 'cancel' ? '🚫' : '✅'}
+            </div>
+            <h5 className="fw-bold text-center mb-2" style={{ fontSize: '1.1rem' }}>
+              {actionModal.action === 'cancel' ? 'Cancel Offer' : 'Accept Suggested Dates'}
+            </h5>
+            <p className="text-muted text-center mb-4" style={{ fontSize: '0.9rem' }}>
+              {actionModal.message || (actionModal.action === 'cancel'
+                ? `Are you sure you want to cancel your offer on "${actionModal.title}"?`
+                : `Accept the seller's suggested dates for "${actionModal.title}"?`)}
+            </p>
+            <div className="d-flex gap-2 justify-content-center">
+              <button
+                className="btn btn-outline-secondary px-4 rounded-pill fw-bold"
+                onClick={() => setActionModal(null)}
+                disabled={actionLoading}
+              >
+                No, Go Back
+              </button>
+              <button
+                className="btn fw-bold px-4 rounded-pill text-white"
+                style={{ background: actionModal.action === 'cancel' ? '#d63031' : '#ffc63a', border: 'none' }}
+                onClick={actionModal.action === 'cancel' ? handleCancel : handleAcceptDates}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <span className="spinner-border spinner-border-sm me-2" role="status" />
+                ) : null}
+                {actionModal.action === 'cancel' ? 'Yes, Cancel' : 'Yes, Accept'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Change Dates Modal ── */}
+      {changeDatesModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: '28px', maxWidth: 480, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', margin: 'auto' }}>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ fontSize: '1.1rem' }}>
+                <i className="bi bi-calendar3 me-2" style={{ color: '#ffc63a' }}></i>
+                Change Rental Dates
+              </h5>
+              <button
+                type="button"
+                onClick={() => setChangeDatesModal(null)}
+                style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#aaa', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-muted small mb-3">
+              Updating dates for: <strong>{changeDatesModal.title}</strong>
+            </p>
+
+            <RentalCalendar
+              bookedRanges={cdBookedRanges}
+              startDate={cdStart}
+              endDate={cdEnd}
+              onRangeChange={(s, e) => { setCdStart(s); setCdEnd(e); }}
+              minRentalDays={minRentalDays}
+            />
+
+            {cdStart && cdEnd && (
+              <div className="mt-3 p-3 rounded-3" style={{ background: '#fffdf0', border: '1px solid #ffc63a44', fontSize: '0.85rem' }}>
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="text-muted">Estimated Total:</span>
+                  <span className="fw-bold" style={{ color: '#ffc63a', fontSize: '1.1rem' }}>
+                    ₹{Number(cdPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {cdError && (
+              <div className="alert alert-danger py-2 px-3 mt-3 rounded-3 small border-0">
+                <i className="bi bi-exclamation-triangle-fill me-1"></i>{cdError}
+              </div>
+            )}
+
+            <div className="d-flex gap-2 mt-4">
+              <button
+                type="button"
+                className="btn btn-outline-secondary flex-fill rounded-pill fw-bold"
+                onClick={() => setChangeDatesModal(null)}
+                disabled={cdLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn flex-fill rounded-pill fw-bold text-white"
+                style={{ background: '#ffc63a', border: 'none' }}
+                onClick={handleChangeDates}
+                disabled={cdLoading || !cdStart || !cdEnd}
+              >
+                {cdLoading ? (
+                  <span className="spinner-border spinner-border-sm me-2" role="status" />
+                ) : null}
+                Update Dates
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Rate Seller Modal ── */}
+      {ratingModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: '32px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>⭐</div>
+            <h5 className="fw-bold mb-1" style={{ fontSize: '1.1rem' }}>Rate Your Seller</h5>
+            <p className="text-muted small mb-4">{ratingModal.title}</p>
+
+            <div className="d-flex justify-content-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map(star => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRatingValue(star)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '2rem', color: star <= ratingValue ? '#ffc63a' : '#ddd',
+                    transition: 'color 0.15s'
+                  }}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            <p className="text-muted small mb-4">
+              {ratingValue === 1 ? 'Poor' : ratingValue === 2 ? 'Fair' : ratingValue === 3 ? 'Good' : ratingValue === 4 ? 'Very Good' : 'Excellent'}
+            </p>
+
+            <div className="d-flex gap-2 justify-content-center">
+              <button
+                className="btn btn-outline-secondary px-4 rounded-pill fw-bold"
+                onClick={() => setRatingModal(null)}
+                disabled={ratingLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn fw-bold px-4 rounded-pill text-white"
+                style={{ background: '#ffc63a', border: 'none' }}
+                onClick={handleRateSubmit}
+                disabled={ratingLoading}
+              >
+                {ratingLoading ? (
+                  <span className="spinner-border spinner-border-sm me-2" role="status" />
+                ) : null}
+                Submit Rating
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </DashboardLayout>
   );
 }
