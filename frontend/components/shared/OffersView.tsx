@@ -1411,8 +1411,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
               {productOffers.map(offer => {
                 const isBlockedRental = isRentalBlocked?.(offer);
 
-                // expiry logic: window starts from when the offer was created,
-                // NOT contact_viewed_at (buyer may have viewed contact long before making the offer)
+                // expiry logic: covers both backend-confirmed 'missed' and frontend-detected pending expiry
                 let isExpired = false;
                 let expiryDate: string | null = null;
                 if (offer.status === 'pending' && offer.created_at) {
@@ -1422,18 +1421,28 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                   isExpired = Date.now() > expiryTime;
                   expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
                 }
+                // Also consider backend-confirmed missed status
+                if (offer.status === 'missed') {
+                  isExpired = true;
+                }
 
                 const offeredPrice = offer.offered_price ?? offer.offer_price;
                 const days = daysBetween(offer.rental_start_date, offer.rental_end_date);
 
                 // display status (matching PHP logic)
                 const displayStatus = (() => {
+                  // Backend-confirmed missed status
+                  if (offer.status === 'missed') return 'missed';
+                  // Frontend-detected expiry on pending offers
                   if (offer.status === 'pending' && isExpired) return 'missed';
                   if (offer.status === 'pending' && isGroupSold && (offer.offer_type ?? offer.listing_type) === 'sell') return 'rejected';
                   if (offer.status === 'pending' && isBlockedRental) return 'rejected';
                   return offer.status;
                 })();
                 const statusLabel = (() => {
+                  // Backend-confirmed missed status (most reliable)
+                  if (offer.status === 'missed') return 'Missed';
+                  // Frontend-detected expiry on pending offers
                   if (offer.status === 'pending' && isExpired) return 'Missed';
                   if (offer.status === 'pending' && isGroupSold && (offer.offer_type ?? offer.listing_type) === 'sell') return 'Sold Out';
                   if (offer.status === 'pending' && isBlockedRental) return 'Dates Booked';
@@ -1594,7 +1603,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                     <div className="offer-actions" style={{ minWidth: 120, textAlign: 'right' }}>
                       {offer.status === 'pending' && (
                         <>
-                          {isExpired && user?.id === offer.seller_id ? (
+                          {isExpired ? (
                             <div className="text-danger small fw-bold">
                               <i className="bi bi-clock-fill"></i> Offer Missed
                               <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>Acceptance period expired on {expiryDate}</div>
@@ -1613,7 +1622,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                                   <div className="text-muted" style={{ fontSize: '0.7rem', fontWeight: 'normal' }}>These dates overlap with an accepted booking.</div>
                                 </div>
                               )}
-                              {!isExpired && (
+                              {!isExpired && !isGroupSold && !isBlockedRental && (
                                 <div className="seller-action-group">
                                   <button className="btn-accept" onClick={() => onAccept(offer)}>Accept</button>
                                   <button className="btn-reject" onClick={() => onReject(offer)}>Reject</button>
