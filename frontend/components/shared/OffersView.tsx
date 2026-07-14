@@ -1855,6 +1855,29 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                   </div>
                 </div>
 
+                {/* missed/expired offer alert */}
+                {(isExpired || o.status === 'missed') && (
+                  <div className="alert border-0 py-3 px-4 mb-3" style={{ background: '#fff5f5', borderRadius: 12, border: '1px solid #ffd0d0' }}>
+                    <div className="d-flex align-items-start gap-2">
+                      <i className="bi bi-clock-history" style={{ fontSize: '1.2rem', color: '#d63031', marginTop: 2 }}></i>
+                      <div>
+                        <div className="fw-bold mb-1" style={{ fontSize: '0.88rem', color: '#d63031' }}>
+                          ⏰ Offer Expired — No Response from Seller
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: '#555', lineHeight: '1.5' }}>
+                          {o.status === 'missed'
+                            ? `This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: ${expiryDate}).`
+                            : `This offer expired on ${expiryDate}. The seller did not respond within the acceptance window.`
+                          }
+                        </div>
+                        <div className="mt-2" style={{ fontSize: '0.78rem', color: '#888' }}>
+                          You can browse the marketplace to find similar items and make a new offer.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Action Buttons styled like Accept/Reject */}
                 <div className="d-flex gap-2 align-items-center flex-wrap">
                   {isAdmin && o.status === 'pending' && !isExpired && !isProductSold && !isRentalBlocked && (
