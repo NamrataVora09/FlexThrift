@@ -343,20 +343,18 @@ export default function Page() {
 
 
   const getOfferDisplayStatus = (o: Offer) => {
-    // Check if expired
-    let isExpired = false;
+    // Backend-confirmed missed offers → treat as 'rejected' for filter tabs
+    if (o.status === 'missed') return 'rejected';
+    if (o.status === 'cancelled') return 'rejected';
+
+    // Frontend-detected expiry (offer still marked pending but time window passed)
     if (o.status === 'pending' && o.created_at) {
       const offerTime = new Date(o.created_at).getTime();
       const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
-      isExpired = Date.now() > expiryTime;
-    }
-    const isProductSold = Number((o as any).is_product_sold ?? 0) > 0;
-    const isRentalBlocked = Number((o as any).is_rental_blocked ?? 0) > 0;
-
-    if (o.status === 'pending') {
-      if (isExpired || isProductSold || isRentalBlocked) {
-        return 'rejected';
-      }
+      const isExpired = Date.now() > expiryTime;
+      const isProductSold = Number((o as any).is_product_sold ?? 0) > 0;
+      const isRentalBlocked = Number((o as any).is_rental_blocked ?? 0) > 0;
+      if (isExpired || isProductSold || isRentalBlocked) return 'rejected';
     }
     return o.status;
   };
@@ -538,22 +536,31 @@ export default function Page() {
           const offerType = o.offer_type || o.listing_type || 'buy';
           const price = o.offered_price || o.offer_price;
 
-          // expiry logic
+          // expiry logic — covers both backend-confirmed 'missed' and frontend-detected pending expiry
           const offerTime = o.created_at ? new Date(o.created_at).getTime() : Date.now();
           const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
-          let isExpired = o.status === 'missed' || (o.status === 'pending' && Date.now() > expiryTime);
-          let expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+          // isExpired is true when: backend set status to 'missed' OR offer is pending and time window passed
+          const isExpired = o.status === 'missed' || (o.status === 'pending' && Date.now() > expiryTime);
+          // expiryDate: for backend-missed offers we may not know exact expiry so compute from creation + limit
+          const expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
           const isProductSold = Number((o as any).is_product_sold ?? 0) > 0;
           const isRentalBlocked = Number((o as any).is_rental_blocked ?? 0) > 0;
           const displayStatus = getOfferDisplayStatus(o);
 
           const statusLabel = (() => {
+            // Backend-confirmed missed (most reliable)
+            if (o.status === 'missed') return 'Missed';
+            // Frontend-detected expiry on a still-pending offer
             if (o.status === 'pending' && isExpired) return 'Missed';
             if (o.status === 'pending' && isProductSold && (o.offer_type ?? o.listing_type) === 'sell') return 'Sold Out';
             if (o.status === 'pending' && isRentalBlocked) return 'Dates Booked';
-            if (o.status === 'negotiating') return 'action required';
-            return o.status;
+            if (o.status === 'negotiating') return 'Action Required';
+            if (o.status === 'accepted') return 'Accepted';
+            if (o.status === 'rejected') return 'Rejected';
+            if (o.status === 'cancelled') return 'Cancelled';
+            // fallback capitalise
+            return o.status.charAt(0).toUpperCase() + o.status.slice(1);
           })();
 
           const sellerName = o.seller_name || 'Seller';
@@ -747,14 +754,22 @@ export default function Page() {
                   )}
 
                   {/* Message & Alerts */}
-                  {isExpired && (
-                    <div className="alert alert-danger border-0 py-3 px-4 mb-3" style={{ background: '#fff5f5', borderRadius: 12 }}>
+                  {(isExpired || o.status === 'missed') && (
+                    <div className="alert border-0 py-3 px-4 mb-3" style={{ background: '#fff5f5', borderRadius: 12, border: '1px solid #ffd0d0' }}>
                       <div className="d-flex align-items-start gap-2">
-                        <i className="bi bi-exclamation-triangle-fill text-danger mt-1" style={{ fontSize: '1.1rem' }}></i>
+                        <i className="bi bi-clock-history" style={{ fontSize: '1.2rem', color: '#d63031', marginTop: 2 }}></i>
                         <div>
-                          <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>Offer Missed</div>
-                          <div className="text-dark" style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>
-                            This offer expired on {expiryDate}. The seller did not respond within the acceptance window.
+                          <div className="fw-bold mb-1" style={{ fontSize: '0.88rem', color: '#d63031' }}>
+                            ⏰ Offer Expired — No Response from Seller
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: '#555', lineHeight: '1.5' }}>
+                            {o.status === 'missed'
+                              ? `This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: ${expiryDate}).`
+                              : `This offer expired on ${expiryDate}. The seller did not respond within the acceptance window.`
+                            }
+                          </div>
+                          <div className="mt-2" style={{ fontSize: '0.78rem', color: '#888' }}>
+                            You can browse the marketplace to find similar items and make a new offer.
                           </div>
                         </div>
                       </div>
