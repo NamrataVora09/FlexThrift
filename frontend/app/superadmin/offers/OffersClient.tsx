@@ -67,6 +67,7 @@ const statusColors: Record<string, { bg: string; color: string }> = {
   rejected:    { bg: 'rgba(220,53,69,0.1)',   color: '#dc3545' },
   cancelled:   { bg: 'rgba(108,117,125,0.1)', color: '#6c757d' },
   withdrawn:   { bg: 'rgba(108,117,125,0.1)', color: '#6c757d' },
+  missed:      { bg: 'rgba(255,193,7,0.15)', color: '#856404' },
   negotiating: { bg: 'rgba(13,110,253,0.1)',  color: '#0d6efd' },
 };
 
@@ -143,6 +144,7 @@ export default function OffersClient() {
                 <option value="pending">Pending</option>
                 <option value="accepted">Accepted</option>
                 <option value="negotiating">Negotiating</option>
+                <option value="missed">Missed</option>
                 <option value="rejected">Rejected</option>
                 <option value="cancelled">Cancelled</option>
                 <option value="withdrawn">Withdrawn</option>

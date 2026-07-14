@@ -1652,8 +1652,16 @@ class SellerApi extends BaseApiController
 
         $updateData = $this->cleanProductData($data, $db);
 
+        // Check if this is an image-only edit (no other product data changes)
+        $files = $this->request->getFiles();
+        $imageFiles = $files['product_images'] ?? $files['images'] ?? null;
+        $deletedIds = $this->request->getPost('deleted_images_ids');
+        $hasImageChanges = ($imageFiles && count($imageFiles) > 0) || ($deletedIds && !empty($deletedIds));
+        $hasDataChanges = !empty($updateData) && count($updateData) > 0;
+
         // If this is a seller (not admin/superadmin) and review is required, use edit request workflow
         // to keep old values visible in browse until approved
+        // This applies to both data changes AND image-only changes
         if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $reviewRequired) {
             // Use the editProduct workflow instead - create edit request, don't modify actual product
             // The editProduct method will handle the data from the request directly
