@@ -1929,8 +1929,14 @@ class SuperAdminApi extends BaseApiController
 
             // Handle deleted images
             $deletedIds = json_decode($request['deleted_images_ids'] ?? '[]', true);
-            if (!empty($deletedIds)) {
-                $db->table('product_images')->whereIn('id', $deletedIds)->delete();
+            if (!empty($deletedIds) && is_array($deletedIds)) {
+                // Ensure all IDs are valid integers
+                $validIds = array_filter($deletedIds, function($id) {
+                    return is_numeric($id);
+                });
+                if (!empty($validIds)) {
+                    $db->table('product_images')->whereIn('id', $validIds)->delete();
+                }
             }
 
             $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => date('Y-m-d H:i:s')]);
