@@ -426,6 +426,12 @@ export default function BrowsePage() {
         const cat = taxonomy.categories.find(c => String(c.id) === id);
         if (cat) merge(parseAttrs(cat.field_config));
       });
+    } else if (filters.productTypeIds.length > 0) {
+        // Merge from selected product types
+        filters.productTypeIds.forEach(id => {
+            const pt = taxonomy.product_types.find(p => String(p.id) === id);
+            if (pt) merge(parseAttrs(pt.field_config));
+        });
     }
 
     // 3. Merge from selected listing type
@@ -435,13 +441,13 @@ export default function BrowsePage() {
 
     // 4. Fallback: if no specific filters or they have no attributes, merge from all visible items
     if (Object.keys(merged).length === 0) {
-      [...visibleCategories, ...visibleSubCategories].forEach(item => {
+      [...visibleProductTypes, ...visibleCategories, ...visibleSubCategories].forEach(item => {
         merge(parseAttrs((item as any).field_config ?? null));
       });
     }
 
     setDynamicAttrs(Object.values(merged));
-  }, [filters.subCategoryIds, filters.categoryIds, selectedListingType, taxonomy, visibleCategories, visibleSubCategories]);
+  }, [filters.subCategoryIds, filters.categoryIds, filters.productTypeIds, selectedListingType, taxonomy, visibleCategories, visibleSubCategories, visibleProductTypes]);
 
   // ── URL building ──────────────────────────────────────────────────────────
   const buildUrl = (type: string, s: string, f: ActiveFilters): string => {
