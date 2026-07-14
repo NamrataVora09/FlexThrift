@@ -531,13 +531,6 @@ class AdminApi extends BaseApiController
         }
     }
 
-        return $this->respond(['success' => true, 'message' => 'Edit request approved and merged.']);
-    }
-
-    /**
-     * POST /api/v1/admin/reject-edit-request/:id
-     * Rejects an edit request
-     */
     /**
      * POST /api/v1/admin/reject-edit-request/:id
      * Rejects a seller edit request by product_edit_requests.id
