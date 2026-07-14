@@ -63,6 +63,7 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'Dashboard', href: '/admin', icon: 'bi bi-speedometer2' },
             { label: 'My Portal/Profile', href: '/admin/profile', icon: 'fa fa-user' },
             { label: 'Subscription', href: '/admin/subscriptions', icon: 'fa fa-credit-card' },
+            { label: 'Referral Program', href: '/admin/referral', icon: 'fa fa-gift' },
             { label: 'Transactions / Reports', href: '/admin/transactions', icon: 'fa fa-receipt' },
           ],
         },
