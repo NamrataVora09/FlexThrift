@@ -45,6 +45,7 @@ interface TaxonomyProductType {
   id: number;
   listing_type_id: number;
   name: string;
+  field_config?: string | null;
 }
 
 interface TaxonomyCategory {
