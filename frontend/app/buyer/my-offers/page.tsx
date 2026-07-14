@@ -539,14 +539,10 @@ export default function Page() {
           const price = o.offered_price || o.offer_price;
 
           // expiry logic
-          let isExpired = false;
-          let expiryDate: string | null = null;
-          if (o.status === 'pending' && o.created_at) {
-            const offerTime = new Date(o.created_at).getTime();
-            const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
-            isExpired = Date.now() > expiryTime;
-            expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-          }
+          const offerTime = o.created_at ? new Date(o.created_at).getTime() : Date.now();
+          const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
+          let isExpired = o.status === 'missed' || (o.status === 'pending' && Date.now() > expiryTime);
+          let expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
           const isProductSold = Number((o as any).is_product_sold ?? 0) > 0;
           const isRentalBlocked = Number((o as any).is_rental_blocked ?? 0) > 0;
