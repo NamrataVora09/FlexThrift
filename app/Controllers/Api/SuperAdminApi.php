@@ -1915,27 +1915,86 @@ class SuperAdminApi extends BaseApiController
                 return $this->respond(['success' => false, 'message' => 'Failed to update product'], 500);
             }
 
-            // Handle new temp images
+            // Handle new temp images - move from temp to permanent location
             $tempImages = json_decode($request['temp_images'] ?? '[]', true);
             if (!empty($tempImages)) {
-                foreach ($tempImages as $path) {
-                    $db->table('product_images')->insert([
-                        'product_id' => $request['product_id'], 
-                        'image_path' => $path, 
-                        'created_at' => date('Y-m-d H:i:s')
-                    ]);
+                foreach ($tempImages as $tempPath) {
+                    // Move image from temp to permanent directory
+                    $finalPath = str_replace('uploads/products/temp/', 'uploads/products/', $tempPath);
+                    $tempFullPath = FCPATH . $tempPath;
+                    $finalFullPath = FCPATH . $finalPath;
+                    
+                    if (file_exists($tempFullPath)) {
+                        // Ensure target directory exists
+                        $targetDir = dirname($finalFullPath);
+                        if (!is_dir($targetDir)) {
+                            mkdir($targetDir, 0777, true);
+                        }
+                        
+                        // Move the file
+                        if (rename($tempFullPath, $finalFullPath)) {
+                            // Insert with final path
+                            $db->table('product_images')->insert([
+                                'product_id' => $request['product_id'], 
+                                'image_path' => $finalPath, 
+                                'created_at' => date('Y-m-d H:i:s')
+                            ]);
+                        }
+                    } else {
+                        // If temp file doesn't exist, still insert with temp path (fallback)
+                        $db->table('product_images')->insert([
+                            'product_id' => $request['product_id'], 
+                            'image_path' => $tempPath, 
+                            'created_at' => date('Y-m-d H:i:s')
+                        ]);
+                    }
                 }
             }
 
             // Handle deleted images
             $deletedIds = json_decode($request['deleted_images_ids'] ?? '[]', true);
             if (!empty($deletedIds) && is_array($deletedIds)) {
-                // Ensure all IDs are valid integers
-                $validIds = array_filter($deletedIds, function($id) {
-                    return is_numeric($id);
-                });
+                // Handle both old format (IDs only) and new format (with paths)
+                $validIds = [];
+                $pathsToDelete = [];
+                
+                foreach ($deletedIds as $item) {
+                    if (is_numeric($item)) {
+                        // Old format: just ID
+                        $validIds[] = (int)$item;
+                    } elseif (is_array($item) && isset($item['id'])) {
+                        // New format: array with id and image_path
+                        $validIds[] = (int)$item['id'];
+                        if (isset($item['image_path'])) {
+                            $pathsToDelete[] = $item['image_path'];
+                        }
+                    }
+                }
+                
                 if (!empty($validIds)) {
+                    // Get the image paths before deletion for file cleanup
+                    $imagesToDelete = $db->table('product_images')
+                        ->whereIn('id', $validIds)
+                        ->get()->getResultArray();
+                    
+                    // Delete from database
                     $db->table('product_images')->whereIn('id', $validIds)->delete();
+                    
+                    // Delete files from filesystem
+                    foreach ($imagesToDelete as $img) {
+                        $filePath = FCPATH . $img['image_path'];
+                        if (file_exists($filePath)) {
+                            @unlink($filePath);
+                        }
+                    }
+                }
+                
+                // Also delete files from the paths array (new format)
+                foreach ($pathsToDelete as $path) {
+                    $filePath = FCPATH . $path;
+                    if (file_exists($filePath)) {
+                        @unlink($filePath);
+                    }
                 }
             }
 

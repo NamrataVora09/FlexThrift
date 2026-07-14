@@ -394,64 +394,142 @@ class AdminApi extends BaseApiController
      */
     public function approveEditRequest($id)
     {
-        $db = \Config\Database::connect();
-        $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-        if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        try {
+            $db = \Config\Database::connect();
+            $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
+            if (!$request) return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
 
-        // Get current product data
-        $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
-        if (!$currentProduct) return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            $editData = json_decode($request['updated_data'], true) ?: [];
+            if (empty($editData)) {
+                return $this->respond(['success' => false, 'message' => 'Invalid update data'], 400);
+            }
+            
+            // Get current product data to preserve fields that weren't updated
+            $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+            if (!$currentProduct) {
+                return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            }
+            
+            // Merge edit data with current product data (edit data takes precedence for changed fields)
+            $mergedData = array_merge($currentProduct, $editData);
+            
+            // Force status back to approved after merging edit
+            $mergedData['status'] = 'approved';
+            $mergedData['updated_at'] = date('Y-m-d H:i:s');
+            $mergedData['edit_request'] = null;
+            
+            // Remove fields that shouldn't be updated
+            unset($mergedData['id'], $mergedData['created_at']);
+            
+            $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($mergedData);
+            if (!$productUpdate) {
+                log_message('error', "Failed to update product ID: {$request['product_id']} for edit request ID: {$id}");
+                return $this->respond(['success' => false, 'message' => 'Failed to update product'], 500);
+            }
 
-        $editData = json_decode($request['updated_data'], true) ?: [];
-        
-        // Merge edit data with current product data (edit data takes precedence for changed fields)
-        $mergedData = array_merge($currentProduct, $editData);
-        
-        // Force status back to approved after merging edit
-        $mergedData['status'] = 'approved';
-        $mergedData['updated_at'] = date('Y-m-d H:i:s');
-        $mergedData['edit_request'] = 0;
-        
-        // Remove fields that shouldn't be updated
-        unset($mergedData['id'], $mergedData['created_at']);
-        
-        $db->table('products')->where('id', $request['product_id'])->update($mergedData);
-
-        // Handle new temp images
-        $tempImages = json_decode($request['temp_images'] ?? '[]', true);
-        foreach ($tempImages as $path) {
-            $db->table('product_images')->insert(['product_id' => $request['product_id'], 'image_path' => $path, 'created_at' => date('Y-m-d H:i:s')]);
-        }
-
-        // Handle deleted images
-        $deletedIds = json_decode($request['deleted_images_ids'] ?? '[]', true);
-        if (!empty($deletedIds)) {
-            // Handle both old format (IDs only) and new format (with paths)
-            $idsToDelete = [];
-            foreach ($deletedIds as $item) {
-                if (is_array($item) && isset($item['id'])) {
-                    $idsToDelete[] = $item['id'];
-                } else {
-                    $idsToDelete[] = $item;
+            // Handle new temp images - move from temp to permanent location
+            $tempImages = json_decode($request['temp_images'] ?? '[]', true);
+            if (!empty($tempImages)) {
+                foreach ($tempImages as $tempPath) {
+                    // Move image from temp to permanent directory
+                    $finalPath = str_replace('uploads/products/temp/', 'uploads/products/', $tempPath);
+                    $tempFullPath = FCPATH . $tempPath;
+                    $finalFullPath = FCPATH . $finalPath;
+                    
+                    if (file_exists($tempFullPath)) {
+                        // Ensure target directory exists
+                        $targetDir = dirname($finalFullPath);
+                        if (!is_dir($targetDir)) {
+                            mkdir($targetDir, 0777, true);
+                        }
+                        
+                        // Move the file
+                        if (rename($tempFullPath, $finalFullPath)) {
+                            // Insert with final path
+                            $db->table('product_images')->insert([
+                                'product_id' => $request['product_id'], 
+                                'image_path' => $finalPath, 
+                                'created_at' => date('Y-m-d H:i:s')
+                            ]);
+                        }
+                    } else {
+                        // If temp file doesn't exist, still insert with temp path (fallback)
+                        $db->table('product_images')->insert([
+                            'product_id' => $request['product_id'], 
+                            'image_path' => $tempPath, 
+                            'created_at' => date('Y-m-d H:i:s')
+                        ]);
+                    }
                 }
             }
-            $db->table('product_images')->whereIn('id', $idsToDelete)->delete();
-        }
 
-        $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => date('Y-m-d H:i:s')]);
+            // Handle deleted images
+            $deletedIds = json_decode($request['deleted_images_ids'] ?? '[]', true);
+            if (!empty($deletedIds) && is_array($deletedIds)) {
+                // Handle both old format (IDs only) and new format (with paths)
+                $validIds = [];
+                $pathsToDelete = [];
+                
+                foreach ($deletedIds as $item) {
+                    if (is_numeric($item)) {
+                        // Old format: just ID
+                        $validIds[] = (int)$item;
+                    } elseif (is_array($item) && isset($item['id'])) {
+                        // New format: array with id and image_path
+                        $validIds[] = (int)$item['id'];
+                        if (isset($item['image_path'])) {
+                            $pathsToDelete[] = $item['image_path'];
+                        }
+                    }
+                }
+                
+                if (!empty($validIds)) {
+                    // Get the image paths before deletion for file cleanup
+                    $imagesToDelete = $db->table('product_images')
+                        ->whereIn('id', $validIds)
+                        ->get()->getResultArray();
+                    
+                    // Delete from database
+                    $db->table('product_images')->whereIn('id', $validIds)->delete();
+                    
+                    // Delete files from filesystem
+                    foreach ($imagesToDelete as $img) {
+                        $filePath = FCPATH . $img['image_path'];
+                        if (file_exists($filePath)) {
+                            @unlink($filePath);
+                        }
+                    }
+                }
+                
+                // Also delete files from the paths array (new format)
+                foreach ($pathsToDelete as $path) {
+                    $filePath = FCPATH . $path;
+                    if (file_exists($filePath)) {
+                        @unlink($filePath);
+                    }
+                }
+            }
 
-        // Notify the seller
-        $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
-        if ($product) {
-            $db->table('notifications')->insert([
-                'user_id' => $request['seller_id'],
-                'title' => 'Edit Request Approved',
-                'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" has been approved and applied.',
-                'type' => 'product_edit',
-                'is_read' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
+            $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => date('Y-m-d H:i:s')]);
+
+            // Notify the seller
+            if ($currentProduct) {
+                $db->table('notifications')->insert([
+                    'user_id' => $request['seller_id'],
+                    'title' => 'Edit Request Approved',
+                    'message' => 'Your edit request for "' . ($currentProduct['title'] ?? 'your product') . '" has been approved and applied.',
+                    'type' => 'product_edit',
+                    'is_read' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            return $this->respond(['success' => true, 'message' => 'Edit request approved and merged.']);
+        } catch (\Exception $e) {
+            log_message('error', "Error in approveEditRequest for ID {$id}: " . $e->getMessage());
+            return $this->respond(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
         }
+    }
 
         return $this->respond(['success' => true, 'message' => 'Edit request approved and merged.']);
     }
