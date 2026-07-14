@@ -1881,56 +1881,77 @@ class SuperAdminApi extends BaseApiController
 
     public function approveEditRequest($id)
     {
-        $db = \Config\Database::connect();
-        $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-        if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        try {
+            $db = \Config\Database::connect();
+            $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
+            if (!$request) return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
 
-        $updatedData = json_decode($request['updated_data'], true) ?: [];
-        
-        // Get current product data to preserve fields that weren't updated
-        $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
-        
-        // Merge updated data with current product data, preserving fields that weren't in the update
-        foreach ($currentProduct as $key => $value) {
-            if (!isset($updatedData[$key])) {
-                $updatedData[$key] = $value;
+            $updatedData = json_decode($request['updated_data'], true) ?: [];
+            if (empty($updatedData)) {
+                return $this->respond(['success' => false, 'message' => 'Invalid update data'], 400);
             }
+            
+            // Get current product data to preserve fields that weren't updated
+            $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
+            if (!$currentProduct) {
+                return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            }
+            
+            // Merge updated data with current product data, preserving fields that weren't in the update
+            foreach ($currentProduct as $key => $value) {
+                if (!isset($updatedData[$key])) {
+                    $updatedData[$key] = $value;
+                }
+            }
+            
+            // Force status back to approved after merging edit
+            $updatedData['status'] = 'approved';
+            $updatedData['updated_at'] = date('Y-m-d H:i:s');
+            $updatedData['edit_request'] = null;
+            
+            $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($updatedData);
+            if (!$productUpdate) {
+                log_message('error', "Failed to update product ID: {$request['product_id']} for edit request ID: {$id}");
+                return $this->respond(['success' => false, 'message' => 'Failed to update product'], 500);
+            }
+
+            // Handle new temp images
+            $tempImages = json_decode($request['temp_images'] ?? '[]', true);
+            if (!empty($tempImages)) {
+                foreach ($tempImages as $path) {
+                    $db->table('product_images')->insert([
+                        'product_id' => $request['product_id'], 
+                        'image_path' => $path, 
+                        'created_at' => date('Y-m-d H:i:s')
+                    ]);
+                }
+            }
+
+            // Handle deleted images
+            $deletedIds = json_decode($request['deleted_images_ids'] ?? '[]', true);
+            if (!empty($deletedIds)) {
+                $db->table('product_images')->whereIn('id', $deletedIds)->delete();
+            }
+
+            $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => date('Y-m-d H:i:s')]);
+
+            // Notify the seller
+            if ($currentProduct) {
+                $db->table('notifications')->insert([
+                    'user_id' => $request['seller_id'],
+                    'title' => 'Edit Request Approved',
+                    'message' => 'Your edit request for "' . ($currentProduct['title'] ?? 'your product') . '" has been approved and applied.',
+                    'type' => 'product_edit',
+                    'is_read' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+
+            return $this->respond(['success' => true, 'message' => 'Edit request approved and merged.']);
+        } catch (\Exception $e) {
+            log_message('error', "Error in approveEditRequest for ID {$id}: " . $e->getMessage());
+            return $this->respond(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
         }
-        
-        // Force status back to approved after merging edit
-        $updatedData['status'] = 'approved';
-        $updatedData['updated_at'] = date('Y-m-d H:i:s');
-        $updatedData['edit_request'] = null;
-        $db->table('products')->where('id', $request['product_id'])->update($updatedData);
-
-        // Handle new temp images
-        $tempImages = json_decode($request['temp_images'] ?? '[]', true);
-        foreach ($tempImages as $path) {
-            $db->table('product_images')->insert(['product_id' => $request['product_id'], 'image_path' => $path, 'created_at' => date('Y-m-d H:i:s')]);
-        }
-
-        // Handle deleted images
-        $deletedIds = json_decode($request['deleted_images_ids'] ?? '[]', true);
-        if (!empty($deletedIds)) {
-            $db->table('product_images')->whereIn('id', $deletedIds)->delete();
-        }
-
-        $db->table('product_edit_requests')->where('id', $id)->update(['status' => 'approved', 'updated_at' => date('Y-m-d H:i:s')]);
-
-        // Notify the seller
-        $product = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
-        if ($product) {
-            $db->table('notifications')->insert([
-                'user_id' => $request['seller_id'],
-                'title' => 'Edit Request Approved',
-                'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" has been approved and applied.',
-                'type' => 'product_edit',
-                'is_read' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
-        }
-
-        return $this->respond(['success' => true, 'message' => 'Edit request approved and merged.']);
     }
 
     /**
@@ -2316,12 +2337,12 @@ class SuperAdminApi extends BaseApiController
             ->update(['status' => 'missed', 'updated_at' => date('Y-m-d H:i:s')]);
         $count = $db->affectedRows();
         
-        // Send notifications only to sellers for each missed offer
+        // Send notifications to both sellers and buyers for each missed offer
         foreach ($offersToMark as $offer) {
             $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
             $productTitle = $product['title'] ?? 'Product';
             
-            // Notify seller only
+            // Notify seller
             $db->table('notifications')->insert([
                 'user_id' => $offer['seller_id'],
                 'title' => 'Offer Expired',
@@ -2330,9 +2351,19 @@ class SuperAdminApi extends BaseApiController
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
+            
+            // Notify buyer
+            $db->table('notifications')->insert([
+                'user_id' => $offer['buyer_id'],
+                'title' => 'Offer Expired',
+                'message' => "Your offer for \"{$productTitle}\" has expired and is now marked as missed.",
+                'type' => 'offer_missed',
+                'is_read' => 0,
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
         }
         
-        return $this->respond(['success' => true, 'message' => "Marked {$count} expired offers as missed. Notifications sent to sellers."]);
+        return $this->respond(['success' => true, 'message' => "Marked {$count} expired offers as missed. Notifications sent to sellers and buyers."]);
     }
 
     public function bulkDeleteRejected()
