@@ -20,6 +20,8 @@ const statusColors: Record<string, { bg: string; color: string }> = {
   accepted: { bg: 'rgba(25,135,84,0.1)', color: '#198754' },
   rejected: { bg: 'rgba(220,53,69,0.1)', color: '#dc3545' },
   cancelled: { bg: 'rgba(108,117,125,0.1)', color: '#6c757d' },
+  missed: { bg: 'rgba(255,193,7,0.15)', color: '#856404' },
+  negotiating: { bg: 'rgba(255,193,7,0.1)', color: '#d97706' },
 };
 
 export default function AdminAllOffersClient() {
@@ -68,7 +70,9 @@ export default function AdminAllOffersClient() {
                 <option value="pending">Pending</option>
                 <option value="accepted">Accepted</option>
                 <option value="rejected">Rejected</option>
+                <option value="missed">Missed</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="negotiating">Negotiating</option>
               </select>
             </div>
             <div className="col-md-2">
