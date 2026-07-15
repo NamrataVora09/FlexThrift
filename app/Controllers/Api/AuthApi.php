@@ -616,6 +616,9 @@ class AuthApi extends BaseApiController
             $this->userModel->update($user['id'], ['referral_code' => $user['referral_code']]);
         }
 
+        // Clean up expired referral balances in database
+        $this->cleanupExpiredReferralBalances();
+
         $db = \Config\Database::connect();
 
         // Fetch referral settings
@@ -836,15 +839,61 @@ class AuthApi extends BaseApiController
                 $expiryDays     = (float) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
                 $expiresAt      = date('Y-m-d H:i:s', time() + (int)($expiryDays * 86400));
 
-                // Credit the receiver immediately
+                // Check if user already has an expired referral balance and reset it in database
+                $existingUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
+                $currentBalance = (float) ($existingUser['referral_balance'] ?? 0);
+                $currentExpiry = $existingUser['referral_expires_at'] ?? null;
+                
+                // If existing referral is expired, reset balance to 0 in database
+                if ($currentExpiry && $currentExpiry !== '0000-00-00 00:00:00' && strtotime($currentExpiry) <= time()) {
+                    $currentBalance = 0.0;
+                    $db->table('users')->where('id', $userId)->update([
+                        'referral_balance' => 0,
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                }
+
+                // Credit the receiver immediately (add to existing balance if not expired, or set to new reward)
+                $newBalance = $currentBalance + $receiverReward;
+                
                 $db->table('users')->where('id', $userId)->update([
                     'referred_by'         => $referredBy,
-                    'referral_balance'    => $receiverReward,
+                    'referral_balance'    => $newBalance,
                     'referral_expires_at' => $expiresAt,
                     'has_used_referral'   => 0, 
                     'updated_at'          => date('Y-m-d H:i:s'),
                 ]);
             }
+        }
+    }
+
+    /**
+     * Clean up expired referral balances in database
+     * This should be called periodically or when checking referral stats
+     */
+    private function cleanupExpiredReferralBalances()
+    {
+        $db = \Config\Database::connect();
+        
+        // Find all users with expired referral balances
+        $expiredUsers = $db->table('users')
+            ->select('id')
+            ->where('referral_balance >', 0)
+            ->where('referral_expires_at IS NOT NULL')
+            ->where('referral_expires_at !=', '0000-00-00 00:00:00')
+            ->where('referral_expires_at <=', date('Y-m-d H:i:s'))
+            ->get()->getResultArray();
+        
+        if (!empty($expiredUsers)) {
+            $userIds = array_column($expiredUsers, 'id');
+            $db->table('users')
+                ->whereIn('id', $userIds)
+                ->update([
+                    'referral_balance' => 0,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+            
+            log_message('info', 'Cleared expired referral balances for ' . count($userIds) . ' users');
         }
     }
 
