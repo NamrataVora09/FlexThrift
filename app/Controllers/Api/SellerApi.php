@@ -1664,10 +1664,10 @@ class SellerApi extends BaseApiController
         $hasImageChanges = ($imageFiles && count($imageFiles) > 0) || ($deletedIds && !empty($deletedIds));
         $hasDataChanges = !empty($updateData) && count($updateData) > 0;
 
-        // If review is required, use edit request workflow for ALL users (including admins)
-        // to keep old values visible in browse until approved
+        // If review is required, use edit request workflow for sellers and admins
+        // Superadmin can bypass approval and update directly
         // This applies to both data changes AND image-only changes
-        if ($reviewRequired) {
+        if ($reviewRequired && !in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             // Use the editProduct workflow instead - create edit request, don't modify actual product
             // The editProduct method will handle the data from the request directly
             return $this->editProduct($id);
