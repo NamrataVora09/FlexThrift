@@ -643,10 +643,13 @@ class BuyerApi extends BaseApiController
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
 
+        $limit = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $expiryCutoff = date('Y-m-d H:i:s', time() - (int)($limit * 86400));
+
         $offer = $db->table('offers')
             ->where('product_id', $productId)
             ->where('buyer_id', $jwtUser['user_id'])
-            ->whereIn('status', ['pending', 'accepted', 'rejected'])
+            ->whereIn('status', ['pending', 'accepted', 'rejected', 'negotiating'])
             ->orderBy('created_at', 'DESC')
             ->limit(1)
             ->get()->getRowArray();
@@ -658,8 +661,11 @@ class BuyerApi extends BaseApiController
             }
         }
 
-        $limit = (float) getSystemSetting('offer_acceptance_limit_days', 7);
-        $expiryCutoff = date('Y-m-d H:i:s', time() - (int)($limit * 86400));
+        // Check if offer is missed (expired pending offer)
+        $isMissed = false;
+        if ($offer && $offer['status'] === 'pending') {
+            $isMissed = strtotime($offer['created_at']) < strtotime($expiryCutoff);
+        }
 
         $activeOffers = $db->table('offers')
             ->where('product_id', $productId)
@@ -670,6 +676,7 @@ class BuyerApi extends BaseApiController
                     ->where('status', 'pending')
                     ->where('created_at >=', $expiryCutoff)
                 ->groupEnd()
+                ->orWhere('status', 'negotiating')
             ->groupEnd()
             ->get()->getResultArray();
 
@@ -679,6 +686,7 @@ class BuyerApi extends BaseApiController
                 'has_offer' => !empty($offer),
                 'offer' => $offer ?: null,
                 'rental_period_ended' => $rentalPeriodEnded,
+                'is_missed' => $isMissed,
                 'active_offers' => $activeOffers,
                 'acceptance_limit_days' => $limit,
             ],
@@ -716,6 +724,10 @@ class BuyerApi extends BaseApiController
         $offerType = $data['offer_type'] ?? $product['listing_type'];
 
         // Prevent duplicate active offers from the same buyer on the same product
+        // Get acceptance limit days for expiry check
+        $limit = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $expiryCutoff = date('Y-m-d H:i:s', time() - (int)($limit * 86400));
+        
         if ($offerType === 'rent') {
             if (empty($data['rental_start_date']) || empty($data['rental_end_date'])) {
                 return $this->respond(['success' => false, 'message' => 'Rental start and end dates are required'], 400);
@@ -724,7 +736,7 @@ class BuyerApi extends BaseApiController
             $overlappingUserOffer = $db->table('offers')
                 ->where('product_id', $data['product_id'])
                 ->where('buyer_id', $jwtUser['user_id'])
-                ->whereIn('status', ['pending', 'accepted'])
+                ->whereIn('status', ['pending', 'accepted', 'negotiating'])
                 ->where('rental_start_date <=', $data['rental_end_date'])
                 ->where('rental_end_date >=', $data['rental_start_date'])
                 ->get()->getRowArray();
@@ -733,7 +745,9 @@ class BuyerApi extends BaseApiController
                 $isExpired = $overlappingUserOffer['status'] === 'accepted'
                     && !empty($overlappingUserOffer['rental_end_date'])
                     && $overlappingUserOffer['rental_end_date'] < date('Y-m-d');
-                if (!$isExpired) {
+                $isMissed = $overlappingUserOffer['status'] === 'pending'
+                    && strtotime($overlappingUserOffer['created_at']) < strtotime($expiryCutoff);
+                if (!$isExpired && !$isMissed) {
                     return $this->respond(['success' => false, 'message' => 'You already have an active offer overlapping with these dates.'], 409);
                 }
             }
@@ -741,12 +755,17 @@ class BuyerApi extends BaseApiController
             $existingOffer = $db->table('offers')
                 ->where('product_id', $data['product_id'])
                 ->where('buyer_id', $jwtUser['user_id'])
-                ->whereIn('status', ['pending', 'accepted'])
+                ->whereIn('status', ['pending', 'accepted', 'negotiating'])
                 ->orderBy('created_at', 'DESC')
                 ->limit(1)
                 ->get()->getRowArray();
             if ($existingOffer) {
-                return $this->respond(['success' => false, 'message' => 'You already have an active offer on this product.'], 409);
+                // Check if offer is missed (expired pending offer)
+                $isMissed = $existingOffer['status'] === 'pending'
+                    && strtotime($existingOffer['created_at']) < strtotime($expiryCutoff);
+                if (!$isMissed) {
+                    return $this->respond(['success' => false, 'message' => 'You already have an active offer on this product.'], 409);
+                }
             }
         }
 
