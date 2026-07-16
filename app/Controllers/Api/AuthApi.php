@@ -880,14 +880,13 @@ class AuthApi extends BaseApiController
         try {
             $db = \Config\Database::connect();
             
-            // Find all users with expired referral balances
-            $expiredUsers = $db->table('users')
-                ->select('id')
-                ->where('referral_balance >', 0)
-                ->where('referral_expires_at IS NOT NULL')
-                ->where('referral_expires_at !=', '0000-00-00 00:00:00')
-                ->where('referral_expires_at <=', date('Y-m-d H:i:s'))
-                ->get()->getResultArray();
+            // Find all users with expired referral balances using raw SQL to handle '0000-00-00 00:00:00' properly
+            $sql = "SELECT id FROM users 
+                    WHERE referral_balance > 0 
+                    AND referral_expires_at IS NOT NULL 
+                    AND referral_expires_at != '0000-00-00 00:00:00' 
+                    AND referral_expires_at < ?";
+            $expiredUsers = $db->query($sql, [date('Y-m-d H:i:s')])->getResultArray();
             
             if (!empty($expiredUsers)) {
                 $userIds = array_column($expiredUsers, 'id');
