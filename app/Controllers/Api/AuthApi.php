@@ -668,10 +668,14 @@ class AuthApi extends BaseApiController
         }
 
         // Total ever earned = current balance remaining + amount already spent as referral discounts
-        $discountUsed = (float) ($db->table('user_subscriptions')
+        $discountUsed = 0.0;
+        $discountResult = $db->table('user_subscriptions')
             ->selectSum('referral_discount_applied')
             ->where('user_id', $user['id'])
-            ->get()->getRowArray()['referral_discount_applied'] ?? 0);
+            ->get()->getRowArray();
+        if ($discountResult && isset($discountResult['referral_discount_applied'])) {
+            $discountUsed = (float) $discountResult['referral_discount_applied'];
+        }
         $totalEarned = $referralBalance + $discountUsed;
 
         return $this->respond([
@@ -873,27 +877,31 @@ class AuthApi extends BaseApiController
      */
     private function cleanupExpiredReferralBalances()
     {
-        $db = \Config\Database::connect();
-        
-        // Find all users with expired referral balances
-        $expiredUsers = $db->table('users')
-            ->select('id')
-            ->where('referral_balance >', 0)
-            ->where('referral_expires_at IS NOT NULL')
-            ->where('referral_expires_at !=', '0000-00-00 00:00:00')
-            ->where('referral_expires_at <=', date('Y-m-d H:i:s'))
-            ->get()->getResultArray();
-        
-        if (!empty($expiredUsers)) {
-            $userIds = array_column($expiredUsers, 'id');
-            $db->table('users')
-                ->whereIn('id', $userIds)
-                ->update([
-                    'referral_balance' => 0,
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
+        try {
+            $db = \Config\Database::connect();
             
-            log_message('info', 'Cleared expired referral balances for ' . count($userIds) . ' users');
+            // Find all users with expired referral balances
+            $expiredUsers = $db->table('users')
+                ->select('id')
+                ->where('referral_balance >', 0)
+                ->where('referral_expires_at IS NOT NULL')
+                ->where('referral_expires_at !=', '0000-00-00 00:00:00')
+                ->where('referral_expires_at <=', date('Y-m-d H:i:s'))
+                ->get()->getResultArray();
+            
+            if (!empty($expiredUsers)) {
+                $userIds = array_column($expiredUsers, 'id');
+                $db->table('users')
+                    ->whereIn('id', $userIds)
+                    ->update([
+                        'referral_balance' => 0,
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                
+                log_message('info', 'Cleared expired referral balances for ' . count($userIds) . ' users');
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Error cleaning up expired referral balances: ' . $e->getMessage());
         }
     }
 
