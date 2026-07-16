@@ -697,7 +697,7 @@ export default function Page() {
                       {(() => {
                         const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
                         const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
-                        const canRate = o.status === 'accepted' && !o.buyer_rated_seller && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
+                        const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
                         
                         if (canRate) {
                           return (
@@ -710,7 +710,7 @@ export default function Page() {
                             </button>
                           );
                         }
-                        if (o.status === 'accepted' && o.buyer_rated_seller) {
+                        if (o.status === 'accepted' && Number(o.buyer_rated_seller) === 1) {
                           return (
                             <span className="badge bg-light text-success border py-2 px-3 rounded-pill fw-bold" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem' }}>
                               <i className="bi bi-check-circle-fill me-1"></i> Rated

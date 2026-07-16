@@ -485,7 +485,7 @@ class BuyerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         $offers = $db->table('offers o')
-            ->select('o.*, o.offer_price as offered_price, o.message,
+            ->select('o.*, o.offer_price as offered_price, o.message, o.buyer_rated_seller,
                 p.title as product_title, p.listing_type, p.original_price,
                 p.rental_cost as rental_cost,
                 p.dispatch_city, p.dispatch_state, p.dispatch_pin_code,
