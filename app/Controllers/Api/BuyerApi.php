@@ -747,6 +747,7 @@ class BuyerApi extends BaseApiController
                     && $overlappingUserOffer['rental_end_date'] < date('Y-m-d');
                 $isMissed = $overlappingUserOffer['status'] === 'pending'
                     && strtotime($overlappingUserOffer['created_at']) < strtotime($expiryCutoff);
+                // Only allow new offer if previous offer is expired (rental period ended) or missed (pending expired)
                 if (!$isExpired && !$isMissed) {
                     return $this->respond(['success' => false, 'message' => 'You already have an active offer overlapping with these dates.'], 409);
                 }
@@ -763,6 +764,7 @@ class BuyerApi extends BaseApiController
                 // Check if offer is missed (expired pending offer)
                 $isMissed = $existingOffer['status'] === 'pending'
                     && strtotime($existingOffer['created_at']) < strtotime($expiryCutoff);
+                // Only allow new offer if previous offer is missed (pending expired)
                 if (!$isMissed) {
                     return $this->respond(['success' => false, 'message' => 'You already have an active offer on this product.'], 409);
                 }
