@@ -880,24 +880,39 @@ class AuthApi extends BaseApiController
         try {
             $db = \Config\Database::connect();
             
-            // Find all users with expired referral balances using raw SQL to handle '0000-00-00 00:00:00' properly
-            $sql = "SELECT id FROM users 
-                    WHERE referral_balance > 0 
-                    AND referral_expires_at IS NOT NULL 
-                    AND referral_expires_at != '0000-00-00 00:00:00' 
-                    AND referral_expires_at < ?";
-            $expiredUsers = $db->query($sql, [date('Y-m-d H:i:s')])->getResultArray();
+            // Find all users with referral balance and check expiry in PHP to avoid MySQL strict mode issues
+            $usersWithBalance = $db->table('users')
+                ->select('id, referral_expires_at')
+                ->where('referral_balance >', 0)
+                ->where('referral_expires_at IS NOT NULL')
+                ->get();
             
-            if (!empty($expiredUsers)) {
-                $userIds = array_column($expiredUsers, 'id');
-                $db->table('users')
-                    ->whereIn('id', $userIds)
-                    ->update([
-                        'referral_balance' => 0,
-                        'updated_at' => date('Y-m-d H:i:s'),
-                    ]);
+            if ($usersWithBalance) {
+                $expiredUserIds = [];
+                $currentTime = time();
                 
-                log_message('info', 'Cleared expired referral balances for ' . count($userIds) . ' users');
+                foreach ($usersWithBalance->getResultArray() as $user) {
+                    $expiry = $user['referral_expires_at'];
+                    // Skip invalid dates
+                    if ($expiry === '0000-00-00 00:00:00' || empty($expiry)) {
+                        continue;
+                    }
+                    // Check if expired
+                    if (strtotime($expiry) < $currentTime) {
+                        $expiredUserIds[] = $user['id'];
+                    }
+                }
+                
+                if (!empty($expiredUserIds)) {
+                    $db->table('users')
+                        ->whereIn('id', $expiredUserIds)
+                        ->update([
+                            'referral_balance' => 0,
+                            'updated_at' => date('Y-m-d H:i:s'),
+                        ]);
+                    
+                    log_message('info', 'Cleared expired referral balances for ' . count($expiredUserIds) . ' users');
+                }
             }
         } catch (\Exception $e) {
             log_message('error', 'Error cleaning up expired referral balances: ' . $e->getMessage());
