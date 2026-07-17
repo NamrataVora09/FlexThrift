@@ -520,7 +520,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                             {isPopular && <div className="tier-badge">Most Selected</div>}
                             <div style={{ marginBottom: '3rem' }}>
                               <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
-                              <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type === 'quantity' ? 'Professional Listing' : plan.plan_type === 'duration' ? 'Full Duration Access' : plan.plan_type}</p>
+                              <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type.toUpperCase()} Based</p>
                             </div>
                             <div style={{ marginBottom: '3rem' }}>
                               <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
