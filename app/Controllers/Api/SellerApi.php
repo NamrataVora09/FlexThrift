@@ -2641,7 +2641,7 @@ class SellerApi extends BaseApiController
                     ]);
                 }
 
-                // Credit referrer if this seller was referred and hasn't triggered the reward yet
+                // Credit referrer if this buyer was referred and hasn't triggered the reward yet
                 $buyer = $db->table('users')->select('referred_by, has_used_referral')->where('id', $dbSub['user_id'])->get()->getRowArray();
                 if (!empty($buyer['referred_by']) && (int) $buyer['has_used_referral'] === 0) {
                     $referrer = $db->table('users')->where('referral_code', $buyer['referred_by'])->get()->getRowArray();
@@ -2680,7 +2680,13 @@ class SellerApi extends BaseApiController
                                 'has_used_referral' => 1,
                                 'updated_at' => date('Y-m-d H:i:s'),
                             ]);
+                            
+                            log_message('info', 'Referrer credited: User ID ' . $referrer['id'] . ' received ' . $rewardAmount . ' for buyer ' . $dbSub['user_id']);
+                        } else {
+                            log_message('info', 'Referrer not credited: Referral enabled=' . ($cfg['referral_enabled'] ?? '1') . ', Plan price=' . $plan['price'] . ', Min purchase=' . $minPurchase);
                         }
+                    } else {
+                        log_message('error', 'Referrer not found for referral code: ' . $buyer['referred_by']);
                     }
                 }
             }
