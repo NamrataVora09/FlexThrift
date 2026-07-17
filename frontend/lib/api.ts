@@ -59,12 +59,12 @@ class ApiClient {
       if (response.status === 401) {
         localStorage.removeItem('flex_token');
         localStorage.removeItem('flex_user');
-        // Only redirect to login from protected pages, not public ones
+        // Only redirect to home from protected pages, not public ones
         if (typeof window !== 'undefined') {
-          const publicPaths = ['/', '/buyer/browse', '/buyer/product', '/cart', '/login', '/register', '/verify-otp'];
+          const publicPaths = ['/', '/buyer/browse', '/buyer/product', '/cart', '/register', '/verify-otp'];
           const isPublic = publicPaths.some(p => window.location.pathname === p || window.location.pathname.startsWith('/buyer/product/'));
           if (!isPublic) {
-            window.location.href = '/login';
+            window.location.href = '/';
           }
         }
       } else if (response.status === 403 && data.message?.toLowerCase().includes('account has been blocked')) {

@@ -39,7 +39,7 @@ class AuthFilter implements FilterInterface
                     ->setJSON(['success' => false, 'logged_in' => false, 'message' => 'Session expired. Please login again.'])
                     ->setStatusCode(401);
             }
-            return redirect()->to('/login')->with('error', 'Please login first');
+            return redirect()->to('/')->with('error', 'Please login first');
         }
     }
 
