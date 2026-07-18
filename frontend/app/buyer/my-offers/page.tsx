@@ -574,6 +574,10 @@ export default function Page() {
           const startFormatted = o.rental_start_date ? new Date(o.rental_start_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '';
           const endFormatted = o.rental_end_date ? new Date(o.rental_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
+          const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
+          const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
+          const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
+
           return (
             <div key={o.id} className="luxury-item-card shadow-sm" style={{ padding: 24, borderRadius: 20, background: '#fff', border: '1px solid #eee', marginBottom: 20 }}>
               <div className="row align-items-start g-4">
@@ -694,7 +698,7 @@ export default function Page() {
                         </>
                       )}
 
-                      {o.status === 'accepted' && !Number(o.buyer_rated_seller) && (
+                      {canRate && (
                         <button
                           className="btn px-4 py-2 rounded-pill fw-bold text-white"
                           style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}

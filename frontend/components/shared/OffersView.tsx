@@ -1676,8 +1676,8 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                               <i className="bi bi-star-fill me-1"></i>Rate Buyer
                             </button>
                           ) : Number(offer.seller_rated_buyer) === 1 ? (
-                            <span className="badge bg-light text-dark mt-2 border rounded-pill px-3">
-                              <i className="bi bi-check-circle-fill text-success me-1"></i>Rated
+                            <span className="badge bg-light text-success border py-2 px-3 rounded-pill fw-bold mt-2" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem' }}>
+                              <i className="bi bi-check-circle-fill me-1"></i> Rated
                             </span>
                           ) : null}
                         </div>
