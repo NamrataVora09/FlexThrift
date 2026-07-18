@@ -796,7 +796,7 @@ export default function Page() {
                       <strong>Action Required:</strong> Seller has responded to your offer.
                     </div>
                   )}
-                  {o.seller_remarks && (
+                  {o.seller_remarks && o.offer_type === "rent" && (
                     <div className="mb-3 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
                       <i className="bi bi-reply-fill me-1"></i>
                       Seller: {o.seller_remarks}

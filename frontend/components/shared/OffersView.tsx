@@ -2033,7 +2033,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                   {o.message}
                 </p>
               )}
-              {o.seller_remarks  && o.status !== 'pending' &&(
+              {o.seller_remarks  && o.status !== 'pending' && o.offer_type=="rent" &&(
                 <div className="mb-3 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
                   <i className="bi bi-reply-fill me-1"></i>
                   Seller: {o.seller_remarks}
