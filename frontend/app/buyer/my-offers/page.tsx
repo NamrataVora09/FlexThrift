@@ -662,13 +662,23 @@ export default function Page() {
                       {(o.status === 'pending' || o.status === 'rejected' || o.status === 'negotiating') && !isExpired && (
                         <>
                           {o.status === 'rejected' ? (
-                            <button
-                              className="btn px-4 py-2 rounded-pill fw-bold text-white"
-                              style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
-                              onClick={() => openChangeDates(o)}
-                            >
-                              Make Offer
-                            </button>
+                            (o.offer_type ?? o.listing_type) === 'rent' ? (
+                              <button
+                                className="btn px-4 py-2 rounded-pill fw-bold text-white"
+                                style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
+                                onClick={() => openChangeDates(o)}
+                              >
+                                Make Offer
+                              </button>
+                            ) : (
+                              <button
+                                className="btn px-4 py-2 rounded-pill fw-bold text-white"
+                                style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
+                                onClick={() => window.location.href = `/buyer/product/${o.product_id}`}
+                              >
+                                Make Offer
+                              </button>
+                            )
                           ) : (o.offer_type ?? o.listing_type) === 'rent' && (
                             <button
                               className="btn btn-outline-primary px-3 py-2 rounded-pill fw-bold"
@@ -694,7 +704,7 @@ export default function Page() {
                             style={{ fontSize: '0.82rem' }}
                             onClick={() => setActionModal({ id: o.id, action: 'cancel', title: o.product_title, message: 'Are you sure you want to cancel this offer?' })}
                           >
-                            {o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}
+                            {o.status === 'rejected' ? 'Cancel offer' : 'Cancel Offer'}
                           </button>
                         </>
                       )}

@@ -507,12 +507,12 @@ class BuyerApi extends BaseApiController
             // Check for conflicts
             if ((int)($o['is_product_sold'] ?? 0) > 0) {
                 $o['conflict_info'] = [
-                    'message' => 'This item has been sold to someone else.',
+                    'message' => 'Another buyer\'s offer for this product has been accepted.',
                     'type' => 'sold_conflict'
                 ];
             } else if ((int)($o['is_rental_blocked'] ?? 0) > 0) {
                 $o['conflict_info'] = [
-                    'message' => 'The selected dates are now unavailable. Please update your proposal.',
+                    'message' => 'Another buyer\'s offer for these dates has been accepted.',
                     'type' => 'rent_conflict'
                 ];
             }
