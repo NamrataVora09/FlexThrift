@@ -572,6 +572,48 @@ class SharedApi extends BaseApiController
     }
 
     /**
+     * GET /api/v1/shared/system-settings
+     */
+    public function systemSettings()
+    {
+        $jwtUser = $this->request->jwt_user;
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $db = \Config\Database::connect();
+        $rows = $db->table('system_settings')->get()->getResultArray();
+        $settings = [];
+        foreach ($rows as $r) $settings[$r['setting_key']] = $r['setting_value'];
+        return $this->respond(['success' => true, 'data' => $settings]);
+    }
+
+    /**
+     * POST /api/v1/shared/system-settings
+     */
+    public function saveSystemSettings()
+    {
+        $jwtUser = $this->request->jwt_user;
+        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $db = \Config\Database::connect();
+        $data = $this->request->getJSON(true);
+
+        foreach ($data as $key => $value) {
+            $existing = $db->table('system_settings')->where('setting_key', $key)->get()->getRowArray();
+            if ($existing) {
+                $db->table('system_settings')->where('setting_key', $key)->update(['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
+            } else {
+                $db->table('system_settings')->insert(['setting_key' => $key, 'setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
+            }
+        }
+
+        return $this->respond(['success' => true, 'message' => 'Settings saved successfully.']);
+    }
+
+    /**
      * POST /api/v1/shared/business-settings
      */
     public function saveBusinessSettings()
