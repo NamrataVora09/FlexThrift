@@ -1466,14 +1466,23 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                     {/* ── buyer info column ── */}
                     <div className="buyer-info d-flex flex-column align-items-start" style={{ minWidth: 170 }}>
                       <div className="d-flex align-items-center mb-2">
-                        <div className="buyer-avatar">{(offer.buyer_name || 'B').charAt(0).toUpperCase()}</div>
+                        <div style={{
+                          width: 50, height: 50, borderRadius: '50%',
+                          border: '2px solid #ffc63a', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          fontWeight: 'bold', color: '#ffc63a', fontSize: '1.4rem',
+                          background: '#fff', flexShrink: 0, marginRight: 12
+                        }}>
+                          {(offer.buyer_name || 'B').charAt(0).toUpperCase()}
+                        </div>
                         <div>
-                          <div className="fw-bold fs-6">{offer.buyer_name || '—'}</div>
-                          <div className="d-flex align-items-center">
-                            <span style={{ fontSize: '0.82rem' }}>
-                              {offer.buyer_rating_count ?? 0} <i className="bi bi-star-fill text-warning" style={{ fontSize: '0.7rem' }}></i>
-                            </span>
-                          </div>
+                          <div className="fw-bold fs-6 text-dark">{offer.buyer_name || '—'}</div>
+                          {offer.buyer_rating_count !== undefined && (
+                            <div className="d-flex align-items-center gap-1 text-xs" style={{ color: '#FFC107' }}>
+                              <i className="bi bi-star-fill"></i>
+                              <span className="fw-bold">{Number(offer.buyer_rating_count) > 0 ? offer.buyer_rating_count : '0'}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="buyer-contact-info border-top pt-2 w-100">
@@ -1783,20 +1792,22 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
               />
               <div className="d-flex align-items-center mb-3">
                 <div style={{
-                  width: 30, height: 30, borderRadius: '50%',
+                  width: 50, height: 50, borderRadius: '50%',
                   border: '2px solid #ffc63a', display: 'flex',
                   alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 'bold', color: '#ffc63a', fontSize: '1rem',
+                  fontWeight: 'bold', color: '#ffc63a', fontSize: '1.4rem',
                   background: '#fff', flexShrink: 0, marginRight: 12
                 }}>
                   {avatarLetter}
                 </div>
                 <div>
-                  <div className="fw-bold  text-dark" style={{ fontSize: '0.85rem' }}>{sellerName}</div>
-                  <div className="d-flex align-items-center" style={{ fontSize: '0.85rem', color: '#888' }}>
-                    <span className="fw-semibold text-dark">{sellerRating}</span>
-                    <i className="bi bi-star-fill ms-1" style={{ color: '#ffc63a', fontSize: '0.8rem' }}></i>
-                  </div>
+                  <div className="fw-bold fs-6 text-dark">{sellerName}</div>
+                  {o.seller_rating_count !== undefined && (
+                    <div className="d-flex align-items-center gap-1 text-xs" style={{ color: '#FFC107' }}>
+                      <i className="bi bi-star-fill"></i>
+                      <span className="fw-bold">{Number(o.seller_rating_count) > 0 ? o.seller_rating_count : '0'}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
