@@ -23,6 +23,27 @@ const filterPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'c
 
 const emptyForm = { name: '', user_type: 'seller', plan_type: 'quantity', limit_value: '', duration_hours: '', price: '', base_price: '', features: '[]', is_featured: '0', is_most_selected: '0' };
 
+const emptyUnlockSettings = {
+  buyer_unlock_label: 'Unlock More',
+  buyer_unlock_title: 'Elevate to a Higher Tier',
+  buyer_unlock_btn: 'Upgrade Plan',
+  buyer_unlock_items: JSON.stringify([
+    { icon: 'all_inclusive', text: 'Unlimited concierge contacts' },
+    { icon: 'stars', text: 'Early access to new listings' },
+    { icon: 'insights', text: 'Custom market reporting' },
+    { icon: 'support_agent', text: 'Priority support' }
+  ]),
+  seller_unlock_label: 'Unlock More',
+  seller_unlock_title: 'Elevate to a Higher Tier',
+  seller_unlock_btn: 'Upgrade Plan',
+  seller_unlock_items: JSON.stringify([
+    { icon: 'all_inclusive', text: 'Unlimited product listings' },
+    { icon: 'stars', text: 'Priority placement in search' },
+    { icon: 'insights', text: 'Advanced seller analytics' },
+    { icon: 'support_agent', text: 'Dedicated seller support' }
+  ])
+};
+
 function PlanPointsEditor({ value, onChange, form }: { value: string; onChange: (v: string) => void; form?: any }) {
   const points = useMemo(() => {
     if (!value) return [];
@@ -155,6 +176,9 @@ export default function SubscriptionPlansAdmin() {
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [unlockSettings, setUnlockSettings] = useState(emptyUnlockSettings);
+  const [unlockSaving, setUnlockSaving] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -164,7 +188,26 @@ export default function SubscriptionPlansAdmin() {
     });
   };
 
+  const loadUnlockSettings = () => {
+    api.get<any>('/shared/system-settings').then((r) => {
+      if (r.success && r.data) {
+        const settings = r.data;
+        setUnlockSettings({
+          buyer_unlock_label: settings.buyer_unlock_label || emptyUnlockSettings.buyer_unlock_label,
+          buyer_unlock_title: settings.buyer_unlock_title || emptyUnlockSettings.buyer_unlock_title,
+          buyer_unlock_btn: settings.buyer_unlock_btn || emptyUnlockSettings.buyer_unlock_btn,
+          buyer_unlock_items: settings.buyer_unlock_items || emptyUnlockSettings.buyer_unlock_items,
+          seller_unlock_label: settings.seller_unlock_label || emptyUnlockSettings.seller_unlock_label,
+          seller_unlock_title: settings.seller_unlock_title || emptyUnlockSettings.seller_unlock_title,
+          seller_unlock_btn: settings.seller_unlock_btn || emptyUnlockSettings.seller_unlock_btn,
+          seller_unlock_items: settings.seller_unlock_items || emptyUnlockSettings.seller_unlock_items,
+        });
+      }
+    });
+  };
+
   useEffect(() => { load(); }, []);
+  useEffect(() => { if (showUnlockModal) loadUnlockSettings(); }, [showUnlockModal]);
 
   // Client-side filtering
   const filtered = useMemo(() => plans.filter((p) => {
@@ -249,6 +292,29 @@ export default function SubscriptionPlansAdmin() {
     }, 'Delete');
   };
 
+  const handleSaveUnlockSettings = async () => {
+    setUnlockSaving(true);
+    try {
+      const payload = {
+        buyer_unlock_label: unlockSettings.buyer_unlock_label,
+        buyer_unlock_title: unlockSettings.buyer_unlock_title,
+        buyer_unlock_btn: unlockSettings.buyer_unlock_btn,
+        buyer_unlock_items: unlockSettings.buyer_unlock_items,
+        seller_unlock_label: unlockSettings.seller_unlock_label,
+        seller_unlock_title: unlockSettings.seller_unlock_title,
+        seller_unlock_btn: unlockSettings.seller_unlock_btn,
+        seller_unlock_items: unlockSettings.seller_unlock_items,
+      };
+      await api.post('/shared/system-settings', payload);
+      toastSuccess('unlock_settings_saved', 'Unlock card settings saved successfully');
+      setShowUnlockModal(false);
+    } catch (error) {
+      toastError('unlock_settings_failed', 'Failed to save unlock card settings');
+    } finally {
+      setUnlockSaving(false);
+    }
+  };
+
   const limitLabel = form.user_type === 'seller' ? 'Upload Limit (Qty)' : 'Contact View Limit (Qty)';
 
   return (
@@ -262,9 +328,16 @@ export default function SubscriptionPlansAdmin() {
             </h1>
             <p className="text-muted small mb-0">Define flexible pricing and limits for Buyers and Sellers.</p>
           </div>
-          <button className="btn sa-filter-btn d-flex align-items-center gap-2" style={btnGold} onClick={handleAdd}>
-            <i className="bi bi-plus-lg"></i> Create New Plan
-          </button>
+          <div className="d-flex gap-2">
+            {isSuperAdmin && (
+              <button className="btn sa-filter-btn d-flex align-items-center gap-2" style={{ background: '#fff', color: '#212529', fontWeight: 600, border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' }} onClick={() => setShowUnlockModal(true)}>
+                <i className="bi bi-gear"></i> Unlock Card Settings
+              </button>
+            )}
+            <button className="btn sa-filter-btn d-flex align-items-center gap-2" style={btnGold} onClick={handleAdd}>
+              <i className="bi bi-plus-lg"></i> Create New Plan
+            </button>
+          </div>
         </div>
 
         <BulkCsvUpload
@@ -571,6 +644,80 @@ Pro Seller,seller,quantity,20,0,299,399,"[]",1,0`}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unlock Card Settings Modal */}
+      {showUnlockModal && (
+        <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setShowUnlockModal(false)}>
+          <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content border-0 shadow" style={{ borderRadius: '0.75rem' }}>
+              <div className="modal-header" style={{ background: '#f8f9fa', borderRadius: '0.75rem 0.75rem 0 0' }}>
+                <h5 className="modal-title fw-bold">
+                  <i className="bi bi-gear me-2" style={{ color: '#ffc63a' }}></i>
+                  Unlock Card Settings
+                </h5>
+                <button type="button" className="btn-close" onClick={() => setShowUnlockModal(false)}></button>
+              </div>
+              <div className="modal-body p-4">
+                {/* Buyer Settings */}
+                <div className="mb-4 p-3 rounded-3" style={{ background: 'rgba(255,193,7,0.05)', border: '1px solid rgba(255,193,7,0.2)' }}>
+                  <h6 className="fw-bold mb-3" style={{ color: '#ffc63a' }}>
+                    <i className="bi bi-person me-1"></i> Buyer Unlock Card
+                  </h6>
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label style={modalLabel}>Button Label</label>
+                      <input className="form-control" style={inputStyle} value={unlockSettings.buyer_unlock_label} onChange={(e) => setUnlockSettings({ ...unlockSettings, buyer_unlock_label: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label style={modalLabel}>Button Text</label>
+                      <input className="form-control" style={inputStyle} value={unlockSettings.buyer_unlock_btn} onChange={(e) => setUnlockSettings({ ...unlockSettings, buyer_unlock_btn: e.target.value })} />
+                    </div>
+                    <div className="col-12">
+                      <label style={modalLabel}>Card Title</label>
+                      <input className="form-control" style={inputStyle} value={unlockSettings.buyer_unlock_title} onChange={(e) => setUnlockSettings({ ...unlockSettings, buyer_unlock_title: e.target.value })} />
+                    </div>
+                  </div>
+                  <PlanPointsEditor
+                    value={unlockSettings.buyer_unlock_items}
+                    onChange={(v) => setUnlockSettings({ ...unlockSettings, buyer_unlock_items: v })}
+                  />
+                </div>
+
+                {/* Seller Settings */}
+                <div className="mb-4 p-3 rounded-3" style={{ background: 'rgba(13,202,240,0.05)', border: '1px solid rgba(13,202,240,0.2)' }}>
+                  <h6 className="fw-bold mb-3" style={{ color: '#0dcaf0' }}>
+                    <i className="bi bi-shop me-1"></i> Seller Unlock Card
+                  </h6>
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label style={modalLabel}>Button Label</label>
+                      <input className="form-control" style={inputStyle} value={unlockSettings.seller_unlock_label} onChange={(e) => setUnlockSettings({ ...unlockSettings, seller_unlock_label: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label style={modalLabel}>Button Text</label>
+                      <input className="form-control" style={inputStyle} value={unlockSettings.seller_unlock_btn} onChange={(e) => setUnlockSettings({ ...unlockSettings, seller_unlock_btn: e.target.value })} />
+                    </div>
+                    <div className="col-12">
+                      <label style={modalLabel}>Card Title</label>
+                      <input className="form-control" style={inputStyle} value={unlockSettings.seller_unlock_title} onChange={(e) => setUnlockSettings({ ...unlockSettings, seller_unlock_title: e.target.value })} />
+                    </div>
+                  </div>
+                  <PlanPointsEditor
+                    value={unlockSettings.seller_unlock_items}
+                    onChange={(v) => setUnlockSettings({ ...unlockSettings, seller_unlock_items: v })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer border-0" style={{ background: '#f8f9fa' }}>
+                <button type="button" className="btn btn-secondary px-4" onClick={() => setShowUnlockModal(false)}>Cancel</button>
+                <button type="button" className="btn sa-filter-btn px-4" style={btnGold} disabled={unlockSaving} onClick={handleSaveUnlockSettings}>
+                  {unlockSaving ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : 'Save Settings'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
