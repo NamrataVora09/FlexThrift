@@ -1656,7 +1656,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                                 <i className="bi bi-truck me-1"></i>{offer.linked_order_status.toUpperCase()}
                               </span>
                             )}
-                            <i className="bi bi-patch-check-fill text-success fs-4" title="Accepted"></i>
+                          
                           </div>
                           {/* Rejection window: hide once seller has rated (deal is done) or order is processed */}
                           {canRejectByTime && !isProcessed && !Number(offer.seller_rated_buyer) && !Number(offer.buyer_rated_seller) && effectiveAcceptedAt && (
