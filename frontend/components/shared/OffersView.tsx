@@ -1731,7 +1731,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
         const soldOut = isSoldOut?.(o);
         const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
         const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
-        const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
+        const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && acceptedTs > 0 && Date.now() < ratingExpiryTs;
 
         // expiry logic — covers both backend-confirmed 'missed' and frontend-detected pending expiry
         const offerTime = o.created_at ? new Date(o.created_at).getTime() : Date.now();

@@ -576,7 +576,7 @@ export default function Page() {
 
           const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
           const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
-          const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
+          const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && acceptedTs > 0 && Date.now() < ratingExpiryTs;
 
           return (
             <div key={o.id} className="luxury-item-card shadow-sm" style={{ padding: 24, borderRadius: 20, background: '#fff', border: '1px solid #eee', marginBottom: 20 }}>
