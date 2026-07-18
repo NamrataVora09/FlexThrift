@@ -114,7 +114,7 @@ class BuyerApi extends BaseApiController
         // ─────────────────────────────────────────────────────────────────────
 
         $builder = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.seller_rating_avg, ob.brand_name as orignal_brand, b.brand_name as seller_brand, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as image')
+            ->select('p.*, u.name as seller_name, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, b.brand_name as seller_brand, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as image')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id AND ob.is_active = 1 AND ob.is_blocked = 0', 'left')
             ->join('brands b', 'b.id = p.brand_id AND b.is_active = 1 AND b.is_blocked = 0', 'left')

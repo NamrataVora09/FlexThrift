@@ -22,6 +22,7 @@ interface Product {
   price?: string;
   seller_name: string;
   seller_rating_avg?: string;
+  seller_rating_count?: number;
   image?: string;
   primary_image?: string;
   images?: string | string[];
@@ -1618,9 +1619,17 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
               <h3 className="text-lg font-bold! text-[#0c0f0f] text-[1.125rem]! mb-0.5 truncate" style={{ fontFamily: 'Manrope, sans-serif', letterSpacing: '-0.02em' }}>
                 {p.title}
               </h3>
-              <p className="text-sm text-[#5a5c5c] m-0! truncate">
-                {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : '\u00A0'}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-[#5a5c5c] m-0! truncate">
+                  {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : '\u00A0'}
+                </p>
+                {p.seller_rating_count !== undefined && p.seller_rating_count > 0 && (
+                  <div className="flex items-center gap-1 text-xs" style={{ color: '#FFC107' }}>
+                    <i className="bi bi-star-fill"></i>
+                    <span className="font-bold">{p.seller_rating_count}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex-shrink-0 flex flex-col items-end gap-1">

@@ -361,6 +361,8 @@ class SellerApi extends BaseApiController
 
         // SuperAdmin bypasses subscription check
         if ($jwtUser['role'] !== 'super_admin') {
+            log_message('info', 'Checking subscription for user_id: ' . $userId . ', role: ' . $jwtUser['role']);
+            
             $activeSub = $db->table('user_subscriptions us')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $userId)
@@ -369,6 +371,12 @@ class SellerApi extends BaseApiController
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'seller')
                 ->get()->getRowArray();
+            
+            log_message('info', 'Active subscription check result: ' . ($activeSub ? 'Found' : 'Not found'));
+            if ($activeSub) {
+                log_message('info', 'Active subscription details: ' . json_encode($activeSub));
+            }
+            
             if (!$activeSub) {
                 // Check if there was an expired seller subscription
                 $expiredSub = $db->table('user_subscriptions us')
@@ -379,8 +387,10 @@ class SellerApi extends BaseApiController
                     ->where('sp.user_type', 'seller')
                     ->get()->getRowArray();
                 if ($expiredSub) {
+                    log_message('info', 'Found expired subscription: ' . json_encode($expiredSub));
                     return $this->respond(['success' => false, 'message' => 'Your subscription has expired on ' . date('d M Y', strtotime($expiredSub['expires_at'])) . '. Please renew your plan to upload products.'], 403);
                 }
+                log_message('error', 'No active seller subscription found for user_id: ' . $userId);
                 return $this->respond(['success' => false, 'message' => 'No active seller subscription found. Please subscribe to a seller plan to upload products.'], 403);
             }
         }
@@ -2504,6 +2514,8 @@ class SellerApi extends BaseApiController
         $redirectUrl = $callbackUrl
             ? str_replace('{id}', $merchantOrderId, $callbackUrl)
             : base_url("seller/payment-callback?id={$merchantOrderId}");
+        
+        log_message('info', 'Payment redirect URL: ' . $redirectUrl);
 
         $payload = [
             'merchantOrderId' => $merchantOrderId,
@@ -2571,6 +2583,8 @@ class SellerApi extends BaseApiController
         $merchantOrderId = $this->request->getGet('id');
         $db = \Config\Database::connect();
 
+        log_message('info', 'verifyPayment called with merchantOrderId: ' . $merchantOrderId);
+
         if (!$merchantOrderId)
             return $this->respond(['status' => 'error', 'message' => 'No transaction ID provided'], 400);
 
@@ -2578,19 +2592,29 @@ class SellerApi extends BaseApiController
             ->where('merchant_transaction_id', $merchantOrderId)
             ->get()->getRowArray();
 
-        if (!$dbSub)
+        if (!$dbSub) {
+            log_message('error', 'Transaction not found for merchantOrderId: ' . $merchantOrderId);
             return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
+        }
 
-        if ($dbSub['is_active'] == 1 && $dbSub['payment_status'] === 'paid')
+        log_message('info', 'Found subscription record: ' . json_encode($dbSub));
+
+        if ($dbSub['is_active'] == 1 && $dbSub['payment_status'] === 'paid') {
+            log_message('info', 'Subscription already active for merchantOrderId: ' . $merchantOrderId);
             return $this->respond(['status' => 'success', 'message' => 'Subscription is already active']);
+        }
 
         $phonepe = new \App\Libraries\PhonePe();
         $status = $phonepe->getOrderStatus($merchantOrderId);
         $state = $status['state'] ?? ($status['data']['state'] ?? 'PENDING');
+        
+        log_message('info', 'PhonePe status for ' . $merchantOrderId . ': ' . $state);
 
         if ($state === 'COMPLETED') {
             if ($dbSub['is_active'] == 0) {
                 $plan = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
+
+                log_message('info', 'Activating subscription for user_id: ' . $dbSub['user_id'] . ', plan: ' . $plan['name']);
 
                 // Stacking Logic: Find the latest expiry among active seller plans
                 $latestActive = $db->table('user_subscriptions us')
@@ -2609,6 +2633,8 @@ class SellerApi extends BaseApiController
                     ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
                     : '2099-12-31 23:59:59';
 
+                log_message('info', 'Subscription details - starts_at: ' . $startsAt . ', expires_at: ' . $expiresAt . ', duration_hours: ' . $durationHours);
+
                 $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
                     'is_active' => 1,
                     'payment_status' => 'paid',
@@ -2621,6 +2647,8 @@ class SellerApi extends BaseApiController
                     'subscription_expires_at' => $expiresAt,
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
+                
+                log_message('info', 'Subscription activated successfully for user_id: ' . $dbSub['user_id']);
                 $db->table('transactions')->insert([
                     'user_id' => $dbSub['user_id'],
                     'type' => 'subscription',

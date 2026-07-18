@@ -218,7 +218,6 @@ if (!function_exists('logRegistrationAttempt')) {
         $insertData = [
             'mobile' => $data['mobile'] ?? null,
             'name' => $data['name'] ?? null,
-            'email' => $data['email'] ?? null,
             'address' => $data['address'] ?? null,
             'pin_code' => $data['pin_code'] ?? null,
             'user_type' => $data['user_type'] ?? null,

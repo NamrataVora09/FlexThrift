@@ -24,13 +24,16 @@ function SellerPaymentCallbackInner() {
   };
 
   const checkPayment = async () => {
+    console.log('checkPayment called with merchantOrderId:', merchantOrderId);
     if (!merchantOrderId) {
       setStatus('failed');
       setMessage('No transaction ID found.');
       return;
     }
+    console.log('Calling verify-payment API for:', merchantOrderId);
     const res = await api.get<{ status: string; message: string }>(`/seller/verify-payment?id=${merchantOrderId}`);
     const data = res as unknown as { status: string; message: string };
+    console.log('verify-payment response:', data);
 
     if (data.status === 'success') {
       clearTimers();
