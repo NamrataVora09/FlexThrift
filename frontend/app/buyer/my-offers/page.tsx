@@ -234,6 +234,7 @@ export default function Page() {
         setOffers(res.data);
         if (res.minRentalDays) setMinRentalDays(res.minRentalDays);
         if (res.acceptanceLimitDays) setSettings(prev => ({ ...prev, acceptanceLimitDays: res.acceptanceLimitDays }));
+        if (res.ratingPeriod) setSettings(prev => ({ ...prev, ratingPeriod: res.ratingPeriod > 0 ? res.ratingPeriod : 7 }));
       }
       setLoading(false);
     });

@@ -488,7 +488,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
       if (r.acceptanceLimitDays != null) {
         setSettings({
           acceptanceLimitDays: r.acceptanceLimitDays ?? 7,
-          ratingPeriod: r.ratingPeriod ?? 7,
+          ratingPeriod: (r.ratingPeriod ?? 7) > 0 ? (r.ratingPeriod ?? 7) : 7,
           rejectionWindowHours: r.rejectionWindowHours ?? 24,
           minRentalDays: r.minRentalDays ?? 3,
         });
