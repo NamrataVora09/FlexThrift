@@ -1623,10 +1623,10 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
                 <p className="text-sm text-[#5a5c5c] m-0! truncate">
                   {p.category ? p.category.charAt(0).toUpperCase() + p.category.slice(1) : '\u00A0'}
                 </p>
-                {p.seller_rating_count !== undefined && p.seller_rating_count > 0 && (
+                {p.seller_rating_count !== undefined && (
                   <div className="flex items-center gap-1 text-xs" style={{ color: '#FFC107' }}>
                     <i className="bi bi-star-fill"></i>
-                    <span className="font-bold">{p.seller_rating_count}</span>
+                    <span className="font-bold">{Number(p.seller_rating_count) > 0 ? p.seller_rating_count : '0'}</span>
                   </div>
                 )}
               </div>

@@ -599,10 +599,10 @@ export default function Page() {
                     </div>
                     <div>
                       <div className="fw-bold fs-6 text-dark">{sellerName}</div>
-                      {o.seller_rating_count !== undefined && Number(o.seller_rating_count) > 0 && (
+                      {o.seller_rating_count !== undefined && (
                         <div className="d-flex align-items-center gap-1 text-xs" style={{ color: '#FFC107' }}>
                           <i className="bi bi-star-fill"></i>
-                          <span className="fw-bold">{o.seller_rating_count}</span>
+                          <span className="fw-bold">{Number(o.seller_rating_count) > 0 ? o.seller_rating_count : '0'}</span>
                         </div>
                       )}
                     </div>
