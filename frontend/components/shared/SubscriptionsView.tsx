@@ -94,10 +94,6 @@ export default function SubscriptionsView({ role, userType }: Props) {
   const [couponLoading, setCouponLoading] = useState(false);
   const [useReferral, setUseReferral] = useState(true);
 
-  // Manual payment verification states
-  const [manualVerifyOrderId, setManualVerifyOrderId] = useState('');
-  const [verifyLoading, setVerifyLoading] = useState(false);
-
   // Management states
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [togglingMsId, setTogglingMsId] = useState<number | null>(null);
@@ -141,29 +137,6 @@ export default function SubscriptionsView({ role, userType }: Props) {
       setLoading(false);
     });
   }, [role, userType, searchParams]);
-
-  const handleManualVerify = async (merchantOrderId: string) => {
-    if (!merchantOrderId.trim()) return;
-    setVerifyLoading(true);
-    try {
-      const res = await api.get<{ status: string; message: string }>(`/${role}/verify-payment?id=${merchantOrderId.trim()}`);
-      const data = res as unknown as { status: string; message: string };
-      if (data.status === 'success') {
-        setFlashMsg({ text: 'Payment verified successfully! Subscription activated.', ok: true });
-        // Reload data
-        api.get<SubData>(`/${role}/subscriptions/${userType}`).then((r) => {
-          if (r.success && r.data) setData(r.data);
-        });
-      } else {
-        setFlashMsg({ text: data.message || 'Payment verification failed.', ok: false });
-      }
-    } catch (error) {
-      setFlashMsg({ text: 'Payment verification failed. Please try again.', ok: false });
-    } finally {
-      setVerifyLoading(false);
-      setManualVerifyOrderId('');
-    }
-  };
 
   useEffect(() => {
     if (sellerPlans.length <= VISIBLE) return;
@@ -388,29 +361,6 @@ export default function SubscriptionsView({ role, userType }: Props) {
                 >
                   Explore Membership Plans
                 </button>
-                
-                {/* Manual Payment Verification */}
-                <div className="mt-4 pt-4 border-top">
-                  <p className="text-muted small mb-2">Already paid but subscription not activated?</p>
-                  <div className="d-flex justify-content-center gap-2">
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      style={{ maxWidth: '300px' }}
-                      placeholder="Enter Merchant Order ID (e.g., SUB-SLR-68-1784364353)"
-                      value={manualVerifyOrderId}
-                      onChange={(e) => setManualVerifyOrderId(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleManualVerify(manualVerifyOrderId)}
-                    />
-                    <button
-                      className="btn btn-sm btn-primary"
-                      onClick={() => handleManualVerify(manualVerifyOrderId)}
-                      disabled={verifyLoading}
-                    >
-                      {verifyLoading ? 'Verifying...' : 'Verify Payment'}
-                    </button>
-                  </div>
-                </div>
               </div>
             );
           }
