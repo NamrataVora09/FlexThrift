@@ -219,8 +219,6 @@ export default function Page() {
   const [settings, setSettings] = useState({ acceptanceLimitDays: 7, ratingPeriod: 7, rejectionWindowHours: 24 });
 
   // Rating state
-  const [ratingModal, setRatingModal] = useState<{ id: number; title: string } | null>(null);
-  const [ratingValue, setRatingValue] = useState(5);
   const [ratingLoading, setRatingLoading] = useState(false);
 
 
@@ -268,21 +266,21 @@ export default function Page() {
     }
   };
 
-  const handleRateSubmit = async () => {
-    if (!ratingModal) return;
+  const handleRateSeller = async (offerId: number) => {
     setRatingLoading(true);
     const res = await api.post<any>('/buyer/rate-seller', {
-      offer_id: ratingModal.id,
-      rating: ratingValue
+      offer_id: offerId,
+      rating: 1
     });
     setRatingLoading(false);
     if (res.success) {
-      setRatingModal(null);
+      toast.success('Seller rated successfully!');
       load();
     } else {
-      toast.error(res.message || 'Failed to submit rating');
+      toast.error(res.message || 'Failed to rate seller');
     }
   };
+
 
 
   const openChangeDates = (o: Offer) => {
@@ -565,9 +563,6 @@ export default function Page() {
 
           const sellerName = o.seller_name || 'Seller';
           const avatarLetter = sellerName.charAt(0).toUpperCase();
-          const sellerRating = o.seller_rating_avg !== undefined && o.seller_rating_avg !== null && Number(o.seller_rating_avg) > 0
-            ? Number(o.seller_rating_avg).toFixed(1)
-            : '0';
           const sellerAddress = [o.dispatch_city, o.dispatch_state, o.dispatch_pin_code].filter(Boolean).join(', ');
 
           const days = o.rental_start_date && o.rental_end_date
@@ -601,10 +596,6 @@ export default function Page() {
                     </div>
                     <div>
                       <div className="fw-bold fs-6 text-dark">{sellerName}</div>
-                      <div className="d-flex align-items-center" style={{ fontSize: '0.85rem', color: '#888' }}>
-                        <span className="fw-semibold text-dark">{sellerRating}</span>
-                        <i className="bi bi-star-fill ms-1" style={{ color: '#ffc63a', fontSize: '0.8rem' }}></i>
-                      </div>
                     </div>
                   </div>
 
@@ -694,31 +685,21 @@ export default function Page() {
                         </>
                       )}
 
-                      {(() => {
-                        const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
-                        const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
-                        const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && (acceptedTs === 0 || Date.now() < ratingExpiryTs);
-                        
-                        if (canRate) {
-                          return (
-                            <button
-                              className="btn px-4 py-2 rounded-pill fw-bold text-white"
-                              style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
-                              onClick={() => setRatingModal({ id: o.id, title: o.product_title })}
-                            >
-                              <i className="bi bi-star-fill me-1"></i> Rate Seller
-                            </button>
-                          );
-                        }
-                        if (o.status === 'accepted' && Number(o.buyer_rated_seller) === 1) {
-                          return (
-                            <span className="badge bg-light text-success border py-2 px-3 rounded-pill fw-bold" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem' }}>
-                              <i className="bi bi-check-circle-fill me-1"></i> Rated
-                            </span>
-                          );
-                        }
-                        return null;
-                      })()}
+                      {o.status === 'accepted' && !Number(o.buyer_rated_seller) && (
+                        <button
+                          className="btn px-4 py-2 rounded-pill fw-bold text-white"
+                          style={{ background: '#ffc63a', border: 'none', fontSize: '0.82rem' }}
+                          onClick={() => handleRateSeller(o.id)}
+                          disabled={ratingLoading}
+                        >
+                          <i className="bi bi-star-fill me-1"></i> Rate Seller
+                        </button>
+                      )}
+                      {o.status === 'accepted' && Number(o.buyer_rated_seller) === 1 && (
+                        <span className="badge bg-light text-success border py-2 px-3 rounded-pill fw-bold" style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.78rem' }}>
+                          <i className="bi bi-check-circle-fill me-1"></i> Rated
+                        </span>
+                      )}
 
                       <Link
                         href={`/buyer/product/${o.product_id}`}
@@ -987,57 +968,6 @@ export default function Page() {
         </div>
       )}
 
-      {/* ── Rate Seller Modal ── */}
-      {ratingModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: '#fff', borderRadius: 20, padding: '32px', maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>⭐</div>
-            <h5 className="fw-bold mb-1" style={{ fontSize: '1.1rem' }}>Rate Your Seller</h5>
-            <p className="text-muted small mb-4">{ratingModal.title}</p>
-
-            <div className="d-flex justify-content-center gap-2 mb-4">
-              {[1, 2, 3, 4, 5].map(star => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRatingValue(star)}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: '2rem', color: star <= ratingValue ? '#ffc63a' : '#ddd',
-                    transition: 'color 0.15s'
-                  }}
-                >
-                  ★
-                </button>
-              ))}
-            </div>
-            <p className="text-muted small mb-4">
-              {ratingValue === 1 ? 'Poor' : ratingValue === 2 ? 'Fair' : ratingValue === 3 ? 'Good' : ratingValue === 4 ? 'Very Good' : 'Excellent'}
-            </p>
-
-            <div className="d-flex gap-2 justify-content-center">
-              <button
-                className="btn btn-outline-secondary px-4 rounded-pill fw-bold"
-                onClick={() => setRatingModal(null)}
-                disabled={ratingLoading}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn fw-bold px-4 rounded-pill text-white"
-                style={{ background: '#ffc63a', border: 'none' }}
-                onClick={handleRateSubmit}
-                disabled={ratingLoading}
-              >
-                {ratingLoading ? (
-                  <span className="spinner-border spinner-border-sm me-2" role="status" />
-                ) : null}
-                Submit Rating
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </DashboardLayout>
   );
