@@ -233,12 +233,16 @@ class SharedApi extends BaseApiController
             ->limit(10)
             ->get()->getResultArray();
 
-        // Unlock card settings for this user type
+        // Unlock card settings for both buyer and seller
         $keys = [
-            "{$userType}_unlock_label",
-            "{$userType}_unlock_title",
-            "{$userType}_unlock_btn",
-            "{$userType}_unlock_items",
+            "buyer_unlock_label",
+            "buyer_unlock_title",
+            "buyer_unlock_btn",
+            "buyer_unlock_items",
+            "seller_unlock_label",
+            "seller_unlock_title",
+            "seller_unlock_btn",
+            "seller_unlock_items",
         ];
         $rows = $db->table('system_settings')->whereIn('setting_key', $keys)->get()->getResultArray();
         $unlockCard = [];
