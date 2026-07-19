@@ -601,7 +601,6 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const submitSuggestDates = async () => {
     if (!suggestModal) return;
     if (!sdStart || !sdEnd) { toastWarning('offer_date_required', 'Please select both start and end dates.'); return; }
-    if (sdEnd <= sdStart) { toastWarning('offer_date_invalid', 'End date must be after start date.'); return; }
 
     const days = daysBetween(sdStart, sdEnd);
     if (days < settings.minRentalDays) {

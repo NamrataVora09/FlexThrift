@@ -42,7 +42,6 @@ class SeedAllAppMessages extends Migration
         ['message_key' => 'offer_dates_updated',       'message_value' => 'Rental dates updated successfully!',            'category' => 'success'],
         ['message_key' => 'offer_dates_failed',        'message_value' => 'Failed to update rental dates.',                 'category' => 'error'],
         ['message_key' => 'offer_date_required',       'message_value' => 'Please select both start and end dates.',        'category' => 'warning'],
-        ['message_key' => 'offer_date_invalid',        'message_value' => 'End date must be after start date.',             'category' => 'warning'],
         ['message_key' => 'offer_address_required',    'message_value' => 'Please fill in your delivery address and pin code.', 'category' => 'warning'],
         ['message_key' => 'offer_suggestion_sent',     'message_value' => 'Date suggestion sent to buyer!',                 'category' => 'success'],
         ['message_key' => 'offer_suggestion_failed',   'message_value' => 'Failed to send date suggestion.',                'category' => 'error'],

@@ -887,9 +887,6 @@ class SellerApi extends BaseApiController
         if (!$newStart || !$newEnd) {
             return $this->respond(['success' => false, 'message' => 'Both start and end dates are required'], 400);
         }
-        if ($newEnd <= $newStart) {
-            return $this->respond(['success' => false, 'message' => 'End date must be after start date'], 400);
-        }
 
         // Enforce minimum rental days from system settings
         helper('price_calculator');

@@ -178,7 +178,6 @@ class BaseApiController extends ResourceController
         'A delivery photograph is required to confirm delivery'                   => 'delivery_photo_required',
         'A reason is required'                                                    => 'reason_required',
         'Both start and end dates are required'                                   => 'dates_both_required',
-        'End date must be after start date'                                       => 'date_end_before_start',
         'Failed to initiate payment. Please try again.'                           => 'payment_initiate_failed',
 
         // ── BUYER ACCOUNT & SUBSCRIPTION ────────────────────────────────────

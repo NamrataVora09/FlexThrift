@@ -150,7 +150,6 @@ class SeedAllApiResponseMessages extends Migration
         ['message_key' => 'delivery_photo_required',      'message_value' => 'A delivery photograph is required to confirm delivery',            'category' => 'error'],
         ['message_key' => 'reason_required',              'message_value' => 'A reason is required',                                            'category' => 'error'],
         ['message_key' => 'dates_both_required',          'message_value' => 'Both start and end dates are required',                           'category' => 'error'],
-        ['message_key' => 'date_end_before_start',        'message_value' => 'End date must be after start date',                               'category' => 'error'],
         ['message_key' => 'payment_initiate_failed',      'message_value' => 'Failed to initiate payment. Please try again.',                   'category' => 'error'],
 
         // ── BUYER ACCOUNT & SUBSCRIPTION ────────────────────────────────────
