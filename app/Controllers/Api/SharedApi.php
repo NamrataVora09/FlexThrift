@@ -233,16 +233,12 @@ class SharedApi extends BaseApiController
             ->limit(10)
             ->get()->getResultArray();
 
-        // Unlock card settings for both buyer and seller
+        // Unlock card settings for this user type
         $keys = [
-            "buyer_unlock_label",
-            "buyer_unlock_title",
-            "buyer_unlock_btn",
-            "buyer_unlock_items",
-            "seller_unlock_label",
-            "seller_unlock_title",
-            "seller_unlock_btn",
-            "seller_unlock_items",
+            "{$userType}_unlock_label",
+            "{$userType}_unlock_title",
+            "{$userType}_unlock_btn",
+            "{$userType}_unlock_items",
         ];
         $rows = $db->table('system_settings')->whereIn('setting_key', $keys)->get()->getResultArray();
         $unlockCard = [];
@@ -569,48 +565,6 @@ class SharedApi extends BaseApiController
         $db = \Config\Database::connect();
         $db->table('app_messages')->where('id', $id)->delete();
         return $this->respond(['success' => true, 'message' => 'Message deleted']);
-    }
-
-    /**
-     * GET /api/v1/shared/system-settings
-     */
-    public function systemSettings()
-    {
-        $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $db = \Config\Database::connect();
-        $rows = $db->table('system_settings')->get()->getResultArray();
-        $settings = [];
-        foreach ($rows as $r) $settings[$r['setting_key']] = $r['setting_value'];
-        return $this->respond(['success' => true, 'data' => $settings]);
-    }
-
-    /**
-     * POST /api/v1/shared/system-settings
-     */
-    public function saveSystemSettings()
-    {
-        $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $db = \Config\Database::connect();
-        $data = $this->request->getJSON(true);
-
-        foreach ($data as $key => $value) {
-            $existing = $db->table('system_settings')->where('setting_key', $key)->get()->getRowArray();
-            if ($existing) {
-                $db->table('system_settings')->where('setting_key', $key)->update(['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
-            } else {
-                $db->table('system_settings')->insert(['setting_key' => $key, 'setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
-            }
-        }
-
-        return $this->respond(['success' => true, 'message' => 'Settings saved successfully.']);
     }
 
     /**
