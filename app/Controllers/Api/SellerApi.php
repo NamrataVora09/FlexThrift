@@ -877,8 +877,9 @@ class SellerApi extends BaseApiController
 
         if (!$offer)
             return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
-        if ($offer['status'] !== 'pending')
-            return $this->respond(['success' => false, 'message' => 'Date suggestions are only allowed on pending offers'], 400);
+        // Allow date suggestions on pending and negotiating offers
+        if (!in_array($offer['status'], ['pending', 'negotiating']))
+            return $this->respond(['success' => false, 'message' => 'Date suggestions are only allowed on pending or negotiating offers'], 400);
 
         $newStart = $data['rental_start_date'] ?? null;
         $newEnd = $data['rental_end_date'] ?? null;

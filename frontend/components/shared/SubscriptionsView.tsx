@@ -339,7 +339,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
         @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
         .bento-col-8{grid-column:span 1}
         .bento-col-4{grid-column:span 1}
-        @media(min-width:992px){.bento-col-8{grid-column:span 8}.bento-col-4{grid-column:span 4}}
+        @media(min-width:992px){.bento-col-8{grid-column:span 8}.bento-col-4{grid-column:span 4}.bento-col-12{grid-column:span 12}}
       `}</style>
 
       <div className="container">
@@ -553,7 +553,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                               <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type.toUpperCase()} BASED</p>
                             </div>
                             <div style={{ marginBottom: '3rem' }}>
-                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} </span>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                               {(() => {

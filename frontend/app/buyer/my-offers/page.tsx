@@ -170,12 +170,12 @@ function getImageUrl(path?: string) {
   return `${BASE_URL}/uploads/products/${path}`;
 }
 
-const STATUS_FILTERS = ['all', 'pending', 'accepted', 'rejected'] as const;
+const STATUS_FILTERS = ['all', 'pending', 'negotiating', 'accepted', 'rejected'] as const;
 
 const pillStyles: Record<string, React.CSSProperties> = {
   pending: { background: '#f8f9fa', color: '#666', border: '1px solid #eee' },
   missed: { background: '#fff5f5', color: '#d63031', border: '1px solid #ffeaea' },
-  negotiating: { background: '', color: '#d97706', border: '1px solid #fde68a' },
+  negotiating: { background: '#fff8e1', color: '#d97706', border: '1px solid #fde68a' },
   accepted: { background: '#eaffea', color: '#1a8a1a', border: '1px solid #c9f9c9' },
   rejected: { background: '#fff5f5', color: '#d63031', border: '1px solid #ffeaea' },
   cancelled: { background: '#f8f9fa', color: '#999', border: '1px solid #eee' },
