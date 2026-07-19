@@ -167,11 +167,33 @@ export default function SubscriptionsView({ role, userType }: Props) {
     setCouponDiscount(0);
     setAppliedCoupon('');
     setUseReferral(true);
-    setModalOpen(true);
 
     const r = await api.get<CheckoutData>(`/${role}/plan-checkout-details/${plan.id}`);
     if (r.success && r.data) {
       setCheckoutData(r.data);
+
+      // Auto-activate free plans (price = 0 and no platform charges)
+      const basePrice = Number(r.data.plan?.price ?? 0);
+      const totalCharges = r.data.total_charges ?? 0;
+      const displayTotal = Math.max(0, basePrice + totalCharges);
+
+      if (displayTotal === 0) {
+        // Free plan - activate directly without payment
+        setCheckoutLoading(false);
+        const activateRes = await api.post(`/${role}/activate-free-plan/${plan.id}`, {});
+        if (activateRes.success) {
+          setFlashMsg({ text: 'Plan activated successfully!', ok: true });
+          // Reload data
+          api.get<SubData>(`/${role}/subscriptions/${userType}`).then((res) => {
+            if (res.success && res.data) setData(res.data);
+          });
+        } else {
+          setFlashMsg({ text: activateRes.message || 'Failed to activate plan', ok: false });
+        }
+        return;
+      }
+
+      setModalOpen(true);
     } else {
       setFlashMsg({ text: r.message || 'Failed to load plan details', ok: false });
       setModalOpen(false);
