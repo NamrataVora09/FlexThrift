@@ -920,21 +920,27 @@ class SellerApi extends BaseApiController
 
         $msg = 'Seller suggests new dates: ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ($remarks ? '. Note: ' . $remarks : '');
 
+        // If dates are being changed, cancel the offer to remove it from offers list
+        $datesChanged = ($newStart !== $offer['rental_start_date'] || $newEnd !== $offer['rental_end_date']);
+        $status = $datesChanged ? 'cancelled' : 'negotiating';
+        $message = $datesChanged ? 'Offer cancelled due to date change.' : $msg;
+
         $db->table('offers')->where('id', $id)->update([
-            'status' => 'negotiating',
+            'status' => $status,
             'rental_start_date' => $newStart,
             'rental_end_date' => $newEnd,
             'offer_price' => $newPrice,
             'seller_remarks' => $remarks,
-            'message' => $msg,
+            'message' => $message,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         // Record in history
+        $historyAction = $datesChanged ? 'seller_cancelled_date_change' : 'seller_suggest_dates';
         $db->table('offer_history')->insert([
             'offer_id' => $id,
             'changed_by' => $jwtUser['user_id'],
-            'action' => 'seller_suggest_dates',
+            'action' => $historyAction,
             'old_start_date' => $offer['rental_start_date'],
             'old_end_date' => $offer['rental_end_date'],
             'new_start_date' => $newStart,
@@ -944,16 +950,22 @@ class SellerApi extends BaseApiController
         ]);
 
         // Notify buyer
+        $notificationTitle = $datesChanged ? 'Offer Cancelled' : 'Seller Suggested New Dates';
+        $notificationMessage = $datesChanged
+            ? 'The seller has cancelled your offer for "' . ($product['title'] ?? '') . '" due to a date change. Please make a new offer with your preferred dates.'
+            : 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . '. Please review and accept or decline.';
+
         $db->table('notifications')->insert([
             'user_id' => $offer['buyer_id'],
-            'title' => 'Seller Suggested New Dates',
-            'message' => 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . '. Please review and accept or decline.',
+            'title' => $notificationTitle,
+            'message' => $notificationMessage,
             'type' => 'offer',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Date suggestion sent to buyer']);
+        $responseMessage = $datesChanged ? 'Offer cancelled due to date change.' : 'Date suggestion sent to buyer';
+        return $this->respond(['success' => true, 'message' => $responseMessage]);
     }
 
     /**

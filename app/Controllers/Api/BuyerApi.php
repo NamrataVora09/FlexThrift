@@ -951,6 +951,7 @@ class BuyerApi extends BaseApiController
         }
 
         // Update offer — if negotiating or rejected, flip back to pending
+        // If dates are changed, cancel the offer and remove from offers list
         $updateData = [
             'updated_at' => date('Y-m-d H:i:s'),
         ];
@@ -963,7 +964,11 @@ class BuyerApi extends BaseApiController
             $updateData['offer_price'] = $newPrice;
         }
 
-        if (in_array($offer['status'], ['negotiating', 'rejected'])) {
+        // If dates are being changed, cancel the offer to remove it from offers list
+        if ($isRent && ($startDate !== $offer['rental_start_date'] || $endDate !== $offer['rental_end_date'])) {
+            $updateData['status'] = 'cancelled';
+            $updateData['message'] = 'Offer cancelled due to date change.';
+        } else if (in_array($offer['status'], ['negotiating', 'rejected'])) {
             $updateData['status'] = 'pending';
             if ($offer['status'] === 'rejected') {
                 $updateData['message'] = 'Buyer has re-submitted the offer.';
