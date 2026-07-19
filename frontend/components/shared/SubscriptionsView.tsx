@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import PageHeader from './PageHeader';
 import { api } from '@/lib/api';
 
-interface Plan { id: number; name: string; user_type?: string; plan_type: string; limit_value: number; duration_hours: number; price: string; features?: string; is_featured?: number | string; is_most_selected?: number | string; }
+interface Plan { id: number; name: string; user_type?: string; plan_type: string; limit_value: number; duration_hours: number; price: string; base_price?: string; features?: string; is_featured?: number | string; is_most_selected?: number | string; }
 interface ActiveSub { plan_name: string; plan_type: string; plan_user_type?: string; limit_value: number; price: string; starts_at: string; expires_at: string; usage_count: number; duration_hours: number; }
 
 const CountdownTimer = ({ expiryDate }: { expiryDate: string }) => {
@@ -554,6 +554,11 @@ export default function SubscriptionsView({ role, userType }: Props) {
                             </div>
                             <div style={{ marginBottom: '3rem' }}>
                               <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} </span>
+                              {plan.base_price && Number(plan.base_price) > Number(plan.price) && (
+                                <span style={{ fontSize: '1.2rem', color: '#999', textDecoration: 'line-through', marginLeft: '0.5rem' }}>
+                                  &#8377;{Number(plan.base_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                              )}
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                               {(() => {
@@ -650,6 +655,11 @@ export default function SubscriptionsView({ role, userType }: Props) {
                             </div>
                             <div style={{ marginBottom: '3rem' }}>
                               <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                              {plan.base_price && Number(plan.base_price) > Number(plan.price) && (
+                                <span style={{ fontSize: '1.2rem', color: '#999', textDecoration: 'line-through', marginLeft: '0.5rem' }}>
+                                  &#8377;{Number(plan.base_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                              )}
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                               {(() => {
