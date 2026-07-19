@@ -274,7 +274,7 @@ export default function BuyerReferralPage() {
                   <div className="stat-icon" style={{ background: 'rgba(239,68,68,0.1)' }}>
                     <i className="bi bi-gift-fill" style={{ color: '#ef4444' }}></i>
                   </div>
-                  <div className="stat-value">₹{stats.reward_amount}</div>
+                  <div className="stat-value">₹{stats.reward_amount.toFixed()}</div>
                   <div className="stat-label">Reward Per Referral</div>
                 </div>
               </div>
