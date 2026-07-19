@@ -466,6 +466,14 @@ export default function SubscriptionsView({ role, userType }: Props) {
                     const p = JSON.parse(pJson || '[]');
                     if (Array.isArray(p) && p.length) ucItems = p;
                   } catch { }
+
+                  // Check if there are any premium (featured) plans available
+                  const plans = pType === 'seller' ? sellerPlans : buyerPlans;
+                  const premiumPlan = plans.find(p => Number(p.is_featured) === 1);
+
+                  // Don't show unlock card if no premium plan is available
+                  if (!premiumPlan) return null;
+
                   return (
                     <div className="bento-col-4">
                       <div style={{ background: '#e7efe5', borderRadius: '1.25rem', padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minHeight: 280, border: '1px solid #d1e4cf' }}>
@@ -481,12 +489,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                             ))}
                           </ul>
                         </div>
-                        <button onClick={() => {
-                          const sectionId = pType === 'seller' ? 'available-plans-section' : 'buyer-plans-section';
-                          const el = document.getElementById(sectionId);
-                          if (el) el.scrollIntoView({ behavior: 'smooth' });
-                          else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                        }} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', cursor: 'pointer', transition: 'background 0.3s' }}>
+                        <button onClick={() => openCheckout(premiumPlan)} style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '2rem', background: '#D7B467', color: '#fff', padding: '0.9rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.15em', border: 'none', cursor: 'pointer', transition: 'background 0.3s' }}>
                           {ucBtn}
                         </button>
                       </div>
