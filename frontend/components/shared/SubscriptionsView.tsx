@@ -400,6 +400,11 @@ export default function SubscriptionsView({ role, userType }: Props) {
             const remaining = isQty ? Math.max(0, limit - used) : null;
             const pType = active.plan_user_type || userType;
 
+            // Check if there are any premium (featured) plans available
+            const plans = pType === 'seller' ? sellerPlans : buyerPlans;
+            const premiumPlan = plans.find(p => Number(p.is_featured) === 1);
+            const hasPremiumPlan = !!premiumPlan;
+
             let pct = 0;
             if (isQty) {
               pct = limit > 0 ? (used / limit) * 100 : 0;
@@ -415,7 +420,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
 
             return (
               <div className="bento-grid mb-4" key={aIdx}>
-                <div className="bento-col-8">
+                <div className={hasPremiumPlan ? 'bento-col-8' : 'bento-col-12'}>
                   <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 280, border: '1px solid #f0f0f0', height: '100%' }}>
                     <div style={{ position: 'relative', zIndex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
