@@ -736,10 +736,11 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
   const sorted = useMemo(() => {
     const all = [...perspectiveOffers];
-    const p = all.filter(o => ['pending', 'negotiating'].includes(o.status)).sort(byTime);
+    const p = all.filter(o => o.status === 'pending').sort(byTime);
+    const n = all.filter(o => o.status === 'negotiating').sort(byTime);
     const r = all.filter(o => REJECTED_STATUSES.includes(o.status)).sort(byTime);
     const a = all.filter(o => o.status === 'accepted').sort(byTime);
-    return [...p, ...r, ...a];
+    return [...p, ...n, ...r, ...a];
   }, [perspectiveOffers]);
 
   const filtered = (() => {
