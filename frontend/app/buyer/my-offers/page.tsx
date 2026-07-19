@@ -367,7 +367,8 @@ export default function Page() {
     const byTime = (a: Offer, b: Offer) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     const REJECTED = ['rejected', 'cancelled', 'missed'];
     return [
-      ...list.filter(o => ['pending', 'negotiating'].includes(getOfferDisplayStatus(o))).sort(byTime),
+      ...list.filter(o => getOfferDisplayStatus(o) === 'pending').sort(byTime),
+      ...list.filter(o => getOfferDisplayStatus(o) === 'negotiating').sort(byTime),
       ...list.filter(o => REJECTED.includes(getOfferDisplayStatus(o))).sort(byTime),
       ...list.filter(o => getOfferDisplayStatus(o) === 'accepted').sort(byTime),
     ];

@@ -765,7 +765,6 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     // Step 3 (product-level filter): find all product_ids that have ≥1 offer matching the status
     const statusMatch = (o: Offer) => {
       if (filter === 'rejected') return REJECTED_STATUSES.includes(o.status);
-      if (filter === 'pending') return ['pending', 'negotiating'].includes(o.status);
       return o.status === filter;
     };
     const matchingProductIds = new Set(
@@ -841,7 +840,8 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
             <div className="filter-tabs mb-0">
               {[
                 { key: '', label: 'All', count: sorted.length },
-                { key: 'pending', label: 'Pending', count: perspectiveOffers.filter(o => ['pending', 'negotiating'].includes(o.status)).length },
+                { key: 'pending', label: 'Pending', count: perspectiveOffers.filter(o => o.status === 'pending').length },
+                { key: 'negotiating', label: 'Negotiating', count: perspectiveOffers.filter(o => o.status === 'negotiating').length },
                 { key: 'accepted', label: 'Accepted', count: perspectiveOffers.filter(o => o.status === 'accepted').length },
                 { key: 'rejected', label: 'Rejected', count: perspectiveOffers.filter(o => REJECTED_STATUSES.includes(o.status)).length },
               ].map(({ key, label, count }) => (
