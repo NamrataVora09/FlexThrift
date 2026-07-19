@@ -256,7 +256,7 @@ export default function SellerReferralPage() {
                   <div className="stat-icon" style={{ background: 'rgba(16,185,129,0.1)' }}>
                     <i className="bi bi-currency-rupee" style={{ color: '#10b981' }}></i>
                   </div>
-                  <div className="stat-value">₹{stats.total_earned}</div>
+                  <div className="stat-value">₹{stats.total_earned.toFixed(2)}</div>
                   <div className="stat-label">Rewards Earned</div>
                 </div>
               </div>
@@ -274,7 +274,7 @@ export default function SellerReferralPage() {
                   <div className="stat-icon" style={{ background: 'rgba(239,68,68,0.1)' }}>
                     <i className="bi bi-gift-fill" style={{ color: '#ef4444' }}></i>
                   </div>
-                  <div className="stat-value">₹{stats.reward_amount}</div>
+                  <div className="stat-value">₹{stats.reward_amount.toFixed(2)}</div>
                   <div className="stat-label">Reward Per Referral</div>
                 </div>
               </div>
