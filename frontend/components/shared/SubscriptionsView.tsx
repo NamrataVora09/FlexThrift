@@ -80,7 +80,24 @@ export default function SubscriptionsView({ role, userType }: Props) {
   const [sAnim, setSAnim] = useState(true);
   const [bIdx, setBIdx] = useState(0);
   const [bAnim, setBAnim] = useState(true);
-  const VISIBLE = 3;
+  const [visibleCount, setVisibleCount] = useState(3);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setVisibleCount(1);
+      } else if (window.innerWidth < 992) {
+        setVisibleCount(2);
+      } else {
+        setVisibleCount(3);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const VISIBLE = visibleCount;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -142,7 +159,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
     if (sellerPlans.length <= VISIBLE) return;
     const t = setInterval(() => setSIdx(i => i + 1), 4000);
     return () => clearInterval(t);
-  }, [sellerPlans.length]);
+  }, [sellerPlans.length, VISIBLE]);
   useEffect(() => {
     if (sIdx >= sellerPlans.length) { const id = setTimeout(() => { setSAnim(false); setSIdx(0); }, 620); return () => clearTimeout(id); }
   }, [sIdx, sellerPlans.length]);
@@ -152,7 +169,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
     if (buyerPlans.length <= VISIBLE) return;
     const t = setInterval(() => setBIdx(i => i + 1), 4000);
     return () => clearInterval(t);
-  }, [buyerPlans.length]);
+  }, [buyerPlans.length, VISIBLE]);
   useEffect(() => {
     if (bIdx >= buyerPlans.length) { const id = setTimeout(() => { setBAnim(false); setBIdx(0); }, 620); return () => clearTimeout(id); }
   }, [bIdx, buyerPlans.length]);
@@ -338,11 +355,18 @@ export default function SubscriptionsView({ role, userType }: Props) {
         .plan-price-main{font-size:3rem;font-weight:900;letter-spacing:-0.03em;line-height:1}
         .plan-price-strike{font-size:1.2rem;color:#999;text-decoration:line-through}
         @media(max-width:575px){
-          .tier-basic,.tier-standard,.tier-elite{padding:1.5rem 1.25rem}
+          .tier-basic,.tier-standard,.tier-elite{padding:1.25rem 1rem}
           .tier-standard{transform:none}
-          .plan-price-block{flex-direction:column;align-items:flex-start;gap:.15rem}
-          .plan-price-main{font-size:2rem}
-          .plan-price-strike{font-size:1rem}
+          .plan-price-block{flex-direction:column;align-items:flex-start;gap:.1rem}
+          .plan-price-main{font-size:1.75rem}
+          .plan-price-strike{font-size:.9rem}
+          .plan-card-name{font-size:1.2rem !important;white-space:normal;word-break:break-word}
+          .plan-hd-section{margin-bottom:1.25rem !important}
+          .plan-price-section{margin-bottom:1.25rem !important}
+          .plan-feat-list{gap:.85rem !important;margin-bottom:1.5rem !important}
+          .plan-feat-item{gap:.5rem !important;align-items:flex-start !important}
+          .plan-feat-item .material-symbols-outlined{font-size:1.1rem !important;margin-top:.1rem}
+          .plan-feat-item span:last-child{font-size:.82rem !important;line-height:1.4}
         }
         
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
@@ -558,11 +582,11 @@ export default function SubscriptionsView({ role, userType }: Props) {
                         <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopSeller.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
                           <div className={cardClass} style={{ width: '100%' }}>
                             {isPopular && <div className="tier-badge">Most Selected</div>}
-                            <div style={{ marginBottom: '3rem' }}>
-                              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
+                            <div className="plan-hd-section" style={{ marginBottom: '3rem' }}>
+                              <h3 className="plan-card-name" style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
                               <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type.toUpperCase()} BASED</p>
                             </div>
-                            <div style={{ marginBottom: '3rem' }}>
+                            <div className="plan-price-section" style={{ marginBottom: '3rem' }}>
                               <div className="plan-price-block">
                                 <span className="plan-price-main" style={{ color: priceColor }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} </span>
                                 {plan.base_price && Number(plan.base_price) > Number(plan.price) && (
@@ -572,7 +596,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                                 )}
                               </div>
                             </div>
-                            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <ul className="plan-feat-list" style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                               {(() => {
                                 const coreFeatures = [
                                   { icon: plan.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} ${plan.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
@@ -593,7 +617,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                                 const allFeatures = [...coreFeatures, ...filteredCustom];
 
                                 return allFeatures.map((f, i) => (
-                                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                                  <li key={i} className="plan-feat-item" style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
                                     <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
                                     <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
                                   </li>
@@ -661,11 +685,11 @@ export default function SubscriptionsView({ role, userType }: Props) {
                         <div key={`${plan.id}-${idx}`} style={{ width: `${100 / loopBuyer.length}%`, padding: '0 0.75rem', boxSizing: 'border-box', display: 'flex' }}>
                           <div className={cardClass} style={{ width: '100%' }}>
                             {isPopular && <div className="tier-badge">Most Selected</div>}
-                            <div style={{ marginBottom: '3rem' }}>
-                              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
+                            <div className="plan-hd-section" style={{ marginBottom: '3rem' }}>
+                              <h3 className="plan-card-name" style={{ fontSize: '1.75rem', fontWeight: 900, color: nameColor, marginBottom: '0.4rem', letterSpacing: '-0.02em' }}>{plan.name}</h3>
                               <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type.toUpperCase()} BASED</p>
                             </div>
-                            <div style={{ marginBottom: '3rem' }}>
+                            <div className="plan-price-section" style={{ marginBottom: '3rem' }}>
                               <div className="plan-price-block">
                                 <span className="plan-price-main" style={{ color: priceColor }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 {plan.base_price && Number(plan.base_price) > Number(plan.price) && (
@@ -675,7 +699,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                                 )}
                               </div>
                             </div>
-                            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <ul className="plan-feat-list" style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                               {(() => {
                                 const coreFeatures = [
                                   { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
@@ -694,7 +718,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                                 const allFeatures = [...coreFeatures, ...filteredCustom];
 
                                 return allFeatures.map((f, i) => (
-                                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
+                                  <li key={i} className="plan-feat-item" style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: textColor }}>
                                     <span className="material-symbols-outlined" style={{ color: iconColor, fontSize: '1.3rem', flexShrink: 0, fontVariationSettings: isFeatured ? "'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24" : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>{f.icon}</span>
                                     <span style={{ fontSize: '0.875rem', fontWeight: isPopular ? 600 : 400 }}>{f.text}</span>
                                   </li>
