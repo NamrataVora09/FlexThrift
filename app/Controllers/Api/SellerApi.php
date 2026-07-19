@@ -393,6 +393,24 @@ class SellerApi extends BaseApiController
                 log_message('error', 'No active seller subscription found for user_id: ' . $userId);
                 return $this->respond(['success' => false, 'message' => 'No active seller subscription found. Please subscribe to a seller plan to upload products.'], 403);
             }
+
+            // Check subscription limit for quantity-based plans
+            if ($activeSub['plan_type'] === 'quantity') {
+                $limitValue = (int) $activeSub['limit_value'];
+                $usageCount = (int) $activeSub['usage_count'];
+
+                log_message('info', 'Quantity-based plan check - Limit: ' . $limitValue . ', Usage: ' . $usageCount);
+
+                if ($limitValue <= 0) {
+                    log_message('error', 'Subscription limit is 0 for user_id: ' . $userId);
+                    return $this->respond(['success' => false, 'message' => 'Your subscription plan has 0 product uploads. Please upgrade your plan to upload products.'], 403);
+                }
+
+                if ($usageCount >= $limitValue) {
+                    log_message('error', 'Subscription limit reached for user_id: ' . $userId . ', Usage: ' . $usageCount . ', Limit: ' . $limitValue);
+                    return $this->respond(['success' => false, 'message' => 'You have reached your product upload limit (' . $limitValue . ' uploads). Please upgrade your plan to upload more products.'], 403);
+                }
+            }
         }
 
         $data = $this->request->getPost();

@@ -49,9 +49,11 @@ function PlanPointsEditor({ value, onChange, form }: { value: string; onChange: 
 
   const getGeneratedPoints = useCallback(() => {
     if (!form) return [];
+    const durationHours = Number(form.duration_hours) || 0;
+    const durationText = form.plan_type === 'quantity' && durationHours === 0 ? 'Life-Time' : (durationHours > 0 ? `${durationHours} Hours` : 'Life-Time');
     return [
       { icon: form.user_type === 'buyer' ? 'contacts' : 'storefront', text: `${form.plan_type === 'duration' ? 'Unlimited' : (form.limit_value || '0')} ${form.user_type === 'buyer' ? 'Contacts' : 'Listings'}` },
-      { icon: 'schedule', text: `${Number(form.duration_hours) || '∞'} Hours Validity` },
+      { icon: 'schedule', text: `${durationText} Validity` },
       { icon: 'payments', text: `₹${Number(form.price).toLocaleString('en-IN')} - ${form.plan_type.charAt(0).toUpperCase() + form.plan_type.slice(1)} Based` }
     ];
   }, [form]);
@@ -390,9 +392,9 @@ Pro Seller,seller,quantity,20,0,299,399,"[]",1,0`}
                         </td>
                         <td style={tdStyle}>
                           {p.plan_type === 'quantity' ? (
-                            Number(p.duration_hours) > 0 ? <>{Number(p.duration_hours).toFixed(2)} Hours</> : <span className="badge bg-light text-dark">No Expiry</span>
+                            Number(p.duration_hours) > 0 ? <>{Number(p.duration_hours).toFixed(2)} Hours</> : <span className="badge bg-light text-dark">Life-Time</span>
                           ) : (
-                            <>{Number(p.duration_hours).toFixed(2)} Hours</>
+                            Number(p.duration_hours) > 0 ? <>{Number(p.duration_hours).toFixed(2)} Hours</> : <span className="badge bg-light text-dark">Life-Time</span>
                           )}
                         </td>
                         <td style={{ ...tdStyle, color: '#ffc63a', fontWeight: 700 }}>
