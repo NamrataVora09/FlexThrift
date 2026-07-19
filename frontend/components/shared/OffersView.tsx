@@ -259,6 +259,59 @@ const CSS = `
 
   .luxury-item-card { background: white; border-radius: 20px; padding: 24px; border: 1px solid #eee; margin-bottom: 20px; transition: all 0.3s ease; }
   .luxury-item-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-color: #ffc63a; }
+  .luxury-item-card-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 24px;
+  }
+  .responsive-border {
+    border-right: 1px solid #f0f0f0;
+    padding-right: 24px;
+  }
+  @media (max-width: 768px) {
+    .luxury-item-card {
+      padding: 16px;
+    }
+    .luxury-item-card-grid {
+      grid-template-columns: 1fr;
+      row-gap: 20px;
+    }
+    .responsive-border {
+      border-right: none;
+      border-bottom: 1px solid #f0f0f0;
+      padding-right: 0;
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    .offer-row {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 16px;
+      gap: 16px;
+    }
+    .buyer-info {
+      min-width: 100% !important;
+      border-bottom: 1px solid #f0f0f0;
+      padding-bottom: 16px;
+      margin-bottom: 8px;
+    }
+    .offer-actions {
+      min-width: 100% !important;
+      text-align: left !important;
+      margin-top: 8px;
+    }
+    .offer-actions .d-flex {
+      align-items: flex-start !important;
+    }
+    .seller-action-group {
+      width: 100%;
+      display: flex;
+    }
+    .seller-action-group button {
+      flex: 1;
+      text-align: center;
+    }
+  }
   .item-img { width: 100px; height: 125px; object-fit: cover; border-radius: 12px; }
 
   /* buyer status pills use pill-* prefix */
@@ -1783,10 +1836,10 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
         const endFormatted = o.rental_end_date ? new Date(o.rental_end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
         return (
-          <div key={o.id} className="luxury-item-card shadow-sm" style={{ padding: 24, borderRadius: 20, background: '#fff', border: '1px solid #eee', marginBottom: 20, display: "grid", gridTemplateColumns: " 20% 80%", columnGap: "10px" }}>
+          <div key={o.id} className="luxury-item-card shadow-sm luxury-item-card-grid">
 
             {/* LEFT COLUMN — Seller Profile Details */}
-            <div className=" w-full  ">
+            <div className="w-full responsive-border">
               {/* Product Image */}
               <img
                 src={getImageUrl(o.product_image) || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=120&h=120&fit=crop'}

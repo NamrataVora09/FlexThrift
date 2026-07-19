@@ -402,6 +402,20 @@ export default function Page() {
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
           border-color: #ffc63a;
         }
+        .responsive-border {
+          border-right: 1px solid #f0f0f0;
+        }
+        @media (max-width: 768px) {
+          .luxury-item-card {
+            padding: 16px;
+          }
+          .responsive-border {
+            border-right: none;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+          }
+        }
         .item-img {
           width: 100px;
           height: 125px;
@@ -582,11 +596,11 @@ export default function Page() {
           const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && acceptedTs > 0 && Date.now() < ratingExpiryTs;
 
           return (
-            <div key={o.id} className="luxury-item-card shadow-sm" style={{ padding: 24, borderRadius: 20, background: '#fff', border: '1px solid #eee', marginBottom: 20 }}>
+            <div key={o.id} className="luxury-item-card shadow-sm">
               <div className="row align-items-start g-4">
 
                 {/* LEFT COLUMN — Seller Profile Details */}
-                <div className="col-12 col-md-4 col-lg-3.5 pr-md-4" style={{ borderRight: '1px solid #f0f0f0' }}>
+                <div className="col-12 col-md-4 col-lg-3.5 pr-md-4 responsive-border">
                   {/* Product Image */}
                   <img
                     src={getImageUrl(o.product_image) || 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=120&h=120&fit=crop'}
