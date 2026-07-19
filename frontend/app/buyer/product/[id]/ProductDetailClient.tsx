@@ -301,6 +301,11 @@ export default function ProductDetailClient({ product, images, similarProducts =
       setOfferError(getMsg('seller_cannot_make_offer', 'Sellers cannot make offers on products. Please use your buyer account to make offers.'));
       return;
     }
+    // Both users can make offers as buyers
+    if (user.user_type === 'both' && Number(user.blocked_buyer) === 1) {
+      setOfferError('Your buyer role has been restricted by the administrator.');
+      return;
+    }
     if (Number(user.blocked_buyer) === 1) {
       setOfferError('Your account has been restricted from making offers by the administrator.');
       return;
