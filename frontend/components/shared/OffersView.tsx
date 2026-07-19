@@ -483,7 +483,10 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
   const load = () => {
     setLoading(true);
     api.get<Offer[]>(apiPath).then((r: any) => {
-      if (r.success && r.data) setOffers(r.data);
+      if (r.success && r.data) {
+        console.log('Offers loaded from', apiPath, ':', r.data.map((o: Offer) => ({ id: o.id, status: o.status, title: o.product_title })));
+        setOffers(r.data);
+      }
       if (r.bookedDates) setBookedDates(r.bookedDates);
       if (r.acceptanceLimitDays != null) {
         setSettings({
@@ -736,11 +739,11 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
 
   const sorted = useMemo(() => {
     const all = [...perspectiveOffers];
-    const p = all.filter(o => o.status === 'pending').sort(byTime);
-    const n = all.filter(o => o.status === 'negotiating').sort(byTime);
+    // negotiating is grouped with pending (no separate tab)
+    const p = all.filter(o => o.status === 'pending' || o.status === 'negotiating').sort(byTime);
     const r = all.filter(o => REJECTED_STATUSES.includes(o.status)).sort(byTime);
     const a = all.filter(o => o.status === 'accepted').sort(byTime);
-    return [...p, ...n, ...r, ...a];
+    return [...p, ...r, ...a];
   }, [perspectiveOffers]);
 
   const filtered = (() => {
@@ -766,6 +769,8 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
     // Step 3 (product-level filter): find all product_ids that have ≥1 offer matching the status
     const statusMatch = (o: Offer) => {
       if (filter === 'rejected') return REJECTED_STATUSES.includes(o.status);
+      // 'pending' tab also shows negotiating offers
+      if (filter === 'pending') return o.status === 'pending' || o.status === 'negotiating';
       return o.status === filter;
     };
     const matchingProductIds = new Set(
@@ -841,8 +846,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
             <div className="filter-tabs mb-0">
               {[
                 { key: '', label: 'All', count: sorted.length },
-                { key: 'pending', label: 'Pending', count: perspectiveOffers.filter(o => o.status === 'pending').length },
-                { key: 'negotiating', label: 'Negotiating', count: perspectiveOffers.filter(o => o.status === 'negotiating').length },
+                { key: 'pending', label: 'Pending', count: perspectiveOffers.filter(o => o.status === 'pending' || o.status === 'negotiating').length },
                 { key: 'accepted', label: 'Accepted', count: perspectiveOffers.filter(o => o.status === 'accepted').length },
                 { key: 'rejected', label: 'Rejected', count: perspectiveOffers.filter(o => REJECTED_STATUSES.includes(o.status)).length },
               ].map(({ key, label, count }) => (

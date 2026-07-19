@@ -927,6 +927,8 @@ class SellerApi extends BaseApiController
             'message' => $msg,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
+        
+        log_message('error', "Offer {$id} updated to negotiating status. New dates: {$newStart} to {$newEnd}");
 
         // Record in history
         $db->table('offer_history')->insert([

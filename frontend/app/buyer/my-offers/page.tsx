@@ -170,7 +170,7 @@ function getImageUrl(path?: string) {
   return `${BASE_URL}/uploads/products/${path}`;
 }
 
-const STATUS_FILTERS = ['all', 'pending', 'negotiating', 'accepted', 'rejected'] as const;
+const STATUS_FILTERS = ['all', 'pending', 'accepted', 'rejected'] as const;
 
 const pillStyles: Record<string, React.CSSProperties> = {
   pending: { background: '#f8f9fa', color: '#666', border: '1px solid #eee' },
@@ -231,6 +231,7 @@ export default function Page() {
       // Cast to any to access the root-level 'minRentalDays' property which isn't in generic ApiResponse
       const res = r as any;
       if (res.success && res.data) {
+        console.log('Buyer offers loaded:', res.data.map((o: Offer) => ({ id: o.id, status: o.status, title: o.product_title })));
         setOffers(res.data);
         if (res.minRentalDays) setMinRentalDays(res.minRentalDays);
         if (res.acceptanceLimitDays) setSettings(prev => ({ ...prev, acceptanceLimitDays: res.acceptanceLimitDays }));
@@ -348,6 +349,8 @@ export default function Page() {
     // Backend-confirmed missed offers → treat as 'rejected' for filter tabs
     if (o.status === 'missed') return 'rejected';
     if (o.status === 'cancelled') return 'rejected';
+    // Negotiating offers are shown under the Pending tab
+    if (o.status === 'negotiating') return 'pending';
 
     // Frontend-detected expiry (offer still marked pending but time window passed)
     if (o.status === 'pending' && o.created_at) {
@@ -368,7 +371,6 @@ export default function Page() {
     const REJECTED = ['rejected', 'cancelled', 'missed'];
     return [
       ...list.filter(o => getOfferDisplayStatus(o) === 'pending').sort(byTime),
-      ...list.filter(o => getOfferDisplayStatus(o) === 'negotiating').sort(byTime),
       ...list.filter(o => REJECTED.includes(getOfferDisplayStatus(o))).sort(byTime),
       ...list.filter(o => getOfferDisplayStatus(o) === 'accepted').sort(byTime),
     ];
@@ -379,7 +381,6 @@ export default function Page() {
     return {
       all: list.length,
       pending: list.filter((o) => getOfferDisplayStatus(o) === 'pending').length,
-      negotiating: list.filter((o) => getOfferDisplayStatus(o) === 'negotiating').length,
       accepted: list.filter((o) => getOfferDisplayStatus(o) === 'accepted').length,
       rejected: list.filter((o) => getOfferDisplayStatus(o) === 'rejected').length,
     }
