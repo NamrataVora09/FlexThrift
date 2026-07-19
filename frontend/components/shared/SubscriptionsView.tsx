@@ -334,6 +334,16 @@ export default function SubscriptionsView({ role, userType }: Props) {
         .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto;border:none}
         .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
         .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#d7b467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .plan-price-block{display:flex;align-items:baseline;flex-wrap:wrap;gap:.25rem .5rem}
+        .plan-price-main{font-size:3rem;font-weight:900;letter-spacing:-0.03em;line-height:1}
+        .plan-price-strike{font-size:1.2rem;color:#999;text-decoration:line-through}
+        @media(max-width:575px){
+          .tier-basic,.tier-standard,.tier-elite{padding:1.5rem 1.25rem}
+          .tier-standard{transform:none}
+          .plan-price-block{flex-direction:column;align-items:flex-start;gap:.15rem}
+          .plan-price-main{font-size:2rem}
+          .plan-price-strike{font-size:1rem}
+        }
         
         .bento-grid{display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:2rem}
         @media(min-width:992px){.bento-grid{grid-template-columns:repeat(12,1fr)}}
@@ -553,12 +563,14 @@ export default function SubscriptionsView({ role, userType }: Props) {
                               <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type.toUpperCase()} BASED</p>
                             </div>
                             <div style={{ marginBottom: '3rem' }}>
-                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} </span>
-                              {plan.base_price && Number(plan.base_price) > Number(plan.price) && (
-                                <span style={{ fontSize: '1.2rem', color: '#999', textDecoration: 'line-through', marginLeft: '0.5rem' }}>
-                                  &#8377;{Number(plan.base_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </span>
-                              )}
+                              <div className="plan-price-block">
+                                <span className="plan-price-main" style={{ color: priceColor }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} </span>
+                                {plan.base_price && Number(plan.base_price) > Number(plan.price) && (
+                                  <span className="plan-price-strike">
+                                    &#8377;{Number(plan.base_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                               {(() => {
@@ -654,12 +666,14 @@ export default function SubscriptionsView({ role, userType }: Props) {
                               <p style={{ fontSize: '0.82rem', fontWeight: 600, color: typeColor, margin: 0 }}>{plan.plan_type.toUpperCase()} BASED</p>
                             </div>
                             <div style={{ marginBottom: '3rem' }}>
-                              <span style={{ fontSize: '3rem', fontWeight: 900, color: priceColor, letterSpacing: '-0.03em' }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                              {plan.base_price && Number(plan.base_price) > Number(plan.price) && (
-                                <span style={{ fontSize: '1.2rem', color: '#999', textDecoration: 'line-through', marginLeft: '0.5rem' }}>
-                                  &#8377;{Number(plan.base_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </span>
-                              )}
+                              <div className="plan-price-block">
+                                <span className="plan-price-main" style={{ color: priceColor }}>&#8377;{Number(plan.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                {plan.base_price && Number(plan.base_price) > Number(plan.price) && (
+                                  <span className="plan-price-strike">
+                                    &#8377;{Number(plan.base_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '4rem', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                               {(() => {
