@@ -418,7 +418,7 @@ Pro Seller,seller,quantity,20,0,299,399,"[]",1,0`}
                                 onClick={() => toggleFeatured(p.id)}
                                 title={String(p.is_featured) === '1' ? 'Remove Premium' : 'Mark as Premium'}
                               >
-                                <i className="bi bi-gem"></i>
+                                <i className={`bi ${String(p.is_featured) === '1' ? 'bi-crown-fill' : 'bi-crown'}`}></i>
                               </button>
                               <button
                                 className="btn btn-sm border me-1"
