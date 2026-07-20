@@ -17,11 +17,11 @@ class BuyerApi extends BaseApiController
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
 
         // Product stats
-        $ttlProducts    = $db->table('offers')->where('buyer_id', $userId)->countAllResults();
-        $pendingOffers  = $db->table('offers')->where('buyer_id', $userId)->where('status', 'pending')->countAllResults();
+        $ttlProducts = $db->table('offers')->where('buyer_id', $userId)->countAllResults();
+        $pendingOffers = $db->table('offers')->where('buyer_id', $userId)->where('status', 'pending')->countAllResults();
         $acceptedOffers = $db->table('offers')->where('buyer_id', $userId)->where('status', 'accepted')->countAllResults();
         $rejectedOffers = $db->table('offers')->where('buyer_id', $userId)->whereIn('status', ['rejected', 'cancelled', 'missed'])->countAllResults();
-        $totalOrders    = $db->table('orders')->where('buyer_id', $userId)->countAllResults();
+        $totalOrders = $db->table('orders')->where('buyer_id', $userId)->countAllResults();
 
         // Recent offers
         $recentOffers = $db->table('offers o')
@@ -45,9 +45,9 @@ class BuyerApi extends BaseApiController
         // For 'both' users, resolve effective role based on which role is blocked
         $effectiveRole = $jwtUser['role'];
         if ($user['user_type'] === 'both') {
-            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+            if ((int) ($user['blocked_buyer'] ?? 0) === 1) {
                 $effectiveRole = 'seller';
-            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+            } elseif ((int) ($user['blocked_seller'] ?? 0) === 1) {
                 $effectiveRole = 'buyer';
             }
         }
@@ -95,21 +95,21 @@ class BuyerApi extends BaseApiController
         $page = (int) ($this->request->getGet('page') ?? 1);
         $perPage = 12;
         $offset = ($page - 1) * $perPage;
-        $search      = $this->request->getGet('search');
+        $search = $this->request->getGet('search');
         $listingType = $this->request->getGet('listing_type');
-        $category    = $this->request->getGet('category');
+        $category = $this->request->getGet('category');
 
         // ── Filter params ────────────────────────────────────────────────────
-        $minPrice   = $this->request->getGet('min_price');
-        $maxPrice   = $this->request->getGet('max_price');
+        $minPrice = $this->request->getGet('min_price');
+        $maxPrice = $this->request->getGet('max_price');
         $categoryId = $this->request->getGet('category_id');
-        $subCatId   = $this->request->getGet('sub_category_id');
-        $brandId    = $this->request->getGet('brand_id');
-        $color      = $this->request->getGet('color');
-        $size       = $this->request->getGet('size');
-        $gender     = $this->request->getGet('gender');
-        $condition   = $this->request->getGet('condition'); // 'new' | 'used'
-        $specs       = $this->request->getGet('specs');     // JSON string
+        $subCatId = $this->request->getGet('sub_category_id');
+        $brandId = $this->request->getGet('brand_id');
+        $color = $this->request->getGet('color');
+        $size = $this->request->getGet('size');
+        $gender = $this->request->getGet('gender');
+        $condition = $this->request->getGet('condition'); // 'new' | 'used'
+        $specs = $this->request->getGet('specs');     // JSON string
         $productType = $this->request->getGet('product_type'); // e.g. 'Phone,Laptop'
         // ─────────────────────────────────────────────────────────────────────
 
@@ -153,7 +153,8 @@ class BuyerApi extends BaseApiController
                     ->groupEnd();
             }
         }
-        if ($category) $builder->where('p.category', $category);
+        if ($category)
+            $builder->where('p.category', $category);
 
         // ── Apply new filters ─────────────────────────────────────────────────
         if ($minPrice !== null && $minPrice !== '') {
@@ -174,8 +175,9 @@ class BuyerApi extends BaseApiController
                 $fn = $idx === 0 ? 'groupStart' : 'orGroupStart';
                 $builder->$fn()
                     ->like('p.category_ids', "\"$catIdInt\"")
-                    ->orWhere('p.category', (string)$catIdInt);
-                if ($catName) $builder->orWhere('p.category', $catName);
+                    ->orWhere('p.category', (string) $catIdInt);
+                if ($catName)
+                    $builder->orWhere('p.category', $catName);
                 $builder->groupEnd();
             }
             $builder->groupEnd();
@@ -190,8 +192,9 @@ class BuyerApi extends BaseApiController
                 $fn = $idx === 0 ? 'groupStart' : 'orGroupStart';
                 $builder->$fn()
                     ->like('p.sub_category_ids', "\"$subCatIdInt\"")
-                    ->orWhere('p.sub_category', (string)$subCatIdInt);
-                if ($subCatName) $builder->orWhere('p.sub_category', $subCatName);
+                    ->orWhere('p.sub_category', (string) $subCatIdInt);
+                if ($subCatName)
+                    $builder->orWhere('p.sub_category', $subCatName);
                 $builder->groupEnd();
             }
             $builder->groupEnd();
@@ -215,8 +218,10 @@ class BuyerApi extends BaseApiController
             $colors = array_values(array_filter(array_map('trim', explode(',', $color))));
             $builder->groupStart();
             foreach ($colors as $idx => $c) {
-                if ($idx === 0) $builder->like('p.color', $c);
-                else            $builder->orLike('p.color', $c);
+                if ($idx === 0)
+                    $builder->like('p.color', $c);
+                else
+                    $builder->orLike('p.color', $c);
             }
             $builder->groupEnd();
         }
@@ -226,8 +231,10 @@ class BuyerApi extends BaseApiController
             $sizes = array_values(array_filter(array_map('trim', explode(',', $size))));
             $builder->groupStart();
             foreach ($sizes as $idx => $s) {
-                if ($idx === 0) $builder->like('p.size', $s);
-                else            $builder->orLike('p.size', $s);
+                if ($idx === 0)
+                    $builder->like('p.size', $s);
+                else
+                    $builder->orLike('p.size', $s);
             }
             $builder->groupEnd();
         }
@@ -263,8 +270,10 @@ class BuyerApi extends BaseApiController
                 foreach ($ptNames as $idx => $pt) {
                     $escapedPt = $db->escape(strtolower($pt));
                     $expr = "LOWER(p.product_type) = $escapedPt";
-                    if ($idx === 0) $builder->where($expr, null, false);
-                    else            $builder->orWhere($expr, null, false);
+                    if ($idx === 0)
+                        $builder->where($expr, null, false);
+                    else
+                        $builder->orWhere($expr, null, false);
                 }
                 $builder->groupEnd();
             }
@@ -274,60 +283,66 @@ class BuyerApi extends BaseApiController
         if ($specs) {
             $specsArr = json_decode($specs, true) ?: [];
             foreach ($specsArr as $key => $val) {
-                if ($key === '') continue;
-                $path         = '$.' . json_encode($key);
-                $escapedPath  = $db->escape($path);
+                if ($key === '')
+                    continue;
+                $path = '$.' . json_encode($key);
+                $escapedPath = $db->escape($path);
                 $vals = is_array($val) ? array_filter($val, fn($v) => $v !== '') : ($val !== '' ? [$val] : []);
-                if (empty($vals)) continue;
+                if (empty($vals))
+                    continue;
                 $builder->groupStart();
                 $first = true;
                 foreach ($vals as $v) {
                     $escapedVal = $db->escape($v);
                     $expr = "JSON_UNQUOTE(JSON_EXTRACT(p.specifications, $escapedPath)) = $escapedVal";
-                    if ($first) { $builder->where($expr, null, false); $first = false; }
-                    else        { $builder->orWhere($expr, null, false); }
+                    if ($first) {
+                        $builder->where($expr, null, false);
+                        $first = false;
+                    } else {
+                        $builder->orWhere($expr, null, false);
+                    }
                 }
                 $builder->groupEnd();
             }
         }
         // ─────────────────────────────────────────────────────────────────────
 
-        $total    = $builder->countAllResults(false);
+        $total = $builder->countAllResults(false);
         $products = $builder->orderBy('p.created_at', 'DESC')
             ->limit($perPage, $offset)
             ->get()->getResultArray();
 
         // ── Filter sidebar options ────────────────────────────────────────────
-        $categories    = $db->table('categories')->select('id, category_name as name, field_config')->orderBy('category_name')->get()->getResultArray();
+        $categories = $db->table('categories')->select('id, category_name as name, field_config')->orderBy('category_name')->get()->getResultArray();
         $subCategories = $db->table('sub_categories')->select('id, name, category_id, field_config')->orderBy('name')->get()->getResultArray();
         $originalBrands = $db->table('orignal_brands')->where('is_active', 1)->where('is_blocked', 0)->select('id, brand_name')->orderBy('brand_name')->get()->getResultArray();
-        $sellerBrands   = $db->table('brands')->where('is_active', 1)->where('is_blocked', 0)->select('id, brand_name')->orderBy('brand_name')->get()->getResultArray();
-        $colors        = $db->table('colors')->select('id, name')->orderBy('name')->get()->getResultArray();
-        $genders       = $db->table('genders')->select('id, name')->get()->getResultArray();
-        $sizesRaw      = $db->query("SELECT DISTINCT size FROM products WHERE status = 'approved' AND size IS NOT NULL AND size != '' AND size != '[]' ORDER BY size")->getResultArray();
-        $priceRange    = $db->query("SELECT FLOOR(MIN(COALESCE(price, original_price, 0))) as min_price, CEIL(MAX(COALESCE(price, original_price, rental_cost, 0))) as max_price FROM products WHERE status = 'approved'")->getRowArray();
+        $sellerBrands = $db->table('brands')->where('is_active', 1)->where('is_blocked', 0)->select('id, brand_name')->orderBy('brand_name')->get()->getResultArray();
+        $colors = $db->table('colors')->select('id, name')->orderBy('name')->get()->getResultArray();
+        $genders = $db->table('genders')->select('id, name')->get()->getResultArray();
+        $sizesRaw = $db->query("SELECT DISTINCT size FROM products WHERE status = 'approved' AND size IS NOT NULL AND size != '' AND size != '[]' ORDER BY size")->getResultArray();
+        $priceRange = $db->query("SELECT FLOOR(MIN(COALESCE(price, original_price, 0))) as min_price, CEIL(MAX(COALESCE(price, original_price, rental_cost, 0))) as max_price FROM products WHERE status = 'approved'")->getRowArray();
         // ─────────────────────────────────────────────────────────────────────
 
         return $this->respond([
             'success' => true,
             'data' => [
-                'products'       => $products,
-                'categories'     => $categories,
-                'pagination'     => [
-                    'page'        => $page,
-                    'per_page'    => $perPage,
-                    'total'       => $total,
+                'products' => $products,
+                'categories' => $categories,
+                'pagination' => [
+                    'page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $total,
                     'total_pages' => (int) ceil($total / $perPage),
                 ],
                 'filter_options' => [
-                    'categories'     => $categories,
+                    'categories' => $categories,
                     'sub_categories' => $subCategories,
-                    'brands'         => $sellerBrands,
-                    'original_brands'=> $originalBrands,
-                    'colors'         => $colors,
-                    'genders'        => $genders,
-                    'sizes'          => array_column($sizesRaw, 'size'),
-                    'price_range'    => $priceRange ?: ['min_price' => 0, 'max_price' => 100000],
+                    'brands' => $sellerBrands,
+                    'original_brands' => $originalBrands,
+                    'colors' => $colors,
+                    'genders' => $genders,
+                    'sizes' => array_column($sizesRaw, 'size'),
+                    'price_range' => $priceRange ?: ['min_price' => 0, 'max_price' => 100000],
                 ],
             ],
         ]);
@@ -343,7 +358,8 @@ class BuyerApi extends BaseApiController
         if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
             $token = substr($authHeader, 7);
             $payload = \App\Libraries\JWT::decode($token);
-            if ($payload) $userId = $payload['user_id'];
+            if ($payload)
+                $userId = $payload['user_id'];
         }
         $ip = $this->request->getIPAddress();
         $agent = $this->request->getUserAgent()->getAgentString();
@@ -371,7 +387,7 @@ class BuyerApi extends BaseApiController
             // Log this view
             $db->table('product_views_log')->insert([
                 'product_id' => $id,
-                'user_id'    => $userId,
+                'user_id' => $userId,
                 'ip_address' => $ip,
                 'user_agent' => substr($agent, 0, 255),
                 'created_at' => date('Y-m-d H:i:s'),
@@ -503,14 +519,14 @@ class BuyerApi extends BaseApiController
         $historyModel = new \App\Models\OfferHistoryModel();
         foreach ($offers as &$o) {
             $o['history'] = $historyModel->getHistoryByOffer($o['id']);
-            
+
             // Check for conflicts
-            if ((int)($o['is_product_sold'] ?? 0) > 0) {
+            if ((int) ($o['is_product_sold'] ?? 0) > 0) {
                 $o['conflict_info'] = [
                     'message' => 'Another buyer\'s offer for this product has been accepted.',
                     'type' => 'sold_conflict'
                 ];
-            } else if ((int)($o['is_rental_blocked'] ?? 0) > 0) {
+            } else if ((int) ($o['is_rental_blocked'] ?? 0) > 0) {
                 $o['conflict_info'] = [
                     'message' => 'Another buyer\'s offer for these dates has been accepted.',
                     'type' => 'rent_conflict'
@@ -616,14 +632,14 @@ class BuyerApi extends BaseApiController
 
         // Merge both sources
         $bookedRanges = [];
-        
+
         foreach ($offers as $o) {
             $bookedRanges[] = [
                 'start' => $o['rental_start_date'],
                 'end' => $o['rental_end_date'],
             ];
         }
-        
+
         foreach ($orders as $o) {
             $bookedRanges[] = [
                 'start' => $o['rental_start_date'],
@@ -644,7 +660,7 @@ class BuyerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         $limit = (float) getSystemSetting('offer_acceptance_limit_days', 7);
-        $expiryCutoff = date('Y-m-d H:i:s', time() - (int)($limit * 86400));
+        $expiryCutoff = date('Y-m-d H:i:s', time() - (int) ($limit * 86400));
 
         $offer = $db->table('offers')
             ->where('product_id', $productId)
@@ -671,12 +687,12 @@ class BuyerApi extends BaseApiController
             ->where('product_id', $productId)
             ->where('buyer_id', $jwtUser['user_id'])
             ->groupStart()
-                ->where('status', 'accepted')
-                ->orGroupStart()
-                    ->where('status', 'pending')
-                    ->where('created_at >=', $expiryCutoff)
-                ->groupEnd()
-                ->orWhere('status', 'negotiating')
+            ->where('status', 'accepted')
+            ->orGroupStart()
+            ->where('status', 'pending')
+            ->where('created_at >=', $expiryCutoff)
+            ->groupEnd()
+            ->orWhere('status', 'negotiating')
             ->groupEnd()
             ->get()->getResultArray();
 
@@ -726,8 +742,8 @@ class BuyerApi extends BaseApiController
         // Prevent duplicate active offers from the same buyer on the same product
         // Get acceptance limit days for expiry check
         $limit = (float) getSystemSetting('offer_acceptance_limit_days', 7);
-        $expiryCutoff = date('Y-m-d H:i:s', time() - (int)($limit * 86400));
-        
+        $expiryCutoff = date('Y-m-d H:i:s', time() - (int) ($limit * 86400));
+
         if ($offerType === 'rent') {
             if (empty($data['rental_start_date']) || empty($data['rental_end_date'])) {
                 return $this->respond(['success' => false, 'message' => 'Rental start and end dates are required'], 400);
@@ -794,8 +810,8 @@ class BuyerApi extends BaseApiController
             }
 
             $start = new \DateTime($data['rental_start_date']);
-            $end   = new \DateTime($data['rental_end_date']);
-            $days  = (int) $start->diff($end)->days + 1;
+            $end = new \DateTime($data['rental_end_date']);
+            $days = (int) $start->diff($end)->days + 1;
             $minDays = (float) getSystemSetting('min_rental_days', 3);
             if ($days < $minDays) {
                 return $this->respond(['success' => false, 'message_key' => 'rental_min_days_error', 'message_params' => ['min' => $minDays, 'selected' => $days]], 400);
@@ -883,16 +899,16 @@ class BuyerApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
-        
+
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_buyer'] ?? 0) === 1) {
+        if ($jwtUser['role'] !== 'super_admin' && (int) ($user['blocked_buyer'] ?? 0) === 1) {
             return $this->respond(['success' => false, 'message' => 'Your buyer role is currently blocked. Access restricted.'], 403);
         }
 
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
 
         $isAdmin = in_array($jwtUser['role'], ['admin', 'super_admin']);
-        
+
         $query = $db->table('offers')->where('id', $id);
         if (!$isAdmin) {
             $query->where('buyer_id', $jwtUser['user_id']);
@@ -927,13 +943,13 @@ class BuyerApi extends BaseApiController
             // Enforce minimum rental days from system settings
             helper('price_calculator');
             $minDays = (float) getSystemSetting('min_rental_days', 3);
-            $days = (int)ceil((strtotime($endDate) - strtotime($startDate)) / 86400) + 1; // inclusive
+            $days = (int) ceil((strtotime($endDate) - strtotime($startDate)) / 86400) + 1; // inclusive
             if ($days < $minDays) {
                 return $this->respond(['success' => false, 'message_key' => 'rental_min_days_error', 'message_params' => ['min' => $minDays, 'selected' => $days]], 400);
             }
 
             // Recalculate price based on new duration
-            $rentalCostPerDay = (float)($product['rental_cost'] ?? 0);
+            $rentalCostPerDay = (float) ($product['rental_cost'] ?? 0);
             $newPrice = $rentalCostPerDay * $days;
 
             // Check for conflicts with already accepted offers
@@ -976,27 +992,27 @@ class BuyerApi extends BaseApiController
 
         // Add to history
         $db->table('offer_history')->insert([
-            'offer_id'       => $id,
-            'changed_by'     => $jwtUser['user_id'],
-            'action'         => 'buyer_date_update',
+            'offer_id' => $id,
+            'changed_by' => $jwtUser['user_id'],
+            'action' => 'buyer_date_update',
             'old_start_date' => $offer['rental_start_date'],
-            'old_end_date'   => $offer['rental_end_date'],
+            'old_end_date' => $offer['rental_end_date'],
             'new_start_date' => $startDate,
-            'new_end_date'   => $endDate,
-            'new_price'      => $newPrice ?? $offer['offer_price'],
-            'created_at'     => date('Y-m-d H:i:s'),
+            'new_end_date' => $endDate,
+            'new_price' => $newPrice ?? $offer['offer_price'],
+            'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         // Notify seller when buyer counter-proposes after negotiation or rejection
         if (in_array($offer['status'], ['negotiating', 'rejected'])) {
             $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
-            $buyer   = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            $buyer = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
             $db->table('notifications')->insert([
-                'user_id'    => $offer['seller_id'],
-                'title'      => 'Buyer Proposed New Dates',
-                'message'    => ($buyer['name'] ?? 'The buyer') . ' has counter-proposed new dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. Please review.',
-                'type'       => 'offer',
-                'is_read'    => 0,
+                'user_id' => $offer['seller_id'],
+                'title' => 'Buyer Proposed New Dates',
+                'message' => ($buyer['name'] ?? 'The buyer') . ' has counter-proposed new dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. Please review.',
+                'type' => 'offer',
+                'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
@@ -1253,7 +1269,7 @@ class BuyerApi extends BaseApiController
             $json = $this->request->getJSON(true);
             $merchantOrderId = $json['merchantOrderId'] ?? ($json['data']['merchantTransactionId'] ?? null);
         }
-        
+
         $db = \Config\Database::connect();
 
         if (!$merchantOrderId) {
@@ -1344,7 +1360,7 @@ class BuyerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_buyer'] ?? 0) === 1) {
+        if ($jwtUser['role'] !== 'super_admin' && (int) ($user['blocked_buyer'] ?? 0) === 1) {
             return $this->respond(['success' => false, 'message' => 'Your buyer role is currently blocked. Access restricted.'], 403);
         }
 
@@ -1361,48 +1377,48 @@ class BuyerApi extends BaseApiController
 
         // Record history
         $db->table('offer_history')->insert([
-            'offer_id'       => $offerId,
-            'changed_by'     => $userId,
-            'action'         => 'buyer_accept_negotiation',
+            'offer_id' => $offerId,
+            'changed_by' => $userId,
+            'action' => 'buyer_accept_negotiation',
             'new_start_date' => $offer['rental_start_date'],
-            'new_end_date'   => $offer['rental_end_date'],
-            'new_price'      => $offer['offer_price'],
-            'created_at'     => date('Y-m-d H:i:s'),
+            'new_end_date' => $offer['rental_end_date'],
+            'new_price' => $offer['offer_price'],
+            'created_at' => date('Y-m-d H:i:s'),
         ]);
 
         // Accept the offer
         $db->table('offers')->where('id', $offerId)->update([
-            'status'      => 'accepted',
+            'status' => 'accepted',
             'accepted_at' => date('Y-m-d H:i:s'),
-            'message'     => 'Buyer approved the suggested dates. Deal finalized.',
-            'updated_at'  => date('Y-m-d H:i:s'),
+            'message' => 'Buyer approved the suggested dates. Deal finalized.',
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         // Create order from the now-finalised dates
         $db->table('orders')->insert([
-            'order_number'      => 'FLX' . strtoupper(uniqid()),
-            'product_id'        => $offer['product_id'],
-            'buyer_id'          => $offer['buyer_id'],
-            'seller_id'         => $offer['seller_id'],
-            'order_type'        => $offer['offer_type'] ?? 'rent',
-            'final_price'       => $offer['offer_price'],
-            'deposit_amount'    => $offer['deposit_amount'] ?? null,
+            'order_number' => 'FLX' . strtoupper(uniqid()),
+            'product_id' => $offer['product_id'],
+            'buyer_id' => $offer['buyer_id'],
+            'seller_id' => $offer['seller_id'],
+            'order_type' => $offer['offer_type'] ?? 'rent',
+            'final_price' => $offer['offer_price'],
+            'deposit_amount' => $offer['deposit_amount'] ?? null,
             'rental_start_date' => $offer['rental_start_date'],
-            'rental_end_date'   => $offer['rental_end_date'],
-            'delivery_address'  => $offer['delivery_address']  ?? null,
+            'rental_end_date' => $offer['rental_end_date'],
+            'delivery_address' => $offer['delivery_address'] ?? null,
             'delivery_pin_code' => $offer['delivery_pin_code'] ?? null,
-            'payment_status'    => 'pending',
-            'status'            => 'pending',
-            'created_at'        => date('Y-m-d H:i:s'),
-            'updated_at'        => date('Y-m-d H:i:s'),
+            'payment_status' => 'pending',
+            'status' => 'pending',
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
         $orderId = $db->insertID();
 
         $db->table('order_status_history')->insert([
-            'order_id'   => $orderId,
-            'status'     => 'pending',
+            'order_id' => $orderId,
+            'status' => 'pending',
             'updated_by' => $userId,
-            'remarks'    => 'Order created after buyer accepted seller-suggested dates',
+            'remarks' => 'Order created after buyer accepted seller-suggested dates',
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -1410,18 +1426,18 @@ class BuyerApi extends BaseApiController
         $finalOfferType = $offer['offer_type'] ?? $product['listing_type'];
         if ($finalOfferType !== 'rent') {
             $db->table('products')->where('id', $offer['product_id'])->update([
-                'status'     => 'sold',
+                'status' => 'sold',
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
         }
 
         // Notify seller
         $db->table('notifications')->insert([
-            'user_id'    => $offer['seller_id'],
-            'title'      => 'Offer Finalized',
-            'message'    => "The buyer has accepted your suggested dates for \"{$product['title']}\". An order has been created.",
-            'type'       => 'offer_update',
-            'is_read'    => 0,
+            'user_id' => $offer['seller_id'],
+            'title' => 'Offer Finalized',
+            'message' => "The buyer has accepted your suggested dates for \"{$product['title']}\". An order has been created.",
+            'type' => 'offer_update',
+            'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -1442,14 +1458,14 @@ class BuyerApi extends BaseApiController
         $otherOffers = $otherOffersQuery->get()->getResultArray();
 
         foreach ($otherOffers as $other) {
-            $rejectMsg = ($finalOfferType === 'rent') 
+            $rejectMsg = ($finalOfferType === 'rent')
                 ? 'Another buyer\'s offer for these dates has been accepted.'
                 : 'Another buyer\'s offer for this product has been accepted.';
 
             $db->table('offers')->where('id', $other['id'])->update([
-                'status'         => 'rejected',
+                'status' => 'rejected',
                 'seller_remarks' => $rejectMsg,
-                'updated_at'     => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
 
             $notifMsg = ($finalOfferType === 'rent')
@@ -1457,11 +1473,11 @@ class BuyerApi extends BaseApiController
                 : 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" was accepted. Your offer has been closed.';
 
             $db->table('notifications')->insert([
-                'user_id'    => $other['buyer_id'],
-                'title'      => 'Offer Not Accepted',
-                'message'    => $notifMsg,
-                'type'       => 'offer',
-                'is_read'    => 0,
+                'user_id' => $other['buyer_id'],
+                'title' => 'Offer Not Accepted',
+                'message' => $notifMsg,
+                'type' => 'offer',
+                'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
@@ -1479,7 +1495,7 @@ class BuyerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_buyer'] ?? 0) === 1) {
+        if ($jwtUser['role'] !== 'super_admin' && (int) ($user['blocked_buyer'] ?? 0) === 1) {
             return $this->respond(['success' => false, 'message' => 'Your buyer role is currently blocked. Access restricted.'], 403);
         }
 
@@ -1549,7 +1565,7 @@ class BuyerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($jwtUser['role'] !== 'super_admin' && (int)($user['blocked_buyer'] ?? 0) === 1) {
+        if ($jwtUser['role'] !== 'super_admin' && (int) ($user['blocked_buyer'] ?? 0) === 1) {
             return $this->respond(['success' => false, 'message' => 'Your buyer role is currently blocked. Access restricted.'], 403);
         }
 
@@ -1989,6 +2005,10 @@ class BuyerApi extends BaseApiController
                     $db->table('user_subscriptions')
                         ->where('id', $activeSub['id'])
                         ->update($update);
+                    
+                    if (isset($update['is_active']) && $update['is_active'] === 0) {
+                        $this->recalibrateUserSubscriptions($buyerId, 'buyer');
+                    }
                 }
             }
         }
@@ -2002,13 +2022,13 @@ class BuyerApi extends BaseApiController
         return $this->respond([
             'success' => true,
             'data' => [
-                'seller_name'    => $seller ? ($seller['name'] ?? 'Unknown') : 'Unknown',
-                'seller_email'   => $seller ? ($seller['email'] ?? 'N/A') : 'N/A',
-                'seller_mobile'  => $seller ? ($seller['mobile'] ?? 'N/A') : 'N/A',
-                'seller_city'    => $seller ? ($seller['city'] ?? '') : '',
-                'seller_state'   => $seller ? ($seller['state'] ?? '') : '',
+                'seller_name' => $seller ? ($seller['name'] ?? 'Unknown') : 'Unknown',
+                'seller_email' => $seller ? ($seller['email'] ?? 'N/A') : 'N/A',
+                'seller_mobile' => $seller ? ($seller['mobile'] ?? 'N/A') : 'N/A',
+                'seller_city' => $seller ? ($seller['city'] ?? '') : '',
+                'seller_state' => $seller ? ($seller['state'] ?? '') : '',
                 'seller_pincode' => $seller ? ($seller['pin_code'] ?? '') : '',
-                'product_id'     => (int) $productId,
+                'product_id' => (int) $productId,
                 'already_viewed' => (bool) $existingView,
             ],
         ]);
@@ -2141,29 +2161,30 @@ class BuyerApi extends BaseApiController
         if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
             $referralBalance = 0.0;
         }
-        
+
         $settingsRows = $db->table('system_settings')
             ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
             ->get()->getResultArray();
         $cfg = [];
-        foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
-        
+        foreach ($settingsRows as $s)
+            $cfg[$s['setting_key']] = $s['setting_value'];
+
         $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
         $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
 
         log_message('error', "Referral check - Balance: {$referralBalance}, Expiry: {$expiry}, Plan Price: {$plan['price']}, Min Purchase: {$minPurchase}, Max Percent: {$maxPercent}");
 
-        if ($referralBalance > 0 && (float)$plan['price'] >= $minPurchase) {
+        if ($referralBalance > 0 && (float) $plan['price'] >= $minPurchase) {
             if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
                 // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
                 $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
-                $referralDiscount = min($rawDiscount, (float)$plan['price']);
+                $referralDiscount = min($rawDiscount, (float) $plan['price']);
                 log_message('error', "Referral discount applied - Raw discount: {$rawDiscount}, Final discount: {$referralDiscount}");
             } else {
                 log_message('error', "Referral expired - Expiry: {$expiry}, Current time: " . date('Y-m-d H:i:s'));
             }
         } else {
-            log_message('error', "Referral conditions not met - Balance > 0: " . ($referralBalance > 0 ? 'yes' : 'no') . ", Plan price >= Min purchase: " . ((float)$plan['price'] >= $minPurchase ? 'yes' : 'no'));
+            log_message('error', "Referral conditions not met - Balance > 0: " . ($referralBalance > 0 ? 'yes' : 'no') . ", Plan price >= Min purchase: " . ((float) $plan['price'] >= $minPurchase ? 'yes' : 'no'));
         }
 
         $total = max(0, (float) $plan['price'] + $totalCharges - $referralDiscount);
@@ -2191,7 +2212,7 @@ class BuyerApi extends BaseApiController
                     'min_purchase' => $minPurchase,
                     'max_percent' => $maxPercent,
                     'balance_check' => $referralBalance > 0 ? 'yes' : 'no',
-                    'price_check' => (float)$plan['price'] >= $minPurchase ? 'yes' : 'no',
+                    'price_check' => (float) $plan['price'] >= $minPurchase ? 'yes' : 'no',
                     'expiry_check' => (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) ? 'valid' : 'expired',
                     'current_time' => date('Y-m-d H:i:s'),
                 ],
@@ -2387,22 +2408,23 @@ class BuyerApi extends BaseApiController
         $referralDiscountApplied = 0;
         if ($useReferral) {
             $referralBalance = (float) ($user['referral_balance'] ?? 0);
-            $expiry          = $user['referral_expires_at'] ?? null;
+            $expiry = $user['referral_expires_at'] ?? null;
             if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
                 $referralBalance = 0.0;
             }
-            
+
             if ($referralBalance > 0) {
                 if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
                     $settingsRows = $db->table('system_settings')
                         ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
                         ->get()->getResultArray();
                     $cfg = [];
-                    foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+                    foreach ($settingsRows as $s)
+                        $cfg[$s['setting_key']] = $s['setting_value'];
 
-                    $maxPercent  = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
-                    $minPurchase = (float) ((isset($cfg['referral_min_purchase'])         && $cfg['referral_min_purchase'] !== '')         ? $cfg['referral_min_purchase']         : 0);
-                    
+                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+
                     if ($basePrice >= $minPurchase) {
                         // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
                         $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
@@ -2442,10 +2464,10 @@ class BuyerApi extends BaseApiController
             ->get()->getRowArray();
 
         $durationHours = (float) $plan['duration_hours'];
-        $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
-        $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+        $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
         $expiresAt = $durationHours > 0
-            ? date('Y-m-d H:i:s', $baseTime + (int)round($durationHours * 3600))
+            ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
             : '2099-12-31 23:59:59';
 
         // Persist pending subscription record
@@ -2530,7 +2552,7 @@ class BuyerApi extends BaseApiController
         if ($state === 'COMPLETED') {
             if ($dbSub['is_active'] == 0) {
                 $plan = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
-                
+
                 // Stacking Logic: Find the latest expiry among active buyer plans
                 $latestActive = $db->table('user_subscriptions us')
                     ->join('subscription_plans sp', 'sp.id = us.plan_id')
@@ -2542,10 +2564,10 @@ class BuyerApi extends BaseApiController
                     ->get()->getRowArray();
 
                 $durationHours = (float) $plan['duration_hours'];
-                $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
-                $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
+                $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+                $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
                 $expiresAt = $durationHours > 0
-                    ? date('Y-m-d H:i:s', $baseTime + (int)round($durationHours * 3600))
+                    ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
                     : '2099-12-31 23:59:59';
 
                 $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
@@ -2581,10 +2603,10 @@ class BuyerApi extends BaseApiController
                 // Deduct used referral balance
                 if ((float) $dbSub['referral_discount_applied'] > 0) {
                     $user = $db->table('users')->where('id', $dbSub['user_id'])->get()->getRowArray();
-                    $newBalance = max(0, (float)$user['referral_balance'] - (float)$dbSub['referral_discount_applied']);
+                    $newBalance = max(0, (float) $user['referral_balance'] - (float) $dbSub['referral_discount_applied']);
                     $db->table('users')->where('id', $dbSub['user_id'])->update([
-                        'referral_balance'  => $newBalance,
-                        'updated_at'        => date('Y-m-d H:i:s'),
+                        'referral_balance' => $newBalance,
+                        'updated_at' => date('Y-m-d H:i:s'),
                     ]);
                 }
 
@@ -2597,34 +2619,35 @@ class BuyerApi extends BaseApiController
                             ->whereIn('setting_key', ['referral_referrer_reward', 'referral_reward_amount', 'referral_expiry_days', 'referral_enabled', 'referral_min_purchase'])
                             ->get()->getResultArray();
                         $cfg = [];
-                        foreach ($settings as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+                        foreach ($settings as $s)
+                            $cfg[$s['setting_key']] = $s['setting_value'];
 
                         $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
 
-                        if (($cfg['referral_enabled'] ?? '1') === '1' && (float)$plan['price'] >= $minPurchase) {
+                        if (($cfg['referral_enabled'] ?? '1') === '1' && (float) $plan['price'] >= $minPurchase) {
                             $rewardAmount = (float) (
-                                (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '') 
-                                ? $cfg['referral_referrer_reward'] 
+                                (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '')
+                                ? $cfg['referral_referrer_reward']
                                 : (isset($cfg['referral_reward_amount']) && $cfg['referral_reward_amount'] !== '' ? $cfg['referral_reward_amount'] : 50)
                             );
-                            $expiryDays   = (float) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
+                            $expiryDays = (float) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
                             $currentBalance = (float) ($referrer['referral_balance'] ?? 0);
                             $currentExpiry = $referrer['referral_expires_at'] ?? null;
                             if ($currentExpiry && $currentExpiry !== '0000-00-00 00:00:00' && strtotime($currentExpiry) <= time()) {
                                 $currentBalance = 0.0;
                             }
                             $newBalance = $currentBalance + $rewardAmount;
-                            $expiresAt    = date('Y-m-d H:i:s', time() + (int)($expiryDays * 86400));
+                            $expiresAt = date('Y-m-d H:i:s', time() + (int) ($expiryDays * 86400));
 
                             $db->table('users')->where('id', $referrer['id'])->update([
-                                'referral_balance'    => $newBalance,
+                                'referral_balance' => $newBalance,
                                 'referral_expires_at' => $expiresAt,
-                                'updated_at'          => date('Y-m-d H:i:s'),
+                                'updated_at' => date('Y-m-d H:i:s'),
                             ]);
                             // Mark buyer's referral as processed so referrer isn't credited again for this friend
                             $db->table('users')->where('id', $dbSub['user_id'])->update([
                                 'has_used_referral' => 1,
-                                'updated_at'        => date('Y-m-d H:i:s'),
+                                'updated_at' => date('Y-m-d H:i:s'),
                             ]);
                         }
                     }

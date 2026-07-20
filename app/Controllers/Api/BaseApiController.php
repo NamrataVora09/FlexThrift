@@ -394,4 +394,121 @@ class BaseApiController extends ResourceController
         $key = self::$messageKeyMap[trim($message)] ?? null;
         return $key ? getAppMessage($key, $message) : $message;
     }
+
+    /**
+     * Recalibrates the start and end dates of queued subscriptions for a user when their active plan changes or is depleted.
+     * This is useful to pull forward queued plans when a quantity-based plan is fully used.
+     */
+    protected function recalibrateUserSubscriptions($userId, $userType)
+    {
+        $db = \Config\Database::connect();
+        
+        // 1. Get all active, paid, and non-expired subscriptions for this user and type
+        $subs = $db->table('user_subscriptions us')
+            ->select('us.*, sp.duration_hours, sp.plan_type')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('us.payment_status', 'paid')
+            ->where('sp.user_type', $userType)
+            ->where('us.expires_at >=', date('Y-m-d H:i:s'))
+            ->orderBy('us.starts_at', 'ASC')
+            ->get()->getResultArray();
+
+        if (empty($subs)) {
+            return;
+        }
+
+        $currentTime = time();
+        $baseTime = $currentTime; // starts_at for the first queued plan we pull forward
+        
+        $updatedExpiry = null;
+
+        foreach ($subs as $index => $sub) {
+            $startsAtTime = strtotime($sub['starts_at']);
+            $expiresAtTime = strtotime($sub['expires_at']);
+            
+            if ($index === 0) {
+                if ($startsAtTime > $currentTime) {
+                    // This plan was queued in the future! Pull it forward to start now.
+                    $newStartsAt = date('Y-m-d H:i:s', $currentTime);
+                    $durationHours = (float) $sub['duration_hours'];
+                    
+                    // Check if it's a lifetime plan (expires_at is 2099-12-31)
+                    $isLifetime = ($sub['expires_at'] === '2099-12-31 23:59:59' || $durationHours <= 0);
+                    $newExpiresAt = $isLifetime 
+                        ? '2099-12-31 23:59:59' 
+                        : date('Y-m-d H:i:s', $currentTime + (int)round($durationHours * 3600));
+
+                    $db->table('user_subscriptions')->where('id', $sub['id'])->update([
+                        'starts_at' => $newStartsAt,
+                        'expires_at' => $newExpiresAt,
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]);
+                    
+                    $baseTime = $isLifetime ? strtotime('2099-12-31 23:59:59') : ($currentTime + (int)round($durationHours * 3600));
+                    $updatedExpiry = $newExpiresAt;
+                } else {
+                    // It's already running. Keep its current expires_at as the base time for any subsequent queued plans.
+                    $baseTime = $expiresAtTime;
+                    $updatedExpiry = $sub['expires_at'];
+                }
+            } else {
+                // For subsequent stacked plans: start exactly when the previous one expires.
+                $newStartsAt = date('Y-m-d H:i:s', $baseTime);
+                $durationHours = (float) $sub['duration_hours'];
+                
+                // If previous expiry is far in the future (> 5 years), chain from NOW instead
+                $maxChainDate = time() + (5 * 365 * 24 * 3600);
+                if ($baseTime > $maxChainDate) {
+                    $newStartsAt = date('Y-m-d H:i:s', $currentTime);
+                    $newBase = $currentTime;
+                } else {
+                    $newBase = $baseTime;
+                }
+                
+                $isLifetime = ($sub['expires_at'] === '2099-12-31 23:59:59' || $durationHours <= 0);
+                $newExpiresAt = $isLifetime
+                    ? '2099-12-31 23:59:59'
+                    : date('Y-m-d H:i:s', $newBase + (int)round($durationHours * 3600));
+
+                $db->table('user_subscriptions')->where('id', $sub['id'])->update([
+                    'starts_at' => $newStartsAt,
+                    'expires_at' => $newExpiresAt,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+                $baseTime = $isLifetime ? strtotime('2099-12-31 23:59:59') : ($newBase + (int)round($durationHours * 3600));
+                
+                if ($newExpiresAt > $updatedExpiry) {
+                    $updatedExpiry = $newExpiresAt;
+                }
+            }
+        }
+        
+        // 2. Synchronize the `users` table fields: `subscription_tier` and `subscription_expires_at`
+        $latestOverall = $db->table('user_subscriptions us')
+            ->select('us.expires_at, sp.name')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('us.payment_status', 'paid')
+            ->where('us.expires_at >=', date('Y-m-d H:i:s'))
+            ->orderBy('us.expires_at', 'DESC')
+            ->get()->getRowArray();
+            
+        if ($latestOverall) {
+            $db->table('users')->where('id', $userId)->update([
+                'subscription_tier' => $latestOverall['name'],
+                'subscription_expires_at' => $latestOverall['expires_at'],
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+        } else {
+            $db->table('users')->where('id', $userId)->update([
+                'subscription_tier' => 'Free',
+                'subscription_expires_at' => null,
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+        }
+    }
 }

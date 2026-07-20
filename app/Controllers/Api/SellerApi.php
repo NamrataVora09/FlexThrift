@@ -601,6 +601,10 @@ class SellerApi extends BaseApiController
                     $update['is_active'] = 0;
                 }
                 $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
+                
+                if (isset($update['is_active']) && $update['is_active'] === 0) {
+                    $this->recalibrateUserSubscriptions($userId, 'seller');
+                }
             }
         }
 
