@@ -212,6 +212,11 @@ export default function SubscriptionPlansAdmin() {
       return;
     }
 
+    if (form.plan_type === 'duration' && (!form.duration_hours || parseFloat(form.duration_hours) <= 0)) {
+      toastError('plan_duration_error', 'Duration Hours cannot be zero or empty for a Duration Based plan.');
+      return;
+    }
+
     setSaving(true);
     const payload = {
       ...form,
