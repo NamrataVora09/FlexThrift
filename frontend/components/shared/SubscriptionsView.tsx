@@ -350,7 +350,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
         .tier-badge{position:absolute;top:0px;right:-5px;background:#d7b467;color:#ffff;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
         .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto;border:none}
         .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
-        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#d7b467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto}
+        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#d7b467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto; display:flex; align-items:center;justify-content:center;}
         .plan-price-block{display:flex;align-items:baseline;flex-wrap:wrap;gap:.25rem .5rem}
         .plan-price-main{font-size:3rem;font-weight:900;letter-spacing:-0.03em;line-height:1}
         .plan-price-strike{font-size:1.2rem;color:#999;text-decoration:line-through}
