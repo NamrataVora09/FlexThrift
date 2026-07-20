@@ -495,7 +495,8 @@ export default function SubscriptionsView({ role, userType }: Props) {
                   const uc = data?.unlock_card || {};
                   const ucLabel = (uc as any)[`${pType}_unlock_label`] || 'Unlock More';
                   const ucTitle = (uc as any)[`${pType}_unlock_title`] || 'Elevate to a Higher Tier';
-                  const ucBtn = (uc as any)[`${pType}_unlock_btn`] || 'Upgrade Plan';
+                  const 
+                  ucBtn = (uc as any)[`${pType}_unlock_btn`] || 'Upgrade Plan';
                   const defaultItems = pType === 'seller'
                     ? [{ icon: 'all_inclusive', text: 'Unlimited product listings' }, { icon: 'stars', text: 'Priority placement in search' }, { icon: 'insights', text: 'Advanced seller analytics' }, { icon: 'support_agent', text: 'Dedicated seller support' }]
                     : [{ icon: 'all_inclusive', text: 'Unlimited concierge contacts' }, { icon: 'stars', text: 'Early access to new listings' }, { icon: 'insights', text: 'Custom market reporting' }, { icon: 'support_agent', text: 'Priority support' }];
@@ -631,7 +632,11 @@ export default function SubscriptionsView({ role, userType }: Props) {
                               </div>
                             ) : (
                               <button className={btnClass} onClick={() => openCheckout(plan)}>
-                                {isFeatured && <i className="bi bi-crown-fill me-2" style={{ fontSize: '0.85rem' }}></i>}
+                                {isFeatured && (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '6px', verticalAlign: 'middle', marginTop: '-2px' }}>
+                                    <path d="M2 19h20v2H2v-2zM2 5l5 7.5L12 2l5 10.5L22 5v12H2V5z"/>
+                                  </svg>
+                                )}
                                 Buy Plan
                               </button>
                             )}
