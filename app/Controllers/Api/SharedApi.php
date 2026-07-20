@@ -212,10 +212,9 @@ class SharedApi extends BaseApiController
         if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
             $activeQuery->where('us.starts_at <=', date('Y-m-d H:i:s'));
         }
-        log_message('error', 'Active Query' ,$activeQuery);
+        log_message('error', 'Active Query SQL: ' . $activeQuery->getCompiledSelect(false));
         
     $activeSeller = (clone $activeQuery)->where('sp.user_type', 'seller')->orderBy('us.expires_at', 'ASC')->get()->getRowArray();
-     log_message('error', 'Active Query 1' ,$activeQuery);   
     $activeBuyer = (clone $activeQuery)->where('sp.user_type', 'buyer')->orderBy('us.expires_at', 'ASC')->get()->getRowArray();
         // Primary active plan based on current portal context
         $active = ($userType === 'seller') ? $activeSeller : $activeBuyer;
