@@ -630,7 +630,10 @@ export default function SubscriptionsView({ role, userType }: Props) {
                                 <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
                               </div>
                             ) : (
-                              <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                              <button className={btnClass} onClick={() => openCheckout(plan)}>
+                                {isFeatured && <i className="bi bi-crown-fill me-2" style={{ fontSize: '0.85rem' }}></i>}
+                                Buy Plan
+                              </button>
                             )}
                           </div>
                         </div>
