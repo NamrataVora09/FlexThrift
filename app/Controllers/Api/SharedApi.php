@@ -212,11 +212,11 @@ class SharedApi extends BaseApiController
         if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
             $activeQuery->where('us.starts_at <=', date('Y-m-d H:i:s'));
         }
-        log_message('error', 'Active Query' ,$activeQuery);
-        
-    $activeSeller = (clone $activeQuery)->where('sp.user_type', 'seller')->orderBy('us.expires_at', 'ASC')->get()->getRowArray();
-     log_message('error', 'Active Query 1' ,$activeQuery);   
-    $activeBuyer = (clone $activeQuery)->where('sp.user_type', 'buyer')->orderBy('us.expires_at', 'ASC')->get()->getRowArray();
+
+        log_message('error', 'Active Query SQL: ' . $activeQuery->getCompiledSelect(false));
+
+        $activeSeller = (clone $activeQuery)->where('sp.user_type', 'seller')->orderBy('us.expires_at', 'ASC')->get()->getRowArray();
+        $activeBuyer = (clone $activeQuery)->where('sp.user_type', 'buyer')->orderBy('us.expires_at', 'ASC')->get()->getRowArray();
         // Primary active plan based on current portal context
         $active = ($userType === 'seller') ? $activeSeller : $activeBuyer;
 
@@ -243,7 +243,8 @@ class SharedApi extends BaseApiController
         ];
         $rows = $db->table('system_settings')->whereIn('setting_key', $keys)->get()->getResultArray();
         $unlockCard = [];
-        foreach ($rows as $r) $unlockCard[$r['setting_key']] = $r['setting_value'];
+        foreach ($rows as $r)
+            $unlockCard[$r['setting_key']] = $r['setting_value'];
 
         return $this->respond([
             'success' => true,
@@ -275,110 +276,120 @@ class SharedApi extends BaseApiController
         $trendWhere = "";
 
         switch ($range) {
-            case 'current_week': 
+            case 'current_week':
                 $start = date('Y-m-d 00:00:00', strtotime('monday this week'));
-                $dateFilter = "AND o.created_at >= '$start'"; 
+                $dateFilter = "AND o.created_at >= '$start'";
                 $trendWhere = "AND o.created_at >= '$start'";
                 break;
-            case 'last_week': 
+            case 'last_week':
                 $start = date('Y-m-d 00:00:00', strtotime('monday last week'));
                 $end = date('Y-m-d 23:59:59', strtotime('sunday last week'));
-                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
-            case 'last_2_weeks': 
+            case 'last_2_weeks':
                 $start = date('Y-m-d 00:00:00', strtotime('monday -2 weeks'));
                 $end = date('Y-m-d 23:59:59', strtotime('sunday last week'));
-                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
-            case 'current_month': 
+            case 'current_month':
                 $start = date('Y-m-01 00:00:00');
-                $dateFilter = "AND o.created_at >= '$start'"; 
+                $dateFilter = "AND o.created_at >= '$start'";
                 $trendWhere = "AND o.created_at >= '$start'";
                 break;
-            case 'last_month': 
+            case 'last_month':
                 $start = date('Y-m-01 00:00:00', strtotime('first day of last month'));
                 $end = date('Y-m-t 23:59:59', strtotime('last day of last month'));
-                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
-            case 'last_2_months': 
+            case 'last_2_months':
                 $start = date('Y-m-01 00:00:00', strtotime('first day of -2 months'));
                 $end = date('Y-m-t 23:59:59', strtotime('last day of last month'));
-                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
-            case 'current_quarter': 
+            case 'current_quarter':
                 $month = date('n');
                 $quarter = ceil($month / 3);
                 $startMonth = ($quarter - 1) * 3 + 1;
                 $start = date('Y-' . str_pad($startMonth, 2, '0', STR_PAD_LEFT) . '-01 00:00:00');
-                $dateFilter = "AND o.created_at >= '$start'"; 
+                $dateFilter = "AND o.created_at >= '$start'";
                 $trendWhere = "AND o.created_at >= '$start'";
                 break;
-            case 'last_quarter': 
+            case 'last_quarter':
                 $month = date('n');
                 $quarter = ceil($month / 3) - 1;
                 $year = date('Y');
-                if ($quarter == 0) { $quarter = 4; $year--; }
+                if ($quarter == 0) {
+                    $quarter = 4;
+                    $year--;
+                }
                 $startMonth = ($quarter - 1) * 3 + 1;
                 $endMonth = $startMonth + 2;
                 $start = "$year-" . str_pad($startMonth, 2, '0', STR_PAD_LEFT) . "-01 00:00:00";
                 $end = date('Y-m-t 23:59:59', strtotime("$year-" . str_pad($endMonth, 2, '0', STR_PAD_LEFT) . "-01"));
-                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
-            case 'last_2_quarters': 
+            case 'last_2_quarters':
                 $month = date('n');
                 $currQ = ceil($month / 3);
-                
+
                 // End: last day of last quarter
                 $lastQ = $currQ - 1;
                 $lastQYear = date('Y');
-                if ($lastQ == 0) { $lastQ = 4; $lastQYear--; }
+                if ($lastQ == 0) {
+                    $lastQ = 4;
+                    $lastQYear--;
+                }
                 $endMonth = $lastQ * 3;
                 $end = date('Y-m-t 23:59:59', strtotime("$lastQYear-" . str_pad($endMonth, 2, '0', STR_PAD_LEFT) . "-01"));
-                
+
                 // Start: first day of 2nd quarter back
                 $startQ = $currQ - 2;
                 $startQYear = date('Y');
-                if ($startQ <= 0) { $startQ += 4; $startQYear--; }
+                if ($startQ <= 0) {
+                    $startQ += 4;
+                    $startQYear--;
+                }
                 $startMonth = ($startQ - 1) * 3 + 1;
                 $start = "$startQYear-" . str_pad($startMonth, 2, '0', STR_PAD_LEFT) . "-01 00:00:00";
-                
-                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
-            case 'current_year': 
+            case 'current_year':
                 $start = date('Y-01-01 00:00:00');
-                $dateFilter = "AND o.created_at >= '$start'"; 
+                $dateFilter = "AND o.created_at >= '$start'";
                 $trendWhere = "AND o.created_at >= '$start'";
                 break;
-            case 'last_year': 
-                $year = (int)date('Y') - 1;
+            case 'last_year':
+                $year = (int) date('Y') - 1;
                 $start = "$year-01-01 00:00:00";
                 $end = "$year-12-31 23:59:59";
-                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
-            case 'last_2_years': 
-                $currYear = (int)date('Y');
+            case 'last_2_years':
+                $currYear = (int) date('Y');
                 $start = ($currYear - 2) . "-01-01 00:00:00";
                 $end = ($currYear - 1) . "-12-31 23:59:59";
-                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'"; 
+                $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
-            case 'all_time': default: 
-                $dateFilter = ""; 
+            case 'all_time':
+            default:
+                $dateFilter = "";
                 $trendWhere = "AND o.created_at >= DATE_SUB(NOW(), INTERVAL 10 YEAR)";
                 break;
         }
 
         // Force all roles to see only their personal 'Received' (Seller) perspective
-        $whereSeller = "seller_id = " . (int)$userId;
-        $whereOffers = "o.seller_id = " . (int)$userId;
-        $whereProducts = "p.seller_id = " . (int)$userId;
+        $whereSeller = "seller_id = " . (int) $userId;
+        $whereOffers = "o.seller_id = " . (int) $userId;
+        $whereProducts = "p.seller_id = " . (int) $userId;
 
         // Product stats by status
         $statusStats = $db->query("SELECT p.status, COUNT(*) as count FROM products p WHERE $whereProducts GROUP BY p.status")->getResultArray();
@@ -394,7 +405,7 @@ class SharedApi extends BaseApiController
         $dailyRanges = ['current_week', 'last_week', 'last_2_weeks', 'current_month', 'last_month', 'last_2_months'];
         $groupBy = (in_array($range, $dailyRanges)) ? 'DATE(o.created_at)' : "DATE_FORMAT(o.created_at, '%Y-%m')";
         $labelAlias = (in_array($range, $dailyRanges)) ? 'date' : 'month';
-        
+
         $monthlyStats = $db->query("
             SELECT $groupBy as $labelAlias,
                    SUM(CASE WHEN o.status='accepted' THEN o.offer_price ELSE 0 END) as revenue,
@@ -417,7 +428,7 @@ class SharedApi extends BaseApiController
         $totalProducts = $db->table('products p')
             ->where('p.seller_id', $userId)
             ->countAllResults();
-        
+
         // Filter total offers by date range and scope to received only
         $totalOffersQuery = $db->table('offers o');
         $totalOffersQuery->where('o.seller_id', $userId);
@@ -425,9 +436,9 @@ class SharedApi extends BaseApiController
             $totalOffersQuery->where(ltrim($dateFilter, 'AND '));
         }
         $totalOffers = $totalOffersQuery->countAllResults();
-        
+
         $user = $db->table('users')->select('reliability_score')->where('id', $userId)->get()->getRowArray();
-        $scorePoints = (int)($user['reliability_score'] ?? 0);
+        $scorePoints = (int) ($user['reliability_score'] ?? 0);
 
         // Top 10 products by offers (with date filter)
         $topProductsQuery = $db->table('products p')
@@ -609,12 +620,12 @@ class SharedApi extends BaseApiController
             if (in_array($key, $intFields)) {
                 $valInt = filter_var($value, FILTER_VALIDATE_INT);
                 // Also ensure there is no decimal point in input string to block 25.0
-                if ($valInt === false || $valInt < 0 || strpos((string)$value, '.') !== false) {
+                if ($valInt === false || $valInt < 0 || strpos((string) $value, '.') !== false) {
                     $fieldName = str_replace('_', ' ', $key);
                     $fieldName = ucwords($fieldName);
                     return $this->respond(['success' => false, 'message' => "{$fieldName} must be a whole number (no decimals allowed)."], 400);
                 }
-                $value = (string)$valInt;
+                $value = (string) $valInt;
             } elseif (in_array($key, $floatFields)) {
                 $valFloat = filter_var($value, FILTER_VALIDATE_FLOAT);
                 if ($valFloat === false || $valFloat <= 0) {
@@ -622,7 +633,7 @@ class SharedApi extends BaseApiController
                     $fieldName = ucwords($fieldName);
                     return $this->respond(['success' => false, 'message' => "{$fieldName} must be a number greater than 0."], 400);
                 }
-                $value = (string)$valFloat;
+                $value = (string) $valFloat;
             }
 
             $existing = $db->table('system_settings')->where('setting_key', $key)->get()->getRowArray();
@@ -671,7 +682,8 @@ class SharedApi extends BaseApiController
         $keys = ['support_email', 'support_phone', 'support_hours'];
         $rows = $db->table('system_settings')->whereIn('setting_key', $keys)->get()->getResultArray();
         $data = [];
-        foreach ($rows as $r) $data[$r['setting_key']] = $r['setting_value'];
+        foreach ($rows as $r)
+            $data[$r['setting_key']] = $r['setting_value'];
         return $this->respond(['success' => true, 'data' => $data]);
     }
 
@@ -680,13 +692,14 @@ class SharedApi extends BaseApiController
      */
     public function createFaq()
     {
-        if ($this->request->jwt_user['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if ($this->request->jwt_user['role'] !== 'super_admin')
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
         $db->table('faqs')->insert([
             'question' => $data['question'],
             'answer' => $data['answer'],
-            'display_order' => (int)($data['display_order'] ?? 0),
+            'display_order' => (int) ($data['display_order'] ?? 0),
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
@@ -698,13 +711,14 @@ class SharedApi extends BaseApiController
      */
     public function updateFaq($id)
     {
-        if ($this->request->jwt_user['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if ($this->request->jwt_user['role'] !== 'super_admin')
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
         $db->table('faqs')->where('id', $id)->update([
             'question' => $data['question'],
             'answer' => $data['answer'],
-            'display_order' => (int)($data['display_order'] ?? 0),
+            'display_order' => (int) ($data['display_order'] ?? 0),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
         return $this->respond(['success' => true, 'message' => 'FAQ updated']);
@@ -715,7 +729,8 @@ class SharedApi extends BaseApiController
      */
     public function deleteFaq($id)
     {
-        if ($this->request->jwt_user['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if ($this->request->jwt_user['role'] !== 'super_admin')
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         $db = \Config\Database::connect();
         $db->table('faqs')->where('id', $id)->delete();
         return $this->respond(['success' => true, 'message' => 'FAQ deleted']);
@@ -790,7 +805,8 @@ class SharedApi extends BaseApiController
 
         $db = \Config\Database::connect();
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
         $newVal = (int) ($plan['is_most_selected'] ?? 0) ? 0 : 1;
         $db->table('subscription_plans')->where('id', $id)->update(['is_most_selected' => $newVal, 'updated_at' => date('Y-m-d H:i:s')]);
@@ -807,7 +823,8 @@ class SharedApi extends BaseApiController
 
         $db = \Config\Database::connect();
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
         $newFeatured = (int) ($plan['is_featured'] ?? 0) ? 0 : 1;
 
@@ -847,8 +864,10 @@ class SharedApi extends BaseApiController
             'features' => $data['features'] ?? null,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
-        if ($isFeatured !== null) $updateData['is_featured'] = $isFeatured;
-        if (isset($data['is_most_selected'])) $updateData['is_most_selected'] = (int) $data['is_most_selected'];
+        if ($isFeatured !== null)
+            $updateData['is_featured'] = $isFeatured;
+        if (isset($data['is_most_selected']))
+            $updateData['is_most_selected'] = (int) $data['is_most_selected'];
 
         $db->table('subscription_plans')->where('id', $id)->update($updateData);
 
@@ -930,7 +949,7 @@ class SharedApi extends BaseApiController
     {
         $data = $this->request->getJSON(true);
         $db = \Config\Database::connect();
-        
+
         // Handle expiry date - if only date is provided, set it to end of that day
         $expiresAt = null;
         if (!empty($data['valid_until'])) {
@@ -940,7 +959,7 @@ class SharedApi extends BaseApiController
                 $expiresAt .= ' 23:59:59';
             }
         }
-        
+
         $db->table('coupons')->insert([
             'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
@@ -959,7 +978,7 @@ class SharedApi extends BaseApiController
     {
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
         $db = \Config\Database::connect();
-        
+
         // Handle expiry date - if only date is provided, set it to end of that day
         $expiresAt = null;
         if (!empty($data['valid_until'])) {
@@ -969,7 +988,7 @@ class SharedApi extends BaseApiController
                 $expiresAt .= ' 23:59:59';
             }
         }
-        
+
         $db->table('coupons')->where('id', $id)->update([
             'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
@@ -1004,7 +1023,7 @@ class SharedApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
-        
+
         $trxTable = $db->table('transactions')->whereIn('payment_status', ['paid', 'completed']);
         $ordTable = $db->table('orders')->where('payment_status', 'paid');
 
@@ -1055,12 +1074,12 @@ class SharedApi extends BaseApiController
         $builder = $db->table('advertisements')
             ->where('is_active', 1)
             ->groupStart()
-                ->where('start_date IS NULL')
-                ->orWhere('start_date <=', $today)
+            ->where('start_date IS NULL')
+            ->orWhere('start_date <=', $today)
             ->groupEnd()
             ->groupStart()
-                ->where('end_date IS NULL')
-                ->orWhere('end_date >=', $today)
+            ->where('end_date IS NULL')
+            ->orWhere('end_date >=', $today)
             ->groupEnd()
             ->orderBy('created_at', 'DESC');
 
@@ -1074,7 +1093,7 @@ class SharedApi extends BaseApiController
             $builder->groupStart()
                 ->where('display_page', $page)
                 ->orWhere('display_page', 'all')
-            ->groupEnd();
+                ->groupEnd();
         }
 
         $ads = $builder->get()->getResultArray();
@@ -1100,7 +1119,8 @@ class SharedApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $page = $db->table('cms_pages')->where('slug', $slug)->where('status', 'active')->get()->getRowArray();
-        if (!$page) return $this->respond(['success' => false, 'message' => 'Page not found.'], 404);
+        if (!$page)
+            return $this->respond(['success' => false, 'message' => 'Page not found.'], 404);
         return $this->respond(['success' => true, 'data' => $page]);
     }
 
@@ -1119,7 +1139,7 @@ class SharedApi extends BaseApiController
     public function taxonomy()
     {
         $db = \Config\Database::connect();
-        
+
         // Check if gender_config column exists, if not select without it
         $hasGenderConfig = $db->fieldExists('gender_config', 'listing_types');
         $selectFields = $hasGenderConfig ? 'id, type_name, gender_config, field_config, created_at' : 'id, type_name, field_config, created_at';
@@ -1131,32 +1151,32 @@ class SharedApi extends BaseApiController
         $colors = $db->table('colors')->get()->getResultArray();
         $attributes = $db->table('attributes')->select('*')->orderBy('created_at', 'DESC')->get()->getResultArray();
         $validationRules = $db->table('validation_rules')->where('is_active', 1)->get()->getResultArray();
-        
+
         // Get valid gender names for filtering
         $validGenderNames = array_map('strtolower', array_column($genders, 'name'));
-        
+
         // Filter out deleted genders from categories' applies_to
         foreach ($categories as &$cat) {
             $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
             if (is_array($catAppliesTo)) {
-                $catAppliesTo = array_filter($catAppliesTo, function($gender) use ($validGenderNames) {
+                $catAppliesTo = array_filter($catAppliesTo, function ($gender) use ($validGenderNames) {
                     return in_array(strtolower($gender), $validGenderNames);
                 });
                 $cat['applies_to'] = json_encode(array_values($catAppliesTo));
             }
         }
-        
+
         // Filter out deleted genders from sub-categories' applies_to
         foreach ($subCategories as &$subCat) {
             $subCatAppliesTo = json_decode($subCat['applies_to'] ?? '[]', true);
             if (is_array($subCatAppliesTo)) {
-                $subCatAppliesTo = array_filter($subCatAppliesTo, function($gender) use ($validGenderNames) {
+                $subCatAppliesTo = array_filter($subCatAppliesTo, function ($gender) use ($validGenderNames) {
                     return in_array(strtolower($gender), $validGenderNames);
                 });
                 $subCat['applies_to'] = json_encode(array_values($subCatAppliesTo));
             }
         }
-        
+
         // Get entity assignments for each attribute
         $assignments = $db->table('attribute_assignments')->get()->getResultArray();
         $assignmentMap = [];
@@ -1169,7 +1189,7 @@ class SharedApi extends BaseApiController
                 'entity_id' => $assignment['entity_id'],
             ];
         }
-        
+
         // Parse allowed_values JSON and add entity linking for each attribute
         foreach ($attributes as &$attr) {
             $attr['allowed_values'] = !empty($attr['allowed_values']) ? json_decode($attr['allowed_values'], true) : [];
@@ -1177,22 +1197,22 @@ class SharedApi extends BaseApiController
             if (!is_array($attr['allowed_values'])) {
                 $attr['allowed_values'] = [];
             }
-            
+
             // Ensure required field exists and is a number
             if (!isset($attr['required'])) {
                 $attr['required'] = 0;
             }
-            
+
             // Ensure type field exists
             if (!isset($attr['type'])) {
                 $attr['type'] = 'text';
             }
-            
+
             // Ensure placeholder field exists
             if (!isset($attr['placeholder'])) {
                 $attr['placeholder'] = '';
             }
-            
+
             // Initialize entity linking fields
             $attr['entity_types'] = [];
             $attr['entity_type'] = null;
@@ -1201,7 +1221,7 @@ class SharedApi extends BaseApiController
             $attr['listing_type_id'] = null;
             $attr['category_id'] = null;
             $attr['sub_category_id'] = null;
-            
+
             // Add entity linking information
             if (isset($assignmentMap[$attr['id']]) && !empty($assignmentMap[$attr['id']])) {
                 // Group entity IDs by entity type
@@ -1210,7 +1230,7 @@ class SharedApi extends BaseApiController
                     'category' => [],
                     'sub_category' => []
                 ];
-                
+
                 foreach ($assignmentMap[$attr['id']] as $assignment) {
                     $entityType = $assignment['entity_type'];
                     $entityId = $assignment['entity_id'];
@@ -1218,28 +1238,28 @@ class SharedApi extends BaseApiController
                         $entityIdsByType[$entityType][] = $entityId;
                     }
                 }
-                
+
                 // Extract all unique entity_types
                 $entityTypes = array_unique(array_column($assignmentMap[$attr['id']], 'entity_type'));
                 $attr['entity_types'] = array_values($entityTypes);
-                
+
                 // Return entity IDs grouped by type for frontend
                 $attr['entity_ids'] = array_merge(
                     $entityIdsByType['listing_type'],
                     $entityIdsByType['category'],
                     $entityIdsByType['sub_category']
                 );
-                
+
                 // For backward compatibility, set single entity_type to first one
                 $attr['entity_type'] = $attr['entity_types'][0] ?? null;
-                
+
                 // Map entity_type to the appropriate ID column for frontend compatibility (backward compatibility)
                 $attr['listing_type_id'] = $entityIdsByType['listing_type'][0] ?? null;
                 $attr['category_id'] = $entityIdsByType['category'][0] ?? null;
                 $attr['sub_category_id'] = $entityIdsByType['sub_category'][0] ?? null;
             }
         }
-        
+
         return $this->respond([
             'success' => true,
             'data' => [
@@ -1292,7 +1312,7 @@ class SharedApi extends BaseApiController
             ->orderBy('us.expires_at', 'DESC')
             ->get()->getRowArray();
 
-        $durationHours = (float)($plan['duration_hours'] ?: 720);
+        $durationHours = (float) ($plan['duration_hours'] ?: 720);
         $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
         $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
         $expiresAt = date('Y-m-d H:i:s', $baseTime + ($durationHours * 3600));
@@ -1367,13 +1387,15 @@ class SharedApi extends BaseApiController
         }
 
         $uploadPath = FCPATH . 'uploads/profiles/';
-        if (!is_dir($uploadPath)) mkdir($uploadPath, 0777, true);
+        if (!is_dir($uploadPath))
+            mkdir($uploadPath, 0777, true);
 
         // Delete old profile image if exists
         $existing = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if (!empty($existing['profile_image'])) {
             $oldPath = FCPATH . $existing['profile_image'];
-            if (file_exists($oldPath)) @unlink($oldPath);
+            if (file_exists($oldPath))
+                @unlink($oldPath);
         }
 
         $newName = $file->getRandomName();
@@ -1382,13 +1404,13 @@ class SharedApi extends BaseApiController
 
         $db->table('users')->where('id', $jwtUser['user_id'])->update([
             'profile_image' => $imagePath,
-            'updated_at'    => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond([
             'success' => true,
             'message' => 'Profile image updated',
-            'data'    => ['path' => $imagePath],
+            'data' => ['path' => $imagePath],
         ]);
     }
 
@@ -1539,19 +1561,45 @@ class SharedApi extends BaseApiController
 
         // Apply Range Filter to transactions
         switch ($range) {
-            case 'current_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
-            case 'last_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'last_2_weeks': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'current_month': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00')); break;
-            case 'last_month': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_months': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
-            case 'last_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_quarters': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_year': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00')); break;
-            case 'last_year': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            case 'last_2_years': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            case 'all_time': default: break;
+            case 'current_week':
+                $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week')));
+                break;
+            case 'last_week':
+                $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'last_2_weeks':
+                $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'current_month':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00'));
+                break;
+            case 'last_month':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_months':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_quarter':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months')));
+                break;
+            case 'last_quarter':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_quarters':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_year':
+                $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00'));
+                break;
+            case 'last_year':
+                $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            case 'last_2_years':
+                $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            case 'all_time':
+            default:
+                break;
         }
 
         $allTransactions = $txBuilder->get()->getResultArray();
@@ -1594,32 +1642,59 @@ class SharedApi extends BaseApiController
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $subBuilder->where('us.user_id', $jwtUser['user_id']);
         }
-        
+
         // Apply same range filter to subscriptions
         switch ($range) {
-            case 'current_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
-            case 'last_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'last_2_weeks': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'current_month': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00')); break;
-            case 'last_month': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_months': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
-            case 'last_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_quarters': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_year': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00')); break;
-            case 'last_year': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            case 'last_2_years': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            case 'all_time': default: break;
+            case 'current_week':
+                $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week')));
+                break;
+            case 'last_week':
+                $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'last_2_weeks':
+                $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'current_month':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00'));
+                break;
+            case 'last_month':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_months':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_quarter':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months')));
+                break;
+            case 'last_quarter':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_quarters':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_year':
+                $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00'));
+                break;
+            case 'last_year':
+                $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            case 'last_2_years':
+                $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            case 'all_time':
+            default:
+                break;
         }
 
         $subs = $subBuilder->where('us.payment_status', 'paid')->get()->getResultArray();
-        
+
         // 3. Calculate Summary Stats from successful transactions
         $totalTxs = count($successfulTxs);
-        $totalRevenue = array_reduce($successfulTxs, fn($carry, $item) => $carry + (float)$item['amount'], 0);
-        
+        $totalRevenue = array_reduce($successfulTxs, fn($carry, $item) => $carry + (float) $item['amount'], 0);
+
         // Bifurcation (Buyer vs Seller)
-        $buyerSpent = 0; $sellerSpent = 0;
+        $buyerSpent = 0;
+        $sellerSpent = 0;
         foreach ($successfulTxs as $tx) {
             // Orders are always buyer revenue. Subscriptions depend on plan type.
             if ($tx['type'] === 'subscription') {
@@ -1627,7 +1702,7 @@ class SharedApi extends BaseApiController
                 $txId = $tx['transaction_id'] ?? '';
                 $sId = $tx['subscription_id'] ?? 0;
                 $s = array_values(array_filter($subs, fn($sb) => ($txId && $sb['merchant_transaction_id'] === $txId) || $sb['id'] == $sId))[0] ?? null;
-                
+
                 // Fallback: Link by plan name in description
                 if (!$s && !empty($tx['description'])) {
                     // Extract name from "Subscription Stacking: [Name]" or "Subscription Purchase: [Name]"
@@ -1639,24 +1714,26 @@ class SharedApi extends BaseApiController
                 }
 
                 if ($s && $s['plan_user_type'] === 'seller') {
-                    $sellerSpent += (float)$tx['amount'];
+                    $sellerSpent += (float) $tx['amount'];
                 } else {
-                    $buyerSpent += (float)$tx['amount'];
+                    $buyerSpent += (float) $tx['amount'];
                 }
             } else {
                 // Orders/other
-                $buyerSpent += (float)$tx['amount'];
+                $buyerSpent += (float) $tx['amount'];
             }
         }
 
         // 4. Plan Breakdown (remain subscription based)
-        $planBreakdown = []; $planTypes = [];
+        $planBreakdown = [];
+        $planTypes = [];
         foreach ($allPlans as $p) {
             $planBreakdown[$p['name']] = 0;
             $planTypes[$p['name']] = $p['user_type'];
         }
         foreach ($subs as $s) {
-            if (isset($planBreakdown[$s['plan_name']])) $planBreakdown[$s['plan_name']]++;
+            if (isset($planBreakdown[$s['plan_name']]))
+                $planBreakdown[$s['plan_name']]++;
         }
 
         return $this->respond([
@@ -1665,13 +1742,13 @@ class SharedApi extends BaseApiController
                 'summary' => [
                     'total_subscriptions' => $totalTxs, // Renaming semantically in frontend if needed, but keeping key for compat
                     'total_spent' => $totalRevenue,
-                    'total_discount' => array_reduce($subs, fn($carry, $item) => $carry + (float)$item['referral_discount_applied'], 0),
+                    'total_discount' => array_reduce($subs, fn($carry, $item) => $carry + (float) $item['referral_discount_applied'], 0),
                     'total_plans' => $db->table('subscription_plans')->countAll(),
                 ],
                 'charts' => [
                     'amount_discount' => [
-                        'buyer' => ['spent' => $buyerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'buyer') ? (float)$i['referral_discount_applied'] : 0), 0)],
-                        'seller' => ['spent' => $sellerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'seller') ? (float)$i['referral_discount_applied'] : 0), 0)],
+                        'buyer' => ['spent' => $buyerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'buyer') ? (float) $i['referral_discount_applied'] : 0), 0)],
+                        'seller' => ['spent' => $sellerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'seller') ? (float) $i['referral_discount_applied'] : 0), 0)],
                     ],
                     'monthly_stats' => $this->getMonthlyStats($successfulTxs, $subs, $range),
                     'plan_breakdown' => [
@@ -1701,13 +1778,13 @@ class SharedApi extends BaseApiController
             if (!isset($stats[$label])) {
                 $stats[$label] = ['buyer_spent' => 0, 'seller_spent' => 0, 'buyer_count' => 0, 'seller_count' => 0, 'discount' => 0];
             }
-            
-            $amt = (float)$tx['amount'];
+
+            $amt = (float) $tx['amount'];
             if ($tx['type'] === 'subscription') {
                 $txId = $tx['transaction_id'] ?? '';
                 $sId = $tx['subscription_id'] ?? 0;
                 $s = array_values(array_filter($subs, fn($sb) => ($txId && $sb['merchant_transaction_id'] === $txId) || $sb['id'] == $sId))[0] ?? null;
-                
+
                 // Fallback: Link by plan name in description
                 if (!$s && !empty($tx['description'])) {
                     $parts = explode(':', $tx['description']);
@@ -1720,11 +1797,12 @@ class SharedApi extends BaseApiController
                 if ($s && $s['plan_user_type'] === 'seller') {
                     $stats[$label]['seller_spent'] += $amt;
                     $stats[$label]['seller_count']++;
-                    $stats[$label]['discount'] += (float)$s['referral_discount_applied'];
+                    $stats[$label]['discount'] += (float) $s['referral_discount_applied'];
                 } else {
                     $stats[$label]['buyer_spent'] += $amt;
                     $stats[$label]['buyer_count']++;
-                    if ($s) $stats[$label]['discount'] += (float)$s['referral_discount_applied'];
+                    if ($s)
+                        $stats[$label]['discount'] += (float) $s['referral_discount_applied'];
                 }
             } else {
                 $stats[$label]['buyer_spent'] += $amt;
@@ -1749,7 +1827,7 @@ class SharedApi extends BaseApiController
     {
         $seoModel = new \App\Models\SeoSettingModel();
         $setting = $seoModel->getByPageKey($pageKey);
-        
+
         if (!$setting) {
             return $this->respond(['success' => false, 'message' => 'SEO settings not found for this page'], 404);
         }
