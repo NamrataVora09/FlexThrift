@@ -103,8 +103,8 @@ function PlanPointsEditor({ value, onChange, form }: { value: string; onChange: 
             <div style={{ width: '100px' }}>
               <label className="small text-muted mb-1 d-block" style={{ fontSize: '0.65rem' }}>Icon</label>
               <div className="d-flex align-items-center gap-1">
-                 <span className="material-symbols-outlined text-muted" style={{ fontSize: '1.2rem' }}>{p.icon || 'check_circle'}</span>
-                 <input
+                <span className="material-symbols-outlined text-muted" style={{ fontSize: '1.2rem' }}>{p.icon || 'check_circle'}</span>
+                <input
                   className="form-control form-control-sm"
                   style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem' }}
                   value={p.icon}
@@ -418,7 +418,7 @@ Pro Seller,seller,quantity,20,0,299,399,"[]",1,0`}
                                 onClick={() => toggleFeatured(p.id)}
                                 title={String(p.is_featured) === '1' ? 'Remove Premium' : 'Mark as Premium'}
                               >
-                                <i className={`bi ${String(p.is_featured) === '1' ? 'bi-crown-fill' : 'bi-crown'}`}></i>
+                                <i className="bi bi-gem"></i>
                               </button>
                               <button
                                 className="btn btn-sm border me-1"
