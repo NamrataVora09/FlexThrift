@@ -300,6 +300,8 @@ export default function TransactionsReportsView({ role }: { role: string }) {
       )
     },
     { key: 'created_at', label: 'Date', render: (r) => <span className="small">{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> },
+    { key: 'starts_at', label: 'Start Date', render: (r) => <span className="small">{r.starts_at ? new Date(r.starts_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</span> },
+    { key: 'expires_at', label: 'Expiry Date', render: (r) => <span className="small">{r.expires_at ? new Date(r.expires_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</span> },
   ];
 
   const RangePicker = ({ value, onChange }: { value: string, onChange: (v: string) => void }) => (

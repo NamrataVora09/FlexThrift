@@ -1527,7 +1527,7 @@ class SharedApi extends BaseApiController
 
         // 1. Base query for transactions (for Table and overall Stats)
         $txBuilder = $db->table('transactions t')
-            ->select('t.*, u.name as user_name, sp.user_type as plan_type')
+            ->select('t.*, u.name as user_name, sp.user_type as plan_type, us.starts_at, us.expires_at')
             ->join('users u', 'u.id = t.user_id', 'left')
             ->join('user_subscriptions us', 'us.merchant_transaction_id = t.transaction_id AND t.transaction_id != ""', 'left')
             ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
