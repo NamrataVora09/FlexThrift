@@ -55,9 +55,9 @@ class SellerApi extends BaseApiController
         // For 'both' users, resolve effective role based on which role is blocked
         $effectiveRole = $jwtUser['role'];
         if ($user['user_type'] === 'both') {
-            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+            if ((int) ($user['blocked_buyer'] ?? 0) === 1) {
                 $effectiveRole = 'seller';
-            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+            } elseif ((int) ($user['blocked_seller'] ?? 0) === 1) {
                 $effectiveRole = 'buyer';
             }
         }
@@ -291,7 +291,7 @@ class SellerApi extends BaseApiController
                     'id' => $attr['id'],
                     'name' => $attr['name'],
                     'type' => $attr['type'],
-                    'required' => (int)$attr['required'],
+                    'required' => (int) $attr['required'],
                     'allowed_values' => $attr['allowed_values'] ? json_decode($attr['allowed_values'], true) : [],
                     'placeholder' => $attr['placeholder'],
                 ];
@@ -362,7 +362,7 @@ class SellerApi extends BaseApiController
         // SuperAdmin bypasses subscription check
         if ($jwtUser['role'] !== 'super_admin') {
             log_message('info', 'Checking subscription for user_id: ' . $userId . ', role: ' . $jwtUser['role']);
-            
+
             $activeSub = $db->table('user_subscriptions us')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $userId)
@@ -371,12 +371,12 @@ class SellerApi extends BaseApiController
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'seller')
                 ->get()->getRowArray();
-            
+
             log_message('info', 'Active subscription check result: ' . ($activeSub ? 'Found' : 'Not found'));
             if ($activeSub) {
                 log_message('info', 'Active subscription details: ' . json_encode($activeSub));
             }
-            
+
             if (!$activeSub) {
                 // Check if there was an expired seller subscription
                 $expiredSub = $db->table('user_subscriptions us')
@@ -503,22 +503,22 @@ class SellerApi extends BaseApiController
         // Validate required attributes based on category/sub-category
         $specifications = $data['specifications'] ?? null;
         $specArray = is_string($specifications) ? json_decode($specifications, true) : $specifications;
-        
+
         // Fetch required attributes for this product's category/sub-category
         $requiredAttributes = $this->getRequiredAttributes($db, $categoryName, $subCategoryName, $listingTypeCatName);
-        
+
         if (!empty($requiredAttributes)) {
             if (!is_array($specArray) || empty($specArray)) {
                 return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
             }
-            
+
             $missingAttributes = [];
             foreach ($requiredAttributes as $attrName) {
                 if (!isset($specArray[$attrName]) || trim($specArray[$attrName]) === '') {
                     $missingAttributes[] = $attrName;
                 }
             }
-            
+
             if (!empty($missingAttributes)) {
                 return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
             }
@@ -592,7 +592,7 @@ class SellerApi extends BaseApiController
                 ->where('sp.user_type', 'seller')
                 ->where('sp.plan_type', 'quantity')
                 ->get()->getRowArray();
-            
+
             if ($activeSub) {
                 $newCount = (int) $activeSub['usage_count'] + 1;
                 $update = ['usage_count' => $newCount];
@@ -608,19 +608,19 @@ class SellerApi extends BaseApiController
         $allFiles = $this->request->getFiles();
         // Support both 'product_images' (mobile payload key) and legacy 'images' key
         $imageFiles = $allFiles['product_images'] ?? $allFiles['images'] ?? null;
-        
+
         // Get image settings
         $maxImages = (int) getSystemSetting('max_product_images', 2);
         $maxImageSizeMB = (float) getSystemSetting('max_image_size_mb', 2);
         $maxImageSizeBytes = $maxImageSizeMB * 1024 * 1024;
-        
+
         if ($imageFiles) {
             // Validate image count
             $imageCount = is_array($imageFiles) ? count($imageFiles) : 1;
             if ($imageCount > $maxImages) {
                 return $this->respond(['success' => false, 'message' => "Maximum {$maxImages} images allowed per product. You uploaded {$imageCount} images."], 422);
             }
-            
+
             log_message('info', 'Processing product_images array');
             $uploadPath = FCPATH . 'uploads/products/';
             if (!is_dir($uploadPath))
@@ -636,7 +636,7 @@ class SellerApi extends BaseApiController
                         $imageSizeMB = round($imageSize / (1024 * 1024), 2);
                         return $this->respond(['success' => false, 'message' => "Image size exceeds maximum limit of {$maxImageSizeMB}MB. Your image is {$imageSizeMB}MB."], 422);
                     }
-                    
+
                     $newName = $img->getRandomName();
                     $img->move($uploadPath, $newName);
                     $db->table('product_images')->insert([
@@ -927,7 +927,7 @@ class SellerApi extends BaseApiController
             'message' => $msg,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
-        
+
         log_message('error', "Offer {$id} updated to negotiating status. New dates: {$newStart} to {$newEnd}");
 
         // Record in history
@@ -1422,27 +1422,27 @@ class SellerApi extends BaseApiController
         // Validate required attributes based on category/sub-category
         $specifications = $data['specifications'] ?? null;
         $specArray = is_string($specifications) ? json_decode($specifications, true) : $specifications;
-        
+
         // Get category, sub-category, and listing type names from the data or existing product
         $categoryName = $processedData['category'] ?? $product['category'] ?? '';
         $subCategoryName = $processedData['sub_category'] ?? $product['sub_category'] ?? '';
         $listingTypeCatName = $processedData['listing_type_category'] ?? $product['listing_type_category'] ?? '';
-        
+
         // Fetch required attributes for this product's category/sub-category
         $requiredAttributes = $this->getRequiredAttributes($db, $categoryName, $subCategoryName, $listingTypeCatName);
-        
+
         if (!empty($requiredAttributes)) {
             if (!is_array($specArray) || empty($specArray)) {
                 return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
             }
-            
+
             $missingAttributes = [];
             foreach ($requiredAttributes as $attrName) {
                 if (!isset($specArray[$attrName]) || trim($specArray[$attrName]) === '') {
                     $missingAttributes[] = $attrName;
                 }
             }
-            
+
             if (!empty($missingAttributes)) {
                 return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
             }
@@ -1540,11 +1540,29 @@ class SellerApi extends BaseApiController
         } else {
             // Create new edit request with snapshot of original product data
             $snapshotFields = [
-                'title', 'description', 'listing_type', 'listing_type_category',
-                'product_type', 'category', 'sub_category', 'color', 'gender',
-                'used_times', 'usage_label', 'original_price', 'price', 'rental_cost', 'rental_deposit',
-                'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                'has_bill', 'allow_alter_fitting', 'brand_id', 'orignal_brand_id',
+                'title',
+                'description',
+                'listing_type',
+                'listing_type_category',
+                'product_type',
+                'category',
+                'sub_category',
+                'color',
+                'gender',
+                'used_times',
+                'usage_label',
+                'original_price',
+                'price',
+                'rental_cost',
+                'rental_deposit',
+                'dispatch_address',
+                'dispatch_city',
+                'dispatch_state',
+                'dispatch_pin_code',
+                'has_bill',
+                'allow_alter_fitting',
+                'brand_id',
+                'orignal_brand_id',
             ];
             $snapshot = [];
             foreach ($snapshotFields as $field) {
@@ -1709,32 +1727,32 @@ class SellerApi extends BaseApiController
         // Validate required attributes based on category/sub-category
         $specifications = $data['specifications'] ?? null;
         $specArray = is_string($specifications) ? json_decode($specifications, true) : $specifications;
-        
+
         // Get category, sub-category, and listing type names from the data or existing product
         $categoryName = $updateData['category'] ?? $product['category'] ?? '';
         $subCategoryName = $updateData['sub_category'] ?? $product['sub_category'] ?? '';
         $listingTypeCatName = $updateData['listing_type_category'] ?? $product['listing_type_category'] ?? '';
-        
+
         // Fetch required attributes for this product's category/sub-category
         $requiredAttributes = $this->getRequiredAttributes($db, $categoryName, $subCategoryName, $listingTypeCatName);
-        
+
         if (!empty($requiredAttributes)) {
             if (!is_array($specArray) || empty($specArray)) {
                 return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
             }
-            
+
             $missingAttributes = [];
             foreach ($requiredAttributes as $attrName) {
                 if (!isset($specArray[$attrName]) || trim($specArray[$attrName]) === '') {
                     $missingAttributes[] = $attrName;
                 }
             }
-            
+
             if (!empty($missingAttributes)) {
                 return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
             }
         }
-        
+
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         // Snapshot current images BEFORE any deletions/uploads so previous_data can include them
@@ -1744,19 +1762,19 @@ class SellerApi extends BaseApiController
         // Handle file uploads
         $files = $this->request->getFiles();
         $imageFiles = $files['product_images'] ?? $files['images'] ?? null;
-        
+
         // Get image settings
         $maxImages = (int) getSystemSetting('max_product_images', 2);
         $maxImageSizeMB = (float) getSystemSetting('max_image_size_mb', 2);
         $maxImageSizeBytes = $maxImageSizeMB * 1024 * 1024;
-        
+
         if ($imageFiles) {
             // Validate image count
             $imageCount = is_array($imageFiles) ? count($imageFiles) : 1;
             if ($imageCount > $maxImages) {
                 return $this->respond(['success' => false, 'message' => "Maximum {$maxImages} images allowed per product. You uploaded {$imageCount} images."], 422);
             }
-            
+
             $uploadPath = FCPATH . 'uploads/products/';
             if (!is_dir($uploadPath))
                 mkdir($uploadPath, 0777, true);
@@ -1769,7 +1787,7 @@ class SellerApi extends BaseApiController
                         $imageSizeMB = round($imageSize / (1024 * 1024), 2);
                         return $this->respond(['success' => false, 'message' => "Image size exceeds maximum limit of {$maxImageSizeMB}MB. Your image is {$imageSizeMB}MB."], 422);
                     }
-                    
+
                     $newName = $file->getRandomName();
                     $file->move($uploadPath, $newName);
 
@@ -1843,7 +1861,7 @@ class SellerApi extends BaseApiController
         } elseif ($jwtUser['role'] === 'admin') {
             // Admin edits: use same flow as seller - create product_edit_requests entry
             // and set product edit_request to pending (keep product approved)
-            
+
             // Check if there's already a pending edit request for this product
             $existingRequest = $db->table('product_edit_requests')
                 ->where('product_id', $id)
@@ -1907,11 +1925,29 @@ class SellerApi extends BaseApiController
             } else {
                 // Create new edit request with snapshot of original product data
                 $snapshotFields = [
-                    'title', 'description', 'listing_type', 'listing_type_category',
-                    'product_type', 'category', 'sub_category', 'color', 'gender',
-                    'used_times', 'usage_label', 'original_price', 'price', 'rental_cost', 'rental_deposit',
-                    'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                    'has_bill', 'allow_alter_fitting', 'brand_id', 'orignal_brand_id',
+                    'title',
+                    'description',
+                    'listing_type',
+                    'listing_type_category',
+                    'product_type',
+                    'category',
+                    'sub_category',
+                    'color',
+                    'gender',
+                    'used_times',
+                    'usage_label',
+                    'original_price',
+                    'price',
+                    'rental_cost',
+                    'rental_deposit',
+                    'dispatch_address',
+                    'dispatch_city',
+                    'dispatch_state',
+                    'dispatch_pin_code',
+                    'has_bill',
+                    'allow_alter_fitting',
+                    'brand_id',
+                    'orignal_brand_id',
                 ];
                 $snapshot = [];
                 foreach ($snapshotFields as $field) {
@@ -1984,11 +2020,26 @@ class SellerApi extends BaseApiController
             } else {
                 // Snapshot the key fields BEFORE overwriting, so admins can see what changed
                 $snapshotFields = [
-                    'title', 'description', 'listing_type', 'listing_type_category',
-                    'product_type', 'category', 'sub_category', 'color', 'gender',
-                    'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
-                    'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                    'has_bill', 'allow_alter_fitting',
+                    'title',
+                    'description',
+                    'listing_type',
+                    'listing_type_category',
+                    'product_type',
+                    'category',
+                    'sub_category',
+                    'color',
+                    'gender',
+                    'used_times',
+                    'original_price',
+                    'price',
+                    'rental_cost',
+                    'rental_deposit',
+                    'dispatch_address',
+                    'dispatch_city',
+                    'dispatch_state',
+                    'dispatch_pin_code',
+                    'has_bill',
+                    'allow_alter_fitting',
                 ];
                 $snapshot = [];
                 foreach ($snapshotFields as $field) {
@@ -2342,13 +2393,13 @@ class SellerApi extends BaseApiController
             if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
                 // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
                 $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
-                $referralDiscount = min($rawDiscount, (float)$plan['price']);
+                $referralDiscount = min($rawDiscount, (float) $plan['price']);
                 log_message('error', "Referral discount applied - Raw discount: {$rawDiscount}, Final discount: {$referralDiscount}");
             } else {
                 log_message('error', "Referral expired - Expiry: {$expiry}, Current time: " . date('Y-m-d H:i:s'));
             }
         } else {
-            log_message('error', "Referral conditions not met - Balance > 0: " . ($referralBalance > 0 ? 'yes' : 'no') . ", Plan price >= Min purchase: " . ((float)$plan['price'] >= $minPurchase ? 'yes' : 'no'));
+            log_message('error', "Referral conditions not met - Balance > 0: " . ($referralBalance > 0 ? 'yes' : 'no') . ", Plan price >= Min purchase: " . ((float) $plan['price'] >= $minPurchase ? 'yes' : 'no'));
         }
 
         $total = max(0, (float) $plan['price'] + $totalCharges - $referralDiscount);
@@ -2376,7 +2427,7 @@ class SellerApi extends BaseApiController
                     'min_purchase' => $minPurchase,
                     'max_percent' => $maxPercent,
                     'balance_check' => $referralBalance > 0 ? 'yes' : 'no',
-                    'price_check' => (float)$plan['price'] >= $minPurchase ? 'yes' : 'no',
+                    'price_check' => (float) $plan['price'] >= $minPurchase ? 'yes' : 'no',
                     'expiry_check' => (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) ? 'valid' : 'expired',
                     'current_time' => date('Y-m-d H:i:s'),
                 ],
@@ -2575,8 +2626,8 @@ class SellerApi extends BaseApiController
                     foreach ($settingsRows as $s)
                         $cfg[$s['setting_key']] = $s['setting_value'];
 
-                    $maxPercent  = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
-                    $minPurchase = (float) ((isset($cfg['referral_min_purchase'])         && $cfg['referral_min_purchase'] !== '')         ? $cfg['referral_min_purchase']         : 0);
+                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
 
                     if ($basePrice >= $minPurchase) {
                         // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
@@ -2595,8 +2646,8 @@ class SellerApi extends BaseApiController
         $redirectUrl = $callbackUrl
             ? str_replace('{id}', $merchantOrderId, $callbackUrl)
             : base_url("seller/payment-callback?id={$merchantOrderId}");
-        
-        log_message('info', 'Payment redirect URL: ' . $redirectUrl);
+
+
 
         $payload = [
             'merchantOrderId' => $merchantOrderId,
@@ -2664,7 +2715,7 @@ class SellerApi extends BaseApiController
         $merchantOrderId = $this->request->getGet('id');
         $db = \Config\Database::connect();
 
-        log_message('info', 'verifyPayment called with merchantOrderId: ' . $merchantOrderId);
+        log_message('error', 'verifyPayment called with merchantOrderId: ' . $merchantOrderId);
 
         if (!$merchantOrderId)
             return $this->respond(['status' => 'error', 'message' => 'No transaction ID provided'], 400);
@@ -2678,24 +2729,24 @@ class SellerApi extends BaseApiController
             return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
         }
 
-        log_message('info', 'Found subscription record: ' . json_encode($dbSub));
+        log_message('error', 'Found subscription record: ' . json_encode($dbSub));
 
         if ($dbSub['is_active'] == 1 && $dbSub['payment_status'] === 'paid') {
-            log_message('info', 'Subscription already active for merchantOrderId: ' . $merchantOrderId);
+            log_message('error', 'Subscription already active for merchantOrderId: ' . $merchantOrderId);
             return $this->respond(['status' => 'success', 'message' => 'Subscription is already active']);
         }
 
         $phonepe = new \App\Libraries\PhonePe();
         $status = $phonepe->getOrderStatus($merchantOrderId);
         $state = $status['state'] ?? ($status['data']['state'] ?? 'PENDING');
-        
-        log_message('info', 'PhonePe status for ' . $merchantOrderId . ': ' . $state);
+
+        log_message('error', 'PhonePe status for ' . $merchantOrderId . ': ' . $state);
 
         if ($state === 'COMPLETED') {
             if ($dbSub['is_active'] == 0) {
                 $plan = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
 
-                log_message('info', 'Activating subscription for user_id: ' . $dbSub['user_id'] . ', plan: ' . $plan['name']);
+                log_message('error', 'Activating subscription for user_id: ' . $dbSub['user_id'] . ', plan: ' . $plan['name']);
 
                 // Stacking Logic: Find the latest expiry among active seller plans
                 $latestActive = $db->table('user_subscriptions us')
@@ -2714,7 +2765,7 @@ class SellerApi extends BaseApiController
                     ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
                     : '2099-12-31 23:59:59';
 
-                log_message('info', 'Subscription details - starts_at: ' . $startsAt . ', expires_at: ' . $expiresAt . ', duration_hours: ' . $durationHours);
+                log_message('error', 'Subscription details - starts_at: ' . $startsAt . ', expires_at: ' . $expiresAt . ', duration_hours: ' . $durationHours);
 
                 $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
                     'is_active' => 1,
@@ -2728,8 +2779,8 @@ class SellerApi extends BaseApiController
                     'subscription_expires_at' => $expiresAt,
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
-                
-                log_message('info', 'Subscription activated successfully for user_id: ' . $dbSub['user_id']);
+
+                log_message('error', 'Subscription activated successfully for user_id: ' . $dbSub['user_id']);
                 $db->table('transactions')->insert([
                     'user_id' => $dbSub['user_id'],
                     'type' => 'subscription',
@@ -2777,7 +2828,7 @@ class SellerApi extends BaseApiController
                                 $currentBalance = 0.0;
                             }
                             $newBalance = $currentBalance + $rewardAmount;
-                            $expiresAt = date('Y-m-d H:i:s', time() + (int)($expiryDays * 86400));
+                            $expiresAt = date('Y-m-d H:i:s', time() + (int) ($expiryDays * 86400));
 
                             $db->table('users')->where('id', $referrer['id'])->update([
                                 'referral_balance' => $newBalance,
@@ -2789,7 +2840,7 @@ class SellerApi extends BaseApiController
                                 'has_used_referral' => 1,
                                 'updated_at' => date('Y-m-d H:i:s'),
                             ]);
-                            
+
                             log_message('info', 'Referrer credited: User ID ' . $referrer['id'] . ' received ' . $rewardAmount . ' for buyer ' . $dbSub['user_id']);
                         } else {
                             log_message('info', 'Referrer not credited: Referral enabled=' . ($cfg['referral_enabled'] ?? '1') . ', Plan price=' . $plan['price'] . ', Min purchase=' . $minPurchase);
@@ -2862,14 +2913,14 @@ class SellerApi extends BaseApiController
     private function getRequiredAttributes($db, string $categoryName, string $subCategoryName, string $listingTypeCatName): array
     {
         $requiredAttributes = [];
-        
+
         // First check the new attributes table with entity linking
         if (!empty($subCategoryName)) {
             $subCat = $db->table('sub_categories')
                 ->where('name', $subCategoryName)
                 ->get()
                 ->getRowArray();
-            
+
             if ($subCat) {
                 $subCatId = $subCat['id'];
                 // Get attributes linked to this sub-category
@@ -2880,20 +2931,20 @@ class SellerApi extends BaseApiController
                     ->where('a.required', 1)
                     ->get()
                     ->getResultArray();
-                
+
                 foreach ($linkedAttrs as $attr) {
                     $requiredAttributes[] = $attr['name'];
                 }
             }
         }
-        
+
         // If no required attributes found in sub-category, check category
         if (empty($requiredAttributes) && !empty($categoryName)) {
             $cat = $db->table('categories')
                 ->where('category_name', $categoryName)
                 ->get()
                 ->getRowArray();
-            
+
             if ($cat) {
                 $catId = $cat['id'];
                 // Get attributes linked to this category
@@ -2904,20 +2955,20 @@ class SellerApi extends BaseApiController
                     ->where('a.required', 1)
                     ->get()
                     ->getResultArray();
-                
+
                 foreach ($linkedAttrs as $attr) {
                     $requiredAttributes[] = $attr['name'];
                 }
             }
         }
-        
+
         // If no required attributes found in category, check listing type
         if (empty($requiredAttributes) && !empty($listingTypeCatName)) {
             $lt = $db->table('listing_types')
                 ->where('type_name', $listingTypeCatName)
                 ->get()
                 ->getRowArray();
-            
+
             if ($lt) {
                 $ltId = $lt['id'];
                 // Get attributes linked to this listing type
@@ -2928,20 +2979,20 @@ class SellerApi extends BaseApiController
                     ->where('a.required', 1)
                     ->get()
                     ->getResultArray();
-                
+
                 foreach ($linkedAttrs as $attr) {
                     $requiredAttributes[] = $attr['name'];
                 }
             }
         }
-        
+
         // Also check field_config JSON for backward compatibility
         if (empty($requiredAttributes) && !empty($subCategoryName)) {
             $subCat = $db->table('sub_categories')
                 ->where('name', $subCategoryName)
                 ->get()
                 ->getRowArray();
-            
+
             if ($subCat && !empty($subCat['field_config'])) {
                 $config = json_decode($subCat['field_config'], true);
                 if (!empty($config['attributes'])) {
@@ -2953,13 +3004,13 @@ class SellerApi extends BaseApiController
                 }
             }
         }
-        
+
         if (empty($requiredAttributes) && !empty($categoryName)) {
             $cat = $db->table('categories')
                 ->where('category_name', $categoryName)
                 ->get()
                 ->getRowArray();
-            
+
             if ($cat && !empty($cat['field_config'])) {
                 $config = json_decode($cat['field_config'], true);
                 if (!empty($config['attributes'])) {
@@ -2971,13 +3022,13 @@ class SellerApi extends BaseApiController
                 }
             }
         }
-        
+
         if (empty($requiredAttributes) && !empty($listingTypeCatName)) {
             $lt = $db->table('listing_types')
                 ->where('type_name', $listingTypeCatName)
                 ->get()
                 ->getRowArray();
-            
+
             if ($lt && !empty($lt['field_config'])) {
                 $config = json_decode($lt['field_config'], true);
                 if (!empty($config['attributes'])) {
@@ -2989,7 +3040,7 @@ class SellerApi extends BaseApiController
                 }
             }
         }
-        
+
         return $requiredAttributes;
     }
 }
