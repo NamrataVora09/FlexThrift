@@ -199,11 +199,18 @@ export default function SubscriptionPlansAdmin() {
     setShowModal(true);
   };
 
+  const limitLabel = form.user_type === 'seller' ? 'Upload Limit (Qty)' : 'Contact View Limit (Qty)';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const price = parseFloat(form.price);
     const basePrice = parseFloat(form.base_price) || price;
     if (basePrice < price) { toastError('plan_base_price_error', 'Base Original price cannot be less than Final price.'); return; }
+
+    if (form.plan_type === 'quantity' && (!form.limit_value || parseInt(form.limit_value) <= 0)) {
+      toastError('plan_limit_error', `${limitLabel} cannot be zero or empty for a Quantity Based plan.`);
+      return;
+    }
 
     setSaving(true);
     const payload = {
@@ -250,8 +257,6 @@ export default function SubscriptionPlansAdmin() {
       }
     }, 'Delete');
   };
-
-  const limitLabel = form.user_type === 'seller' ? 'Upload Limit (Qty)' : 'Contact View Limit (Qty)';
 
   return (
     <DashboardLayout requiredRoles={['super_admin', 'admin']}>
