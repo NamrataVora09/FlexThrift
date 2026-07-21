@@ -197,6 +197,7 @@ class SharedApi extends BaseApiController
             $db->table('user_subscriptions')
                 ->whereIn('id', array_column($expiredIds, 'id'))
                 ->update(['is_active' => 0]);
+            $this->recalibrateUserSubscriptions($jwtUser['user_id'], $userType);
         }
 
         // We'll fetch active plans for both types to support dual view for admins
@@ -1307,6 +1308,8 @@ class SharedApi extends BaseApiController
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ], true);
+
+        $this->recalibrateUserSubscriptions($jwtUser['user_id'], $plan['user_type']);
 
         // Record transaction
         $db->table('transactions')->insert([

@@ -2778,6 +2778,7 @@ class SellerApi extends BaseApiController
                     'expires_at' => $expiresAt,
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
+                $this->recalibrateUserSubscriptions($dbSub['user_id'], 'seller');
                 $db->table('users')->where('id', $dbSub['user_id'])->update([
                     'subscription_tier' => $plan['name'],
                     'subscription_expires_at' => $expiresAt,

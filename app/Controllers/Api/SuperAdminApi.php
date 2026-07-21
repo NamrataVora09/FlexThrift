@@ -1775,6 +1775,8 @@ class SuperAdminApi extends BaseApiController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
+        $this->recalibrateUserSubscriptions($userId, $plan['user_type']);
+
         return $this->respond(['success' => true, 'message' => 'Plan assigned successfully.']);
     }
 

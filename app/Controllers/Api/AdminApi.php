@@ -1027,6 +1027,7 @@ class AdminApi extends BaseApiController
                 'expires_at' => $expiresAt,
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
+            $this->recalibrateUserSubscriptions($dbSub['user_id'], $plan['user_type']);
             
             // Sync with users table (Set to the absolute latest expiry)
             $db->table('users')->where('id', $dbSub['user_id'])->update([

@@ -789,14 +789,27 @@ class BuyerApi extends BaseApiController
 
         // SuperAdmin bypasses subscription check
         if ($jwtUser['role'] !== 'super_admin') {
-            $activeSub = $db->table('user_subscriptions us')
+            $activeSubs = $db->table('user_subscriptions us')
+                ->select('us.*, sp.plan_type, sp.limit_value')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
+                ->where('us.starts_at <=', date('Y-m-d H:i:s'))
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'buyer')
-                ->get()->getRowArray();
-            if (!$activeSub) {
+                ->orderBy('us.starts_at', 'ASC')
+                ->orderBy('us.expires_at', 'ASC')
+                ->get()->getResultArray();
+
+            $hasActiveSub = false;
+            foreach ($activeSubs as $sub) {
+                if ($sub['plan_type'] === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
+                    $hasActiveSub = true;
+                    break;
+                }
+            }
+
+            if (!$hasActiveSub) {
                 return $this->respond(['success' => false, 'message' => 'You need an active buyer subscription to make offers. Please subscribe to a buyer plan.'], 403);
             }
         }
@@ -850,24 +863,39 @@ class BuyerApi extends BaseApiController
 
         $offerId = $db->table('offers')->insert($offerData, true);
 
-        // Check if this is the first offer to this seller (deduct subscription)
+        // Check if this buyer has already interacted with this seller (offer or contact view)
         $previousOffers = $db->table('offers')
             ->where('buyer_id', $jwtUser['user_id'])
             ->where('seller_id', $product['seller_id'])
             ->where('id !=', $offerId)
             ->countAllResults();
 
-        if ($previousOffers == 1 && $jwtUser['role'] !== 'super_admin') {
-            // This is the first offer to this seller, deduct subscription
-            $activeSub = $db->table('user_subscriptions us')
+        $existingView = $db->table('contact_views')
+            ->where('user_id', $jwtUser['user_id'])
+            ->where('seller_id', $product['seller_id'])
+            ->countAllResults();
+
+        if ($previousOffers == 0 && $existingView == 0 && $jwtUser['role'] !== 'super_admin') {
+            // First offer/contact to this seller, deduct from active subscription
+            $activeSubs = $db->table('user_subscriptions us')
                 ->select('us.*, sp.plan_type, sp.limit_value')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
+                ->where('us.starts_at <=', date('Y-m-d H:i:s'))
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'buyer')
-                ->orderBy('us.id', 'DESC')
-                ->get()->getRowArray();
+                ->orderBy('us.starts_at', 'ASC')
+                ->orderBy('us.expires_at', 'ASC')
+                ->get()->getResultArray();
+
+            $activeSub = null;
+            foreach ($activeSubs as $sub) {
+                if ($sub['plan_type'] === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
+                    $activeSub = $sub;
+                    break;
+                }
+            }
 
             if ($activeSub && $activeSub['plan_type'] === 'quantity') {
                 $newCount = (int) $activeSub['usage_count'] + 1;
@@ -876,6 +904,10 @@ class BuyerApi extends BaseApiController
                     $update['is_active'] = 0;
                 }
                 $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
+
+                if (isset($update['is_active']) && $update['is_active'] === 0) {
+                    $this->recalibrateUserSubscriptions($jwtUser['user_id'], 'buyer');
+                }
             }
         }
 
@@ -2577,6 +2609,8 @@ class BuyerApi extends BaseApiController
                     'expires_at' => $expiresAt,
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
+
+                $this->recalibrateUserSubscriptions($dbSub['user_id'], 'buyer');
 
                 // Update users table for redundancy/quick lookup
                 $db->table('users')->where('id', $dbSub['user_id'])->update([

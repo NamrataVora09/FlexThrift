@@ -413,6 +413,7 @@ class BaseApiController extends ResourceController
             ->where('sp.user_type', $userType)
             ->where('us.expires_at >=', date('Y-m-d H:i:s'))
             ->orderBy('us.starts_at', 'ASC')
+            ->orderBy('us.id', 'ASC')
             ->get()->getResultArray();
 
         if (empty($subs)) {
@@ -457,15 +458,7 @@ class BaseApiController extends ResourceController
                 // For subsequent stacked plans: start exactly when the previous one expires.
                 $newStartsAt = date('Y-m-d H:i:s', $baseTime);
                 $durationHours = (float) $sub['duration_hours'];
-                
-                // If previous expiry is far in the future (> 5 years), chain from NOW instead
-                $maxChainDate = time() + (5 * 365 * 24 * 3600);
-                if ($baseTime > $maxChainDate) {
-                    $newStartsAt = date('Y-m-d H:i:s', $currentTime);
-                    $newBase = $currentTime;
-                } else {
-                    $newBase = $baseTime;
-                }
+                $newBase = $baseTime;
                 
                 $isLifetime = ($sub['expires_at'] === '2099-12-31 23:59:59' || $durationHours <= 0);
                 $newExpiresAt = $isLifetime
