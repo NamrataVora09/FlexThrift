@@ -788,22 +788,21 @@ class BuyerApi extends BaseApiController
         }
 
         // SuperAdmin bypasses subscription check
-        if ($jwtUser['role'] !== 'super_admin') {
+        if (!in_array($jwtUser['role'] ?? '', ['super_admin', 'superadmin'])) {
             $activeSubs = $db->table('user_subscriptions us')
                 ->select('us.*, sp.plan_type, sp.limit_value')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
-                ->where('us.starts_at <=', date('Y-m-d H:i:s'))
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'buyer')
                 ->orderBy('us.starts_at', 'ASC')
-                ->orderBy('us.expires_at', 'ASC')
+                ->orderBy('us.id', 'ASC')
                 ->get()->getResultArray();
 
             $hasActiveSub = false;
             foreach ($activeSubs as $sub) {
-                if ($sub['plan_type'] === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
+                if (strtolower($sub['plan_type']) === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
                     $hasActiveSub = true;
                     break;
                 }
@@ -875,38 +874,48 @@ class BuyerApi extends BaseApiController
             ->where('seller_id', $product['seller_id'])
             ->countAllResults();
 
-        if ($previousOffers == 0 && $existingView == 0 && $jwtUser['role'] !== 'super_admin') {
+        if ($previousOffers == 0 && $existingView == 0 && !in_array($jwtUser['role'] ?? '', ['super_admin', 'superadmin'])) {
             // First offer/contact to this seller, deduct from active subscription
             $activeSubs = $db->table('user_subscriptions us')
                 ->select('us.*, sp.plan_type, sp.limit_value')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
-                ->where('us.starts_at <=', date('Y-m-d H:i:s'))
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'buyer')
                 ->orderBy('us.starts_at', 'ASC')
-                ->orderBy('us.expires_at', 'ASC')
+                ->orderBy('us.id', 'ASC')
                 ->get()->getResultArray();
 
             $activeSub = null;
             foreach ($activeSubs as $sub) {
-                if ($sub['plan_type'] === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
+                if (strtolower($sub['plan_type']) === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
                     $activeSub = $sub;
                     break;
                 }
             }
 
-            if ($activeSub && $activeSub['plan_type'] === 'quantity') {
-                $newCount = (int) $activeSub['usage_count'] + 1;
-                $update = ['usage_count' => $newCount];
-                if ($newCount >= (int) $activeSub['limit_value']) {
-                    $update['is_active'] = 0;
-                }
-                $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
+            if ($activeSub) {
+                // Record the contact view so subsequent views/offers for this seller are free
+                $db->table('contact_views')->insert([
+                    'user_id' => $jwtUser['user_id'],
+                    'seller_id' => $product['seller_id'],
+                    'product_id' => $data['product_id'],
+                    'subscription_id' => $activeSub['id'],
+                    'viewed_at' => date('Y-m-d H:i:s'),
+                ]);
 
-                if (isset($update['is_active']) && $update['is_active'] === 0) {
-                    $this->recalibrateUserSubscriptions($jwtUser['user_id'], 'buyer');
+                if (strtolower($activeSub['plan_type']) === 'quantity') {
+                    $newCount = (int) $activeSub['usage_count'] + 1;
+                    $update = ['usage_count' => $newCount];
+                    if ($newCount >= (int) $activeSub['limit_value']) {
+                        $update['is_active'] = 0;
+                    }
+                    $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
+
+                    if (isset($update['is_active']) && $update['is_active'] === 0) {
+                        $this->recalibrateUserSubscriptions($jwtUser['user_id'], 'buyer');
+                    }
                 }
             }
         }
