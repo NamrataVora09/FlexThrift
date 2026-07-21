@@ -480,7 +480,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                           ) : (
                             <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {active.duration_hours} hrs</span>
                           )}
-                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{isQty ? 'Slots Left' : 'Time Left'}</span>
+                          <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.2rem' }}>{isQty ? userType === 'seller' ? 'Listing/s Left' : 'Contact/s Left' : 'Time Left'}</span>
                         </div>
                       </div>
                       <div style={{ width: '100%', height: 10, background: '#e7e8e8', borderRadius: '9999px', overflow: 'hidden' }}>
