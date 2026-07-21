@@ -860,7 +860,8 @@ class BuyerApi extends BaseApiController
             'updated_at' => date('Y-m-d H:i:s'),
         ];
 
-        $offerId = $db->table('offers')->insert($offerData, true);
+        $db->table('offers')->insert($offerData);
+        $offerId = $db->insertID();
 
         // Check if this buyer has already interacted with this seller (offer or contact view)
         $previousOffers = $db->table('offers')
