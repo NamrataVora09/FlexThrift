@@ -874,6 +874,8 @@ class BuyerApi extends BaseApiController
             ->where('seller_id', $product['seller_id'])
             ->countAllResults();
 
+        log_message('error', '[makeOffer] deduction check: buyer=' . $jwtUser['user_id'] . ' seller=' . $product['seller_id'] . ' previousOffers=' . $previousOffers . ' existingView=' . $existingView . ' role=' . ($jwtUser['role'] ?? 'none'));
+
         if ($previousOffers == 0 && $existingView == 0 && !in_array($jwtUser['role'] ?? '', ['super_admin', 'superadmin'])) {
             // First offer/contact to this seller, deduct from active subscription
             $activeSubs = $db->table('user_subscriptions us')
@@ -881,11 +883,14 @@ class BuyerApi extends BaseApiController
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
+                ->where('us.payment_status', 'paid')
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'buyer')
                 ->orderBy('us.starts_at', 'ASC')
                 ->orderBy('us.id', 'ASC')
                 ->get()->getResultArray();
+
+            log_message('error', '[makeOffer] activeSubs count: ' . count($activeSubs) . ' for buyer=' . $jwtUser['user_id']);
 
             $activeSub = null;
             foreach ($activeSubs as $sub) {
@@ -895,16 +900,24 @@ class BuyerApi extends BaseApiController
                 }
             }
 
-            if ($activeSub) {
-                // Record the contact view so subsequent views/offers for this seller are free
-                $db->table('contact_views')->insert([
-                    'user_id' => $jwtUser['user_id'],
-                    'seller_id' => $product['seller_id'],
-                    'product_id' => $data['product_id'],
-                    'subscription_id' => $activeSub['id'],
-                    'viewed_at' => date('Y-m-d H:i:s'),
-                ]);
+            log_message('error', '[makeOffer] activeSub: ' . ($activeSub ? 'id=' . $activeSub['id'] . ' type=' . $activeSub['plan_type'] . ' usage=' . $activeSub['usage_count'] . ' limit=' . $activeSub['limit_value'] : 'null'));
 
+            if ($activeSub) {
+                try {
+                    // Record the contact view so subsequent views/offers for this seller are free
+                    $db->table('contact_views')->insert([
+                        'user_id' => $jwtUser['user_id'],
+                        'seller_id' => $product['seller_id'],
+                        'product_id' => $data['product_id'],
+                        'subscription_id' => $activeSub['id'],
+                        'viewed_at' => date('Y-m-d H:i:s'),
+                    ]);
+                    log_message('error', '[makeOffer] contact_views inserted for buyer=' . $jwtUser['user_id'] . ' seller=' . $product['seller_id']);
+                } catch (\Exception $e) {
+                    log_message('error', '[makeOffer] contact_views insert failed: ' . $e->getMessage());
+                }
+
+                
                 if (strtolower($activeSub['plan_type']) === 'quantity') {
                     $newCount = (int) $activeSub['usage_count'] + 1;
                     $update = ['usage_count' => $newCount];
@@ -912,6 +925,7 @@ class BuyerApi extends BaseApiController
                         $update['is_active'] = 0;
                     }
                     $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
+                    log_message('debug', 'makeOffer usage_count updated to ' . $newCount . ' for sub id=' . $activeSub['id']);
 
                     if (isset($update['is_active']) && $update['is_active'] === 0) {
                         $this->recalibrateUserSubscriptions($jwtUser['user_id'], 'buyer');
@@ -1980,9 +1994,10 @@ class BuyerApi extends BaseApiController
                         ->join('subscription_plans', 'subscription_plans.id = user_subscriptions.plan_id')
                         ->where('user_subscriptions.user_id', $buyerId)
                         ->where('user_subscriptions.is_active', 1)
-                        ->where('user_subscriptions.starts_at <=', date('Y-m-d H:i:s'))
+                        ->where('user_subscriptions.payment_status', 'paid')
                         ->where('user_subscriptions.expires_at >=', date('Y-m-d H:i:s'))
-                        ->orderBy('user_subscriptions.expires_at', 'ASC')
+                        ->orderBy('user_subscriptions.starts_at', 'ASC')
+                        ->orderBy('user_subscriptions.id', 'ASC')
                         ->get()->getResultArray();
 
                     if (empty($activeSubs)) {
@@ -2003,7 +2018,7 @@ class BuyerApi extends BaseApiController
                     }
 
                     foreach ($activeSubs as $sub) {
-                        if ($sub['plan_type'] === 'duration') {
+                        if (strtolower($sub['plan_type']) === 'duration') {
                             $activeSub = $sub;
                             break;
                         } elseif ((int) $sub['usage_count'] < (int) $sub['limit_value']) {
