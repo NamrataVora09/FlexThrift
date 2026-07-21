@@ -350,7 +350,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
         .tier-badge{position:absolute;top:0px;right:-5px;background:#d7b467;color:#ffff;padding:.4rem 1.2rem;border-bottom-left-radius:.75rem;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em}
         .tier-btn-basic{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto;border:none}
         .tier-btn-standard{width:100%;padding:1rem;border-radius:9999px;background:#fdc003;color:#ffff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .2s;margin-top:auto}
-        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#d7b467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto; display:flex; align-items:center;justify-content:center;}
+        .tier-btn-elite{width:100%;padding:1rem;border-radius:9999px;background:#d7b467;color:#fff;border:none;font-weight:900;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;transition:all .3s;margin-top:auto; display:flex; align-items:center;justify-content:space-between; text-align:center;}
         .plan-price-block{display:flex;align-items:baseline;flex-wrap:wrap;gap:.25rem .5rem}
         .plan-price-main{font-size:3rem;font-weight:900;letter-spacing:-0.03em;line-height:1}
         .plan-price-strike{font-size:1.2rem;color:#999;text-decoration:line-through}
@@ -495,8 +495,8 @@ export default function SubscriptionsView({ role, userType }: Props) {
                   const uc = data?.unlock_card || {};
                   const ucLabel = (uc as any)[`${pType}_unlock_label`] || 'Unlock More';
                   const ucTitle = (uc as any)[`${pType}_unlock_title`] || 'Elevate to a Higher Tier';
-                  const 
-                  ucBtn = (uc as any)[`${pType}_unlock_btn`] || 'Upgrade Plan';
+                  const
+                    ucBtn = (uc as any)[`${pType}_unlock_btn`] || 'Upgrade Plan';
                   const defaultItems = pType === 'seller'
                     ? [{ icon: 'all_inclusive', text: 'Unlimited product listings' }, { icon: 'stars', text: 'Priority placement in search' }, { icon: 'insights', text: 'Advanced seller analytics' }, { icon: 'support_agent', text: 'Dedicated seller support' }]
                     : [{ icon: 'all_inclusive', text: 'Unlimited concierge contacts' }, { icon: 'stars', text: 'Early access to new listings' }, { icon: 'insights', text: 'Custom market reporting' }, { icon: 'support_agent', text: 'Priority support' }];
@@ -633,8 +633,8 @@ export default function SubscriptionsView({ role, userType }: Props) {
                             ) : (
                               <button className={btnClass} onClick={() => openCheckout(plan)}>
                                 {isFeatured && (
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '6px', verticalAlign: 'middle', marginTop: '-2px' }}>
-                                    <path d="M2 19h20v2H2v-2zM2 5l5 7.5L12 2l5 10.5L22 5v12H2V5z"/>
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '6px', verticalAlign: 'middle', marginTop: '-2px' }}>
+                                    <path d="M2 19h20v2H2v-2zM2 5l5 7.5L12 2l5 10.5L22 5v12H2V5z" />
                                   </svg>
                                 )}
                                 Buy Plan
@@ -739,7 +739,14 @@ export default function SubscriptionsView({ role, userType }: Props) {
                                 <button className="btn btn-sm fw-bold rounded-pill" style={{ background: '#fdc003', color: '#3d2b00', border: 'none' }} onClick={() => toggleMostSelected(plan)} disabled={togglingMsId === plan.id}>{Number(plan.is_most_selected) === 1 ? 'Unset Selected' : 'Set Selected'}</button>
                               </div>
                             ) : (
-                              <button className={btnClass} onClick={() => openCheckout(plan)}>Buy Plan</button>
+                              <button className={btnClass} onClick={() => openCheckout(plan)}>
+                                {isFeatured && (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '6px', verticalAlign: 'middle', marginTop: '-2px' }}>
+                                    <path d="M2 19h20v2H2v-2zM2 5l5 7.5L12 2l5 10.5L22 5v12H2V5z" />
+                                  </svg>
+                                )}
+
+                                Buy Plan</button>
                             )}
                           </div>
                         </div>
