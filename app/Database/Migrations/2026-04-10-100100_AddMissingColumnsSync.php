@@ -134,6 +134,7 @@ class AddMissingColumnsSync extends Migration
         $this->addColumnIfMissing('user_subscriptions', 'amount_paid',                 ['type' => 'DECIMAL', 'constraint' => '10,2', 'null' => true, 'default' => 0.00]);
         $this->addColumnIfMissing('user_subscriptions', 'referral_discount_applied',   ['type' => 'DECIMAL', 'constraint' => '10,2', 'null' => true, 'default' => 0.00]);
         $this->addColumnIfMissing('user_subscriptions', 'merchant_transaction_id',     ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true]);
+        $this->addColumnIfMissing('user_subscriptions', 'coupon_id',                   ['type' => 'INT', 'null' => true]);
 
         // ─── coupons ──────────────────────────────────────────────────
         $this->addColumnIfMissing('coupons', 'min_order_amount', ['type' => 'DECIMAL', 'constraint' => '10,2', 'null' => true, 'default' => 0.00]);

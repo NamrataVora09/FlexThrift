@@ -601,7 +601,7 @@ class SellerApi extends BaseApiController
                     $update['is_active'] = 0;
                 }
                 $db->table('user_subscriptions')->where('id', $activeSub['id'])->update($update);
-                
+
                 if (isset($update['is_active']) && $update['is_active'] === 0) {
                     $this->recalibrateUserSubscriptions($userId, 'seller');
                 }
@@ -2535,7 +2535,7 @@ class SellerApi extends BaseApiController
                 return $this->respond(['success' => false, 'message' => 'Coupon usage limit reached.']);
         }
 
-        $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+        $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
         if ((float) $plan['price'] < $cpnMinPurchase)
             return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
 
@@ -2596,7 +2596,7 @@ class SellerApi extends BaseApiController
         $couponId = null;
         if ($couponCode) {
             $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
-            $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+            $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
             $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
             if (
                 $coupon && $basePrice >= $cpnMinPurchase

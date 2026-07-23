@@ -898,11 +898,13 @@ class AdminApi extends BaseApiController
         $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
         if (!$coupon) return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
 
-        $expiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
-        if ($expiresAt && strtotime($expiresAt) < time()) return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+        $usedInTable = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
+        $usedInSubs  = $db->table('user_subscriptions')->where('coupon_id', $coupon['id'])->where('payment_status', 'paid')->countAllResults();
+        $usedCount   = max((int)($coupon['used_count'] ?? 0), $usedInTable, $usedInSubs);
 
-        $minPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
-        if ((float)$plan['price'] < $minPurchase) return $this->respond(['success' => false, 'message' => 'Min purchase required: ₹' . $minPurchase]);
+        if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
+            if ($usedCount >= (int)$coupon['usage_limit']) return $this->respond(['success' => false, 'message' => 'Coupon usage limit reached.']);
+        }
 
         $discount = $coupon['discount_type'] === 'percentage' ? ($plan['price'] * $coupon['discount_value'] / 100) : (float)$coupon['discount_value'];
         if ($coupon['max_discount'] && $discount > $coupon['max_discount']) $discount = $coupon['max_discount'];
@@ -933,13 +935,24 @@ class AdminApi extends BaseApiController
         }
 
         $discount = 0;
+        $couponId = null;
         if ($couponCode) {
             $cpn = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
             $cpnMinPurchase = (float)($cpn['min_order_amount'] ?? $cpn['min_purchase'] ?? 0);
             $cpnExpiresAt = $cpn['valid_until'] ?? $cpn['expires_at'] ?? null;
-            if ($cpn && $basePrice >= $cpnMinPurchase && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())) {
+
+            $usedInTable = $db->table('coupon_usage')->where('coupon_id', $cpn['id'])->countAllResults();
+            $usedInSubs  = $db->table('user_subscriptions')->where('coupon_id', $cpn['id'])->where('payment_status', 'paid')->countAllResults();
+            $usedCount   = max((int)($cpn['used_count'] ?? 0), $usedInTable, $usedInSubs);
+
+            if (
+                $cpn && $basePrice >= $cpnMinPurchase
+                && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())
+                && ($cpn['usage_limit'] === null || (int)$cpn['usage_limit'] <= 0 || $usedCount < (int)$cpn['usage_limit'])
+            ) {
                 $discount = $cpn['discount_type'] === 'percentage' ? ($basePrice * $cpn['discount_value'] / 100) : (float)$cpn['discount_value'];
                 if ($cpn['max_discount'] && $discount > $cpn['max_discount']) $discount = $cpn['max_discount'];
+                $couponId = $cpn['id'];
             }
         }
 
@@ -979,7 +992,7 @@ class AdminApi extends BaseApiController
             : '2099-12-31 23:59:59';
 
         $db->table('user_subscriptions')->insert([
-            'user_id' => $userId, 'plan_id' => $planId, 'starts_at' => $nowStr, 'expires_at' => $pendingExpiry,
+            'user_id' => $userId, 'plan_id' => $planId, 'coupon_id' => $couponId, 'starts_at' => $nowStr, 'expires_at' => $pendingExpiry,
             'usage_count' => 0, 'is_active' => 0, 'payment_status' => 'pending', 'amount_paid' => $final,
             'referral_discount_applied' => $referralDiscount, 'merchant_transaction_id' => $merchantOrderId,
         ]);
@@ -1031,6 +1044,19 @@ class AdminApi extends BaseApiController
                 'expires_at' => $expiresAt,
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
+
+            if (!empty($dbSub['coupon_id'])) {
+                $cId = (int)$dbSub['coupon_id'];
+                $existingUsage = $db->table('coupon_usage')->where(['coupon_id' => $cId, 'user_id' => $dbSub['user_id']])->get()->getRowArray();
+                if (!$existingUsage) {
+                    $db->table('coupon_usage')->insert([
+                        'coupon_id' => $cId,
+                        'user_id'   => $dbSub['user_id'],
+                        'used_at'   => date('Y-m-d H:i:s')
+                    ]);
+                }
+                $db->query("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?", [$cId]);
+            }
             $this->recalibrateUserSubscriptions($dbSub['user_id'], $plan['user_type']);
             
             // Sync with users table (Set to the absolute latest expiry)

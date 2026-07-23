@@ -2369,9 +2369,12 @@ class BuyerApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
         }
 
-        if ($coupon['usage_limit'] !== null) {
-            $usedCount = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
-            if ($usedCount >= $coupon['usage_limit']) {
+        $usedInTable = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
+        $usedInSubs  = $db->table('user_subscriptions')->where('coupon_id', $coupon['id'])->where('payment_status', 'paid')->countAllResults();
+        $usedCount   = max((int)($coupon['used_count'] ?? 0), $usedInTable, $usedInSubs);
+
+        if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
+            if ($usedCount >= (int)$coupon['usage_limit']) {
                 return $this->respond(['success' => false, 'message' => 'Coupon usage limit reached.']);
             }
         }
@@ -2447,9 +2450,15 @@ class BuyerApi extends BaseApiController
             $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
             $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
             $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
+            
+            $usedInTable = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
+            $usedInSubs  = $db->table('user_subscriptions')->where('coupon_id', $coupon['id'])->where('payment_status', 'paid')->countAllResults();
+            $usedCount   = max((int)($coupon['used_count'] ?? 0), $usedInTable, $usedInSubs);
+
             if (
                 $coupon && $basePrice >= $cpnMinPurchase
                 && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())
+                && ($coupon['usage_limit'] === null || (int)$coupon['usage_limit'] <= 0 || $usedCount < (int)$coupon['usage_limit'])
             ) {
                 if ($coupon['discount_type'] === 'percentage') {
                     $discount = ($basePrice * $coupon['discount_value']) / 100;
@@ -2535,6 +2544,7 @@ class BuyerApi extends BaseApiController
         $db->table('user_subscriptions')->insert([
             'user_id' => $userId,
             'plan_id' => $planId,
+            'coupon_id' => $couponId,
             'starts_at' => $startsAt,
             'expires_at' => $expiresAt,
             'usage_count' => 0,
@@ -2638,6 +2648,19 @@ class BuyerApi extends BaseApiController
                     'expires_at' => $expiresAt,
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
+
+                if (!empty($dbSub['coupon_id'])) {
+                    $cId = (int)$dbSub['coupon_id'];
+                    $existingUsage = $db->table('coupon_usage')->where(['coupon_id' => $cId, 'user_id' => $dbSub['user_id']])->get()->getRowArray();
+                    if (!$existingUsage) {
+                        $db->table('coupon_usage')->insert([
+                            'coupon_id' => $cId,
+                            'user_id'   => $dbSub['user_id'],
+                            'used_at'   => date('Y-m-d H:i:s')
+                        ]);
+                    }
+                    $db->query("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?", [$cId]);
+                }
 
                 $this->recalibrateUserSubscriptions($dbSub['user_id'], 'buyer');
 

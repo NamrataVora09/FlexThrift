@@ -922,10 +922,16 @@ class SharedApi extends BaseApiController
         foreach ($coupons as &$coupon) {
             $minAmount = $coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0;
             $validUntil = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
+            
+            $usedInTable = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
+            $usedInSubs  = $db->table('user_subscriptions')->where('coupon_id', $coupon['id'])->where('payment_status', 'paid')->countAllResults();
+            $usedCount   = max((int)($coupon['used_count'] ?? 0), $usedInTable, $usedInSubs);
+
             $coupon['min_order_amount'] = $minAmount;
-            $coupon['min_purchase'] = $minAmount;
-            $coupon['valid_until'] = $validUntil;
-            $coupon['expires_at'] = $validUntil;
+            $coupon['min_purchase']     = $minAmount;
+            $coupon['valid_until']      = $validUntil;
+            $coupon['expires_at']       = $validUntil;
+            $coupon['used_count']       = (string)$usedCount;
         }
         return $this->respond(['success' => true, 'data' => $coupons]);
     }
