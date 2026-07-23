@@ -4550,23 +4550,31 @@ private function processImage($source, $subDir): ?string
         if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
 
         $inserted = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $fields = $db->getFieldNames('coupons');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
             $code = strtoupper(trim($data['code'] ?? ''));
             $discountValue = $data['discount_value'] ?? '';
             if (!$code || !$discountValue) { $skipped++; $errors[] = "Row {$row}: code or discount_value missing"; continue; }
             try {
-                $db->table('coupons')->insert([
+                $minAmt = $data['min_order_amount'] ?? $data['min_purchase'] ?? 0;
+                $validUntil = !empty($data['valid_until']) ? $data['valid_until'] : (!empty($data['expires_at']) ? $data['expires_at'] : null);
+                
+                $rowPayload = [
                     'code' => $code,
                     'discount_type' => $data['discount_type'] ?? 'percentage',
                     'discount_value' => $discountValue,
-                    'min_order_amount' => $data['min_order_amount'] ?? 0,
                     'usage_limit' => $data['usage_limit'] ?? 0,
-                    'valid_from' => !empty($data['valid_from']) ? $data['valid_from'] : null,
-                    'valid_until' => !empty($data['valid_until']) ? $data['valid_until'] : null,
                     'is_active' => 1,
                     'created_at' => $now,
-                ]);
+                ];
+                if (in_array('min_order_amount', $fields)) $rowPayload['min_order_amount'] = $minAmt;
+                if (in_array('min_purchase', $fields)) $rowPayload['min_purchase'] = $minAmt;
+                if (in_array('valid_until', $fields)) $rowPayload['valid_until'] = $validUntil;
+                if (in_array('expires_at', $fields)) $rowPayload['expires_at'] = $validUntil;
+                if (in_array('valid_from', $fields) && !empty($data['valid_from'])) $rowPayload['valid_from'] = $data['valid_from'];
+
+                $db->table('coupons')->insert($rowPayload);
                 $inserted++;
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }

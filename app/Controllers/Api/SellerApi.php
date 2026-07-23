@@ -2525,7 +2525,8 @@ class SellerApi extends BaseApiController
         if (!$coupon)
             return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
 
-        if ($coupon['expires_at'] && strtotime($coupon['expires_at']) < time())
+        $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
+        if ($cpnExpiresAt && strtotime($cpnExpiresAt) < time())
             return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
 
         if ($coupon['usage_limit'] !== null) {
@@ -2534,8 +2535,9 @@ class SellerApi extends BaseApiController
                 return $this->respond(['success' => false, 'message' => 'Coupon usage limit reached.']);
         }
 
-        if ((float) $plan['price'] < (float) $coupon['min_purchase'])
-            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $coupon['min_purchase']]);
+        $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+        if ((float) $plan['price'] < $cpnMinPurchase)
+            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
 
         $discountValue = 0;
         if ($coupon['discount_type'] === 'percentage') {
@@ -2594,9 +2596,11 @@ class SellerApi extends BaseApiController
         $couponId = null;
         if ($couponCode) {
             $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
+            $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+            $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
             if (
-                $coupon && $basePrice >= (float) $coupon['min_purchase']
-                && (!$coupon['expires_at'] || strtotime($coupon['expires_at']) >= time())
+                $coupon && $basePrice >= $cpnMinPurchase
+                && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())
             ) {
                 if ($coupon['discount_type'] === 'percentage') {
                     $discount = ($basePrice * $coupon['discount_value']) / 100;

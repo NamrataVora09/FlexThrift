@@ -918,10 +918,14 @@ class SharedApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $coupons = $db->table('coupons')->orderBy('created_at', 'DESC')->get()->getResultArray();
-        // Map database column names to frontend expected names
+        // Map database column names to frontend expected names & support legacy keys
         foreach ($coupons as &$coupon) {
-            $coupon['min_order_amount'] = $coupon['min_purchase'];
-            $coupon['valid_until'] = $coupon['expires_at'];
+            $minAmount = $coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0;
+            $validUntil = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
+            $coupon['min_order_amount'] = $minAmount;
+            $coupon['min_purchase'] = $minAmount;
+            $coupon['valid_until'] = $validUntil;
+            $coupon['expires_at'] = $validUntil;
         }
         return $this->respond(['success' => true, 'data' => $coupons]);
     }
@@ -932,26 +936,35 @@ class SharedApi extends BaseApiController
         $db = \Config\Database::connect();
         
         // Handle expiry date - if only date is provided, set it to end of that day
+        $rawExpiry = $data['valid_until'] ?? $data['expires_at'] ?? null;
         $expiresAt = null;
-        if (!empty($data['valid_until'])) {
-            $expiresAt = $data['valid_until'];
+        if (!empty($rawExpiry)) {
+            $expiresAt = $rawExpiry;
             // If it's just a date (YYYY-MM-DD), append 23:59:59 to make it end of day
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiresAt)) {
                 $expiresAt .= ' 23:59:59';
             }
         }
         
-        $db->table('coupons')->insert([
+        $fields = $db->getFieldNames('coupons');
+        $minAmt = $data['min_order_amount'] ?? $data['min_purchase'] ?? 0;
+
+        $insertData = [
             'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
             'discount_value' => $data['discount_value'] ?? 0,
-            'min_purchase' => $data['min_order_amount'] ?? 0,
             'max_discount' => ($data['max_discount'] ?? null) ?: null,
             'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
-            'expires_at' => $expiresAt,
             'is_active' => 1,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
+
+        if (in_array('min_order_amount', $fields)) $insertData['min_order_amount'] = $minAmt;
+        if (in_array('min_purchase', $fields)) $insertData['min_purchase'] = $minAmt;
+        if (in_array('valid_until', $fields)) $insertData['valid_until'] = $expiresAt;
+        if (in_array('expires_at', $fields)) $insertData['expires_at'] = $expiresAt;
+        if (in_array('created_at', $fields)) $insertData['created_at'] = date('Y-m-d H:i:s');
+
+        $db->table('coupons')->insert($insertData);
         return $this->respond(['success' => true, 'message' => 'Coupon created'], 201);
     }
 
@@ -961,25 +974,34 @@ class SharedApi extends BaseApiController
         $db = \Config\Database::connect();
         
         // Handle expiry date - if only date is provided, set it to end of that day
+        $rawExpiry = $data['valid_until'] ?? $data['expires_at'] ?? null;
         $expiresAt = null;
-        if (!empty($data['valid_until'])) {
-            $expiresAt = $data['valid_until'];
+        if (!empty($rawExpiry)) {
+            $expiresAt = $rawExpiry;
             // If it's just a date (YYYY-MM-DD), append 23:59:59 to make it end of day
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiresAt)) {
                 $expiresAt .= ' 23:59:59';
             }
         }
         
-        $db->table('coupons')->where('id', $id)->update([
+        $fields = $db->getFieldNames('coupons');
+        $minAmt = $data['min_order_amount'] ?? $data['min_purchase'] ?? 0;
+
+        $updateData = [
             'code' => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
             'discount_value' => $data['discount_value'] ?? 0,
-            'min_purchase' => $data['min_order_amount'] ?? 0,
             'max_discount' => ($data['max_discount'] ?? null) ?: null,
             'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
-            'expires_at' => $expiresAt,
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
+
+        if (in_array('min_order_amount', $fields)) $updateData['min_order_amount'] = $minAmt;
+        if (in_array('min_purchase', $fields)) $updateData['min_purchase'] = $minAmt;
+        if (in_array('valid_until', $fields)) $updateData['valid_until'] = $expiresAt;
+        if (in_array('expires_at', $fields)) $updateData['expires_at'] = $expiresAt;
+        if (in_array('updated_at', $fields)) $updateData['updated_at'] = date('Y-m-d H:i:s');
+
+        $db->table('coupons')->where('id', $id)->update($updateData);
         return $this->respond(['success' => true, 'message' => 'Coupon updated']);
     }
 

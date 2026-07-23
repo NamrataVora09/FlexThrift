@@ -898,9 +898,11 @@ class AdminApi extends BaseApiController
         $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
         if (!$coupon) return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
 
-        if ($coupon['expires_at'] && strtotime($coupon['expires_at']) < time()) return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+        $expiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
+        if ($expiresAt && strtotime($expiresAt) < time()) return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
 
-        if ((float)$plan['price'] < (float)$coupon['min_purchase']) return $this->respond(['success' => false, 'message' => 'Min purchase required: ₹' . $coupon['min_purchase']]);
+        $minPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+        if ((float)$plan['price'] < $minPurchase) return $this->respond(['success' => false, 'message' => 'Min purchase required: ₹' . $minPurchase]);
 
         $discount = $coupon['discount_type'] === 'percentage' ? ($plan['price'] * $coupon['discount_value'] / 100) : (float)$coupon['discount_value'];
         if ($coupon['max_discount'] && $discount > $coupon['max_discount']) $discount = $coupon['max_discount'];
@@ -933,7 +935,9 @@ class AdminApi extends BaseApiController
         $discount = 0;
         if ($couponCode) {
             $cpn = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
-            if ($cpn && $basePrice >= (float)$cpn['min_purchase'] && (!$cpn['expires_at'] || strtotime($cpn['expires_at']) >= time())) {
+            $cpnMinPurchase = (float)($cpn['min_order_amount'] ?? $cpn['min_purchase'] ?? 0);
+            $cpnExpiresAt = $cpn['valid_until'] ?? $cpn['expires_at'] ?? null;
+            if ($cpn && $basePrice >= $cpnMinPurchase && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())) {
                 $discount = $cpn['discount_type'] === 'percentage' ? ($basePrice * $cpn['discount_value'] / 100) : (float)$cpn['discount_value'];
                 if ($cpn['max_discount'] && $discount > $cpn['max_discount']) $discount = $cpn['max_discount'];
             }
