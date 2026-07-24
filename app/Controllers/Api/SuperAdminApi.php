@@ -4549,13 +4549,17 @@ private function processImage($source, $subDir): ?string
         $csv = $this->parseCsv($this->request->getFile('csv_file'));
         if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
 
-        $inserted = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $inserted = 0; $updated = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
         $fields = $db->getFieldNames('coupons');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
             $code = strtoupper(trim($data['code'] ?? ''));
             $discountValue = $data['discount_value'] ?? '';
-            if (!$code || !$discountValue) { $skipped++; $errors[] = "Row {$row}: code or discount_value missing"; continue; }
+            if (!$code || $discountValue === '' || $discountValue === null) { 
+                $skipped++; 
+                $errors[] = "Row {$row}: code or discount_value missing"; 
+                continue; 
+            }
             try {
                 $minAmt = $data['min_order_amount'] ?? $data['min_purchase'] ?? 0;
                 $validUntil = !empty($data['valid_until']) ? $data['valid_until'] : (!empty($data['expires_at']) ? $data['expires_at'] : null);
@@ -4566,7 +4570,6 @@ private function processImage($source, $subDir): ?string
                     'discount_value' => $discountValue,
                     'usage_limit' => $data['usage_limit'] ?? 0,
                     'is_active' => 1,
-                    'created_at' => $now,
                 ];
                 if (in_array('min_order_amount', $fields)) $rowPayload['min_order_amount'] = $minAmt;
                 if (in_array('min_purchase', $fields)) $rowPayload['min_purchase'] = $minAmt;
@@ -4574,11 +4577,19 @@ private function processImage($source, $subDir): ?string
                 if (in_array('expires_at', $fields)) $rowPayload['expires_at'] = $validUntil;
                 if (in_array('valid_from', $fields) && !empty($data['valid_from'])) $rowPayload['valid_from'] = $data['valid_from'];
 
-                $db->table('coupons')->insert($rowPayload);
-                $inserted++;
+                $existing = $db->table('coupons')->where('code', $code)->get()->getRowArray();
+                if ($existing) {
+                    if (in_array('updated_at', $fields)) $rowPayload['updated_at'] = $now;
+                    $db->table('coupons')->where('id', $existing['id'])->update($rowPayload);
+                    $updated++;
+                } else {
+                    $rowPayload['created_at'] = $now;
+                    $db->table('coupons')->insert($rowPayload);
+                    $inserted++;
+                }
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} coupons inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} coupons inserted, {$updated} updated, {$skipped} skipped.", 'inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     public function bulkUploadSubscriptionPlans()
@@ -4587,17 +4598,17 @@ private function processImage($source, $subDir): ?string
         $csv = $this->parseCsv($this->request->getFile('csv_file'));
         if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
 
-        $inserted = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $inserted = 0; $updated = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
             $name = trim($data['name'] ?? $data['plan_name'] ?? '');
             $userType = strtolower(trim($data['user_type'] ?? ''));
-            $price = $data['price'] ?? '';
+            $price = $data['price'] ?? $data['final_price'] ?? '';
             
-            // Validation
-            if (!$name || !$price || !in_array($userType, ['buyer', 'seller'])) {
+            // Basic validation
+            if (!$name || $price === '' || $price === null || !in_array($userType, ['buyer', 'seller'])) {
                 $skipped++;
-                $errors[] = "Row {$row}: name, price, or valid user_type (buyer/seller) missing";
+                $errors[] = "Row {$row}: name, price/final_price, or valid user_type (buyer/seller) missing";
                 continue;
             }
 
@@ -4605,27 +4616,58 @@ private function processImage($source, $subDir): ?string
             if ($planType === 'limit') $planType = 'quantity';
             if (!in_array($planType, ['quantity', 'duration'])) $planType = 'duration';
 
+            // Plan-type mandatory validations
+            if ($planType === 'quantity') {
+                $qty = $data['limit_value'] ?? $data['qty'] ?? $data['quantity'] ?? '';
+                if ($qty === '' || $qty === null || !is_numeric($qty) || (int)$qty <= 0) {
+                    $skipped++;
+                    $errors[] = "Row {$row}: Quantity (limit_value/qty) is mandatory and must be > 0 for quantity-based plans";
+                    continue;
+                }
+            } elseif ($planType === 'duration') {
+                $durationHours = $data['duration_hours'] ?? '';
+                if ($durationHours === '' || $durationHours === null || !is_numeric($durationHours) || (float)$durationHours <= 0) {
+                    $skipped++;
+                    $errors[] = "Row {$row}: duration_hours is mandatory and must be > 0 for duration-based plans";
+                    continue;
+                }
+            }
+
             try {
-                $db->table('subscription_plans')->insert([
-                    'name' => $name,
-                    'plan_name' => $name,
-                    'user_type' => $userType,
-                    'plan_type' => $planType,
-                    'limit_value' => (int)($data['limit_value'] ?? 0),
-                    'duration_hours' => (float)($data['duration_hours'] ?? 0),
-                    'price' => (float)$price,
-                    'base_price' => (float)($data['base_price'] ?? $price),
-                    'features' => !empty($data['features']) ? $data['features'] : null,
-                    'is_featured' => (int)($data['is_featured'] ?? 0),
+                $payload = [
+                    'name'             => $name,
+                    'plan_name'        => $name,
+                    'user_type'        => $userType,
+                    'plan_type'        => $planType,
+                    'limit_value'      => (int)($data['limit_value'] ?? $data['qty'] ?? $data['quantity'] ?? 0),
+                    'duration_hours'   => (float)($data['duration_hours'] ?? 0),
+                    'price'            => (float)$price,
+                    'base_price'       => (float)($data['base_price'] ?? $price),
+                    'features'         => !empty($data['features']) ? $data['features'] : null,
+                    'is_featured'      => (int)($data['is_featured'] ?? 0),
                     'is_most_selected' => (int)($data['is_most_selected'] ?? 0),
-                    'is_active' => 1,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-                $inserted++;
+                    'is_active'        => 1,
+                    'updated_at'       => $now,
+                ];
+
+                $existing = $db->table('subscription_plans')
+                    ->where('name', $name)
+                    ->where('user_type', $userType)
+                    ->get()->getRowArray();
+
+                if ($existing) {
+                    $db->table('subscription_plans')
+                        ->where('id', $existing['id'])
+                        ->update($payload);
+                    $updated++;
+                } else {
+                    $payload['created_at'] = $now;
+                    $db->table('subscription_plans')->insert($payload);
+                    $inserted++;
+                }
             } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} plans inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
+        return $this->respond(['success' => true, 'message' => "{$inserted} plans inserted, {$updated} updated, {$skipped} skipped.", 'inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors]);
     }
 
     // ── User Reports Management ──────────────────────────────
