@@ -1120,4 +1120,67 @@ class AdminApi extends BaseApiController
             ->get()->getResultArray();
         return $this->respond(['success' => true, 'data' => $logs]);
     }
+
+    /**
+     * POST /api/v1/admin/activate-free-plan/{planId}
+     * Activates a free plan without payment gateway (admin context)
+     */
+    public function activateFreePlan($planId)
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId = $jwtUser['user_id'];
+        $db = \Config\Database::connect();
+
+        $plan = $db->table('subscription_plans')
+            ->where(['id' => $planId, 'is_active' => 1])
+            ->get()->getRowArray();
+        if (!$plan) {
+            return $this->respond(['success' => false, 'message' => 'Plan not found or inactive'], 404);
+        }
+
+        // Verify plan is actually free
+        $chargeModel = new \App\Models\PlatformChargeModel();
+        $activeCharges = $chargeModel->getActiveCharges();
+        $totalCharges = 0;
+        foreach ($activeCharges as $charge) {
+            $amt = $charge['charge_type'] === 'percentage'
+                ? ($plan['price'] * $charge['charge_value']) / 100
+                : (float) $charge['charge_value'];
+            $totalCharges += $amt;
+        }
+
+        $total = max(0, (float) $plan['price'] + $totalCharges);
+        if ($total > 0) {
+            return $this->respond(['success' => false, 'message' => 'This plan requires payment'], 400);
+        }
+
+        // Activate the subscription
+        $subscriptionModel = new \App\Models\SubscriptionModel();
+        $expiryDate = null;
+        if ($plan['duration_hours'] > 0) {
+            $expiryDate = date('Y-m-d H:i:s', time() + ($plan['duration_hours'] * 3600));
+        }
+
+        $subscriptionData = [
+            'user_id'        => $userId,
+            'plan_id'        => $plan['id'],
+            'plan_name'      => $plan['name'],
+            'plan_type'      => $plan['plan_type'],
+            'limit_value'    => $plan['limit_value'],
+            'duration_hours' => $plan['duration_hours'],
+            'price'          => $plan['price'],
+            'status'         => 'active',
+            'activated_at'   => date('Y-m-d H:i:s'),
+            'expires_at'     => $expiryDate,
+            'payment_status' => 'completed',
+            'payment_method' => 'free',
+        ];
+
+        $subscriptionId = $subscriptionModel->insert($subscriptionData);
+        if (!$subscriptionId) {
+            return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
+        }
+
+        return $this->respond(['success' => true, 'message' => 'Plan activated successfully']);
+    }
 }

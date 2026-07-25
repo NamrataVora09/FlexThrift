@@ -106,6 +106,7 @@ function register_api_routes($routes)
         $routes->post('apply-coupon', 'Api\BuyerApi::applyCoupon');
         $routes->post('initiate-payment', 'Api\BuyerApi::initiatePayment');
         $routes->post('initiate-order-payment', 'Api\BuyerApi::initiateOrderPayment');
+        $routes->post('activate-free-plan/(:num)', 'Api\BuyerApi::activateFreePlan/$1');
     });
 
     // Public/Semi-public Subscription check
@@ -138,6 +139,7 @@ function register_api_routes($routes)
         $routes->get('plan-checkout-details/(:num)', 'Api\SellerApi::planCheckoutDetails/$1');
         $routes->post('apply-coupon', 'Api\SellerApi::applyCoupon');
         $routes->post('initiate-payment', 'Api\SellerApi::initiatePayment');
+        $routes->post('activate-free-plan/(:num)', 'Api\SellerApi::activateFreePlan/$1');
     });
     $routes->get('seller/verify-payment', 'Api\SellerApi::verifyPayment');
 
@@ -200,6 +202,7 @@ function register_api_routes($routes)
         $routes->get('plan-checkout-details/(:num)', 'Api\AdminApi::planCheckoutDetails/$1');
         $routes->post('apply-coupon', 'Api\AdminApi::applyCoupon');
         $routes->post('initiate-payment', 'Api\AdminApi::initiatePayment');
+        $routes->post('activate-free-plan/(:num)', 'Api\AdminApi::activateFreePlan/$1');
         $routes->get('payment-callback', 'Api\AdminApi::verifyPayment');
         $routes->get('verify-payment', 'Api\AdminApi::verifyPayment');
         $routes->get('dashboard', 'Api\AdminApi::dashboard');
