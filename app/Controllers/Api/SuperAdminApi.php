@@ -4634,6 +4634,26 @@ private function processImage($source, $subDir): ?string
             }
 
             try {
+                $isFeatured = (int)($data['is_featured'] ?? 0);
+
+                $existing = $db->table('subscription_plans')
+                    ->where('name', $name)
+                    ->where('user_type', $userType)
+                    ->get()->getRowArray();
+
+                // Enforce only ONE premium plan per user_type.
+                // Before saving a featured plan, clear is_featured on all other
+                // plans of the same user_type (same rule as togglePlanFeatured).
+                if ($isFeatured) {
+                    $clearBuilder = $db->table('subscription_plans')
+                        ->where('user_type', $userType)
+                        ->where('is_featured', 1);
+                    if ($existing) {
+                        $clearBuilder->where('id !=', $existing['id']);
+                    }
+                    $clearBuilder->update(['is_featured' => 0, 'updated_at' => $now]);
+                }
+
                 $payload = [
                     'name'             => $name,
                     'plan_name'        => $name,
@@ -4644,16 +4664,11 @@ private function processImage($source, $subDir): ?string
                     'price'            => (float)$price,
                     'base_price'       => (float)($data['base_price'] ?? $price),
                     'features'         => !empty($data['features']) ? $data['features'] : null,
-                    'is_featured'      => (int)($data['is_featured'] ?? 0),
+                    'is_featured'      => $isFeatured,
                     'is_most_selected' => (int)($data['is_most_selected'] ?? 0),
                     'is_active'        => 1,
                     'updated_at'       => $now,
                 ];
-
-                $existing = $db->table('subscription_plans')
-                    ->where('name', $name)
-                    ->where('user_type', $userType)
-                    ->get()->getRowArray();
 
                 if ($existing) {
                     $db->table('subscription_plans')
