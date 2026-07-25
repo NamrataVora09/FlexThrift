@@ -2311,29 +2311,27 @@ class BuyerApi extends BaseApiController
         }
 
         // Activate the subscription
-        $subscriptionModel = new \App\Models\SubscriptionModel();
-        $expiryDate = null;
-        if ($plan['duration_hours'] > 0) {
-            $expiryDate = date('Y-m-d H:i:s', time() + ($plan['duration_hours'] * 3600));
-        }
+        $now = date('Y-m-d H:i:s');
+        $expiryDate = $plan['duration_hours'] > 0
+            ? date('Y-m-d H:i:s', time() + (int) round((float) $plan['duration_hours'] * 3600))
+            : '2099-12-31 23:59:59';
 
-        $subscriptionData = [
-            'user_id' => $userId,
-            'plan_id' => $plan['id'],
-            'plan_name' => $plan['name'],
-            'plan_type' => $plan['plan_type'],
-            'limit_value' => $plan['limit_value'],
-            'duration_hours' => $plan['duration_hours'],
-            'price' => $plan['price'],
-            'status' => 'active',
-            'activated_at' => date('Y-m-d H:i:s'),
-            'expires_at' => $expiryDate,
-            'payment_status' => 'completed',
-            'payment_method' => 'free',
-        ];
-
-        $subscriptionId = $subscriptionModel->insert($subscriptionData);
-        if (!$subscriptionId) {
+        $inserted = $db->table('user_subscriptions')->insert([
+            'user_id'          => $userId,
+            'plan_id'          => $plan['id'],
+            'coupon_id'        => null,
+            'starts_at'        => $now,
+            'expires_at'       => $expiryDate,
+            'usage_count'      => 0,
+            'is_active'        => 1,
+            'payment_status'   => 'paid',
+            'amount_paid'      => 0,
+            'referral_discount_applied' => 0,
+            'merchant_transaction_id'   => null,
+            'created_at'       => $now,
+            'updated_at'       => $now,
+        ]);
+        if (!$inserted) {
             return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
         }
 
