@@ -1594,7 +1594,7 @@ class SharedApi extends BaseApiController
             ->where('us.user_id', $jwtUser['user_id'])
             ->where('us.amount_paid', 0)
             ->where('us.payment_status', 'paid')
-            ->groupWhere('us.merchant_transaction_id IS NULL OR us.merchant_transaction_id = ""', null, false);
+            ->where('(us.merchant_transaction_id IS NULL OR us.merchant_transaction_id = "")');
 
         // Apply same date-range filter on the free-sub query
         switch ($range) {
