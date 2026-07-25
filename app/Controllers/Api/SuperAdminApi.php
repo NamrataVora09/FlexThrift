@@ -4553,29 +4553,58 @@ private function processImage($source, $subDir): ?string
         $fields = $db->getFieldNames('coupons');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
-            $code = strtoupper(trim($data['code'] ?? ''));
-            $discountValue = $data['discount_value'] ?? '';
-            if (!$code || $discountValue === '' || $discountValue === null) { 
+
+            $code = strtoupper(trim($data['code'] ?? $data['coupon_code'] ?? $data['coupon code'] ?? ''));
+            $discountTypeRaw = trim($data['discount_type'] ?? $data['discount type'] ?? '');
+            $discountValue = $data['discount_value'] ?? $data['discount value'] ?? '';
+            $usageLimit = $data['usage_limit'] ?? $data['usage limit'] ?? '';
+            $expiryDateRaw = trim($data['expiry_date'] ?? $data['expiry date'] ?? $data['valid_until'] ?? $data['valid until'] ?? $data['expires_at'] ?? $data['expires at'] ?? '');
+
+            // Required fields check: Coupon Code, Discount Type, Discount Value, Usage Limit, Expiry Date
+            if ($code === '' || $discountTypeRaw === '' || $discountValue === '' || $discountValue === null || $usageLimit === '' || $usageLimit === null || $expiryDateRaw === '') { 
                 $skipped++; 
-                $errors[] = "Row {$row}: code or discount_value missing"; 
+                $errors[] = "Row {$row}: Coupon Code, Discount Type, Discount Value, Usage Limit, and Expiry Date are required fields."; 
                 continue; 
             }
+
             try {
-                $minAmt = $data['min_order_amount'] ?? $data['min_purchase'] ?? 0;
-                $validUntil = !empty($data['valid_until']) ? $data['valid_until'] : (!empty($data['expires_at']) ? $data['expires_at'] : null);
+                $discountType = strtolower($discountTypeRaw);
+                if (in_array($discountType, ['percent', 'percentage', '%'])) {
+                    $discountType = 'percentage';
+                } elseif (in_array($discountType, ['fixed', 'flat', 'amount'])) {
+                    $discountType = 'fixed';
+                }
+
+                $time = strtotime($expiryDateRaw);
+                if ($time !== false) {
+                    if (date('H:i:s', $time) === '00:00:00' && !str_contains($expiryDateRaw, ':')) {
+                        $expiryDate = date('Y-m-d 23:59:59', $time);
+                    } else {
+                        $expiryDate = date('Y-m-d H:i:s', $time);
+                    }
+                } else {
+                    $expiryDate = $expiryDateRaw;
+                }
+
+                $minAmt = $data['min_order_amount'] ?? $data['min_purchase'] ?? $data['min order amount'] ?? $data['min purchase'] ?? 0;
                 
                 $rowPayload = [
-                    'code' => $code,
-                    'discount_type' => $data['discount_type'] ?? 'percentage',
-                    'discount_value' => $discountValue,
-                    'usage_limit' => $data['usage_limit'] ?? 0,
-                    'is_active' => 1,
+                    'code'           => $code,
+                    'discount_type'  => $discountType,
+                    'discount_value' => (float)$discountValue,
+                    'usage_limit'    => (int)$usageLimit,
+                    'is_active'      => 1,
                 ];
-                if (in_array('min_order_amount', $fields)) $rowPayload['min_order_amount'] = $minAmt;
-                if (in_array('min_purchase', $fields)) $rowPayload['min_purchase'] = $minAmt;
-                if (in_array('valid_until', $fields)) $rowPayload['valid_until'] = $validUntil;
-                if (in_array('expires_at', $fields)) $rowPayload['expires_at'] = $validUntil;
-                if (in_array('valid_from', $fields) && !empty($data['valid_from'])) $rowPayload['valid_from'] = $data['valid_from'];
+
+                if (in_array('min_order_amount', $fields)) $rowPayload['min_order_amount'] = (float)$minAmt;
+                if (in_array('min_purchase', $fields)) $rowPayload['min_purchase'] = (float)$minAmt;
+                if (in_array('valid_until', $fields)) $rowPayload['valid_until'] = $expiryDate;
+                if (in_array('expires_at', $fields)) $rowPayload['expires_at'] = $expiryDate;
+                
+                $validFromRaw = trim($data['valid_from'] ?? $data['valid from'] ?? '');
+                if (in_array('valid_from', $fields) && !empty($validFromRaw)) {
+                    $rowPayload['valid_from'] = date('Y-m-d H:i:s', strtotime($validFromRaw));
+                }
 
                 $existing = $db->table('coupons')->where('code', $code)->get()->getRowArray();
                 if ($existing) {
@@ -4584,12 +4613,23 @@ private function processImage($source, $subDir): ?string
                     $updated++;
                 } else {
                     $rowPayload['created_at'] = $now;
+                    if (in_array('updated_at', $fields)) $rowPayload['updated_at'] = $now;
                     $db->table('coupons')->insert($rowPayload);
                     $inserted++;
                 }
-            } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
+            } catch (\Exception $e) { 
+                $skipped++; 
+                $errors[] = "Row {$row}: " . $e->getMessage(); 
+            }
         }
-        return $this->respond(['success' => true, 'message' => "{$inserted} coupons inserted, {$updated} updated, {$skipped} skipped.", 'inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors]);
+        return $this->respond([
+            'success'  => true, 
+            'message'  => "{$inserted} coupons inserted, {$updated} updated, {$skipped} skipped.", 
+            'inserted' => $inserted, 
+            'updated'  => $updated, 
+            'skipped'  => $skipped, 
+            'errors'   => $errors
+        ]);
     }
 
     public function bulkUploadSubscriptionPlans()

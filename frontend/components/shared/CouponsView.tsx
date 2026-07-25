@@ -108,9 +108,9 @@ export default function CouponsView() {
 
         <BulkCsvUpload
           endpoint="/superadmin/bulk-upload-coupons"
-          templateCsv="code,discount_type,discount_value,min_order_amount,usage_limit,valid_from,valid_until\nSAVE20,percentage,20,500,100,2026-01-01,2026-12-31\nFLAT50,fixed,50,200,50,,"
+          templateCsv="code,discount_type,discount_value,usage_limit,expiry_date,min_order_amount\nSAVE20,percentage,20,100,2026-12-31,500\nFLAT50,fixed,50,50,2026-12-31,200"
           templateFilename="coupons_template.csv"
-          formatGuide="code (required), discount_type (percentage/fixed), discount_value (required), min_order_amount, usage_limit, valid_from, valid_until"
+          formatGuide="code (required), discount_type (required: percentage/fixed), discount_value (required), usage_limit (required), expiry_date (required), min_order_amount (optional)"
           title="Bulk Upload Coupons"
         />
 
