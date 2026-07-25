@@ -1585,13 +1585,67 @@ class SharedApi extends BaseApiController
         }
 
         $allTransactions = $txBuilder->get()->getResultArray();
+
+        // Synthesize virtual transaction rows for free-plan activations
+        // (amount_paid = 0, no merchant_transaction_id → never written to transactions table)
+        $freeSubBuilder = $db->table('user_subscriptions us')
+            ->select('us.*, sp.name as plan_name_from_plan, sp.user_type as plan_user_type')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
+            ->where('us.user_id', $jwtUser['user_id'])
+            ->where('us.amount_paid', 0)
+            ->where('us.payment_status', 'paid')
+            ->groupWhere('us.merchant_transaction_id IS NULL OR us.merchant_transaction_id = ""', null, false);
+
+        // Apply same date-range filter on the free-sub query
+        switch ($range) {
+            case 'current_week':    $freeSubBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
+            case 'last_week':       $freeSubBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
+            case 'last_2_weeks':    $freeSubBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
+            case 'current_month':   $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00')); break;
+            case 'last_month':      $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
+            case 'last_2_months':   $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
+            case 'current_quarter': $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
+            case 'last_quarter':    $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
+            case 'last_2_quarters': $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
+            case 'current_year':    $freeSubBuilder->where('us.created_at >=', date('Y-01-01 00:00:00')); break;
+            case 'last_year':       $freeSubBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
+            case 'last_2_years':    $freeSubBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
+            default: break;
+        }
+
+        $freeSubRows = $freeSubBuilder->get()->getResultArray();
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+
+        foreach ($freeSubRows as $fs) {
+            $allTransactions[] = [
+                'id'               => 'free-' . $fs['id'],
+                'order_id'         => null,
+                'user_id'          => $fs['user_id'],
+                'user_name'        => $user['name'] ?? '',
+                'transaction_type' => 'debit',
+                'amount'           => 0,
+                'description'      => 'Free Plan: ' . ($fs['plan_name_from_plan'] ?? 'Unknown'),
+                'payment_method'   => 'free',
+                'transaction_id'   => null,
+                'type'             => 'subscription',
+                'payment_status'   => 'paid',
+                'plan_type'        => $fs['plan_user_type'] ?? null,
+                'starts_at'        => $fs['starts_at'],
+                'expires_at'       => $fs['expires_at'],
+                'created_at'       => $fs['created_at'],
+            ];
+        }
+
+        // Re-sort combined list by created_at DESC
+        usort($allTransactions, fn($a, $b) => strtotime($b['created_at']) - strtotime($a['created_at']));
+
         $successfulTxs = array_filter($allTransactions, fn($t) => in_array($t['payment_status'], ['paid', 'completed', 'success']));
+
 
         // Fetch all active plans for fallback lookup
         $allPlans = $db->table('subscription_plans')->where('is_active', 1)->get()->getResultArray();
 
-        // Fetch user info for return data
-        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        // Fetch user info for return data (already fetched above as $user)
         $userType = $user['user_type'] ?? $jwtUser['role'];
 
         // Populate plan_type fallback if join failed

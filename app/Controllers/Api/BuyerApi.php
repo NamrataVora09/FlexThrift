@@ -596,6 +596,37 @@ class BuyerApi extends BaseApiController
             ->limit(50)
             ->get()->getResultArray();
 
+        // Synthesize free plan subscriptions
+        $freeSubRows = $db->table('user_subscriptions us')
+            ->select('us.*, sp.name as plan_name')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
+            ->where('us.user_id', $jwtUser['user_id'])
+            ->where('us.amount_paid', 0)
+            ->where('us.payment_status', 'paid')
+            ->groupWhere('us.merchant_transaction_id IS NULL OR us.merchant_transaction_id = ""', null, false)
+            ->get()->getResultArray();
+
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+
+        foreach ($freeSubRows as $fs) {
+            $transactions[] = [
+                'id'               => 'free-' . $fs['id'],
+                'order_id'         => null,
+                'user_id'          => $fs['user_id'],
+                'user_name'        => $user['name'] ?? '',
+                'transaction_type' => 'debit',
+                'amount'           => 0,
+                'description'      => 'Free Plan: ' . ($fs['plan_name'] ?? 'Unknown'),
+                'payment_method'   => 'free',
+                'transaction_id'   => null,
+                'type'             => 'subscription',
+                'payment_status'   => 'paid',
+                'created_at'       => $fs['created_at'],
+            ];
+        }
+
+        usort($transactions, fn($a, $b) => strtotime($b['created_at']) - strtotime($a['created_at']));
+
         return $this->respond(['success' => true, 'data' => $transactions]);
     }
 
