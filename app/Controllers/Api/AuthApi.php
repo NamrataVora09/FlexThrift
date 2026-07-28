@@ -667,11 +667,12 @@ class AuthApi extends BaseApiController
             $referralBalance = 0.0;
         }
 
-        // Total ever earned = current balance remaining + amount already spent as referral discounts
+        // Total ever earned = current balance remaining + amount already spent as referral discounts on COMPLETED payments
         $discountUsed = 0.0;
         $discountResult = $db->table('user_subscriptions')
             ->selectSum('referral_discount_applied')
             ->where('user_id', $user['id'])
+            ->where('payment_status', 'completed')
             ->get()->getRowArray();
         if ($discountResult && isset($discountResult['referral_discount_applied'])) {
             $discountUsed = (float) $discountResult['referral_discount_applied'];
