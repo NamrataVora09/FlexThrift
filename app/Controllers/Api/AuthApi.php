@@ -672,7 +672,7 @@ class AuthApi extends BaseApiController
         $discountResult = $db->table('user_subscriptions')
             ->selectSum('referral_discount_applied')
             ->where('user_id', $user['id'])
-            ->where('payment_status', 'completed')
+            ->where('payment_status', 'paid')
             ->get()->getRowArray();
         if ($discountResult && isset($discountResult['referral_discount_applied'])) {
             $discountUsed = (float) $discountResult['referral_discount_applied'];
