@@ -40,7 +40,7 @@ class CreateOffersTable extends Migration
             ],
             'status' => [
                 'type' => 'ENUM',
-                'constraint' => ['pending', 'accepted', 'rejected', 'withdrawn'],
+                'constraint' => ['pending', 'accepted', 'rejected', 'withdrawn', 'missed', 'cancelled','negotiating'],
                 'default' => 'pending',
             ],
             'seller_remarks' => [
