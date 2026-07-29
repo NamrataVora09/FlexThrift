@@ -1056,7 +1056,7 @@ export default function OffersView({ role, apiPath, perspective, noLayout, noHea
               </div>
               <div className="modal-footer border-0 px-4 pb-4">
                 <button className="btn btn-light rounded-pill px-4" onClick={() => setActionModal(null)}>
-                  {actionModal.action === 'cancel' ? 'No, keep it' : 'Close'}
+                  {actionModal.action === 'cancel' ? 'No, keep it' : 'cancel'}
                 </button>
                 <button
                   className={`btn rounded-pill px-4 fw-bold ${actionModal.action === 'accept' ? 'btn-yellow' : 'btn-red'}`}
@@ -2026,7 +2026,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                         style={{ fontSize: '0.82rem' }}
                         onClick={() => onCancel?.(o)}
                       >
-                        {o.status === 'rejected' ? 'Close Offer' : 'Cancel Offer'}
+                        {o.status === 'rejected' ? 'Cancel Offer' : 'Cancel Offer'}
                       </button>
                     </>
                   )}
@@ -2090,7 +2090,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                   {o.message}
                 </p>
               )}
-              {o.seller_remarks  && o.status !== 'pending' && o.offer_type=="rent" &&(
+              {o.seller_remarks && o.status !== 'pending' && (
                 <div className="mb-3 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
                   <i className="bi bi-reply-fill me-1"></i>
                   Seller: {o.seller_remarks}

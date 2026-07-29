@@ -17,8 +17,8 @@ function RentalCalendar({ bookedRanges, startDate, endDate, onRangeChange, minRe
   onRangeChange: (s: string, e: string) => void;
   minRentalDays?: number;
 }) {
-    const { toastError } = useToast();
-  
+  const { toastError } = useToast();
+
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const [view, setView] = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const [phase, setPhase] = useState<'start' | 'end'>('start');
@@ -704,7 +704,7 @@ export default function Page() {
                               Change Dates
                             </button>
                           )}
-                          
+
                           {o.status === 'negotiating' && (
                             <button
                               className="btn px-4 py-2 rounded-pill fw-bold text-white"
