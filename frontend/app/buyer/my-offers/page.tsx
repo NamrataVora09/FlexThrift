@@ -812,30 +812,14 @@ export default function Page() {
                       <strong>Action Required:</strong> Seller has responded to your offer.
                     </div>
                   )}
-                  {o.seller_remarks && o.offer_type === "rent" && (
+                  {o.seller_remarks && (
                     <div className="mb-3 p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle small text-dark fw-medium">
                       <i className="bi bi-reply-fill me-1"></i>
                       Seller: {o.seller_remarks}
                     </div>
                   )}
 
-                  {/* Conflict Alert */}
-                  {o.conflict_info && (
-                    <div className="conflict-alert mb-3">
-                      <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: '1.2rem' }}></i>
-                      <div>
-                        {o.conflict_info.message}
-                        {o.conflict_info.type === 'rent_conflict' && (
-                          <>
-                            <br />
-                            <small style={{ fontWeight: 400, opacity: 0.75 }}>
-                              You can try changing your dates to something else.
-                            </small>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                
 
                   {/* Logs Section */}
                   {(() => {
@@ -975,11 +959,7 @@ export default function Page() {
               </div>
             )}
 
-            {cdError && (
-              <div className="alert alert-danger py-2 px-3 mt-3 rounded-3 small border-0">
-                <i className="bi bi-exclamation-triangle-fill me-1"></i>{cdError}
-              </div>
-            )}
+
 
             <div className="d-flex gap-2 mt-4">
               <button

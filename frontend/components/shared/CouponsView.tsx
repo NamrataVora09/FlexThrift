@@ -19,7 +19,8 @@ const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px so
 const modalLabel: React.CSSProperties = { fontWeight: 700, fontSize: '0.8rem', color: '#4b566b', marginBottom: 6, display: 'block' };
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 
-const emptyForm = { code: '', discount_type: 'percentage', discount_value: '', min_order_amount: '0', usage_limit: '', valid_until: '' };
+// usage_limit defaults to '0' (unlimited) so backend receives 0, not ""
+const emptyForm = { code: '', discount_type: 'percentage', discount_value: '', min_order_amount: '0', usage_limit: '0', valid_until: '' };
 
 export default function CouponsView() {
   const { toastSuccess, toastError } = useToast();
@@ -43,8 +44,10 @@ export default function CouponsView() {
     setEditId(c.id);
     setForm({
       code: c.code, discount_type: c.discount_type, discount_value: c.discount_value,
-      min_order_amount: c.min_order_amount,
-      usage_limit: c.usage_limit || '', valid_until: c.valid_until ? c.valid_until.split(' ')[0] : '',
+      min_order_amount: c.min_order_amount || '0',
+      // If usage_limit is null/0/"0"/empty, default to '0' (unlimited)
+      usage_limit: c.usage_limit && Number(c.usage_limit) > 0 ? c.usage_limit : '0',
+      valid_until: c.valid_until ? c.valid_until.split(' ')[0] : '',
     });
     setShowModal(true);
   };
@@ -52,9 +55,15 @@ export default function CouponsView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    // Ensure usage_limit is sent as 0 (not "") when blank/zero — 0 means unlimited
+    const payload = {
+      ...form,
+      usage_limit: form.usage_limit === '' ? '0' : form.usage_limit,
+      min_order_amount: form.min_order_amount === '' ? '0' : form.min_order_amount,
+    };
     const res = editId
-      ? await api.post(`/shared/coupons/${editId}/update`, form)
-      : await api.post('/shared/coupons', form);
+      ? await api.post(`/shared/coupons/${editId}/update`, payload)
+      : await api.post('/shared/coupons', payload);
     setSaving(false);
     if (res.success) {
       toastSuccess(editId ? 'coupon_update_success' : 'coupon_create_success', editId ? 'Coupon updated' : 'Coupon created');
@@ -84,6 +93,10 @@ export default function CouponsView() {
 
   const activeCoupons = coupons.filter(c => Number(c.is_active)).length;
 
+  // Helper: is usage limit "unlimited"?
+  const isUnlimited = (limit: string | null | undefined) =>
+    !limit || limit === '0' || Number(limit) <= 0;
+
   return (
     <DashboardLayout requiredRoles={['super_admin']}>
       <div className="container-fluid">
@@ -108,9 +121,9 @@ export default function CouponsView() {
 
         <BulkCsvUpload
           endpoint="/superadmin/bulk-upload-coupons"
-          templateCsv="code,discount_type,discount_value,usage_limit,expiry_date,min_order_amount\nSAVE20,percentage,20,100,2026-12-31,500\nFLAT50,fixed,50,50,2026-12-31,200"
+          templateCsv="code,discount_type,discount_value,expiry_date,usage_limit,min_order_amount\nSAVE20,percentage,20,2026-12-31,,500\nFLAT50,fixed,50,2026-12-31,5,200"
           templateFilename="coupons_template.csv"
-          formatGuide="code (required), discount_type (required: percentage/fixed), discount_value (required), usage_limit (required), expiry_date (required), min_order_amount (optional)"
+          formatGuide="code (required), discount_type (required: percentage/fixed), discount_value (required), expiry_date (required), usage_limit (optional — leave blank for unlimited, or enter a number for max uses per user), min_order_amount (optional — defaults to 0)"
           title="Bulk Upload Coupons"
         />
 
@@ -125,7 +138,7 @@ export default function CouponsView() {
                   <thead><tr>
                     <th style={{ ...thStyle, paddingLeft: '1.5rem' }}>Code</th>
                     <th style={thStyle}>Discount</th>
-                    <th style={thStyle}>Usage</th>
+                    <th style={thStyle}>Usage Limit</th>
                     <th style={thStyle}>Min Purchase</th>
                     <th style={thStyle}>Expires At</th>
                     <th style={thStyle}>Status</th>
@@ -143,9 +156,23 @@ export default function CouponsView() {
                           </span>
                         </td>
                         <td style={tdStyle}>
-                          <small className="text-muted">Limit: {Number(c.usage_limit) ? c.usage_limit : '0'}</small>
+                          {isUnlimited(c.usage_limit) ? (
+                            <span className="badge px-2 py-1" style={{ background: 'rgba(108,117,125,0.1)', color: '#6c757d', fontWeight: 600, fontSize: '0.75rem' }}>
+                              ♾ Unlimited
+                            </span>
+                          ) : (
+                            <small className="text-muted">{c.usage_limit} uses/user</small>
+                          )}
                         </td>
-                        <td style={tdStyle}>₹{Number(c.min_order_amount).toFixed(2)}</td>
+                        <td style={tdStyle}>
+                          {Number(c.min_order_amount) > 0 ? (
+                            `₹${Number(c.min_order_amount).toFixed(2)}`
+                          ) : (
+                            <span className="badge px-2 py-1" style={{ background: 'rgba(13,202,240,0.1)', color: '#0dcaf0', fontWeight: 600, fontSize: '0.75rem' }}>
+                              No min. required
+                            </span>
+                          )}
+                        </td>
                         <td style={tdStyle}>
                           {c.valid_until ? new Date(c.valid_until).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : <span className="text-muted">Never</span>}
                         </td>
@@ -215,16 +242,16 @@ export default function CouponsView() {
 
                   {/* Min Purchase */}
                   <div className="mb-3">
-                    <label style={modalLabel}>Min Purchase (₹)</label>
-                    <input type="number" className="form-control" style={inputStyle}
+                    <label style={modalLabel}>Min Purchase (₹) <span style={{ fontWeight: 400, color: '#aaa' }}>— leave 0 for no minimum</span></label>
+                    <input type="number" min="0" className="form-control" style={inputStyle}
                       value={form.min_order_amount} onChange={(e) => setForm({ ...form, min_order_amount: e.target.value })} />
                   </div>
 
                   {/* Usage Limit + Expiry */}
                   <div className="row g-3">
                     <div className="col-6">
-                      <label style={modalLabel}>Usage Limit</label>
-                      <input type="number" className="form-control" style={inputStyle} placeholder="Optional"
+                      <label style={modalLabel}>Uses Per User <span style={{ fontWeight: 400, color: '#aaa' }}>— 0 = Unlimited</span></label>
+                      <input type="number" min="0" className="form-control" style={inputStyle} placeholder="0 = Unlimited"
                         value={form.usage_limit} onChange={(e) => setForm({ ...form, usage_limit: e.target.value })} />
                     </div>
                     <div className="col-6">

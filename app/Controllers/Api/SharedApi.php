@@ -940,7 +940,15 @@ class SharedApi extends BaseApiController
     {
         $data = $this->request->getJSON(true);
         $db = \Config\Database::connect();
-        
+
+        $code = strtoupper(trim($data['code'] ?? ''));
+
+        // Prevent duplicate coupon codes
+        $existing = $db->table('coupons')->where('code', $code)->get()->getRowArray();
+        if ($existing) {
+            return $this->respond(['success' => false, 'message' => 'Coupon code already exists. Use a different code.'], 409);
+        }
+
         // Handle expiry date - if only date is provided, set it to end of that day
         $rawExpiry = $data['valid_until'] ?? $data['expires_at'] ?? null;
         $expiresAt = null;
@@ -951,24 +959,30 @@ class SharedApi extends BaseApiController
                 $expiresAt .= ' 23:59:59';
             }
         }
-        
+
         $fields = $db->getFieldNames('coupons');
-        $minAmt = $data['min_order_amount'] ?? $data['min_purchase'] ?? 0;
+        $minAmt = (float)($data['min_order_amount'] ?? $data['min_purchase'] ?? 0);
+
+        // usage_limit: 0 or empty means unlimited — store NULL so per-user check is skipped
+        $rawLimit = $data['usage_limit'] ?? null;
+        $usageLimit = ($rawLimit !== null && $rawLimit !== '' && (int)$rawLimit > 0)
+            ? (int)$rawLimit
+            : null;
 
         $insertData = [
-            'code' => strtoupper($data['code'] ?? ''),
+            'code'          => $code,
             'discount_type' => $data['discount_type'] ?? 'percentage',
-            'discount_value' => $data['discount_value'] ?? 0,
-            'max_discount' => ($data['max_discount'] ?? null) ?: null,
-            'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
-            'is_active' => 1,
+            'discount_value'=> $data['discount_value'] ?? 0,
+            'max_discount'  => ($data['max_discount'] ?? null) ?: null,
+            'usage_limit'   => $usageLimit,
+            'is_active'     => 1,
         ];
 
         if (in_array('min_order_amount', $fields)) $insertData['min_order_amount'] = $minAmt;
-        if (in_array('min_purchase', $fields)) $insertData['min_purchase'] = $minAmt;
-        if (in_array('valid_until', $fields)) $insertData['valid_until'] = $expiresAt;
-        if (in_array('expires_at', $fields)) $insertData['expires_at'] = $expiresAt;
-        if (in_array('created_at', $fields)) $insertData['created_at'] = date('Y-m-d H:i:s');
+        if (in_array('min_purchase', $fields))     $insertData['min_purchase']     = $minAmt;
+        if (in_array('valid_until', $fields))      $insertData['valid_until']      = $expiresAt;
+        if (in_array('expires_at', $fields))       $insertData['expires_at']       = $expiresAt;
+        if (in_array('created_at', $fields))       $insertData['created_at']       = date('Y-m-d H:i:s');
 
         $db->table('coupons')->insert($insertData);
         return $this->respond(['success' => true, 'message' => 'Coupon created'], 201);
@@ -978,7 +992,7 @@ class SharedApi extends BaseApiController
     {
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
         $db = \Config\Database::connect();
-        
+
         // Handle expiry date - if only date is provided, set it to end of that day
         $rawExpiry = $data['valid_until'] ?? $data['expires_at'] ?? null;
         $expiresAt = null;
@@ -989,23 +1003,29 @@ class SharedApi extends BaseApiController
                 $expiresAt .= ' 23:59:59';
             }
         }
-        
+
         $fields = $db->getFieldNames('coupons');
-        $minAmt = $data['min_order_amount'] ?? $data['min_purchase'] ?? 0;
+        $minAmt = (float)($data['min_order_amount'] ?? $data['min_purchase'] ?? 0);
+
+        // usage_limit: 0 or empty means unlimited — store NULL so per-user check is skipped
+        $rawLimit = $data['usage_limit'] ?? null;
+        $usageLimit = ($rawLimit !== null && $rawLimit !== '' && (int)$rawLimit > 0)
+            ? (int)$rawLimit
+            : null;
 
         $updateData = [
-            'code' => strtoupper($data['code'] ?? ''),
+            'code'          => strtoupper($data['code'] ?? ''),
             'discount_type' => $data['discount_type'] ?? 'percentage',
-            'discount_value' => $data['discount_value'] ?? 0,
-            'max_discount' => ($data['max_discount'] ?? null) ?: null,
-            'usage_limit' => ($data['usage_limit'] ?? 0) ?: 0,
+            'discount_value'=> $data['discount_value'] ?? 0,
+            'max_discount'  => ($data['max_discount'] ?? null) ?: null,
+            'usage_limit'   => $usageLimit,
         ];
 
         if (in_array('min_order_amount', $fields)) $updateData['min_order_amount'] = $minAmt;
-        if (in_array('min_purchase', $fields)) $updateData['min_purchase'] = $minAmt;
-        if (in_array('valid_until', $fields)) $updateData['valid_until'] = $expiresAt;
-        if (in_array('expires_at', $fields)) $updateData['expires_at'] = $expiresAt;
-        if (in_array('updated_at', $fields)) $updateData['updated_at'] = date('Y-m-d H:i:s');
+        if (in_array('min_purchase', $fields))     $updateData['min_purchase']     = $minAmt;
+        if (in_array('valid_until', $fields))      $updateData['valid_until']      = $expiresAt;
+        if (in_array('expires_at', $fields))       $updateData['expires_at']       = $expiresAt;
+        if (in_array('updated_at', $fields))       $updateData['updated_at']       = date('Y-m-d H:i:s');
 
         $db->table('coupons')->where('id', $id)->update($updateData);
         return $this->respond(['success' => true, 'message' => 'Coupon updated']);

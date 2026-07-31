@@ -4560,10 +4560,11 @@ private function processImage($source, $subDir): ?string
             $usageLimit = $data['usage_limit'] ?? $data['usage limit'] ?? '';
             $expiryDateRaw = trim($data['expiry_date'] ?? $data['expiry date'] ?? $data['valid_until'] ?? $data['valid until'] ?? $data['expires_at'] ?? $data['expires at'] ?? '');
 
-            // Required fields check: Coupon Code, Discount Type, Discount Value, Usage Limit, Expiry Date
-            if ($code === '' || $discountTypeRaw === '' || $discountValue === '' || $discountValue === null || $usageLimit === '' || $usageLimit === null || $expiryDateRaw === '') { 
+            // Required fields check: Coupon Code, Discount Type, Discount Value, Expiry Date
+            // usage_limit is optional (empty = unlimited)
+            if ($code === '' || $discountTypeRaw === '' || $discountValue === '' || $discountValue === null || $expiryDateRaw === '') { 
                 $skipped++; 
-                $errors[] = "Row {$row}: Coupon Code, Discount Type, Discount Value, Usage Limit, and Expiry Date are required fields."; 
+                $errors[] = "Row {$row}: Coupon Code, Discount Type, Discount Value, and Expiry Date are required fields."; 
                 continue; 
             }
 
@@ -4587,12 +4588,18 @@ private function processImage($source, $subDir): ?string
                 }
 
                 $minAmt = $data['min_order_amount'] ?? $data['min_purchase'] ?? $data['min order amount'] ?? $data['min purchase'] ?? 0;
-                
+
+                // usage_limit: empty/0 = unlimited, store NULL
+                $rawUsageLimit = $usageLimit ?? null;
+                $parsedUsageLimit = ($rawUsageLimit !== null && $rawUsageLimit !== '' && (int)$rawUsageLimit > 0)
+                    ? (int)$rawUsageLimit
+                    : null;
+
                 $rowPayload = [
                     'code'           => $code,
                     'discount_type'  => $discountType,
                     'discount_value' => (float)$discountValue,
-                    'usage_limit'    => (int)$usageLimit,
+                    'usage_limit'    => $parsedUsageLimit,
                     'is_active'      => 1,
                 ];
 

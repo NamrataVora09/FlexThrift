@@ -2398,13 +2398,15 @@ class BuyerApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
         }
 
-        $usedInTable = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
-        $usedInSubs  = $db->table('user_subscriptions')->where('coupon_id', $coupon['id'])->where('payment_status', 'paid')->countAllResults();
-        $usedCount   = max((int)($coupon['used_count'] ?? 0), $usedInTable, $usedInSubs);
-
+        // Per-user usage limit: check how many times THIS user has used this coupon
         if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
-            if ($usedCount >= (int)$coupon['usage_limit']) {
-                return $this->respond(['success' => false, 'message' => 'Coupon usage limit reached.']);
+            $buyerUserId = $jwtUser['user_id'];
+            $userUsedCount = $db->table('coupon_usage')
+                ->where('coupon_id', $coupon['id'])
+                ->where('user_id', $buyerUserId)
+                ->countAllResults();
+            if ($userUsedCount >= (int)$coupon['usage_limit']) {
+                return $this->respond(['success' => false, 'message' => 'You have already used this coupon the maximum number of times.']);
             }
         }
 
@@ -2479,15 +2481,20 @@ class BuyerApi extends BaseApiController
             $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
             $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
             $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
-            
-            $usedInTable = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
-            $usedInSubs  = $db->table('user_subscriptions')->where('coupon_id', $coupon['id'])->where('payment_status', 'paid')->countAllResults();
-            $usedCount   = max((int)($coupon['used_count'] ?? 0), $usedInTable, $usedInSubs);
+
+            // Per-user usage limit check
+            $cpnUserUsed = 0;
+            if ($coupon && $coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
+                $cpnUserUsed = $db->table('coupon_usage')
+                    ->where('coupon_id', $coupon['id'])
+                    ->where('user_id', $userId)
+                    ->countAllResults();
+            }
 
             if (
                 $coupon && $basePrice >= $cpnMinPurchase
                 && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())
-                && ($coupon['usage_limit'] === null || (int)$coupon['usage_limit'] <= 0 || $usedCount < (int)$coupon['usage_limit'])
+                && ($coupon['usage_limit'] === null || (int)$coupon['usage_limit'] <= 0 || $cpnUserUsed < (int)$coupon['usage_limit'])
             ) {
                 if ($coupon['discount_type'] === 'percentage') {
                     $discount = ($basePrice * $coupon['discount_value']) / 100;

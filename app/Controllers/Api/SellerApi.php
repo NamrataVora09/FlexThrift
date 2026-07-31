@@ -866,16 +866,23 @@ class SellerApi extends BaseApiController
 
         $otherOffers = $otherOffersQuery->get()->getResultArray();
 
+        $autoRejectRemark = ($offerType === 'rent')
+            ? 'Another buyer\'s offer for these dates has been accepted.'
+            : 'Another buyer\'s offer for this product has been accepted.';
+        $autoRejectNotif = ($offerType === 'rent')
+            ? 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" for overlapping dates was accepted. Your offer has been closed.'
+            : 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" was accepted. Your offer has been closed.';
+
         foreach ($otherOffers as $other) {
             $db->table('offers')->where('id', $other['id'])->update([
                 'status' => 'rejected',
-                'seller_remarks' => 'Another buyer\'s offer for these dates has been accepted.',
+                'seller_remarks' => $autoRejectRemark,
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
             $db->table('notifications')->insert([
                 'user_id' => $other['buyer_id'],
                 'title' => 'Offer Not Accepted',
-                'message' => 'Sorry, another buyer\'s offer on "' . ($product['title'] ?? '') . '" for overlapping dates was accepted. Your offer has been closed.',
+                'message' => $autoRejectNotif,
                 'type' => 'offer',
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
@@ -2558,10 +2565,15 @@ class SellerApi extends BaseApiController
         if ($cpnExpiresAt && strtotime($cpnExpiresAt) < time())
             return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
 
-        if ($coupon['usage_limit'] !== null) {
-            $usedCount = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
-            if ($usedCount >= $coupon['usage_limit'])
-                return $this->respond(['success' => false, 'message' => 'Coupon usage limit reached.']);
+        // Per-user usage limit: check how many times THIS user has used this coupon
+        if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
+            $userId = $jwtUser['user_id'];
+            $userUsedCount = $db->table('coupon_usage')
+                ->where('coupon_id', $coupon['id'])
+                ->where('user_id', $userId)
+                ->countAllResults();
+            if ($userUsedCount >= (int)$coupon['usage_limit'])
+                return $this->respond(['success' => false, 'message' => 'You have already used this coupon the maximum number of times.']);
         }
 
         $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
@@ -2631,14 +2643,24 @@ class SellerApi extends BaseApiController
                 $coupon && $basePrice >= $cpnMinPurchase
                 && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())
             ) {
-                if ($coupon['discount_type'] === 'percentage') {
-                    $discount = ($basePrice * $coupon['discount_value']) / 100;
-                    if ($coupon['max_discount'] && $discount > $coupon['max_discount'])
-                        $discount = $coupon['max_discount'];
-                } else {
-                    $discount = (float) $coupon['discount_value'];
+                // Per-user usage limit check
+                $cpnUserUsed = 0;
+                if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
+                    $cpnUserUsed = $db->table('coupon_usage')
+                        ->where('coupon_id', $coupon['id'])
+                        ->where('user_id', $userId)
+                        ->countAllResults();
                 }
-                $couponId = $coupon['id'];
+                if ($coupon['usage_limit'] === null || (int)$coupon['usage_limit'] <= 0 || $cpnUserUsed < (int)$coupon['usage_limit']) {
+                    if ($coupon['discount_type'] === 'percentage') {
+                        $discount = ($basePrice * $coupon['discount_value']) / 100;
+                        if ($coupon['max_discount'] && $discount > $coupon['max_discount'])
+                            $discount = $coupon['max_discount'];
+                    } else {
+                        $discount = (float) $coupon['discount_value'];
+                    }
+                    $couponId = $coupon['id'];
+                }
             }
         }
 
