@@ -2737,6 +2737,7 @@ class SellerApi extends BaseApiController
         $db->table('user_subscriptions')->insert([
             'user_id' => $userId,
             'plan_id' => $planId,
+            'coupon_id' => $couponId,
             'starts_at' => $startsAt,
             'expires_at' => $expiresAt,
             'usage_count' => 0,
@@ -2839,6 +2840,16 @@ class SellerApi extends BaseApiController
                     'subscription_expires_at' => $expiresAt,
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
+
+                if (!empty($dbSub['coupon_id'])) {
+                    $cId = (int)$dbSub['coupon_id'];
+                    $db->table('coupon_usage')->insert([
+                        'coupon_id' => $cId,
+                        'user_id'   => $dbSub['user_id'],
+                        'used_at'   => date('Y-m-d H:i:s')
+                    ]);
+                    $db->query("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?", [$cId]);
+                }
 
                 log_message('error', 'Subscription activated successfully for user_id: ' . $dbSub['user_id']);
                 $db->table('transactions')->insert([
