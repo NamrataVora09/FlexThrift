@@ -892,15 +892,23 @@ class AdminApi extends BaseApiController
         $planId = (int)($data['plan_id'] ?? 0);
         $db = \Config\Database::connect();
 
+        if (!$code)
+            return $this->respond(['success' => false, 'message' => 'Coupon code is required'], 400);
+
         $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
         if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
         $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
         if (!$coupon) return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
 
-        // Per-user usage limit: check how many times THIS user has used this coupon
+        // ── Expiry check ──────────────────────────────────────────────────────
+        $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
+        if ($cpnExpiresAt && strtotime($cpnExpiresAt) < time())
+            return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+
+        // ── Per-user usage limit ──────────────────────────────────────────────
         if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
-            $jwtUser   = $this->request->jwt_user;
+            $jwtUser     = $this->request->jwt_user;
             $adminUserId = $jwtUser['user_id'];
             $userUsedCount = $db->table('coupon_usage')
                 ->where('coupon_id', $coupon['id'])
@@ -910,8 +918,17 @@ class AdminApi extends BaseApiController
                 return $this->respond(['success' => false, 'message' => 'You have already used this coupon the maximum number of times.']);
         }
 
-        $discount = $coupon['discount_type'] === 'percentage' ? ($plan['price'] * $coupon['discount_value'] / 100) : (float)$coupon['discount_value'];
-        if ($coupon['max_discount'] && $discount > $coupon['max_discount']) $discount = $coupon['max_discount'];
+        // ── Minimum purchase check ────────────────────────────────────────────
+        $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+        if ((float)$plan['price'] < $cpnMinPurchase)
+            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
+
+        // ── Calculate discount ────────────────────────────────────────────────
+        $discount = $coupon['discount_type'] === 'percentage'
+            ? ($plan['price'] * $coupon['discount_value'] / 100)
+            : (float)$coupon['discount_value'];
+        if ($coupon['max_discount'] && $discount > $coupon['max_discount'])
+            $discount = $coupon['max_discount'];
 
         return $this->respond(['success' => true, 'message' => 'Coupon applied!', 'data' => ['discount' => round($discount, 2)]]);
     }
@@ -1169,24 +1186,43 @@ class AdminApi extends BaseApiController
             ? date('Y-m-d H:i:s', time() + (int) round((float) $plan['duration_hours'] * 3600))
             : '2099-12-31 23:59:59';
 
+        // ── QUEUE / STACKING OPTION (COMMENTED OUT) ──────────────────────────
+        // $latestActive = $db->table('user_subscriptions us')
+        //     ->join('subscription_plans sp', 'sp.id = us.plan_id')
+        //     ->where('us.user_id', $userId)
+        //     ->where('us.is_active', 1)
+        //     ->where('sp.user_type', $plan['user_type'])
+        //     ->where('us.expires_at >', date('Y-m-d H:i:s'))
+        //     ->orderBy('us.expires_at', 'DESC')
+        //     ->get()->getRowArray();
+        // $durationHours = (float) $plan['duration_hours'];
+        // $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+        // $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        // $expiryDate = $durationHours > 0
+        //     ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
+        //     : '2099-12-31 23:59:59';
+        // ─────────────────────────────────────────────────────────────────────
+
         $inserted = $db->table('user_subscriptions')->insert([
-            'user_id'          => $userId,
-            'plan_id'          => $plan['id'],
-            'coupon_id'        => null,
-            'starts_at'        => $now,
-            'expires_at'       => $expiryDate,
-            'usage_count'      => 0,
-            'is_active'        => 1,
-            'payment_status'   => 'paid',
-            'amount_paid'      => 0,
+            'user_id'                   => $userId,
+            'plan_id'                   => $plan['id'],
+            'coupon_id'                 => null,
+            'starts_at'                 => $now,
+            'expires_at'                => $expiryDate,
+            'usage_count'               => 0,
+            'is_active'                 => 1,
+            'payment_status'            => 'paid',
+            'amount_paid'               => 0,
             'referral_discount_applied' => 0,
             'merchant_transaction_id'   => null,
-            'created_at'       => $now,
-            'updated_at'       => $now,
+            'created_at'                => $now,
+            'updated_at'                => $now,
         ]);
         if (!$inserted) {
             return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
         }
+
+        // $this->recalibrateUserSubscriptions($userId, $plan['user_type']);
 
         return $this->respond(['success' => true, 'message' => 'Plan activated successfully']);
     }
