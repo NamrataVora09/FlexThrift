@@ -1057,13 +1057,13 @@ class AdminApi extends BaseApiController
             if (!empty($dbSub['coupon_id'])) {
                 $cId = (int)$dbSub['coupon_id'];
                 $existingUsage = $db->table('coupon_usage')->where(['coupon_id' => $cId, 'user_id' => $dbSub['user_id']])->get()->getRowArray();
-                if (!$existingUsage) {
+                
                     $db->table('coupon_usage')->insert([
                         'coupon_id' => $cId,
                         'user_id'   => $dbSub['user_id'],
                         'used_at'   => date('Y-m-d H:i:s')
                     ]);
-                }
+                
                 $db->query("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?", [$cId]);
             }
             $this->recalibrateUserSubscriptions($dbSub['user_id'], $plan['user_type']);
