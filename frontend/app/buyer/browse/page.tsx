@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { showToast } from '@/lib/toast';
-import { addToCart } from '@/lib/cart';
 import { addToWishlist, removeFromWishlist } from '@/lib/wishlist';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import Footer from '@/components/layout/Footer';
@@ -446,46 +445,20 @@ export default function BrowsePage() {
     return `/buyer/browse${qs ? `?${qs}` : ''}`;
   };
 
-  // ── API load: translate product_type_id → category_id for browse API ──────
+  // ── API load: attach product_type name if available ────────────────────────
   const load = (p: number, sp: URLSearchParams) => {
     setLoading(true);
     const apiParams = new URLSearchParams(sp.toString());
     apiParams.set('page', String(p));
 
-    // Translate product_type_id for the browse API
     const ptIds = (sp.get('product_type_id') || '').split(',').filter(Boolean);
-    if (ptIds.length > 0) {
-      const ptIdSet = new Set(ptIds);
-
-      if (!sp.get('category_id') && taxonomyRef.current) {
-        // Try to derive category_ids from the taxonomy relationship
-        const derivedCatIds = taxonomyRef.current.categories
-          .filter(cat => {
-            const ids = [
-              cat.product_type_id != null ? String(cat.product_type_id) : null,
-              ...parseTaxIds(cat.product_type_ids),
-            ].filter(Boolean) as string[];
-            return ids.some(id => ptIdSet.has(id));
-          })
-          .map(c => String(c.id));
-
-        if (derivedCatIds.length > 0) {
-          // Translation succeeded — use category_id, drop the product_type_id
-          apiParams.set('category_id', derivedCatIds.join(','));
-          apiParams.delete('product_type_id');
-        } else {
-          // No category link found — send product_type name AND keep product_type_id
-          // so the backend can use whichever it supports
-          const ptNames = taxonomyRef.current.product_types
-            .filter(pt => ptIdSet.has(String(pt.id)))
-            .map(pt => pt.name);
-          if (ptNames.length > 0) {
-            apiParams.set('product_type', ptNames.join(','));
-          }
-          // product_type_id stays in apiParams for direct backend filtering
-        }
+    if (ptIds.length > 0 && taxonomyRef.current) {
+      const ptNames = taxonomyRef.current.product_types
+        .filter(pt => ptIds.includes(String(pt.id)))
+        .map(pt => pt.name);
+      if (ptNames.length > 0) {
+        apiParams.set('product_type', ptNames.join(','));
       }
-      // If taxonomy not loaded yet, product_type_id stays in params as-is
     }
 
     fetch(`${API_BASE}/browse?${apiParams}`, { headers: getAuthHeaders() })
@@ -1200,17 +1173,11 @@ export default function BrowsePage() {
                 <AdBanner position="top_banner" page="browse" />
               </div>
 
-              {/* Product Grid */}
-              <section
-                className="em-grid"
+              {/* Product Grid — flex column of row-groups with inline ads between them */}
+              <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '0px 45px',
                   position: 'relative',
-                  padding:" 20px ",
-                  justifyContent:"center",
-                  alignItems:"center",
+                  padding: '20px',
                   minHeight: 200,
                   opacity: loading ? 0.5 : 1,
                   transition: 'opacity 0.3s ease',
@@ -1225,21 +1192,43 @@ export default function BrowsePage() {
                   </div>
                 )}
 
-                {sortedProducts.length > 0 ? sortedProducts.map((p, index) => (
-                  <Fragment key={p.id}>
-                    <ProductCard
-                      p={p}
-                      wishlisted={wishlist.some(id => Number(id) === Number(p.id))}
-                      onWishlist={handleWishlist}
-                    />
-                    {(index + 1) % 6 === 0 && (
-                      <div style={{ gridColumn: '1 / -1', margin: '20px 0' }}>
+                {sortedProducts.length > 0 ? (() => {
+                  // Split products into chunks of 6, render each chunk in its own 3-col grid
+                  // Always show an AdBanner after every chunk (including when < 6 products)
+                  const CHUNK = 6;
+                  const sections: React.ReactNode[] = [];
+                  for (let i = 0; i < sortedProducts.length; i += CHUNK) {
+                    const chunk = sortedProducts.slice(i, i + CHUNK);
+                    sections.push(
+                      <div
+                        key={`chunk-${i}`}
+                        className="em-grid"
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)',
+                          gap: '0px 45px',
+                        }}
+                      >
+                        {chunk.map((p) => (
+                          <ProductCard
+                            key={`product-${p.id}`}
+                            p={p}
+                            wishlisted={wishlist.some(id => Number(id) === Number(p.id))}
+                            onWishlist={handleWishlist}
+                          />
+                        ))}
+                      </div>
+                    );
+                    // Always insert an ad after every chunk
+                    sections.push(
+                      <div key={`ad-${i}`} style={{ width: '100%', margin: '20px 0' }}>
                         <AdBanner position="rows" page="browse" />
                       </div>
-                    )}
-                  </Fragment>
-                )) : !loading ? (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px 0' }}>
+                    );
+                  }
+                  return sections;
+                })() : !loading ? (
+                  <div style={{ textAlign: 'center', padding: '80px 0' }}>
                     <span className="material-symbols-outlined" style={{ fontSize: 64, color: '#acadad', display: 'block', marginBottom: 16 }}>search</span>
                     <h3 className="em-heading" style={{ fontWeight: 700, color: '#0c0f0f', marginBottom: 8 }}>No results found</h3>
                     <p style={{ color: '#5a5c5c' }}>Try adjusting your search or filters.</p>
@@ -1253,7 +1242,7 @@ export default function BrowsePage() {
                     )}
                   </div>
                 ) : null}
-              </section>
+              </div>
 
 
               {/* Pagination */}

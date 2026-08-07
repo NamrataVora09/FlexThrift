@@ -65,6 +65,7 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'Subscription', href: '/admin/subscriptions', icon: 'fa fa-credit-card' },
             { label: 'Referral Program', href: '/admin/referral', icon: 'fa fa-gift' },
             { label: 'Transactions / Reports', href: '/admin/transactions', icon: 'fa fa-receipt' },
+            { label: 'Help & Support', href: '/admin/help', icon: 'fa fa-circle-question' },
           ],
         },
         {

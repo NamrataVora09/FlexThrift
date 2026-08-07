@@ -42,6 +42,14 @@ export default function HelpView({ role }: Props) {
     setActiveFaqId(activeFaqId === id ? null : id);
   };
 
+  // Inject blue underline styles directly into <a> tags inside HTML answers
+  // (styled-jsx doesn't apply to dangerouslySetInnerHTML content)
+  const injectLinkStyles = (html: string) =>
+    html.replace(
+      /<a\b([^>]*)>/gi,
+      '<a$1 style="color:#1a56db;text-decoration:underline;font-weight:500;">'
+    );
+
   return (
     <DashboardLayout requiredRoles={[role]}>
       <style jsx>{`
@@ -83,7 +91,6 @@ export default function HelpView({ role }: Props) {
           font-family: 'Inter', sans-serif;
           font-size: 13px;
           line-height: 1.6;
-          color: #4a4a4a;
           border-top: 1px solid #f0f0f0;
         }
         .support-title {
@@ -102,6 +109,11 @@ export default function HelpView({ role }: Props) {
           border-radius: 16px;
           box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         }
+        .faq-answer :global(a) {
+          color: blue !important;
+          text-decoration: underline !important;
+        }
+        
         .chevron {
           transition: transform 0.3s ease;
         }
@@ -138,9 +150,10 @@ export default function HelpView({ role }: Props) {
                           <i className={`bi bi-chevron-down chevron`}></i>
                         </button>
                         <div className={`faq-answer-wrapper ${activeFaqId === item.id ? 'active' : ''}`}>
-                          <div className="faq-answer">
-                            {item.answer}
-                          </div>
+                          <div
+                            className="faq-answer"
+                            dangerouslySetInnerHTML={{ __html: injectLinkStyles(item.answer) }}
+                          />
                         </div>
                       </div>
                     )) : (

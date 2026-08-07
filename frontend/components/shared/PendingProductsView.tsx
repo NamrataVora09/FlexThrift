@@ -484,7 +484,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
                           <div className="row g-2">
                             <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => openComparison(r.id)}><i className="bi bi-eye me-1"></i>Review</button></div>
-                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: r.id, title: r.original_title, type: 'edit_request' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: r.id, title: r.original_title, type: 'edit_request' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject Changes</button></div>
                           </div>
                           <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => openComparison(r.id)}>
                             <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
@@ -555,7 +555,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
                           <div className="row g-2">
                             <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => setApproveModal({ id: p.id, title: p.title })}><i className="bi bi-check-lg me-1"></i>Approve</button></div>
-                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: p.id, title: p.title, type: 'product' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: p.id, title: p.title, type: 'edit_request' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject Changes</button></div>
                           </div>
                           <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => setAdminEditDiff(p)}>
                             <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
@@ -626,7 +626,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
                           <div className="row g-2">
                             <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => setApproveModal({ id: p.id, title: p.title })}><i className="bi bi-check-lg me-1"></i>Approve</button></div>
-                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: p.id, title: p.title, type: 'product' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: p.id, title: p.title, type: 'edit_request' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject Changes</button></div>
                           </div>
                           <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => setAdminEditDiff(p)}>
                             <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act

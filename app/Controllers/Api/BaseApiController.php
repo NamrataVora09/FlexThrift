@@ -104,6 +104,9 @@ class BaseApiController extends ResourceController
         'Only negotiating offers can be confirmed'                                => 'offer_must_be_negotiating',
         'Offer must be accepted before rating'                                    => 'offer_must_be_accepted_for_rating',
         'Date suggestions are only allowed on pending offers'                     => 'offer_suggest_pending_only',
+        'Date suggestions are only allowed on pending or negotiating offers'     => 'offer_suggest_pending_only',
+        'These dates conflict with an existing accepted booking.'                 => 'booking_dates_conflict',
+        'This product has already been sold to another buyer.'                    => 'product_already_sold',
         'Only pending or accepted (within window) offers can be rejected'         => 'offer_reject_status_error',
         'This offer has expired.'                                                 => 'offer_expired',
         'Action failed'                                                           => 'order_action_failed',
@@ -204,10 +207,26 @@ class BaseApiController extends ResourceController
 
         // ── COUPONS ──────────────────────────────────────────────────────────
         'Invalid or expired coupon code.'                                         => 'coupon_invalid',
+        'Invalid or expired coupon.'                                              => 'coupon_invalid',
         'Coupon has expired.'                                                     => 'coupon_expired',
         'Coupon usage limit reached.'                                             => 'coupon_usage_limit',
+        'You have already used this coupon the maximum number of times.'         => 'coupon_usage_limit',
         'Coupon code is required'                                                 => 'coupon_code_required',
+        'Coupon code is required.'                                                => 'coupon_code_required',
+        'Coupon code already exists. Use a different code.'                       => 'coupon_already_exists',
+        'Coupon code already exists.'                                             => 'coupon_already_exists',
         'Coupon applied!'                                                         => 'coupon_applied_success',
+        'Coupon applied successfully!'                                            => 'coupon_applied_success',
+        'Coupon created'                                                          => 'coupon_create_success',
+        'Coupon created successfully!'                                            => 'coupon_create_success',
+        'Coupon updated'                                                          => 'coupon_update_success',
+        'Coupon updated successfully!'                                            => 'coupon_update_success',
+        'Coupon toggled'                                                          => 'coupon_toggle_success',
+        'Coupon toggled successfully!'                                            => 'coupon_toggle_success',
+        'Coupon deleted'                                                          => 'coupon_delete_success',
+        'Coupon deleted successfully.'                                            => 'coupon_delete_success',
+        'Failed to save coupon.'                                                  => 'coupon_save_failed',
+        'Failed to delete coupon.'                                                => 'coupon_delete_failed',
 
         // ── PLANS & PAYMENTS ─────────────────────────────────────────────────
         'Plan not found'                                                          => 'plan_not_found',
@@ -217,10 +236,22 @@ class BaseApiController extends ResourceController
         'Payment verified and plans stacked!'                                     => 'payment_success',
         'Payment failed or was cancelled.'                                        => 'payment_failed',
         'Payment is being processed.'                                             => 'payment_processing',
+        'Payment is being processed…'                                             => 'payment_processing',
+        'Payment is still processing'                                             => 'payment_processing',
         'Transaction not found'                                                   => 'transaction_not_found',
         'Already active'                                                          => 'subscription_already_active',
         'Subscription activated'                                                  => 'subscription_activated',
         'No transaction ID provided'                                              => 'transaction_id_required',
+        'This plan requires payment'                                              => 'plan_requires_payment',
+        'Failed to activate subscription'                                         => 'subscription_activate_failed',
+        'Plan activated successfully'                                             => 'subscription_plan_activated',
+        'Payment successful! Subscription activated.'                             => 'payment_subscription_activated',
+        'Subscription is already active'                                          => 'subscription_already_active_verify',
+        'No active seller subscription found. Please subscribe to a seller plan to upload products.' => 'seller_subscription_required',
+        'Your subscription plan has 0 product uploads. Please upgrade your plan to upload products.' => 'seller_subscription_zero_uploads',
+        'Your buyer subscription expired on {date}. Please renew your plan to view contact details.' => 'buyer_subscription_expired',
+        'Your subscription has expired on {date}. Please renew your plan to upload products.'        => 'seller_subscription_expired',
+        'You have reached your product upload limit ({n} uploads). Please upgrade your plan to upload more products.' => 'seller_upload_limit_reached',
 
         // ── MISC BUYER ───────────────────────────────────────────────────────
         'Wishlist updated'                                                        => 'wishlist_update_success',
@@ -253,9 +284,13 @@ class BaseApiController extends ResourceController
         'Marked as Most Selected'                                                 => 'plan_most_selected',
         'Removed Most Selected'                                                   => 'plan_most_selected_removed',
         'Coupon created'                                                          => 'coupon_create_success',
+        'Coupon created successfully!'                                            => 'coupon_create_success',
         'Coupon updated'                                                          => 'coupon_update_success',
+        'Coupon updated successfully!'                                            => 'coupon_update_success',
         'Coupon toggled'                                                          => 'coupon_toggle_success',
+        'Coupon toggled successfully!'                                            => 'coupon_toggle_success',
         'Coupon deleted'                                                          => 'coupon_delete_success',
+        'Coupon deleted successfully.'                                            => 'coupon_delete_success',
         'Brand created'                                                           => 'brand_create_success',
         'Brand created successfully.'                                             => 'brand_create_success',
         'Brand updated.'                                                          => 'brand_updated',
@@ -391,7 +426,37 @@ class BaseApiController extends ResourceController
      */
     protected function translateMessage(string $message): string
     {
-        $key = self::$messageKeyMap[trim($message)] ?? null;
+        $trimmed = trim($message);
+
+        // ── Dynamic-template messages: embed runtime values via {placeholder} ──
+
+        // "Minimum purchase for this coupon is ₹500"
+        if (strpos($trimmed, 'Minimum purchase for this coupon is') === 0) {
+            $amount = str_replace('Minimum purchase for this coupon is ', '', $trimmed);
+            $template = getAppMessage('coupon_min_purchase', 'Minimum purchase for this coupon is {amount}');
+            return str_replace('{amount}', $amount, $template);
+        }
+
+        // "Your subscription has expired on 01 Jan 2025. Please renew your plan to upload products."
+        if (preg_match('/^Your subscription has expired on (.+)\. Please renew your plan to upload products\.$/', $trimmed, $m)) {
+            $template = getAppMessage('seller_subscription_expired', 'Your subscription has expired on {date}. Please renew your plan to upload products.');
+            return str_replace('{date}', $m[1], $template);
+        }
+
+        // "Your buyer subscription expired on 01 Jan 2025. Please renew your plan to view contact details."
+        if (preg_match('/^Your buyer subscription expired on (.+)\. Please renew your plan to view contact details\.$/', $trimmed, $m)) {
+            $template = getAppMessage('buyer_subscription_expired', 'Your buyer subscription expired on {date}. Please renew your plan to view contact details.');
+            return str_replace('{date}', $m[1], $template);
+        }
+
+        // "You have reached your product upload limit (10 uploads). Please upgrade your plan to upload more products."
+        if (preg_match('/^You have reached your product upload limit \((\d+) uploads\)\. Please upgrade your plan to upload more products\.$/', $trimmed, $m)) {
+            $template = getAppMessage('seller_upload_limit_reached', 'You have reached your product upload limit ({n} uploads). Please upgrade your plan to upload more products.');
+            return str_replace('{n}', $m[1], $template);
+        }
+
+        // ── Static messages: exact-string lookup ─────────────────────────────
+        $key = self::$messageKeyMap[$trimmed] ?? null;
         return $key ? getAppMessage($key, $message) : $message;
     }
 

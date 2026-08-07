@@ -18,6 +18,61 @@ interface AdBannerProps {
   className?: string;
 }
 
+/** Reusable video player with ONLY a mute/unmute button. Default: unmuted. */
+function VideoAdPlayer({
+  src,
+  className,
+  style,
+}: {
+  src: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [muted, setMuted] = useState(true); // must start muted for browser autoplay to work
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+      <video
+        src={src}
+        className={className}
+        style={style}
+        autoPlay
+        muted={muted}
+        loop
+        playsInline
+      />
+      {/* Mute / Unmute toggle — only control shown */}
+      <button
+        onClick={() => setMuted((prev) => !prev)}
+        title={muted ? 'Unmute' : 'Mute'}
+        aria-label={muted ? 'Unmute video' : 'Mute video'}
+        style={{
+          position: 'absolute',
+          bottom: 8,
+          right: 8,
+          zIndex: 10,
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          border: 'none',
+          background: 'rgba(0,0,0,0.45)',
+          color: '#fff',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 15,
+          transition: 'background 0.2s',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.7)')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.45)')}
+      >
+        <i className={muted ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill'} />
+      </button>
+    </div>
+  );
+}
+
 export default function AdBanner({ position, page, className = '' }: AdBannerProps) {
   const [ad, setAd] = useState<Ad | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,9 +121,13 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             <i className="bi bi-x-lg"></i>
           </button>
 
-          <div className="aspect-video bg-gray-100">
+          <div className="aspect-video bg-gray-100" style={{ position: 'relative' }}>
             {ad.ad_type === 'video' ? (
-              <video src={mediaUrl} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+              <VideoAdPlayer
+                src={mediaUrl}
+                className="w-full h-full object-cover"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             ) : (
               <img src={mediaUrl} alt={ad.title} className="w-full h-full object-cover" />
             )}
@@ -86,21 +145,23 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
   return (
     <div className={`ad-banner-container ${className}`} title={ad.title}>
       {ad.ad_type === 'video' ? (
-        <video
+        <VideoAdPlayer
           src={mediaUrl}
           className="img-fluid rounded shadow-sm w-100"
-          autoPlay
-          muted
-          loop
-          playsInline
-          style={{ objectFit: 'cover', maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : 'auto' }}
+          style={{
+            objectFit: 'cover',
+            maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'rows' ? '600px' : position === 'sidebar' ? '300px' : 'auto',
+          }}
         />
       ) : (
         <img
           src={mediaUrl}
           alt={ad.title}
           className="img-fluid rounded shadow-sm w-100"
-          style={{ objectFit: 'cover', maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : 'auto' }}
+          style={{
+            objectFit: 'cover',
+            maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'rows' ? '600px' : position === 'sidebar' ? '300px' : 'auto',
+          }}
         />
       )}
       {ad.short_description && (

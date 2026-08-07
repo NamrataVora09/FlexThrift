@@ -1182,32 +1182,29 @@ class AdminApi extends BaseApiController
 
         // Activate the subscription
         $now = date('Y-m-d H:i:s');
-        $expiryDate = $plan['duration_hours'] > 0
-            ? date('Y-m-d H:i:s', time() + (int) round((float) $plan['duration_hours'] * 3600))
-            : '2099-12-31 23:59:59';
 
-        // ── QUEUE / STACKING OPTION (COMMENTED OUT) ──────────────────────────
-        // $latestActive = $db->table('user_subscriptions us')
-        //     ->join('subscription_plans sp', 'sp.id = us.plan_id')
-        //     ->where('us.user_id', $userId)
-        //     ->where('us.is_active', 1)
-        //     ->where('sp.user_type', $plan['user_type'])
-        //     ->where('us.expires_at >', date('Y-m-d H:i:s'))
-        //     ->orderBy('us.expires_at', 'DESC')
-        //     ->get()->getRowArray();
-        // $durationHours = (float) $plan['duration_hours'];
-        // $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
-        // $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
-        // $expiryDate = $durationHours > 0
-        //     ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
-        //     : '2099-12-31 23:59:59';
+        // ── QUEUE / STACKING OPTION ───────────────────────────────────────────
+        $latestActive = $db->table('user_subscriptions us')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('sp.user_type', $plan['user_type'])
+            ->where('us.expires_at >', date('Y-m-d H:i:s'))
+            ->orderBy('us.expires_at', 'DESC')
+            ->get()->getRowArray();
+        $durationHours = (float) $plan['duration_hours'];
+        $startsAt = $latestActive ? $latestActive['expires_at'] : $now;
+        $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $expiryDate = $durationHours > 0
+            ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
+            : '2099-12-31 23:59:59';
         // ─────────────────────────────────────────────────────────────────────
 
         $inserted = $db->table('user_subscriptions')->insert([
             'user_id'                   => $userId,
             'plan_id'                   => $plan['id'],
             'coupon_id'                 => null,
-            'starts_at'                 => $now,
+            'starts_at'                 => $startsAt,
             'expires_at'                => $expiryDate,
             'usage_count'               => 0,
             'is_active'                 => 1,
@@ -1222,7 +1219,7 @@ class AdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
         }
 
-        // $this->recalibrateUserSubscriptions($userId, $plan['user_type']);
+        $this->recalibrateUserSubscriptions($userId, $plan['user_type']);
 
         return $this->respond(['success' => true, 'message' => 'Plan activated successfully']);
     }

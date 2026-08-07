@@ -201,7 +201,17 @@ function getHistoryIcon(action: string): string {
   }
 }
 
+function useNow(intervalMs = 1000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+  return now;
+}
+
 export default function Page() {
+  const now = useNow(1000);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
@@ -356,7 +366,7 @@ export default function Page() {
     if (o.status === 'pending' && o.created_at) {
       const offerTime = new Date(o.created_at).getTime();
       const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
-      const isExpired = Date.now() > expiryTime;
+      const isExpired = now > expiryTime;
       const isProductSold = Number((o as any).is_product_sold ?? 0) > 0;
       const isRentalBlocked = Number((o as any).is_rental_blocked ?? 0) > 0;
       if (isExpired || isProductSold || isRentalBlocked) return 'rejected';
@@ -374,7 +384,7 @@ export default function Page() {
       ...list.filter(o => REJECTED.includes(getOfferDisplayStatus(o))).sort(byTime),
       ...list.filter(o => getOfferDisplayStatus(o) === 'accepted').sort(byTime),
     ];
-  }, [offers, filter, settings.acceptanceLimitDays]);
+  }, [offers, filter, settings.acceptanceLimitDays, now]);
 
   const counts = useMemo(() => {
     const list = offers || [];
@@ -384,7 +394,7 @@ export default function Page() {
       accepted: list.filter((o) => getOfferDisplayStatus(o) === 'accepted').length,
       rejected: list.filter((o) => getOfferDisplayStatus(o) === 'rejected').length,
     }
-  }, [offers, settings.acceptanceLimitDays]);
+  }, [offers, settings.acceptanceLimitDays, now]);
 
   return (
     <DashboardLayout requiredRoles={['buyer', 'super_admin']}>
@@ -555,10 +565,10 @@ export default function Page() {
           const price = o.offered_price || o.offer_price;
 
           // expiry logic — covers both backend-confirmed 'missed' and frontend-detected pending expiry
-          const offerTime = o.created_at ? new Date(o.created_at).getTime() : Date.now();
+          const offerTime = o.created_at ? new Date(o.created_at).getTime() : now;
           const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
           // isExpired is true when: backend set status to 'missed' OR offer is pending and time window passed
-          const isExpired = o.status === 'missed' || (o.status === 'pending' && Date.now() > expiryTime);
+          const isExpired = o.status === 'missed' || (o.status === 'pending' && now > expiryTime);
           // expiryDate: for backend-missed offers we may not know exact expiry so compute from creation + limit
           const expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -593,7 +603,7 @@ export default function Page() {
 
           const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
           const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
-          const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && acceptedTs > 0 && Date.now() < ratingExpiryTs;
+          const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && acceptedTs > 0 && now < ratingExpiryTs;
 
           return (
             <div key={o.id} className="luxury-item-card shadow-sm">
@@ -800,7 +810,7 @@ export default function Page() {
                       <div className="d-flex align-items-start gap-2">
                         <i className="bi bi-chat-quote-fill text-primary mt-1" style={{ fontSize: '1.1rem' }}></i>
                         <div>
-                          <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>Your Message:</div>
+                          <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}></div>
                           <div className="text-dark" style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>{o.message}</div>
                         </div>
                       </div>
@@ -819,7 +829,7 @@ export default function Page() {
                     </div>
                   )}
 
-                
+
 
                   {/* Logs Section */}
                   {(() => {

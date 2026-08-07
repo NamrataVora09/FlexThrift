@@ -87,6 +87,14 @@ class SeedAllApiResponseMessages extends Migration
         ['message_key' => 'offer_rejected_success',       'message_value' => 'Offer rejected',                                                'category' => 'success'],
         ['message_key' => 'offer_acceptance_retracted',   'message_value' => 'Acceptance retracted. Offer has been rejected.',                 'category' => 'success'],
 
+        // ── OFFER FRONTEND-ONLY ERROR TOASTS ─────────────────────────────────
+        ['message_key' => 'offer_action_failed',          'message_value' => 'Action failed. Please try again.',                              'category' => 'error'],
+        ['message_key' => 'offer_dates_failed',           'message_value' => 'Failed to update rental dates.',                                'category' => 'error'],
+        ['message_key' => 'offer_rating_failed',          'message_value' => 'Failed to submit rating. Please try again.',                    'category' => 'error'],
+        ['message_key' => 'offer_update_failed',          'message_value' => 'Failed to update offer.',                                       'category' => 'error'],
+        ['message_key' => 'offer_suggestion_failed',      'message_value' => 'Failed to send date suggestion.',                               'category' => 'error'],
+        ['message_key' => 'offer_date_required',          'message_value' => 'Please select both start and end dates.',                       'category' => 'error'],
+
         // ── RATINGS ─────────────────────────────────────────────────────────
         ['message_key' => 'offer_rating_submitted',       'message_value' => 'Rating submitted successfully!',                                'category' => 'success'],
         ['message_key' => 'seller_rated_success',         'message_value' => 'Seller rated successfully!',                                    'category' => 'success'],
@@ -179,6 +187,8 @@ class SeedAllApiResponseMessages extends Migration
         ['message_key' => 'coupon_expired',               'message_value' => 'Coupon has expired.',                                             'category' => 'error'],
         ['message_key' => 'coupon_usage_limit',           'message_value' => 'Coupon usage limit reached.',                                     'category' => 'error'],
         ['message_key' => 'coupon_code_required',         'message_value' => 'Coupon code is required',                                         'category' => 'error'],
+        ['message_key' => 'coupon_already_exists',        'message_value' => 'Coupon code already exists. Use a different code.',               'category' => 'error'],
+        ['message_key' => 'coupon_min_purchase',          'message_value' => 'Minimum purchase for this coupon is {amount}',                     'category' => 'error'],
         ['message_key' => 'coupon_applied_success',       'message_value' => 'Coupon applied!',                                                 'category' => 'success'],
 
         // ── PLANS & PAYMENTS ─────────────────────────────────────────────────
@@ -187,11 +197,20 @@ class SeedAllApiResponseMessages extends Migration
         ['message_key' => 'plan_inactive',                'message_value' => 'Invalid or inactive plan.',                                        'category' => 'error'],
         ['message_key' => 'payment_failed',               'message_value' => 'Payment failed or was cancelled.',                                 'category' => 'error'],
         ['message_key' => 'payment_success',              'message_value' => 'Payment verified and plans stacked!',                              'category' => 'success'],
-        ['message_key' => 'payment_processing',           'message_value' => 'Payment is being processed.',                                     'category' => 'info'],
+        ['message_key' => 'payment_processing',           'message_value' => 'Payment is being processed.',                                      'category' => 'info'],
         ['message_key' => 'transaction_not_found',        'message_value' => 'Transaction not found',                                            'category' => 'error'],
-        ['message_key' => 'subscription_already_active',  'message_value' => 'Subscription is already active',                                  'category' => 'info'],
+        ['message_key' => 'subscription_already_active',  'message_value' => 'Already active',                                                  'category' => 'info'],
         ['message_key' => 'subscription_activated',       'message_value' => 'Subscription activated',                                          'category' => 'success'],
         ['message_key' => 'transaction_id_required',      'message_value' => 'No transaction ID provided',                                       'category' => 'error'],
+        ['message_key' => 'plan_requires_payment',        'message_value' => 'This plan requires payment',                                       'category' => 'error'],
+        ['message_key' => 'subscription_activate_failed', 'message_value' => 'Failed to activate subscription',                                  'category' => 'error'],
+        ['message_key' => 'subscription_plan_activated',  'message_value' => 'Plan activated successfully',                                      'category' => 'success'],
+        ['message_key' => 'payment_subscription_activated','message_value' => 'Payment successful! Subscription activated.',                     'category' => 'success'],
+        ['message_key' => 'subscription_already_active_verify', 'message_value' => 'Subscription is already active',                            'category' => 'info'],
+        ['message_key' => 'seller_subscription_zero_uploads', 'message_value' => 'Your subscription plan has 0 product uploads. Please upgrade your plan to upload products.', 'category' => 'error'],
+        ['message_key' => 'seller_subscription_expired',  'message_value' => 'Your subscription has expired on {date}. Please renew your plan to upload products.',           'category' => 'error'],
+        ['message_key' => 'buyer_subscription_expired',   'message_value' => 'Your buyer subscription expired on {date}. Please renew your plan to view contact details.',    'category' => 'error'],
+        ['message_key' => 'seller_upload_limit_reached',  'message_value' => 'You have reached your product upload limit ({n} uploads). Please upgrade your plan to upload more products.', 'category' => 'error'],
 
         // ── MISC BUYER ───────────────────────────────────────────────────────
         ['message_key' => 'wishlist_update_success',      'message_value' => 'Wishlist updated',                                                'category' => 'success'],

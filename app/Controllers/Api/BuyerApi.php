@@ -39,6 +39,7 @@ class BuyerApi extends BaseApiController
             ->where('user_id', $userId)
             ->where('is_read', 0)
             ->orderBy('created_at', 'DESC')
+            ->orderBy('id', 'DESC')
             ->limit(5)
             ->get()->getResultArray();
 
@@ -140,16 +141,13 @@ class BuyerApi extends BaseApiController
                 ->groupEnd();
         }
         if ($listingType) {
-            // Rental products always appear in browse regardless of the active filter
-            if (in_array(strtolower($listingType), ['sell', 'rent'])) {
-                $builder->groupStart()
-                    ->where('p.listing_type', strtolower($listingType))
-                    ->orWhere('p.listing_type', 'rent')
-                    ->groupEnd();
+            $lTypeLower = strtolower($listingType);
+            if (in_array($lTypeLower, ['sell', 'rent'])) {
+                $builder->where('LOWER(p.listing_type)', $lTypeLower);
             } else {
                 $builder->groupStart()
-                    ->where('LOWER(p.listing_type_category)', strtolower($listingType))
-                    ->orWhere('p.listing_type', 'rent')
+                    ->where('LOWER(p.listing_type_category)', $lTypeLower)
+                    ->orWhere('LOWER(p.listing_type)', $lTypeLower)
                     ->groupEnd();
             }
         }
@@ -262,12 +260,28 @@ class BuyerApi extends BaseApiController
             $builder->where('p.used_times >', 0);
         }
 
-        // Product type — multi-value OR  (matches p.product_type varchar column)
-        if ($productType) {
-            $ptNames = array_values(array_filter(array_map('trim', explode(',', $productType))));
-            if (!empty($ptNames)) {
+        // Product type — multi-value OR (by product_type_id or product_type name)
+        $productTypeId = $this->request->getGet('product_type_id');
+        if ($productTypeId || $productType) {
+            $ptNamesList = [];
+            if ($productType) {
+                $ptNamesList = array_values(array_filter(array_map('trim', explode(',', $productType))));
+            }
+            if ($productTypeId) {
+                $ptIds = array_values(array_filter(array_map('intval', explode(',', $productTypeId))));
+                if (!empty($ptIds)) {
+                    $ptRows = $db->table('product_types')->whereIn('id', $ptIds)->get()->getResultArray();
+                    foreach ($ptRows as $row) {
+                        if (!empty($row['name'])) {
+                            $ptNamesList[] = $row['name'];
+                        }
+                    }
+                }
+            }
+            $ptNamesList = array_unique(array_filter($ptNamesList));
+            if (!empty($ptNamesList)) {
                 $builder->groupStart();
-                foreach ($ptNames as $idx => $pt) {
+                foreach ($ptNamesList as $idx => $pt) {
                     $escapedPt = $db->escape(strtolower($pt));
                     $expr = "LOWER(p.product_type) = $escapedPt";
                     if ($idx === 0)
@@ -579,6 +593,7 @@ class BuyerApi extends BaseApiController
         $notifications = $db->table('notifications')
             ->where('user_id', $jwtUser['user_id'])
             ->orderBy('created_at', 'DESC')
+            ->orderBy('id', 'DESC')
             ->limit(50)
             ->get()->getResultArray();
 
@@ -610,18 +625,18 @@ class BuyerApi extends BaseApiController
 
         foreach ($freeSubRows as $fs) {
             $transactions[] = [
-                'id'               => 'free-' . $fs['id'],
-                'order_id'         => null,
-                'user_id'          => $fs['user_id'],
-                'user_name'        => $user['name'] ?? '',
+                'id' => 'free-' . $fs['id'],
+                'order_id' => null,
+                'user_id' => $fs['user_id'],
+                'user_name' => $user['name'] ?? '',
                 'transaction_type' => 'debit',
-                'amount'           => 0,
-                'description'      => 'Free Plan: ' . ($fs['plan_name'] ?? 'Unknown'),
-                'payment_method'   => 'free',
-                'transaction_id'   => null,
-                'type'             => 'subscription',
-                'payment_status'   => 'paid',
-                'created_at'       => $fs['created_at'],
+                'amount' => 0,
+                'description' => 'Free Plan: ' . ($fs['plan_name'] ?? 'Unknown'),
+                'payment_method' => 'free',
+                'transaction_id' => null,
+                'type' => 'subscription',
+                'payment_status' => 'paid',
+                'created_at' => $fs['created_at'],
             ];
         }
 
@@ -825,6 +840,7 @@ class BuyerApi extends BaseApiController
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
+                ->where('us.starts_at <=', date('Y-m-d H:i:s'))
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'buyer')
                 ->orderBy('us.starts_at', 'ASC')
@@ -833,7 +849,7 @@ class BuyerApi extends BaseApiController
 
             $hasActiveSub = false;
             foreach ($activeSubs as $sub) {
-                if (strtolower($sub['plan_type']) === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
+                if (strtolower($sub['plan_type']) === 'duration' || (int) $sub['usage_count'] < (int) $sub['limit_value']) {
                     $hasActiveSub = true;
                     break;
                 }
@@ -916,6 +932,7 @@ class BuyerApi extends BaseApiController
                 ->where('us.user_id', $jwtUser['user_id'])
                 ->where('us.is_active', 1)
                 ->where('us.payment_status', 'paid')
+                ->where('us.starts_at <=', date('Y-m-d H:i:s'))
                 ->where('us.expires_at >=', date('Y-m-d H:i:s'))
                 ->where('sp.user_type', 'buyer')
                 ->orderBy('us.starts_at', 'ASC')
@@ -926,7 +943,7 @@ class BuyerApi extends BaseApiController
 
             $activeSub = null;
             foreach ($activeSubs as $sub) {
-                if (strtolower($sub['plan_type']) === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
+                if (strtolower($sub['plan_type']) === 'duration' || (int) $sub['usage_count'] < (int) $sub['limit_value']) {
                     $activeSub = $sub;
                     break;
                 }
@@ -949,7 +966,7 @@ class BuyerApi extends BaseApiController
                     log_message('error', '[makeOffer] contact_views insert failed: ' . $e->getMessage());
                 }
 
-                
+
                 if (strtolower($activeSub['plan_type']) === 'quantity') {
                     $newCount = (int) $activeSub['usage_count'] + 1;
                     $update = ['usage_count' => $newCount];
@@ -1062,16 +1079,15 @@ class BuyerApi extends BaseApiController
             $updateData['rental_end_date'] = $endDate;
             $updateData['offer_price'] = $newPrice;
             $updateData['deposit_amount'] = $product['rental_deposit'] ?? $offer['deposit_amount'];
+            $updateData['message'] = 'Buyer has proposed new dates: ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. New total: ₹' . $newPrice;
         } else if ($newPrice !== null && $offer['status'] !== 'rejected') {
             $updateData['offer_price'] = $newPrice;
         }
 
         if (in_array($offer['status'], ['negotiating', 'rejected'])) {
             $updateData['status'] = 'pending';
-            if ($offer['status'] === 'rejected') {
+            if ($offer['status'] === 'rejected' && !$isRent) {
                 $updateData['message'] = 'Buyer has re-submitted the offer.';
-            } else if ($isRent) {
-                $updateData['message'] = 'Buyer has proposed new dates: ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. New total: ₹' . $newPrice;
             }
         }
 
@@ -1090,19 +1106,19 @@ class BuyerApi extends BaseApiController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        // Notify seller when buyer counter-proposes after negotiation or rejection
-        if (in_array($offer['status'], ['negotiating', 'rejected'])) {
-            $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
-            $buyer = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-            $db->table('notifications')->insert([
-                'user_id' => $offer['seller_id'],
-                'title' => 'Buyer Proposed New Dates',
-                'message' => ($buyer['name'] ?? 'The buyer') . ' has counter-proposed new dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. Please review.',
-                'type' => 'offer',
-                'is_read' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
-        }
+        // Notify seller when buyer updates/proposes dates
+        $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+        $buyer = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        $effectivePrice = $newPrice ?? $offer['offer_price'];
+        $db->table('notifications')->insert([
+            'user_id' => $offer['seller_id'],
+            'title' => 'Buyer Proposed New Dates',
+            'message' => ($buyer['name'] ?? 'The buyer') . ' has counter-proposed new dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . ' (Price: ₹' . number_format((float)$effectivePrice, 2) . '). Please review.',
+            'type' => 'offer',
+            'related_id' => $id,
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
 
         return $this->respond(['success' => true, 'message' => 'Offer dates updated successfully.']);
     }
@@ -2093,7 +2109,7 @@ class BuyerApi extends BaseApiController
                     $db->table('user_subscriptions')
                         ->where('id', $activeSub['id'])
                         ->update($update);
-                    
+
                     if (isset($update['is_active']) && $update['is_active'] === 0) {
                         $this->recalibrateUserSubscriptions($buyerId, 'buyer');
                     }
@@ -2343,28 +2359,44 @@ class BuyerApi extends BaseApiController
 
         // Activate the subscription
         $now = date('Y-m-d H:i:s');
-        $expiryDate = $plan['duration_hours'] > 0
-            ? date('Y-m-d H:i:s', time() + (int) round((float) $plan['duration_hours'] * 3600))
+
+        // ── QUEUE / STACKING OPTION ───────────────────────────────────────────
+        $latestActive = $db->table('user_subscriptions us')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('sp.user_type', 'buyer')
+            ->where('us.expires_at >', date('Y-m-d H:i:s'))
+            ->orderBy('us.expires_at', 'DESC')
+            ->get()->getRowArray();
+        $durationHours = (float) $plan['duration_hours'];
+        $startsAt = $latestActive ? $latestActive['expires_at'] : $now;
+        $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $expiryDate = $durationHours > 0
+            ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
             : '2099-12-31 23:59:59';
+        // ─────────────────────────────────────────────────────────────────────
 
         $inserted = $db->table('user_subscriptions')->insert([
-            'user_id'          => $userId,
-            'plan_id'          => $plan['id'],
-            'coupon_id'        => null,
-            'starts_at'        => $now,
-            'expires_at'       => $expiryDate,
-            'usage_count'      => 0,
-            'is_active'        => 1,
-            'payment_status'   => 'paid',
-            'amount_paid'      => 0,
+            'user_id'                   => $userId,
+            'plan_id'                   => $plan['id'],
+            'coupon_id'                 => null,
+            'starts_at'                 => $startsAt,
+            'expires_at'                => $expiryDate,
+            'usage_count'               => 0,
+            'is_active'                 => 1,
+            'payment_status'            => 'paid',
+            'amount_paid'               => 0,
             'referral_discount_applied' => 0,
             'merchant_transaction_id'   => null,
-            'created_at'       => $now,
-            'updated_at'       => $now,
+            'created_at'                => $now,
+            'updated_at'                => $now,
         ]);
         if (!$inserted) {
             return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
         }
+
+        $this->recalibrateUserSubscriptions($userId, 'buyer');
 
         return $this->respond(['success' => true, 'message' => 'Plan activated successfully']);
     }
@@ -2399,18 +2431,18 @@ class BuyerApi extends BaseApiController
         }
 
         // Per-user usage limit: check how many times THIS user has used this coupon
-        if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
+        if ($coupon['usage_limit'] !== null && (int) $coupon['usage_limit'] > 0) {
             $buyerUserId = $jwtUser['user_id'];
             $userUsedCount = $db->table('coupon_usage')
                 ->where('coupon_id', $coupon['id'])
                 ->where('user_id', $buyerUserId)
                 ->countAllResults();
-            if ($userUsedCount >= (int)$coupon['usage_limit']) {
+            if ($userUsedCount >= (int) $coupon['usage_limit']) {
                 return $this->respond(['success' => false, 'message' => 'You have already used this coupon the maximum number of times.']);
             }
         }
 
-        $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+        $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
         if ((float) $plan['price'] < $cpnMinPurchase) {
             return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
         }
@@ -2479,12 +2511,12 @@ class BuyerApi extends BaseApiController
         $couponId = null;
         if ($couponCode) {
             $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
-            $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+            $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
             $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
 
             // Per-user usage limit check
             $cpnUserUsed = 0;
-            if ($coupon && $coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
+            if ($coupon && $coupon['usage_limit'] !== null && (int) $coupon['usage_limit'] > 0) {
                 $cpnUserUsed = $db->table('coupon_usage')
                     ->where('coupon_id', $coupon['id'])
                     ->where('user_id', $userId)
@@ -2494,7 +2526,7 @@ class BuyerApi extends BaseApiController
             if (
                 $coupon && $basePrice >= $cpnMinPurchase
                 && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())
-                && ($coupon['usage_limit'] === null || (int)$coupon['usage_limit'] <= 0 || $cpnUserUsed < (int)$coupon['usage_limit'])
+                && ($coupon['usage_limit'] === null || (int) $coupon['usage_limit'] <= 0 || $cpnUserUsed < (int) $coupon['usage_limit'])
             ) {
                 if ($coupon['discount_type'] === 'percentage') {
                     $discount = ($basePrice * $coupon['discount_value']) / 100;
@@ -2686,14 +2718,14 @@ class BuyerApi extends BaseApiController
                 ]);
 
                 if (!empty($dbSub['coupon_id'])) {
-                    $cId = (int)$dbSub['coupon_id'];
-                   
-                        $db->table('coupon_usage')->insert([
-                            'coupon_id' => $cId,
-                            'user_id'   => $dbSub['user_id'],
-                            'used_at'   => date('Y-m-d H:i:s')
-                        ]);
-                    
+                    $cId = (int) $dbSub['coupon_id'];
+
+                    $db->table('coupon_usage')->insert([
+                        'coupon_id' => $cId,
+                        'user_id' => $dbSub['user_id'],
+                        'used_at' => date('Y-m-d H:i:s')
+                    ]);
+
                     $db->query("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?", [$cId]);
                 }
 

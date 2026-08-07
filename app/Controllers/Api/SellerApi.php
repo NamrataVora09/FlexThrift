@@ -120,13 +120,23 @@ class SellerApi extends BaseApiController
                         $p['edit_rejection_remarks'] = $p['edit_remarks'];
                     }
                 } else {
-                    // No product-level rejection — let edit-request status/remarks take over.
-                    $p['status'] = $p['edit_status'];
+                    // No product-level rejection — let edit-request status drive the UI.
                     if ($p['edit_status'] === 'rejected') {
+                        // Tell the frontend this is a "rejected changes" (not a rejected product)
+                        // by setting edit_request to the string 'rejected' — the value MyProductsView checks.
+                        $p['edit_request'] = 'rejected';
                         $p['admin_remarks'] = $p['edit_remarks'] ?? 'Edit request rejected';
+                        // Keep the original product status (approved/pending) so the seller
+                        // knows the product itself is still live.
+                    } elseif ($p['edit_status'] === 'pending') {
+                        $p['edit_request'] = 'pending';
+                    } else {
+                        // approved or unknown — treat as approved, revert to product status
+                        $p['edit_request'] = 'approved';
                     }
                 }
             }
+
             // Normalize status: if NULL or empty (legacy data), treat as 'pending'
             if (empty($p['status'])) {
                 $p['status'] = 'pending';
@@ -221,6 +231,7 @@ class SellerApi extends BaseApiController
         $notifications = $db->table('notifications')
             ->where('user_id', $jwtUser['user_id'])
             ->orderBy('created_at', 'DESC')
+            ->orderBy('id', 'DESC')
             ->limit(50)
             ->get()->getResultArray();
 
@@ -840,6 +851,7 @@ class SellerApi extends BaseApiController
             'title' => 'Offer Accepted!',
             'message' => 'Your offer of ₹' . $offer['offer_price'] . ' on "' . ($product['title'] ?? '') . '" has been accepted.',
             'type' => 'offer',
+            'related_id' => $id,
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -884,6 +896,7 @@ class SellerApi extends BaseApiController
                 'title' => 'Offer Not Accepted',
                 'message' => $autoRejectNotif,
                 'type' => 'offer',
+                'related_id' => $other['id'],
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
@@ -989,8 +1002,9 @@ class SellerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $offer['buyer_id'],
             'title' => 'Seller Suggested New Dates',
-            'message' => 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . '. Please review and accept or decline.',
+            'message' => 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ' (Price: ₹' . number_format($newPrice, 2) . '). Please review and accept or decline.',
             'type' => 'offer',
+            'related_id' => $id,
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -1090,6 +1104,7 @@ class SellerApi extends BaseApiController
                         'title' => 'Offer Reopened',
                         'message' => 'Good news! The seller has retracted their acceptance on "' . ($product['title'] ?? '') . '". Your offer is now active again.',
                         'type' => 'offer',
+                        'related_id' => $rv['id'],
                         'is_read' => 0,
                         'created_at' => date('Y-m-d H:i:s'),
                     ]);
@@ -1107,6 +1122,7 @@ class SellerApi extends BaseApiController
                 'title' => 'Offer Retracted',
                 'message' => 'The seller has retracted their acceptance of your offer on "' . ($product['title'] ?? '') . '".' . ($data['remarks'] ? ' Reason: ' . $data['remarks'] : ''),
                 'type' => 'offer',
+                'related_id' => $id,
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
@@ -1132,6 +1148,7 @@ class SellerApi extends BaseApiController
             'title' => 'Offer Rejected',
             'message' => 'Your offer on "' . ($product['title'] ?? '') . '" was rejected.' . ($data['remarks'] ? ' Reason: ' . $data['remarks'] : ''),
             'type' => 'offer',
+            'related_id' => $id,
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -2512,28 +2529,44 @@ class SellerApi extends BaseApiController
 
         // Activate the subscription
         $now = date('Y-m-d H:i:s');
-        $expiryDate = $plan['duration_hours'] > 0
-            ? date('Y-m-d H:i:s', time() + (int) round((float) $plan['duration_hours'] * 3600))
+
+        // ── QUEUE / STACKING OPTION ───────────────────────────────────────────
+        $latestActive = $db->table('user_subscriptions us')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('sp.user_type', 'seller')
+            ->where('us.expires_at >', date('Y-m-d H:i:s'))
+            ->orderBy('us.expires_at', 'DESC')
+            ->get()->getRowArray();
+        $durationHours = (float) $plan['duration_hours'];
+        $startsAt = $latestActive ? $latestActive['expires_at'] : $now;
+        $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $expiryDate = $durationHours > 0
+            ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
             : '2099-12-31 23:59:59';
+        // ─────────────────────────────────────────────────────────────────────
 
         $inserted = $db->table('user_subscriptions')->insert([
-            'user_id'          => $userId,
-            'plan_id'          => $plan['id'],
-            'coupon_id'        => null,
-            'starts_at'        => $now,
-            'expires_at'       => $expiryDate,
-            'usage_count'      => 0,
-            'is_active'        => 1,
-            'payment_status'   => 'paid',
-            'amount_paid'      => 0,
+            'user_id'                   => $userId,
+            'plan_id'                   => $plan['id'],
+            'coupon_id'                 => null,
+            'starts_at'                 => $startsAt,
+            'expires_at'                => $expiryDate,
+            'usage_count'               => 0,
+            'is_active'                 => 1,
+            'payment_status'            => 'paid',
+            'amount_paid'               => 0,
             'referral_discount_applied' => 0,
             'merchant_transaction_id'   => null,
-            'created_at'       => $now,
-            'updated_at'       => $now,
+            'created_at'                => $now,
+            'updated_at'                => $now,
         ]);
         if (!$inserted) {
             return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
         }
+
+        $this->recalibrateUserSubscriptions($userId, 'seller');
 
         return $this->respond(['success' => true, 'message' => 'Plan activated successfully']);
     }

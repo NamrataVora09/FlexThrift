@@ -426,8 +426,13 @@ class SharedApi extends BaseApiController
         }
         $totalOffers = $totalOffersQuery->countAllResults();
         
-        $user = $db->table('users')->select('reliability_score')->where('id', $userId)->get()->getRowArray();
-        $scorePoints = (int)($user['reliability_score'] ?? 0);
+        $user = $db->table('users')
+            ->select('reliability_score, seller_rating_count, buyer_rating_count, seller_rating_avg, buyer_rating_avg')
+            ->where('id', $userId)
+            ->get()->getRowArray();
+        $sellerPoints = (int)($user['seller_rating_count'] ?? 0);
+        $buyerPoints  = (int)($user['buyer_rating_count'] ?? 0);
+        $scorePoints  = $sellerPoints + $buyerPoints;
 
         // Top 10 products by offers (with date filter)
         $topProductsQuery = $db->table('products p')
@@ -451,15 +456,19 @@ class SharedApi extends BaseApiController
         return $this->respond([
             'success' => true,
             'data' => [
-                'status_stats' => $statusStats,
-                'offer_trend' => $offerTrend,
-                'monthly_stats' => $monthlyStats,
-                'revenue_by_listing_type' => $revenueByListingType,
-                'top_products_by_offers' => $topProductsByOffers,
-                'top_products_by_revenue' => $topProductsByRevenue,
-                'total_products' => $totalProducts,
-                'total_offers' => $totalOffers,
-                'score_points' => $scorePoints,
+                'status_stats'              => $statusStats,
+                'offer_trend'               => $offerTrend,
+                'monthly_stats'             => $monthlyStats,
+                'revenue_by_listing_type'   => $revenueByListingType,
+                'top_products_by_offers'    => $topProductsByOffers,
+                'top_products_by_revenue'   => $topProductsByRevenue,
+                'total_products'            => $totalProducts,
+                'total_offers'              => $totalOffers,
+                'score_points'              => $scorePoints,
+                'seller_points'             => $sellerPoints,
+                'buyer_points'              => $buyerPoints,
+                'seller_rating_avg'         => (float)($user['seller_rating_avg'] ?? 0),
+                'buyer_rating_avg'          => (float)($user['buyer_rating_avg'] ?? 0),
             ],
         ]);
     }
@@ -938,19 +947,22 @@ class SharedApi extends BaseApiController
 
     public function createCoupon()
     {
-        $data = $this->request->getJSON(true);
+        $data = $this->request->getJSON(true) ?: $this->request->getPost();
         $db = \Config\Database::connect();
 
-        $code = strtoupper(trim($data['code'] ?? ''));
+        $code = strtoupper(trim($data['code'] ?? $data['coupon_code'] ?? $data['couponCode'] ?? ''));
+        if (!$code) {
+            return $this->respond(['success' => false, 'message' => 'Coupon code is required.'], 400);
+        }
 
         // Prevent duplicate coupon codes
         $existing = $db->table('coupons')->where('code', $code)->get()->getRowArray();
         if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'Coupon code already exists. Use a different code.'], 409);
+            return $this->respond(['success' => false, 'message' => 'Coupon code already exists. Use a different code.'], 400);
         }
 
         // Handle expiry date - if only date is provided, set it to end of that day
-        $rawExpiry = $data['valid_until'] ?? $data['expires_at'] ?? null;
+        $rawExpiry = $data['valid_until'] ?? $data['expires_at'] ?? $data['expiry_date'] ?? $data['expiryDate'] ?? null;
         $expiresAt = null;
         if (!empty($rawExpiry)) {
             $expiresAt = $rawExpiry;
@@ -993,31 +1005,55 @@ class SharedApi extends BaseApiController
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
         $db = \Config\Database::connect();
 
-        // Handle expiry date - if only date is provided, set it to end of that day
-        $rawExpiry = $data['valid_until'] ?? $data['expires_at'] ?? null;
-        $expiresAt = null;
-        if (!empty($rawExpiry)) {
+        $couponId = (int) $id;
+        $targetCoupon = $db->table('coupons')->where('id', $couponId)->get()->getRowArray();
+        if (!$targetCoupon) {
+            return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        }
+
+        $code = strtoupper(trim($data['code'] ?? $data['coupon_code'] ?? $data['couponCode'] ?? $targetCoupon['code']));
+        if (!$code) {
+            return $this->respond(['success' => false, 'message' => 'Coupon code is required.'], 400);
+        }
+
+        // Prevent duplicate coupon codes on update (exclude current coupon ID)
+        $existing = $db->table('coupons')
+            ->where('code', $code)
+            ->where('id !=', $couponId)
+            ->get()->getRowArray();
+        if ($existing) {
+            return $this->respond(['success' => false, 'message' => 'Coupon code already exists. Use a different code.'], 400);
+        }
+
+        // Handle expiry date - preserve existing if not provided in payload
+        $rawExpiry = $data['valid_until'] ?? $data['expires_at'] ?? $data['expiry_date'] ?? $data['expiryDate'] ?? null;
+        if ($rawExpiry !== null && $rawExpiry !== '') {
             $expiresAt = $rawExpiry;
-            // If it's just a date (YYYY-MM-DD), append 23:59:59 to make it end of day
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiresAt)) {
                 $expiresAt .= ' 23:59:59';
             }
+        } else {
+            $expiresAt = $targetCoupon['valid_until'] ?? $targetCoupon['expires_at'] ?? null;
         }
 
         $fields = $db->getFieldNames('coupons');
-        $minAmt = (float)($data['min_order_amount'] ?? $data['min_purchase'] ?? 0);
+        $minAmt = (float)($data['min_order_amount'] ?? $data['min_purchase'] ?? $targetCoupon['min_order_amount'] ?? $targetCoupon['min_purchase'] ?? 0);
 
-        // usage_limit: 0 or empty means unlimited — store NULL so per-user check is skipped
-        $rawLimit = $data['usage_limit'] ?? null;
-        $usageLimit = ($rawLimit !== null && $rawLimit !== '' && (int)$rawLimit > 0)
-            ? (int)$rawLimit
-            : null;
+        // usage_limit: 0 or empty string in payload means unlimited (NULL); omitted means preserve existing
+        if (array_key_exists('usage_limit', $data)) {
+            $rawLimit = $data['usage_limit'];
+            $usageLimit = ($rawLimit !== null && $rawLimit !== '' && (int)$rawLimit > 0)
+                ? (int)$rawLimit
+                : null;
+        } else {
+            $usageLimit = $targetCoupon['usage_limit'] ?? null;
+        }
 
         $updateData = [
-            'code'          => strtoupper($data['code'] ?? ''),
-            'discount_type' => $data['discount_type'] ?? 'percentage',
-            'discount_value'=> $data['discount_value'] ?? 0,
-            'max_discount'  => ($data['max_discount'] ?? null) ?: null,
+            'code'          => $code,
+            'discount_type' => $data['discount_type'] ?? $targetCoupon['discount_type'] ?? 'percentage',
+            'discount_value'=> isset($data['discount_value']) ? $data['discount_value'] : ($targetCoupon['discount_value'] ?? 0),
+            'max_discount'  => array_key_exists('max_discount', $data) ? (($data['max_discount'] ?? null) ?: null) : ($targetCoupon['max_discount'] ?? null),
             'usage_limit'   => $usageLimit,
         ];
 
@@ -1027,7 +1063,7 @@ class SharedApi extends BaseApiController
         if (in_array('expires_at', $fields))       $updateData['expires_at']       = $expiresAt;
         if (in_array('updated_at', $fields))       $updateData['updated_at']       = date('Y-m-d H:i:s');
 
-        $db->table('coupons')->where('id', $id)->update($updateData);
+        $db->table('coupons')->where('id', $couponId)->update($updateData);
         return $this->respond(['success' => true, 'message' => 'Coupon updated']);
     }
 
