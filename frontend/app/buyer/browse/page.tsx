@@ -10,6 +10,7 @@ import { addToWishlist, removeFromWishlist } from '@/lib/wishlist';
 import LandingNavbar from '@/components/layout/LandingNavbar';
 import Footer from '@/components/layout/Footer';
 import AdBanner from '@/components/shared/AdBanner';
+import { api } from '@/lib/api';
 import SeoManager from '@/components/shared/SeoManager';
 
 interface Product {
@@ -198,6 +199,16 @@ export default function BrowsePage() {
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
   const [filters, setFilters] = useState<ActiveFilters>(() => filtersFromParams(searchParams as unknown as URLSearchParams));
   const [priceInput, setPriceInput] = useState({ min: filters.minPrice, max: filters.maxPrice });
+
+  // In-Feed ad pre-fetched independently
+  const [infeedAd, setInfeedAd] = useState<{id:number;title:string;short_description:string;media_path:string;media_type:string;ad_type:string} | null>(null);
+  useEffect(() => {
+    api.get<any[]>('/shared/advertisements?position=rows&page=browse').then(res => {
+      if (res.success && res.data && res.data.length > 0) {
+        setInfeedAd(res.data[Math.floor(Math.random() * res.data.length)]);
+      }
+    }).catch(() => {});
+  }, []);
   const [dynamicAttrs, setDynamicAttrs] = useState<DynamicAttribute[]>([]);
   const [modalConfig, setModalConfig] = useState<{
     type: 'brand' | 'color' | 'spec' | 'category' | 'productType' | 'subCategory' | 'size' | 'gender';
@@ -1226,7 +1237,12 @@ export default function BrowsePage() {
                 )}
 
                 {sortedProducts.length > 0 ? sortedProducts.map((p, index) => {
-                  const isAdPosition = (index + 1) % 6 === 0 || (sortedProducts.length < 6 && index === Math.min(2, sortedProducts.length - 1));
+                  const isAdPosition = infeedAd && (
+                    (index + 1) % 6 === 0 ||
+                    (sortedProducts.length < 6 && index === Math.min(2, sortedProducts.length - 1))
+                  );
+                  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/v1\/?$/, '') || (typeof window !== 'undefined' ? window.location.origin : '');
+                  const adMediaUrl = infeedAd ? (infeedAd.media_path.startsWith('http') ? infeedAd.media_path : `${baseUrl}/uploads/advertisements/${infeedAd.media_path.replace(/^\//, '')}`) : '';
                   return (
                     <Fragment key={p.id}>
                       <ProductCard
@@ -1234,7 +1250,18 @@ export default function BrowsePage() {
                         wishlisted={wishlist.some(id => Number(id) === Number(p.id))}
                         onWishlist={handleWishlist}
                       />
-                      {isAdPosition && <AdBanner position="rows" page="browse" />}
+                      {isAdPosition && infeedAd && (
+                        <div style={{ gridColumn: '1 / -1', width: '100%', margin: '16px 0', borderRadius: 12, overflow: 'hidden' }}>
+                          {infeedAd.ad_type === 'video' ? (
+                            <video src={adMediaUrl} autoPlay muted loop playsInline style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }} />
+                          ) : (
+                            <img src={adMediaUrl} alt={infeedAd.title} style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }} />
+                          )}
+                          {infeedAd.short_description && (
+                            <p style={{ textAlign: 'center', margin: '6px 0 0', fontSize: '0.8rem', color: '#888' }}>{infeedAd.short_description}</p>
+                          )}
+                        </div>
+                      )}
                     </Fragment>
                   );
                 }) : !loading ? (

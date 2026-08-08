@@ -1,4 +1,12 @@
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
+function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/api/v1`;
+  }
+  return 'http://localhost:8080/api/v1';
+}
 
 interface ApiResponse<T = unknown> {
   success: boolean;
@@ -8,10 +16,14 @@ interface ApiResponse<T = unknown> {
 }
 
 class ApiClient {
-  private baseUrl: string;
+  private customBaseUrl?: string;
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl?: string) {
+    this.customBaseUrl = baseUrl;
+  }
+
+  private get baseUrl(): string {
+    return this.customBaseUrl || getApiBaseUrl();
   }
 
   private getToken(): string | null {
@@ -242,5 +254,5 @@ class ApiClient {
   }
 }
 
-export const api = new ApiClient(API_BASE);
+export const api = new ApiClient();
 export type { ApiResponse };
