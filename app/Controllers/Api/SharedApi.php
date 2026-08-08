@@ -1119,10 +1119,20 @@ class SharedApi extends BaseApiController
 
         $page = $this->request->getGet('page');
         if ($page && $page !== 'all') {
-            $builder->groupStart()
-                ->where('display_page', $page)
-                ->orWhere('display_page', 'all')
-            ->groupEnd();
+            $pagesToMatch = [$page, 'all'];
+            if ($page === 'portal_seller_dashboard' || $page === 'seller') {
+                $pagesToMatch[] = 'seller';
+                $pagesToMatch[] = 'portal_seller_dashboard';
+            }
+            if ($page === 'portal_buyer_dashboard' || $page === 'buyer') {
+                $pagesToMatch[] = 'buyer';
+                $pagesToMatch[] = 'portal_buyer_dashboard';
+            }
+            if ($page === 'portal_admin_dashboard' || $page === 'admin') {
+                $pagesToMatch[] = 'admin';
+                $pagesToMatch[] = 'portal_admin_dashboard';
+            }
+            $builder->whereIn('display_page', array_unique($pagesToMatch));
         }
 
         $ads = $builder->get()->getResultArray();

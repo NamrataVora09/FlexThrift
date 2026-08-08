@@ -13,6 +13,34 @@ interface Ad {
   ad_type: 'image' | 'video';
 }
 
+function getPageKeyFromPathname(pathname: string): string {
+  if (!pathname || pathname === '/' || pathname === '/landing') {
+    return 'landing';
+  }
+  if (pathname.startsWith('/buyer/browse') || pathname.startsWith('/browse')) {
+    return 'browse';
+  }
+  if (pathname.startsWith('/buyer/product') || pathname.startsWith('/product')) {
+    return 'product_detail';
+  }
+  if (pathname === '/seller/profile') {
+    return 'portal_seller_profile';
+  }
+  if (pathname.startsWith('/seller')) {
+    return 'portal_seller_dashboard';
+  }
+  if (pathname === '/buyer/profile') {
+    return 'portal_buyer_profile';
+  }
+  if (pathname.startsWith('/buyer')) {
+    return 'portal_buyer_dashboard';
+  }
+  if (pathname.startsWith('/admin') || pathname.startsWith('/superadmin')) {
+    return 'portal_admin_dashboard';
+  }
+  return 'other';
+}
+
 /**
  * PopupAdManager — shows an entrance popup ad on every page navigation/load.
  * Mounted once in the root layout, but re-fetches and re-displays the popup
@@ -24,11 +52,11 @@ export default function PopupAdManager() {
   const [visible, setVisible] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // must start muted for browser autoplay to work
 
-  const fetchAndShow = useCallback(async () => {
+  const fetchAndShow = useCallback(async (currentPage: string) => {
     setVisible(false);
     setAd(null);
     try {
-      const res = await api.get<Ad[]>('/shared/advertisements?position=popup&page=all');
+      const res = await api.get<Ad[]>(`/shared/advertisements?position=popup&page=${currentPage}`);
       if (res.success && res.data && res.data.length > 0) {
         const randomAd = res.data[Math.floor(Math.random() * res.data.length)];
         setAd(randomAd);
@@ -42,7 +70,8 @@ export default function PopupAdManager() {
 
   // Re-show popup on every route change
   useEffect(() => {
-    fetchAndShow();
+    const pageKey = getPageKeyFromPathname(pathname);
+    fetchAndShow(pageKey);
   }, [pathname, fetchAndShow]);
 
   if (!ad || !visible) return null;
