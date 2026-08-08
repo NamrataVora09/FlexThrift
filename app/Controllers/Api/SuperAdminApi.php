@@ -2640,17 +2640,25 @@ class SuperAdminApi extends BaseApiController
     public function updateAdvertisement()
     {
         $db = \Config\Database::connect();
-        $id = $this->request->getPost('ad_id');
-        if (!$id) return $this->respond(['success' => false, 'message' => 'Missing ad ID'], 400);
+        $id = $this->request->getVar('ad_id') ?? $this->request->getPost('ad_id') ?? ($_POST['ad_id'] ?? null);
+        if (!$id) {
+            if (empty($_POST) && isset($_SERVER['CONTENT_LENGTH']) && (int)$_SERVER['CONTENT_LENGTH'] > 0) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'Uploaded payload exceeds PHP post_max_size limit on server. Please restart php-fpm service.',
+                ], 400);
+            }
+            return $this->respond(['success' => false, 'message' => 'Missing ad ID'], 400);
+        }
 
         $data = [
-            'title' => $this->request->getPost('title'),
-            'short_description' => $this->request->getPost('short_description') ?? '',
-            'position' => $this->request->getPost('position') ?? 'top_banner',
-            'display_page' => $this->request->getPost('display_page') ?? 'all',
-            'payment_date' => $this->request->getPost('payment_date') ?: null,
-            'start_date' => $this->request->getPost('start_date') ?: null,
-            'end_date' => $this->request->getPost('end_date') ?: null,
+            'title' => $this->request->getVar('title') ?? $this->request->getPost('title'),
+            'short_description' => $this->request->getVar('short_description') ?? $this->request->getPost('short_description') ?? '',
+            'position' => $this->request->getVar('position') ?? $this->request->getPost('position') ?? 'top_banner',
+            'display_page' => $this->request->getVar('display_page') ?? $this->request->getPost('display_page') ?? 'all',
+            'payment_date' => $this->request->getVar('payment_date') ?: null,
+            'start_date' => $this->request->getVar('start_date') ?: null,
+            'end_date' => $this->request->getVar('end_date') ?: null,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
 
