@@ -1225,20 +1225,23 @@ export default function BrowsePage() {
                   </div>
                 )}
 
-                {sortedProducts.length > 0 ? sortedProducts.map((p, index) => (
-                  <Fragment key={p.id}>
-                    <ProductCard
-                      p={p}
-                      wishlisted={wishlist.some(id => Number(id) === Number(p.id))}
-                      onWishlist={handleWishlist}
-                    />
-                    {(index + 1) % 6 === 0 && (
-                      <div style={{ gridColumn: '1 / -1', margin: '20px 0' }}>
-                        <AdBanner position="rows" page="browse" />
-                      </div>
-                    )}
-                  </Fragment>
-                )) : !loading ? (
+                {sortedProducts.length > 0 ? sortedProducts.map((p, index) => {
+                  const isAdPosition = (index + 1) % 6 === 0 || (sortedProducts.length < 6 && index === Math.min(2, sortedProducts.length - 1));
+                  return (
+                    <Fragment key={p.id}>
+                      <ProductCard
+                        p={p}
+                        wishlisted={wishlist.some(id => Number(id) === Number(p.id))}
+                        onWishlist={handleWishlist}
+                      />
+                      {isAdPosition && (
+                        <div style={{ gridColumn: '1 / -1', margin: '20px 0' }}>
+                          <AdBanner position="rows" page="browse" />
+                        </div>
+                      )}
+                    </Fragment>
+                  );
+                }) : !loading ? (
                   <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px 0' }}>
                     <span className="material-symbols-outlined" style={{ fontSize: 64, color: '#acadad', display: 'block', marginBottom: 16 }}>search</span>
                     <h3 className="em-heading" style={{ fontWeight: 700, color: '#0c0f0f', marginBottom: 8 }}>No results found</h3>

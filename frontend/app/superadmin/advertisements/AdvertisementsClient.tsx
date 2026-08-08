@@ -96,7 +96,7 @@ export default function AdvertisementsClient() {
     fd.append('title', form.title);
     fd.append('short_description', form.short_description);
     fd.append('position', form.position);
-    fd.append('display_page', form.display_page);
+    fd.append('display_page', form.position === 'rows' ? 'browse' : form.display_page);
     fd.append('payment_date', form.payment_date);
     fd.append('start_date', form.start_date);
     fd.append('end_date', form.end_date);
@@ -191,7 +191,19 @@ export default function AdvertisementsClient() {
                   </div>
                   <div className="col-md-6">
                     <label style={labelStyle}>Position Slot</label>
-                    <select className="form-select" style={inputStyle} value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })}>
+                    <select
+                      className="form-select"
+                      style={inputStyle}
+                      value={form.position}
+                      onChange={(e) => {
+                        const newPos = e.target.value;
+                        setForm({
+                          ...form,
+                          position: newPos,
+                          display_page: newPos === 'rows' ? 'browse' : (form.display_page === 'browse' && form.position === 'rows' ? 'all' : form.display_page)
+                        });
+                      }}
+                    >
                       {POSITIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                     </select>
                   </div>
@@ -201,9 +213,21 @@ export default function AdvertisementsClient() {
                   </div>
                   <div className="col-md-12">
                     <label style={labelStyle}>Display Page Location</label>
-                    <select className="form-select" style={inputStyle} value={form.display_page} onChange={(e) => setForm({ ...form, display_page: e.target.value })}>
+                    <select
+                      className="form-select"
+                      style={inputStyle}
+                      value={form.position === 'rows' ? 'browse' : form.display_page}
+                      disabled={form.position === 'rows'}
+                      onChange={(e) => setForm({ ...form, display_page: e.target.value })}
+                    >
                       {DISPLAY_PAGES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                     </select>
+                    {form.position === 'rows' && (
+                      <small className="text-muted d-block mt-1" style={{ fontSize: '0.75rem' }}>
+                        <i className="bi bi-info-circle me-1"></i>
+                        In-Feed (Between Products) ads are displayed directly within the Browse Market grid.
+                      </small>
+                    )}
                   </div>
                   <div className="col-md-6">
                     <label style={labelStyle}>Start Date</label>
