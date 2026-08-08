@@ -215,7 +215,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             className="img-fluid rounded shadow-sm w-100"
             style={{
               objectFit: 'contain',
-              maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
+              maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : position === 'sidebar' ? '300px' : 'auto',
             }}
           />
         ) : (
@@ -225,7 +225,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             className="img-fluid rounded shadow-sm w-100"
             style={{
               objectFit: 'contain',
-              maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
+              maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : position === 'sidebar' ? '300px' : 'auto',
             }}
           />
         )}
