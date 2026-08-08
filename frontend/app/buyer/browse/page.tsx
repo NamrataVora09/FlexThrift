@@ -202,6 +202,8 @@ export default function BrowsePage() {
 
   // In-Feed ad pre-fetched independently
   const [infeedAd, setInfeedAd] = useState<{id:number;title:string;short_description:string;media_path:string;media_type:string;ad_type:string} | null>(null);
+  const [infeedVideoMuted, setInfeedVideoMuted] = useState(true);
+  const infeedVideoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     api.get<any[]>('/shared/advertisements?position=rows&page=browse').then(res => {
       if (res.success && res.data && res.data.length > 0) {
@@ -1251,9 +1253,47 @@ export default function BrowsePage() {
                         onWishlist={handleWishlist}
                       />
                       {isAdPosition && infeedAd && (
-                        <div style={{ gridColumn: '1 / -1', width: '100%', margin: '16px 0', borderRadius: 12, overflow: 'hidden' }}>
+                        <div style={{ gridColumn: '1 / -1', width: '100%', margin: '16px 0', borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
                           {infeedAd.ad_type === 'video' ? (
-                            <video src={adMediaUrl} autoPlay muted loop playsInline style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }} />
+                            <>
+                              <video
+                                ref={infeedVideoRef}
+                                src={adMediaUrl}
+                                autoPlay
+                                muted={infeedVideoMuted}
+                                loop
+                                playsInline
+                                style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }}
+                              />
+                              <button
+                                onClick={() => {
+                                  const newMuted = !infeedVideoMuted;
+                                  setInfeedVideoMuted(newMuted);
+                                  if (infeedVideoRef.current) infeedVideoRef.current.muted = newMuted;
+                                }}
+                                title={infeedVideoMuted ? 'Unmute' : 'Mute'}
+                                style={{
+                                  position: 'absolute',
+                                  bottom: 12,
+                                  right: 12,
+                                  background: 'rgba(0,0,0,0.55)',
+                                  border: 'none',
+                                  borderRadius: '50%',
+                                  width: 40,
+                                  height: 40,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  backdropFilter: 'blur(4px)',
+                                  zIndex: 10,
+                                }}
+                              >
+                                <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: 22, lineHeight: 1 }}>
+                                  {infeedVideoMuted ? 'volume_off' : 'volume_up'}
+                                </span>
+                              </button>
+                            </>
                           ) : (
                             <img src={adMediaUrl} alt={infeedAd.title} style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }} />
                           )}
