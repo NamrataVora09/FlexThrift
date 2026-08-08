@@ -426,8 +426,8 @@ class SharedApi extends BaseApiController
         }
         $totalOffers = $totalOffersQuery->countAllResults();
         
-        $user = $db->table('users')->select('reliability_score')->where('id', $userId)->get()->getRowArray();
-        $scorePoints = (int)($user['reliability_score'] ?? 0);
+        $user = $db->table('users')->select('reliability_score, seller_reliability_score, renter_reliability_score')->where('id', $userId)->get()->getRowArray();
+        $scorePoints = (int)($user['seller_reliability_score'] ?? 0) + (int)($user['renter_reliability_score'] ?? 0);
 
         // Top 10 products by offers (with date filter)
         $topProductsQuery = $db->table('products p')
