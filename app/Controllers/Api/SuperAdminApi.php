@@ -2643,9 +2643,12 @@ class SuperAdminApi extends BaseApiController
         $id = $this->request->getVar('ad_id') ?? $this->request->getPost('ad_id') ?? ($_POST['ad_id'] ?? null);
         if (!$id) {
             if (empty($_POST) && isset($_SERVER['CONTENT_LENGTH']) && (int)$_SERVER['CONTENT_LENGTH'] > 0) {
+                $payloadMB = round((int)$_SERVER['CONTENT_LENGTH'] / (1024 * 1024), 2);
+                $postMax = ini_get('post_max_size');
+                $iniFile = php_ini_loaded_file() ?: 'unknown';
                 return $this->respond([
                     'success' => false,
-                    'message' => 'Uploaded payload exceeds PHP post_max_size limit on server. Please restart php-fpm service.',
+                    'message' => "Payload ({$payloadMB}MB) exceeds PHP post_max_size ({$postMax}). Loaded ini: {$iniFile}",
                 ], 400);
             }
             return $this->respond(['success' => false, 'message' => 'Missing ad ID'], 400);
