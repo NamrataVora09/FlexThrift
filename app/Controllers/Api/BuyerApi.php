@@ -141,17 +141,10 @@ class BuyerApi extends BaseApiController
                 ->groupEnd();
         }
         if ($listingType) {
-            // Rental products always appear in browse regardless of the active filter
             if (in_array(strtolower($listingType), ['sell', 'rent'])) {
-                $builder->groupStart()
-                    ->where('p.listing_type', strtolower($listingType))
-                    ->orWhere('p.listing_type', 'rent')
-                    ->groupEnd();
+                $builder->where('p.listing_type', strtolower($listingType));
             } else {
-                $builder->groupStart()
-                    ->where('LOWER(p.listing_type_category)', strtolower($listingType))
-                    ->orWhere('p.listing_type', 'rent')
-                    ->groupEnd();
+                $builder->where('LOWER(p.listing_type_category)', strtolower($listingType));
             }
         }
         if ($category)

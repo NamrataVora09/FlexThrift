@@ -1485,6 +1485,12 @@ class SellerApi extends BaseApiController
         if (!$product)
             return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
+        // If the product has never been actioned by admin (pending) or was rejected,
+        // apply the seller's edits directly to the product — no edit request needed.
+        $productStatus = $product['status'] ?? 'pending';
+        $isDirectEdit = !in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin'])
+            && in_array($productStatus, ['pending', 'rejected']);
+
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
         $processedData = $this->cleanProductData($data, $db);
 
@@ -1561,6 +1567,50 @@ class SellerApi extends BaseApiController
             }
         }
 
+        // ── DIRECT EDIT PATH (pending / rejected products) ──────────────────────
+        // If the product has never been approved (still pending) or was rejected,
+        // apply changes directly — no edit request, no admin review needed.
+        if ($isDirectEdit) {
+            // Apply processedData directly to the products table
+            $directUpdate = $processedData;
+            $directUpdate['updated_at'] = date('Y-m-d H:i:s');
+            // Keep status as-is (pending stays pending so admin can still review the listing)
+            $db->table('products')->where('id', $id)->update($directUpdate);
+
+            // Handle image deletions directly
+            if (!empty($deletedIdsArr)) {
+                foreach ($deletedIdsArr as $imgId) {
+                    $img = $db->table('product_images')->where('id', $imgId)->where('product_id', $id)->get()->getRowArray();
+                    if ($img) {
+                        $fullPath = FCPATH . $img['image_path'];
+                        if (file_exists($fullPath)) @unlink($fullPath);
+                        $db->table('product_images')->where('id', $imgId)->delete();
+                    }
+                }
+            }
+
+            // Move any newly uploaded temp images to permanent location
+            if (!empty($tempImages)) {
+                $permanentPath = FCPATH . 'uploads/products/';
+                if (!is_dir($permanentPath)) mkdir($permanentPath, 0777, true);
+                $maxOrder = (int)($db->table('product_images')->selectMax('display_order')->where('product_id', $id)->get()->getRowArray()['display_order'] ?? 0);
+                foreach ($tempImages as $tempPath) {
+                    $filename = basename($tempPath);
+                    $dest = $permanentPath . $filename;
+                    @rename(FCPATH . $tempPath, $dest);
+                    $db->table('product_images')->insert([
+                        'product_id'    => $id,
+                        'image_path'    => 'uploads/products/' . $filename,
+                        'display_order' => ++$maxOrder,
+                        'created_at'    => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
+
+            return $this->respond(['success' => true, 'message' => 'Product updated successfully']);
+        }
+
+        // ── EDIT REQUEST PATH (approved products) ────────────────────────────────
         // Check if there's already a pending edit request for this product
         $existingRequest = $db->table('product_edit_requests')
             ->where('product_id', $id)
@@ -1718,6 +1768,8 @@ class SellerApi extends BaseApiController
         if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $product['seller_id'] != $jwtUser['user_id']) {
             return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
         }
+
+        // Sellers can freely update pending/rejected products (no approval gate needed).
 
         // Check if admin review is required
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
