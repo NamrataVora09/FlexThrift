@@ -175,7 +175,7 @@ export default function PopupAdManager() {
               <>
                 <video
                   src={mediaUrl}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   autoPlay
                   muted={isMuted}
                   loop
@@ -207,7 +207,7 @@ export default function PopupAdManager() {
               <img
                 src={mediaUrl}
                 alt={ad.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             )}
           </MediaLinkWrapper>

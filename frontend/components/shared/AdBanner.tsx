@@ -125,8 +125,8 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
   if (!baseUrl && typeof window !== 'undefined') {
     baseUrl = window.location.origin;
   }
-  const mediaUrl = ad.media_path.startsWith('http') 
-    ? ad.media_path 
+  const mediaUrl = ad.media_path.startsWith('http')
+    ? ad.media_path
     : `${baseUrl}/uploads/advertisements/${ad.media_path.replace(/^\//, '')}`;
 
   if (position === 'popup') {
@@ -152,16 +152,16 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
               {ad.ad_type === 'video' ? (
                 <VideoAdPlayer
                   src={mediaUrl}
-                  className="w-full h-full object-cover"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  className="w-full h-full object-contain"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 />
               ) : (
-                <img src={mediaUrl} alt={ad.title} className="w-full h-full object-cover" />
+                <img src={mediaUrl} alt={ad.title} className="w-full h-full object-contain" />
               )}
             </MediaLinkWrapper>
           </div>
 
-          <div className="p-6 text-center">
+          <div className="p-6 text-center"> 
             <h3 className="text-xl font-bold text-gray-900 mb-2">{ad.title}</h3>
             {ad.short_description && (
               <div
@@ -184,14 +184,14 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
               <VideoAdPlayer
                 src={mediaUrl}
                 className="img-fluid rounded shadow-sm w-100"
-                style={{ objectFit: 'cover', maxHeight: '600px' }}
+                style={{ objectFit: 'contain', maxHeight: '600px' }}
               />
             ) : (
               <img
                 src={mediaUrl}
                 alt={ad.title}
                 className="img-fluid rounded shadow-sm w-100"
-                style={{ objectFit: 'cover', maxHeight: '600px' }}
+                style={{ objectFit: 'contain', maxHeight: '600px' }}
               />
             )}
           </MediaLinkWrapper>
@@ -214,7 +214,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             src={mediaUrl}
             className="img-fluid rounded shadow-sm w-100"
             style={{
-              objectFit: 'cover',
+              objectFit: 'contain',
               maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
             }}
           />
@@ -224,7 +224,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             alt={ad.title}
             className="img-fluid rounded shadow-sm w-100"
             style={{
-              objectFit: 'cover',
+              objectFit: 'contain',
               maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
             }}
           />
