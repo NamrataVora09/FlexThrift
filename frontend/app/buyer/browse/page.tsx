@@ -1234,11 +1234,7 @@ export default function BrowsePage() {
                         wishlisted={wishlist.some(id => Number(id) === Number(p.id))}
                         onWishlist={handleWishlist}
                       />
-                      {isAdPosition && (
-                        <div style={{ gridColumn: '1 / -1', margin: '20px 0' }}>
-                          <AdBanner position="rows" page="browse" />
-                        </div>
-                      )}
+                      {isAdPosition && <AdBanner position="rows" page="browse" />}
                     </Fragment>
                   );
                 }) : !loading ? (

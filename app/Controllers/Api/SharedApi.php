@@ -1118,7 +1118,7 @@ class SharedApi extends BaseApiController
         }
 
         $page = $this->request->getGet('page');
-        if ($page && $page !== 'all') {
+        if ($page && $page !== 'all' && $position !== 'rows') {
             $pagesToMatch = [$page, 'all'];
             if ($page === 'portal_seller_dashboard' || $page === 'seller') {
                 $pagesToMatch[] = 'seller';

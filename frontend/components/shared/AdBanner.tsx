@@ -142,6 +142,34 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
     );
   }
 
+  if (position === 'rows') {
+    return (
+      <div style={{ gridColumn: '1 / -1', width: '100%', margin: '20px 0' }}>
+        <div className={`ad-banner-container ${className}`} title={ad.title}>
+          {ad.ad_type === 'video' ? (
+            <VideoAdPlayer
+              src={mediaUrl}
+              className="img-fluid rounded shadow-sm w-100"
+              style={{ objectFit: 'cover', maxHeight: '600px' }}
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt={ad.title}
+              className="img-fluid rounded shadow-sm w-100"
+              style={{ objectFit: 'cover', maxHeight: '600px' }}
+            />
+          )}
+          {ad.short_description && (
+            <div className="ad-caption mt-1 small text-muted text-center">
+              {ad.short_description}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`ad-banner-container ${className}`} title={ad.title}>
       {ad.ad_type === 'video' ? (
@@ -150,7 +178,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
           className="img-fluid rounded shadow-sm w-100"
           style={{
             objectFit: 'cover',
-            maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'rows' ? '600px' : position === 'sidebar' ? '300px' : 'auto',
+            maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
           }}
         />
       ) : (
@@ -160,7 +188,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
           className="img-fluid rounded shadow-sm w-100"
           style={{
             objectFit: 'cover',
-            maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'rows' ? '600px' : position === 'sidebar' ? '300px' : 'auto',
+            maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
           }}
         />
       )}
