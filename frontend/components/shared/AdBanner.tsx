@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type React from 'react';
 import { api } from '@/lib/api';
 
 interface Ad {
@@ -18,8 +19,8 @@ interface AdBannerProps {
   className?: string;
 }
 
-/** Reusable video player with ONLY a mute/unmute button. Default: unmuted. */
-function VideoAdPlayer({
+/** Reusable video player with ONLY a mute/unmute button. Default: muted (required for autoplay). */
+export function VideoAdPlayer({
   src,
   className,
   style,
