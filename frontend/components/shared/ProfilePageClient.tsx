@@ -420,7 +420,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
             )}
             {/* Top Banner Ad */}
             <div className="mb-4">
-              <AdBanner position="top_banner" page={user.role === 'seller' ? 'portal_seller_profile' : 'portal_buyer_profile'} />
+              <AdBanner position="top_banner" page={isSellerPortal ? 'portal_seller_profile' : 'portal_buyer_profile'} />
             </div>
             {/* ── Profile Header ── */}
             <div className="prof-header">
@@ -570,7 +570,9 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                     </div>
                   )}
 
-
+                  <div className="mt-3">
+                    <AdBanner position="sidebar" page={isSellerPortal ? 'portal_seller_profile' : 'portal_buyer_profile'} />
+                  </div>
                 </div>
               </div>
             </div>
