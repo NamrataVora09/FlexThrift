@@ -142,7 +142,12 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
 
           <div className="p-6 text-center">
             <h3 className="text-xl font-bold text-gray-900 mb-2">{ad.title}</h3>
-            {ad.short_description && <p className="text-gray-600 text-sm mb-0">{ad.short_description}</p>}
+            {ad.short_description && (
+              <div
+                className="ad-short-description text-gray-600 text-sm mb-0"
+                dangerouslySetInnerHTML={{ __html: ad.short_description }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -168,9 +173,10 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             />
           )}
           {ad.short_description && (
-            <div className="ad-caption mt-1 small text-muted text-center">
-              {ad.short_description}
-            </div>
+            <div
+              className="ad-caption mt-1 small text-muted text-center"
+              dangerouslySetInnerHTML={{ __html: ad.short_description }}
+            />
           )}
         </div>
       </div>
@@ -200,9 +206,10 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
         />
       )}
       {ad.short_description && (
-        <div className="ad-caption mt-1 small text-muted text-center">
-          {ad.short_description}
-        </div>
+        <div
+          className="ad-caption mt-1 small text-muted text-center"
+          dangerouslySetInnerHTML={{ __html: ad.short_description }}
+        />
       )}
     </div>
   );

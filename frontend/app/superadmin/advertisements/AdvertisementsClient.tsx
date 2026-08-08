@@ -307,7 +307,11 @@ export default function AdvertisementsClient() {
                 {(form.title || form.short_description || previewUrl) && (
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '40px 20px 20px', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', color: '#fff', zIndex: 11, textAlign: 'left' }}>
                     <h4 style={{ fontWeight: 700, marginBottom: 5, fontSize: '1.2rem', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{form.title || 'Your Ad Title Here'}</h4>
-                    <p style={{ marginBottom: 0, fontSize: '0.9rem', opacity: 0.9, textShadow: '0 1px 2px rgba(0,0,0,0.5)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{form.short_description || 'Your short description will appear here...'}</p>
+                    <div
+                      className="ad-caption"
+                      style={{ marginBottom: 0, fontSize: '0.9rem', opacity: 0.9, textShadow: '0 1px 2px rgba(0,0,0,0.5)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+                      dangerouslySetInnerHTML={{ __html: form.short_description || 'Your short description will appear here...' }}
+                    />
                   </div>
                 )}
               </div>

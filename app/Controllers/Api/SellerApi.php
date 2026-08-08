@@ -1068,34 +1068,59 @@ class SellerApi extends BaseApiController
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
 
-            // Revert ALL rejected offers for this product back to pending so buyers can compete again
+            // Revert only offers that were rejected BECAUSE of the accepted offer:
+            // - rejected_at must be >= when the accepted offer was accepted (i.e. rejected as a side-effect)
+            // - AND their date range must overlap with the retracted offer's dates (for rental offers)
             $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
-            $revertedOffers = $db->table('offers')
+            $acceptedOfferStart = $offer['rental_start_date'] ?? null;
+            $acceptedOfferEnd   = $offer['rental_end_date']   ?? null;
+            $acceptedAt         = !empty($offer['accepted_at']) ? $offer['accepted_at'] : ($offer['updated_at'] ?? null);
+
+            $revertQuery = $db->table('offers')
                 ->where('product_id', $offer['product_id'])
                 ->where('id !=', $id)
-                ->where('status', 'rejected')
-                ->get()->getResultArray();
+                ->where('status', 'rejected');
+
+            // Only revert offers that were rejected at or after the acceptance moment
+            // (pre-existing rejections from before the acceptance must not be touched)
+            if ($acceptedAt) {
+                $revertQuery->where('rejected_at >=', $acceptedAt);
+            }
+
+            // For rental offers: only revert if dates overlap with the retracted offer
+            // Non-rental (sale/buy) offers have no date fields — treat them as always overlapping
+            if ($acceptedOfferStart && $acceptedOfferEnd) {
+                // Overlap condition: offer.start <= retracted.end AND offer.end >= retracted.start
+                $revertQuery->groupStart()
+                    ->where('rental_start_date IS NULL')
+                    ->orGroupStart()
+                        ->where('rental_start_date <=', $acceptedOfferEnd)
+                        ->where('rental_end_date >=', $acceptedOfferStart)
+                    ->groupEnd()
+                ->groupEnd();
+            }
+
+            $revertedOffers = $revertQuery->get()->getResultArray();
 
             if (!empty($revertedOffers)) {
+                $revertIds = array_column($revertedOffers, 'id');
                 $db->table('offers')
-                    ->where('product_id', $offer['product_id'])
-                    ->where('id !=', $id)
-                    ->where('status', 'rejected')
+                    ->whereIn('id', $revertIds)
                     ->update([
-                        'status' => 'pending',
+                        'status'         => 'pending',
                         'seller_remarks' => '',
-                        'updated_at' => date('Y-m-d H:i:s'),
+                        'updated_at'     => date('Y-m-d H:i:s'),
                     ]);
 
                 // Notify each reverted buyer that their offer is active again
                 foreach ($revertedOffers as $rv) {
                     $db->table('notifications')->insert([
-                        'user_id' => $rv['buyer_id'],
-                        'title' => 'Offer Reopened',
-                        'message' => 'Good news! The seller has retracted their acceptance on "' . ($product['title'] ?? '') . '". Your offer is now active again.',
-                        'type' => 'offer',
+                        'user_id'    => $rv['buyer_id'],
+                        'title'      => 'Offer Reopened',
+                        'message'    => 'Good news! The seller has retracted their acceptance on "' . ($product['title'] ?? '') . '". Your offer is now active again.',
+                        'type'       => 'offer',
                         'related_id' => $rv['id'],
-                        'is_read' => 0,
+                        'is_read'    => 0,
                         'created_at' => date('Y-m-d H:i:s'),
                     ]);
                 }

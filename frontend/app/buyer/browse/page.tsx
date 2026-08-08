@@ -1265,7 +1265,11 @@ export default function BrowsePage() {
                             />
                           )}
                           {infeedAd.short_description && (
-                            <p style={{ textAlign: 'center', margin: '6px 0 0', fontSize: '0.8rem', color: '#888' }}>{infeedAd.short_description}</p>
+                            <div
+                              className="ad-caption"
+                              style={{ textAlign: 'center', margin: '6px 0 0', fontSize: '0.8rem', color: '#888' }}
+                              dangerouslySetInnerHTML={{ __html: infeedAd.short_description }}
+                            />
                           )}
                         </div>
                       )}

@@ -193,9 +193,11 @@ export default function PopupAdManager() {
             {ad.title}
           </h3>
           {ad.short_description && (
-            <p style={{ fontSize: '0.875rem', color: '#5a5c5c', margin: 0 }}>
-              {ad.short_description}
-            </p>
+            <div
+              className="ad-short-description"
+              style={{ fontSize: '0.875rem', color: '#5a5c5c', margin: 0 }}
+              dangerouslySetInnerHTML={{ __html: ad.short_description }}
+            />
           )}
         </div>
       </div>
