@@ -461,10 +461,7 @@ export default function SellerDashboardClient() {
               </div>
             </div>
 
-            {/* Bottom Ad */}
-            <div className="mt-4">
-              <AdBanner position="rows" page="portal_seller_dashboard" />
-            </div>
+          
           </>
         )}
       </div>

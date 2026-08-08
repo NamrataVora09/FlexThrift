@@ -11,12 +11,28 @@ interface Ad {
   media_path: string;
   media_type: string;
   ad_type: 'image' | 'video';
+  target_url?: string;
 }
 
 interface AdBannerProps {
   position: 'top_banner' | 'sidebar' | 'footer' | 'popup' | 'rows';
   page: string;
   className?: string;
+}
+
+function MediaLinkWrapper({ targetUrl, children }: { targetUrl?: string; children: React.ReactNode }) {
+  if (!targetUrl) return <>{children}</>;
+  const isExternal = targetUrl.startsWith('http');
+  return (
+    <a
+      href={targetUrl}
+      target={isExternal ? '_blank' : '_self'}
+      rel={isExternal ? 'noopener noreferrer' : undefined}
+      style={{ display: 'block', width: '100%', cursor: 'pointer', textDecoration: 'none' }}
+    >
+      {children}
+    </a>
+  );
 }
 
 /** Reusable video player with ONLY a mute/unmute button. Default: muted (required for autoplay). */
@@ -44,7 +60,10 @@ export function VideoAdPlayer({
       />
       {/* Mute / Unmute toggle — only control shown */}
       <button
-        onClick={() => setMuted((prev) => !prev)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setMuted((prev) => !prev);
+        }}
         title={muted ? 'Unmute' : 'Mute'}
         aria-label={muted ? 'Unmute video' : 'Mute video'}
         style={{
@@ -129,15 +148,17 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
           </button>
 
           <div className="aspect-video bg-gray-100" style={{ position: 'relative' }}>
-            {ad.ad_type === 'video' ? (
-              <VideoAdPlayer
-                src={mediaUrl}
-                className="w-full h-full object-cover"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              <img src={mediaUrl} alt={ad.title} className="w-full h-full object-cover" />
-            )}
+            <MediaLinkWrapper targetUrl={ad.target_url}>
+              {ad.ad_type === 'video' ? (
+                <VideoAdPlayer
+                  src={mediaUrl}
+                  className="w-full h-full object-cover"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <img src={mediaUrl} alt={ad.title} className="w-full h-full object-cover" />
+              )}
+            </MediaLinkWrapper>
           </div>
 
           <div className="p-6 text-center">
@@ -158,20 +179,22 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
     return (
       <div style={{ gridColumn: '1 / -1', width: '100%', margin: '20px 0' }}>
         <div className={`ad-banner-container ${className}`} title={ad.title}>
-          {ad.ad_type === 'video' ? (
-            <VideoAdPlayer
-              src={mediaUrl}
-              className="img-fluid rounded shadow-sm w-100"
-              style={{ objectFit: 'cover', maxHeight: '600px' }}
-            />
-          ) : (
-            <img
-              src={mediaUrl}
-              alt={ad.title}
-              className="img-fluid rounded shadow-sm w-100"
-              style={{ objectFit: 'cover', maxHeight: '600px' }}
-            />
-          )}
+          <MediaLinkWrapper targetUrl={ad.target_url}>
+            {ad.ad_type === 'video' ? (
+              <VideoAdPlayer
+                src={mediaUrl}
+                className="img-fluid rounded shadow-sm w-100"
+                style={{ objectFit: 'cover', maxHeight: '600px' }}
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt={ad.title}
+                className="img-fluid rounded shadow-sm w-100"
+                style={{ objectFit: 'cover', maxHeight: '600px' }}
+              />
+            )}
+          </MediaLinkWrapper>
           {ad.short_description && (
             <div
               className="ad-caption mt-1 small text-muted text-center"
@@ -185,26 +208,28 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
 
   return (
     <div className={`ad-banner-container ${className}`} title={ad.title}>
-      {ad.ad_type === 'video' ? (
-        <VideoAdPlayer
-          src={mediaUrl}
-          className="img-fluid rounded shadow-sm w-100"
-          style={{
-            objectFit: 'cover',
-            maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
-          }}
-        />
-      ) : (
-        <img
-          src={mediaUrl}
-          alt={ad.title}
-          className="img-fluid rounded shadow-sm w-100"
-          style={{
-            objectFit: 'cover',
-            maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
-          }}
-        />
-      )}
+      <MediaLinkWrapper targetUrl={ad.target_url}>
+        {ad.ad_type === 'video' ? (
+          <VideoAdPlayer
+            src={mediaUrl}
+            className="img-fluid rounded shadow-sm w-100"
+            style={{
+              objectFit: 'cover',
+              maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
+            }}
+          />
+        ) : (
+          <img
+            src={mediaUrl}
+            alt={ad.title}
+            className="img-fluid rounded shadow-sm w-100"
+            style={{
+              objectFit: 'cover',
+              maxHeight: position === 'top_banner' || position === 'footer' ? '500px' : position === 'sidebar' ? '300px' : 'auto',
+            }}
+          />
+        )}
+      </MediaLinkWrapper>
       {ad.short_description && (
         <div
           className="ad-caption mt-1 small text-muted text-center"

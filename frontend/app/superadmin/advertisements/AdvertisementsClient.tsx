@@ -8,10 +8,9 @@ import { confirmToast } from '@/lib/toast-utils';
 
 interface Ad {
   id: number; title: string; short_description: string; position: string;
-  display_page: string;
-  ad_type: string; media_type: string; media_path: string;
-  payment_date: string | null; start_date: string | null; end_date: string | null;
-  is_active: string; created_at: string;
+  display_page?: string; media_path: string; media_type: string; ad_type: 'image' | 'video';
+  target_url?: string;
+  is_active: string; payment_date: string | null; start_date: string | null; end_date: string | null; created_at: string;
 }
 
 const thStyle: React.CSSProperties = { backgroundColor: '#f8f9fa', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, color: '#677788', padding: '1rem' };
@@ -40,7 +39,7 @@ const DISPLAY_PAGES = [
   { value: 'portal_admin_dashboard', label: 'Admin Portal: Dashboard' },
 ];
 
-const emptyForm = { title: '', short_description: '', position: 'top_banner', display_page: 'all', payment_date: '', start_date: '', end_date: '' };
+const emptyForm = { title: '', short_description: '', target_url: '', position: 'top_banner', display_page: 'all', payment_date: '', start_date: '', end_date: '' };
 
 export default function AdvertisementsClient() {
   const [ads, setAds] = useState<Ad[]>([]);
@@ -95,6 +94,7 @@ export default function AdvertisementsClient() {
     if (editId) fd.append('ad_id', editId);
     fd.append('title', form.title);
     fd.append('short_description', form.short_description);
+    fd.append('target_url', form.target_url);
     fd.append('position', form.position);
     fd.append('display_page', form.position === 'rows' ? 'browse' : form.display_page);
     fd.append('payment_date', form.payment_date);
@@ -128,6 +128,7 @@ export default function AdvertisementsClient() {
       setForm({
         title: ad.title,
         short_description: ad.short_description || '',
+        target_url: ad.target_url || '',
         position: ad.position,
         display_page: ad.display_page || 'all',
         payment_date: ad.payment_date || '',
@@ -192,6 +193,11 @@ export default function AdvertisementsClient() {
                     <label style={labelStyle}>Short Description</label>
                     <textarea className="form-control" style={inputStyle} rows={2} placeholder="Tell viewers what this is about..." value={form.short_description} onChange={(e) => setForm({ ...form, short_description: e.target.value })} />
                   </div>
+                  <div className="col-md-12">
+                    <label style={labelStyle}>Target Link / Redirect URL (Optional)</label>
+                    <input type="text" className="form-control" style={inputStyle} placeholder="e.g. https://flexthrift.in/buyer/browse or /buyer/product/12" value={form.target_url} onChange={(e) => setForm({ ...form, target_url: e.target.value })} />
+                    <small className="text-muted" style={{ fontSize: '0.75rem' }}>When users click on the ad image/video, they will be redirected to this link.</small>
+                  </div>
                   <div className="col-md-6">
                     <label style={labelStyle}>Position Slot</label>
                     <select
@@ -212,7 +218,7 @@ export default function AdvertisementsClient() {
                   </div>
                   <div className="col-md-6">
                     <label style={labelStyle}>Payment Date</label>
-                    <input type="date" className="form-control" style={inputStyle} value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} />
+                    <input type="date" required className="form-control" style={inputStyle} value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} />
                   </div>
                   <div className="col-md-12">
                     <label style={labelStyle}>Display Page Location</label>
@@ -234,11 +240,11 @@ export default function AdvertisementsClient() {
                   </div>
                   <div className="col-md-6">
                     <label style={labelStyle}>Start Date</label>
-                    <input type="date" className="form-control" style={inputStyle} value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+                    <input type="date" required className="form-control" style={inputStyle} value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
                   </div>
                   <div className="col-md-6">
                     <label style={labelStyle}>End Date</label>
-                    <input type="date" className="form-control" style={inputStyle} value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+                    <input type="date" required className="form-control" style={inputStyle} value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
                   </div>
                   <div className="col-md-12">
                     <label style={labelStyle}>Media Upload (Video or Image)</label>

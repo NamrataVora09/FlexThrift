@@ -201,7 +201,7 @@ export default function BrowsePage() {
   const [priceInput, setPriceInput] = useState({ min: filters.minPrice, max: filters.maxPrice });
 
   // In-Feed ad pre-fetched independently
-  const [infeedAd, setInfeedAd] = useState<{id:number;title:string;short_description:string;media_path:string;media_type:string;ad_type:string} | null>(null);
+  const [infeedAd, setInfeedAd] = useState<{id:number;title:string;short_description:string;media_path:string;media_type:string;ad_type:string;target_url?:string} | null>(null);
   useEffect(() => {
     api.get<any[]>('/shared/advertisements?position=rows&page=browse').then(res => {
       if (res.success && res.data && res.data.length > 0) {
@@ -1237,10 +1237,8 @@ export default function BrowsePage() {
                 )}
 
                 {sortedProducts.length > 0 ? sortedProducts.map((p, index) => {
-                  const isAdPosition = infeedAd && (
-                    (index + 1) % 6 === 0 ||
-                    (sortedProducts.length < 6 && index === Math.min(2, sortedProducts.length - 1))
-                  );
+                  const adInsertIndex = sortedProducts.length >= 6 ? 5 : sortedProducts.length - 1;
+                  const isAdPosition = infeedAd && index === adInsertIndex;
                   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/v1\/?$/, '') || (typeof window !== 'undefined' ? window.location.origin : '');
                   const adMediaUrl = infeedAd ? (infeedAd.media_path.startsWith('http') ? infeedAd.media_path : `${baseUrl}/uploads/advertisements/${infeedAd.media_path.replace(/^\//, '')}`) : '';
                   return (
@@ -1252,17 +1250,41 @@ export default function BrowsePage() {
                       />
                       {isAdPosition && infeedAd && (
                         <div style={{ gridColumn: '1 / -1', width: '100%', margin: '16px 0', borderRadius: 12, overflow: 'hidden' }}>
-                          {infeedAd.ad_type === 'video' ? (
-                            <VideoAdPlayer
-                              src={adMediaUrl}
-                              style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }}
-                            />
+                          {infeedAd.target_url ? (
+                            <a
+                              href={infeedAd.target_url}
+                              target={infeedAd.target_url.startsWith('http') ? '_blank' : '_self'}
+                              rel={infeedAd.target_url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                              style={{ display: 'block', textDecoration: 'none', cursor: 'pointer' }}
+                            >
+                              {infeedAd.ad_type === 'video' ? (
+                                <VideoAdPlayer
+                                  src={adMediaUrl}
+                                  style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }}
+                                />
+                              ) : (
+                                <img
+                                  src={adMediaUrl}
+                                  alt={infeedAd.title}
+                                  style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }}
+                                />
+                              )}
+                            </a>
                           ) : (
-                            <img
-                              src={adMediaUrl}
-                              alt={infeedAd.title}
-                              style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }}
-                            />
+                            <>
+                              {infeedAd.ad_type === 'video' ? (
+                                <VideoAdPlayer
+                                  src={adMediaUrl}
+                                  style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }}
+                                />
+                              ) : (
+                                <img
+                                  src={adMediaUrl}
+                                  alt={infeedAd.title}
+                                  style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }}
+                                />
+                              )}
+                            </>
                           )}
                           {infeedAd.short_description && (
                             <div

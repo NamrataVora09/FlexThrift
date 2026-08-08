@@ -485,10 +485,6 @@ export default function BuyerDashboardPage() {
               </div>
             </div>
 
-            {/* Bottom Ad */}
-            <div className="mt-4">
-              <AdBanner position="rows" page="portal_buyer_dashboard" />
-            </div>
           </>
         )}
       </div>

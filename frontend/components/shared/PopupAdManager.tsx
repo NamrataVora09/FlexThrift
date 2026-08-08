@@ -11,6 +11,22 @@ interface Ad {
   media_path: string;
   media_type: string;
   ad_type: 'image' | 'video';
+  target_url?: string;
+}
+
+function MediaLinkWrapper({ targetUrl, children }: { targetUrl?: string; children: React.ReactNode }) {
+  if (!targetUrl) return <>{children}</>;
+  const isExternal = targetUrl.startsWith('http');
+  return (
+    <a
+      href={targetUrl}
+      target={isExternal ? '_blank' : '_self'}
+      rel={isExternal ? 'noopener noreferrer' : undefined}
+      style={{ display: 'block', width: '100%', height: '100%', cursor: 'pointer', textDecoration: 'none' }}
+    >
+      {children}
+    </a>
+  );
 }
 
 function getPageKeyFromPathname(pathname: string): string {
@@ -154,42 +170,47 @@ export default function PopupAdManager() {
 
         {/* Media */}
         <div style={{ position: 'relative', aspectRatio: '16/9', background: '#f0f0f0' }}>
-          {ad.ad_type === 'video' ? (
-            <>
-              <video
+          <MediaLinkWrapper targetUrl={ad.target_url}>
+            {ad.ad_type === 'video' ? (
+              <>
+                <video
+                  src={mediaUrl}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  autoPlay
+                  muted={isMuted}
+                  loop
+                  playsInline
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMuted(!isMuted);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    bottom: 12,
+                    left: 12,
+                    zIndex: 10,
+                    background: 'rgba(0,0,0,0.5)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: 32,
+                    height: 32,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <i className={`bi bi-volume-${isMuted ? 'mute' : 'up'}-fill`} />
+                </button>
+              </>
+            ) : (
+              <img
                 src={mediaUrl}
+                alt={ad.title}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                autoPlay
-                muted={isMuted}
-                loop
-                playsInline
               />
-              <button
-                onClick={() => setIsMuted(!isMuted)}
-                style={{
-                  position: 'absolute',
-                  bottom: 12,
-                  left: 12,
-                  zIndex: 10,
-                  background: 'rgba(0,0,0,0.5)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: 32,
-                  height: 32,
-                  cursor: 'pointer',
-                }}
-              >
-                <i className={`bi bi-volume-${isMuted ? 'mute' : 'up'}-fill`} />
-              </button>
-            </>
-          ) : (
-            <img
-              src={mediaUrl}
-              alt={ad.title}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          )}
+            )}
+          </MediaLinkWrapper>
         </div>
 
         {/* Caption */}
