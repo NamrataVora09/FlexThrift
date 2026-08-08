@@ -993,6 +993,25 @@ class SharedApi extends BaseApiController
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
         $db = \Config\Database::connect();
 
+        // Ensure the coupon being edited actually exists
+        $existing = $db->table('coupons')->where('id', $id)->get()->getRowArray();
+        if (!$existing) {
+            return $this->respond(['success' => false, 'message' => 'Coupon not found'], 404);
+        }
+
+        $code = strtoupper(trim($data['code'] ?? ''));
+
+        // Prevent duplicate coupon codes on a DIFFERENT coupon
+        if ($code !== '') {
+            $duplicate = $db->table('coupons')
+                ->where('code', $code)
+                ->where('id !=', $id)
+                ->get()->getRowArray();
+            if ($duplicate) {
+                return $this->respond(['success' => false, 'message' => 'Coupon code already exists. Use a different code.'], 409);
+            }
+        }
+
         // Handle expiry date - if only date is provided, set it to end of that day
         $rawExpiry = $data['valid_until'] ?? $data['expires_at'] ?? null;
         $expiresAt = null;
@@ -1014,7 +1033,7 @@ class SharedApi extends BaseApiController
             : null;
 
         $updateData = [
-            'code'          => strtoupper($data['code'] ?? ''),
+            'code'          => $code,
             'discount_type' => $data['discount_type'] ?? 'percentage',
             'discount_value'=> $data['discount_value'] ?? 0,
             'max_discount'  => ($data['max_discount'] ?? null) ?: null,
@@ -1028,6 +1047,16 @@ class SharedApi extends BaseApiController
         if (in_array('updated_at', $fields))       $updateData['updated_at']       = date('Y-m-d H:i:s');
 
         $db->table('coupons')->where('id', $id)->update($updateData);
+
+        if ($db->affectedRows() === 0) {
+            // No rows updated — could be a DB constraint violation or no real change
+            // Re-fetch to confirm the row still matches what we sent
+            $after = $db->table('coupons')->where('id', $id)->get()->getRowArray();
+            if (!$after) {
+                return $this->respond(['success' => false, 'message' => 'Update failed: coupon not found after update.'], 500);
+            }
+        }
+
         return $this->respond(['success' => true, 'message' => 'Coupon updated']);
     }
 
