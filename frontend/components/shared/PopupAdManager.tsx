@@ -52,6 +52,8 @@ export default function PopupAdManager() {
   const [visible, setVisible] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // must start muted for browser autoplay to work
 
+  const isSuperAdminRoute = Boolean(pathname?.startsWith('/superadmin'));
+
   const fetchAndShow = useCallback(async (currentPage: string) => {
     setVisible(false);
     setAd(null);
@@ -68,11 +70,14 @@ export default function PopupAdManager() {
     }
   }, []);
 
-  // Re-show popup on every route change
+  // Re-show popup on every route change (except superadmin routes)
   useEffect(() => {
+    if (isSuperAdminRoute) return ;
     const pageKey = getPageKeyFromPathname(pathname);
     fetchAndShow(pageKey);
-  }, [pathname, fetchAndShow]);
+  }, [pathname, isSuperAdminRoute, fetchAndShow]);
+
+  if (isSuperAdminRoute) return null;
 
   if (!ad || !visible) return null;
 
