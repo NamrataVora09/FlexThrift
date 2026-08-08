@@ -39,6 +39,7 @@ class BuyerApi extends BaseApiController
             ->where('user_id', $userId)
             ->where('is_read', 0)
             ->orderBy('created_at', 'DESC')
+            ->orderBy('id', 'DESC')
             ->limit(5)
             ->get()->getResultArray();
 
@@ -579,6 +580,7 @@ class BuyerApi extends BaseApiController
         $notifications = $db->table('notifications')
             ->where('user_id', $jwtUser['user_id'])
             ->orderBy('created_at', 'DESC')
+            ->orderBy('id', 'DESC')
             ->limit(50)
             ->get()->getResultArray();
 
@@ -949,7 +951,7 @@ class BuyerApi extends BaseApiController
                     log_message('error', '[makeOffer] contact_views insert failed: ' . $e->getMessage());
                 }
 
-                
+
                 if (strtolower($activeSub['plan_type']) === 'quantity') {
                     $newCount = (int) $activeSub['usage_count'] + 1;
                     $update = ['usage_count' => $newCount];
@@ -1062,16 +1064,15 @@ class BuyerApi extends BaseApiController
             $updateData['rental_end_date'] = $endDate;
             $updateData['offer_price'] = $newPrice;
             $updateData['deposit_amount'] = $product['rental_deposit'] ?? $offer['deposit_amount'];
+            $updateData['message'] = 'Buyer has proposed new dates: ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. New total: ₹' . $newPrice;
         } else if ($newPrice !== null && $offer['status'] !== 'rejected') {
             $updateData['offer_price'] = $newPrice;
         }
 
         if (in_array($offer['status'], ['negotiating', 'rejected'])) {
             $updateData['status'] = 'pending';
-            if ($offer['status'] === 'rejected') {
+            if ($offer['status'] === 'rejected' && !$isRent) {
                 $updateData['message'] = 'Buyer has re-submitted the offer.';
-            } else if ($isRent) {
-                $updateData['message'] = 'Buyer has proposed new dates: ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. New total: ₹' . $newPrice;
             }
         }
 
@@ -1090,19 +1091,19 @@ class BuyerApi extends BaseApiController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        // Notify seller when buyer counter-proposes after negotiation or rejection
-        if (in_array($offer['status'], ['negotiating', 'rejected'])) {
-            $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
-            $buyer = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-            $db->table('notifications')->insert([
-                'user_id' => $offer['seller_id'],
-                'title' => 'Buyer Proposed New Dates',
-                'message' => ($buyer['name'] ?? 'The buyer') . ' has counter-proposed new dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . '. Please review.',
-                'type' => 'offer',
-                'is_read' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
-        }
+        // Notify seller when buyer updates/proposes dates
+        $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
+        $buyer = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        $effectivePrice = $newPrice ?? $offer['offer_price'];
+        $db->table('notifications')->insert([
+            'user_id' => $offer['seller_id'],
+            'title' => 'Buyer Proposed New Dates',
+            'message' => ($buyer['name'] ?? 'The buyer') . ' has counter-proposed new dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($startDate)) . ' to ' . date('d M Y', strtotime($endDate)) . ' (Price: ₹' . number_format((float) $effectivePrice, 2) . '). Please review.',
+            'type' => 'offer',
+            'related_id' => $id,
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
 
         return $this->respond(['success' => true, 'message' => 'Offer dates updated successfully.']);
     }
@@ -2093,7 +2094,7 @@ class BuyerApi extends BaseApiController
                     $db->table('user_subscriptions')
                         ->where('id', $activeSub['id'])
                         ->update($update);
-                    
+
                     if (isset($update['is_active']) && $update['is_active'] === 0) {
                         $this->recalibrateUserSubscriptions($buyerId, 'buyer');
                     }
@@ -2687,13 +2688,13 @@ class BuyerApi extends BaseApiController
 
                 if (!empty($dbSub['coupon_id'])) {
                     $cId = (int)$dbSub['coupon_id'];
-                   
-                        $db->table('coupon_usage')->insert([
-                            'coupon_id' => $cId,
+
+                    $db->table('coupon_usage')->insert([
+                        'coupon_id' => $cId,
                             'user_id'   => $dbSub['user_id'],
                             'used_at'   => date('Y-m-d H:i:s')
-                        ]);
-                    
+                    ]);
+
                     $db->query("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?", [$cId]);
                 }
 

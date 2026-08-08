@@ -1392,6 +1392,7 @@ interface SellerViewProps {
 }
 
 function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAccept, onReject, onRate, user }: SellerViewProps) {
+  const now = useNow(1000);
   // group by product_id, each group sorted newest-first, groups ordered by their newest offer
   const grouped = useMemo(() => {
     const m: Record<number, Offer[]> = {};
@@ -1475,7 +1476,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                   const offerTime = new Date(offer.created_at).getTime();
                   const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
 
-                  isExpired = Date.now() > expiryTime;
+                  isExpired = now > expiryTime;
                   expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
                 }
                 // Also consider backend-confirmed missed status
@@ -1511,11 +1512,11 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                 const effectiveAcceptedAt = offer.accepted_at || (offer.status === 'accepted' ? offer.updated_at : undefined);
                 const acceptedTs = effectiveAcceptedAt ? new Date(effectiveAcceptedAt).getTime() : 0;
                 const windowMs = settings.rejectionWindowHours * 3600000;
-                const canRejectByTime = offer.status === 'accepted' && acceptedTs > 0 && Date.now() < acceptedTs + windowMs;
+                const canRejectByTime = offer.status === 'accepted' && acceptedTs > 0 && now < acceptedTs + windowMs;
                 const canRejectByPickup = offer.status === 'accepted' && (offer.offer_type ?? offer.listing_type) === 'rent' && offer.rental_start_date
-                  ? Date.now() < new Date(offer.rental_start_date).getTime() - windowMs : false;
+                  ? now < new Date(offer.rental_start_date).getTime() - windowMs : false;
                 const isProcessed = !!offer.linked_order_status && ['paid', 'for_delivery', 'dispatched', 'delivered', 'completed'].includes(offer.linked_order_status);
-                const canRate = offer.status === 'accepted' && !Number(offer.seller_rated_buyer) && (acceptedTs === 0 || Date.now() < acceptedTs + settings.ratingPeriod * 86400000);
+                const canRate = offer.status === 'accepted' && !Number(offer.seller_rated_buyer) && (acceptedTs === 0 || now < acceptedTs + settings.ratingPeriod * 86400000);
 
                 return (
                   <div key={offer.id} className={`offer-row${offer.status === 'rejected' ? ' opacity-50' : ''}`}>
@@ -1617,11 +1618,10 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
 
                       {/* message */}
                       {offer.message && (
-                        <div className="alert alert-info border-0 py-3 px-4 mb-3" style={{ background: '#e3f2fd', borderRadius: 12 }}>
-                          <div className="d-flex align-items-start gap-2">
+                        <div className="alert alert-info  border-0 py-3 px-4 mb-3" style={{ background: '#e3f2fd', borderRadius: 12 }}>
+                          <div className="d-flex align-items-center gap-2">
                             <i className="bi bi-chat-quote-fill text-primary mt-1" style={{ fontSize: '1.1rem' }}></i>
                             <div>
-                              <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>Buyer Message:</div>
                               <div className="text-dark" style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>{offer.message}</div>
                             </div>
                           </div>
@@ -1713,7 +1713,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                                 <i className="bi bi-truck me-1"></i>{offer.linked_order_status.toUpperCase()}
                               </span>
                             )}
-                          
+
                           </div>
                           {/* Rejection window: hide once seller has rated (deal is done) or order is processed */}
                           {canRejectByTime && !isProcessed && !Number(offer.seller_rated_buyer) && !Number(offer.buyer_rated_seller) && effectiveAcceptedAt && (
@@ -1778,6 +1778,7 @@ interface BuyerViewProps {
 }
 
 function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict, isSoldOut, onAccept, onReject, onCancel, onRate, onUpdateDates, onAcceptDates }: BuyerViewProps) {
+  const now = useNow(1000);
   const isAdmin = role === 'admin' || role === 'super_admin';
   return (
     <>
@@ -1788,13 +1789,13 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
         const soldOut = isSoldOut?.(o);
         const acceptedTs = o.accepted_at ? new Date(o.accepted_at).getTime() : 0;
         const ratingExpiryTs = acceptedTs + settings.ratingPeriod * 86400000;
-        const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && acceptedTs > 0 && Date.now() < ratingExpiryTs;
+        const canRate = o.status === 'accepted' && !Number(o.buyer_rated_seller) && acceptedTs > 0 && now < ratingExpiryTs;
 
         // expiry logic — covers both backend-confirmed 'missed' and frontend-detected pending expiry
-        const offerTime = o.created_at ? new Date(o.created_at).getTime() : Date.now();
+        const offerTime = o.created_at ? new Date(o.created_at).getTime() : now;
         const expiryTime = offerTime + settings.acceptanceLimitDays * 86400000;
         // isExpired is true when: backend set status to 'missed' OR offer is pending and time window passed
-        const isExpired = o.status === 'missed' || (o.status === 'pending' && Date.now() > expiryTime);
+        const isExpired = o.status === 'missed' || (o.status === 'pending' && now > expiryTime);
         // expiryDate: for backend-missed offers we may not know exact expiry so compute from creation + limit
         const expiryDate = new Date(expiryTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -2096,7 +2097,7 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                   Seller: {o.seller_remarks}
                 </div>
               )}
-              
+
               {/* Conflict Alert */}
               {conflict && (
                 <div className="conflict-alert mb-3">

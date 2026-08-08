@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 import GeolocationBlocker from '@/components/shared/GeolocationBlocker';
 import SystemLockBlocker from '@/components/shared/SystemLockBlocker';
-import AdBanner from '@/components/shared/AdBanner';
+import PopupAdManager from '@/components/shared/PopupAdManager';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -50,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <SystemLockBlocker>
               <GeolocationBlocker>
                 {children}
-                <AdBanner position="popup" page="all" />
+                <PopupAdManager />
               </GeolocationBlocker>
             </SystemLockBlocker>
           </AuthProvider>

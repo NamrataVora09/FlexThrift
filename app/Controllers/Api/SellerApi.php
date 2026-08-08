@@ -221,6 +221,7 @@ class SellerApi extends BaseApiController
         $notifications = $db->table('notifications')
             ->where('user_id', $jwtUser['user_id'])
             ->orderBy('created_at', 'DESC')
+            ->orderBy('id', 'DESC')
             ->limit(50)
             ->get()->getResultArray();
 
@@ -840,6 +841,7 @@ class SellerApi extends BaseApiController
             'title' => 'Offer Accepted!',
             'message' => 'Your offer of ₹' . $offer['offer_price'] . ' on "' . ($product['title'] ?? '') . '" has been accepted.',
             'type' => 'offer',
+            'related_id' => $id,
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -884,6 +886,7 @@ class SellerApi extends BaseApiController
                 'title' => 'Offer Not Accepted',
                 'message' => $autoRejectNotif,
                 'type' => 'offer',
+                'related_id' => $other['id'],
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
@@ -989,8 +992,9 @@ class SellerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $offer['buyer_id'],
             'title' => 'Seller Suggested New Dates',
-            'message' => 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . '. Please review and accept or decline.',
+            'message' => 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ' (Price: ₹' . number_format($newPrice, 2) . '). Please review and accept or decline.',
             'type' => 'offer',
+            'related_id' => $id,
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -1090,6 +1094,7 @@ class SellerApi extends BaseApiController
                         'title' => 'Offer Reopened',
                         'message' => 'Good news! The seller has retracted their acceptance on "' . ($product['title'] ?? '') . '". Your offer is now active again.',
                         'type' => 'offer',
+                        'related_id' => $rv['id'],
                         'is_read' => 0,
                         'created_at' => date('Y-m-d H:i:s'),
                     ]);
@@ -1107,6 +1112,7 @@ class SellerApi extends BaseApiController
                 'title' => 'Offer Retracted',
                 'message' => 'The seller has retracted their acceptance of your offer on "' . ($product['title'] ?? '') . '".' . ($data['remarks'] ? ' Reason: ' . $data['remarks'] : ''),
                 'type' => 'offer',
+                'related_id' => $id,
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
@@ -1132,6 +1138,7 @@ class SellerApi extends BaseApiController
             'title' => 'Offer Rejected',
             'message' => 'Your offer on "' . ($product['title'] ?? '') . '" was rejected.' . ($data['remarks'] ? ' Reason: ' . $data['remarks'] : ''),
             'type' => 'offer',
+            'related_id' => $id,
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);

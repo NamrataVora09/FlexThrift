@@ -570,10 +570,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                     </div>
                   )}
 
-                  {/* Sidebar Ad */}
-                  <div className="mt-3">
-                    <AdBanner position="sidebar" page={user.role === 'seller' ? 'portal_seller_profile' : 'portal_buyer_profile'} />
-                  </div>
+
                 </div>
               </div>
             </div>
