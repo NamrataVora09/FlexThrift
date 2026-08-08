@@ -135,7 +135,10 @@ export default function AdvertisementsClient() {
         end_date: ad.end_date || ''
       });
       if (ad.media_path) {
-        setPreviewUrl(`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace('/api/v1', '')}/uploads/advertisements/${ad.media_path}`);
+        let baseUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/v1\/?$/, '');
+        if (!baseUrl && typeof window !== 'undefined') baseUrl = window.location.origin;
+        const mediaUrl = ad.media_path.startsWith('http') ? ad.media_path : `${baseUrl}/uploads/advertisements/${ad.media_path.replace(/^\//, '')}`;
+        setPreviewUrl(mediaUrl);
         setPreviewType(ad.media_type || (ad.ad_type === 'video' ? 'video/mp4' : 'image/jpeg'));
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -343,7 +346,7 @@ export default function AdvertisementsClient() {
                             <i className="bi bi-play-circle-fill text-white"></i>
                           </div>
                         ) : (
-                          <img src={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace('/api/v1', '')}/uploads/advertisements/${ad.media_path}`} className="rounded border" style={{ width: 80, height: 45, objectFit: 'cover', cursor: 'pointer' }} onClick={() => editAd(ad.id)} alt="" />
+                          <img src={ad.media_path.startsWith('http') ? ad.media_path : `${(process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/api\/v1\/?$/, '')}/uploads/advertisements/${ad.media_path.replace(/^\//, '')}`} className="rounded border" style={{ width: 80, height: 45, objectFit: 'cover', cursor: 'pointer' }} onClick={() => editAd(ad.id)} alt="" />
                         )}
                       </td>
                       <td style={tdStyle}>

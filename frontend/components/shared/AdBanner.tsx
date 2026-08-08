@@ -101,7 +101,13 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
 
   if (loading || !ad) return null;
 
-  const mediaUrl = `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace('/api/v1', '')}/uploads/advertisements/${ad.media_path}`;
+  let baseUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/v1\/?$/, '');
+  if (!baseUrl && typeof window !== 'undefined') {
+    baseUrl = window.location.origin;
+  }
+  const mediaUrl = ad.media_path.startsWith('http') 
+    ? ad.media_path 
+    : `${baseUrl}/uploads/advertisements/${ad.media_path.replace(/^\//, '')}`;
 
   if (position === 'popup') {
     if (!showPopup) return null;

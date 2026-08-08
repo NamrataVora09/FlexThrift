@@ -1101,13 +1101,20 @@ class SharedApi extends BaseApiController
         $today = date('Y-m-d');
 
         $builder = $db->table('advertisements')
-            ->where('is_active', 1)
+            ->groupStart()
+                ->where('is_active', 1)
+                ->orWhere('is_active', '1')
+            ->groupEnd()
             ->groupStart()
                 ->where('start_date IS NULL')
+                ->orWhere("start_date", "")
+                ->orWhere("start_date", "0000-00-00")
                 ->orWhere('start_date <=', $today)
             ->groupEnd()
             ->groupStart()
                 ->where('end_date IS NULL')
+                ->orWhere("end_date", "")
+                ->orWhere("end_date", "0000-00-00")
                 ->orWhere('end_date >=', $today)
             ->groupEnd()
             ->orderBy('created_at', 'DESC');
