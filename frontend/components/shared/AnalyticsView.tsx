@@ -138,12 +138,12 @@ export default function AnalyticsView({ role }: Props) {
     { label: 'Total Revenue', value: `₹${(summaryData?.monthly_stats?.reduce((s, r) => s + parseFloat(r.revenue || '0'), 0) ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, icon: 'bi bi-currency-rupee', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
     { label: 'Total Products', value: summaryData?.total_products ?? 0, icon: 'bi bi-box-seam', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
     { label: 'Total Offers', value: summaryData?.total_offers ?? 0, icon: 'bi bi-tags', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
-        { label: 'Sold', value:  getStatusCount('sold'), icon: 'bi bi-star-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
+    { label: 'Sold', value:  getStatusCount('sold'), icon: 'fa-solid fa-layer-group', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
 
     { label: 'Approved', value: getStatusCount('approved'), icon: 'bi bi-check-circle-fill', color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.2)' },
     { label: 'Pending', value: getStatusCount('pending'), icon: 'bi bi-clock-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
     { label: 'Rejected', value: getStatusCount('rejected'), icon: 'bi bi-x-circle-fill', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)' },
-      { label: 'Score Points', value: summaryData?.score_points ?? 0, icon: 'bi bi-star-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
+      { label: 'Seller Score', value: summaryData?.score_points ?? 0, icon: 'bi bi-star-fill', color: '#ffc63a', bg: 'rgba(255,198,58,0.05)', border: '#ffc63a' },
 
   ];
 
