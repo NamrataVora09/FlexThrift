@@ -260,10 +260,10 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                                 ? rawStatus.toUpperCase()
                                 : 'UNKNOWN';
 
-                              if (editStatus === 'pending' || editStatus === 'Changes Pending') {
+                              if (editStatus === 'pending' || editStatus === 'changesPending') {
                                 displayStatus = 'edit_pending';
                                 displayLabel = 'CHANGES PENDING';
-                              } else if (editStatus === 'rejected' || editStatus === 'Changes Rejected') {
+                              } else if (editStatus === 'rejected' || editStatus === 'changesRejected') {
                                 displayStatus = 'edit_rejected';
                                 displayLabel = 'CHANGES REJECTED';
                               }
@@ -292,7 +292,7 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                                     {displayLabel}
                                   </span>
                                   {/* Show edit_remarks when edit is rejected */}
-                                  {p.edit_remarks && (editStatus === 'rejected' || editStatus === 'Changes Rejected') && (() => {
+                                  {p.edit_remarks && (editStatus === 'rejected' || editStatus === 'changesRejected') && (() => {
                                     let remark = String(p.edit_remarks || '').trim();
                                     if (!remark) return null;
                                     return (

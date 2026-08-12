@@ -1825,7 +1825,7 @@ class SuperAdminApi extends BaseApiController
             ->select('r.*, p.title as original_title, p.listing_type, p.category, p.color, p.used_times, p.usage_label, p.price, p.original_price, p.rental_cost, p.rental_deposit, p.description, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->join('users u', 'u.id = p.seller_id', 'left')
-            ->where('r.status', 'Changes Pending')
+            ->where('r.status', 'changesPending')
             ->orderBy('r.created_at', 'DESC')
             ->get()->getResultArray();
         
@@ -2054,7 +2054,7 @@ class SuperAdminApi extends BaseApiController
         // seller's "My Products" query (which reads per.admin_remarks as edit_remarks)
         // can display the rejection reason to the seller.
         $db->table('product_edit_requests')->where('id', $id)->update([
-            'status' => 'Changes Rejected',
+            'status' => 'changesRejected',
             'admin_remarks' => $remarks,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);

@@ -259,7 +259,7 @@ class AdminApi extends BaseApiController
             ->select('r.*, p.title as original_title, p.listing_type, u.name as seller_name, u.reliability_score')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->join('users u', 'u.id = p.seller_id', 'left')
-            ->where('r.status', 'Changes Pending');
+            ->where('r.status', 'changesPending');
 
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $builder->where('u.role !=', 'admin');
@@ -549,7 +549,7 @@ class AdminApi extends BaseApiController
         // seller's "My Products" query (which reads per.admin_remarks as edit_remarks)
         // can display the rejection reason to the seller.
         $db->table('product_edit_requests')->where('id', $id)->update([
-            'status' => 'Changes Rejected',
+            'status' => 'changesRejected',
             'admin_remarks' => $remarks,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);

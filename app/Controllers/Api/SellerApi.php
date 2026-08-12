@@ -1702,7 +1702,7 @@ class SellerApi extends BaseApiController
         // Check if there's already a pending edit request for this product
         $existingRequest = $db->table('product_edit_requests')
             ->where('product_id', $id)
-            ->where('status', 'pending')
+            ->where('status', 'changesPending')
             ->get()->getRowArray();
 
         if ($existingRequest) {
@@ -1794,7 +1794,7 @@ class SellerApi extends BaseApiController
                 'deleted_images_ids' => json_encode($deletedImagesWithPaths),
                 'previous_data' => json_encode($snapshot),
                 'original_images_snapshot' => json_encode(array_column($currentImages, 'image_path')),
-                'status' => 'pending',
+                'status' => 'changesPending',
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
@@ -2123,7 +2123,7 @@ class SellerApi extends BaseApiController
             // Check if there's already a pending edit request for this product
             $existingRequest = $db->table('product_edit_requests')
                 ->where('product_id', $id)
-                ->where('status', 'Changes Pending')
+                ->where('status', 'changesPending')
                 ->where('editor_role', 'admin')
                 ->get()->getRowArray();
 
@@ -2225,7 +2225,7 @@ class SellerApi extends BaseApiController
                     'original_images_snapshot' => json_encode($previousImagePaths),
                     'editor_role' => 'admin',
                     'editor_id' => $jwtUser['user_id'],
-                    'status' => 'pending',
+                    'status' => 'changesPending',
                     'created_at' => date('Y-m-d H:i:s'),
                     'updated_at' => date('Y-m-d H:i:s'),
                 ]);
