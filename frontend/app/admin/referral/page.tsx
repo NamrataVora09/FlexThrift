@@ -246,11 +246,7 @@ export default function AdminReferralPage() {
         ) : (
           <>
             {/* Hero */}
-            <div className="ref-hero shadow-sm">
-              <div className="hero-label">Referral Program</div>
-              <h2 className="hero-title">Invite friends & earn rewards!</h2>
-              <p className="hero-sub">Share your code and get reward points worth ₹{stats.reward_amount.toFixed(2)} on their first subscription.</p>
-            </div>
+         
 
             {/* Stats Row */}
             <div className="row g-3 mb-4">

@@ -16,7 +16,7 @@ export default function ProfileView({ role }: Props) {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', mobile: '', address: '', pin_code: '', city: '', state: '' });
+  const [form, setForm] = useState({ name: '', email: '', mobile: '', address: '', pin_code: '', city: '', state: '' });
   const [kycForm, setKycForm] = useState({ pan_number: '', aadhar_number: '' });
   const [kycFiles, setKycFiles] = useState<{ pan_image?: File; aadhar_image?: File }>({});
   const [kycSaving, setKycSaving] = useState(false);
@@ -27,6 +27,7 @@ export default function ProfileView({ role }: Props) {
         setProfile(r.data);
         setForm({
           name: r.data.name || '',
+          email: r.data.email || '',
           mobile: r.data.mobile || '',
           address: r.data.address || '',
           pin_code: r.data.pin_code || '',
@@ -144,6 +145,7 @@ export default function ProfileView({ role }: Props) {
                   <div className="row g-3">
                     {[
                       { key: 'name', label: 'Full Name' },
+                      { key: 'email', label: 'Email' },
                       { key: 'mobile', label: 'Mobile' },
                       { key: 'state', label: 'State' },
                       { key: 'city', label: 'City' },
@@ -153,7 +155,7 @@ export default function ProfileView({ role }: Props) {
                       <div className="col-md-6" key={field.key}>
                         <label className="form-label small fw-bold">{field.label}</label>
                         <input
-                          type="text"
+                          type={field.key === 'email' ? 'email' : 'text'}
                           className="form-control"
                           value={(form as any)[field.key]}
                           onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}

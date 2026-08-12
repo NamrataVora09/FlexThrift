@@ -18,7 +18,7 @@ interface Props {
 let globalSidebarOpen: boolean | null = null;
 
 export default function DashboardLayout({ children, requiredRoles, viewAs }: Props) {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, setUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -42,6 +42,29 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
       showToast.error("Your buyer privileges have been restricted by the administrator.");
     }
   }, [isSellerRestricted, isBuyerRestricted, user, router]);
+
+  // Refresh user data when accessing seller/buyer pages to catch block status changes
+  useEffect(() => {
+    if (user && (user.user_type === 'both' || user.role === 'admin') && (isSellerPage || isBuyerPage)) {
+      const refreshUserData = async () => {
+        try {
+          const res = await fetch('/api/v1/auth/me', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('flex_token')}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.data) {
+              localStorage.setItem('flex_user', JSON.stringify(data.data));
+              setUser(data.data);
+            }
+          }
+        } catch (e) {
+          // Silent fail
+        }
+      };
+      refreshUserData();
+    }
+  }, [pathname, user, isSellerPage, isBuyerPage]);
 
   // Initialize from global variable if it exists, otherwise default to true
   const [sidebarOpen, setSidebarOpen] = useState(() => {

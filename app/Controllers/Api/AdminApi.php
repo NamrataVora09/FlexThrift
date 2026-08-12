@@ -259,7 +259,7 @@ class AdminApi extends BaseApiController
             ->select('r.*, p.title as original_title, p.listing_type, u.name as seller_name, u.reliability_score')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->join('users u', 'u.id = p.seller_id', 'left')
-            ->where('r.status', 'pending');
+            ->where('r.status', 'Changes Pending');
 
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $builder->where('u.role !=', 'admin');
@@ -549,7 +549,7 @@ class AdminApi extends BaseApiController
         // seller's "My Products" query (which reads per.admin_remarks as edit_remarks)
         // can display the rejection reason to the seller.
         $db->table('product_edit_requests')->where('id', $id)->update([
-            'status' => 'rejected',
+            'status' => 'Changes Rejected',
             'admin_remarks' => $remarks,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
@@ -837,6 +837,23 @@ class AdminApi extends BaseApiController
         $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
         if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
+        // Role validation: check if user can purchase this plan based on their role
+        $planUserType = $plan['user_type'] ?? '';
+        $userRole = $user['role'] ?? '';
+        $userType = $user['user_type'] ?? '';
+
+        if ($planUserType === 'seller') {
+            // Seller plan requires seller role
+            if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
+                return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+            }
+        } elseif ($planUserType === 'buyer') {
+            // Buyer plan requires buyer role
+            if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+                return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+            }
+        }
+
         $basePrice = (float) $plan['price'];
         $chargeModel = new \App\Models\PlatformChargeModel();
         $activeCharges = $chargeModel->getActiveCharges();
@@ -947,6 +964,24 @@ class AdminApi extends BaseApiController
 
         $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
         if (!$plan) return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+
+        // Role validation: check if user can purchase this plan based on their role
+        $planUserType = $plan['user_type'] ?? '';
+        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        $userRole = $user['role'] ?? '';
+        $userType = $user['user_type'] ?? '';
+
+        if ($planUserType === 'seller') {
+            // Seller plan requires seller role
+            if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
+                return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+            }
+        } elseif ($planUserType === 'buyer') {
+            // Buyer plan requires buyer role
+            if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+                return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+            }
+        }
 
         $basePrice = (float)$plan['price'];
         $chargeModel = new \App\Models\PlatformChargeModel();

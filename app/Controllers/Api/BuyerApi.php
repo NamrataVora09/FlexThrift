@@ -2218,6 +2218,15 @@ class BuyerApi extends BaseApiController
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
 
+        // Role validation: check if user can purchase this plan based on their role
+        $userRole = $user['role'] ?? '';
+        $userType = $user['user_type'] ?? '';
+
+        // Buyer plan requires buyer role
+        if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+            return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+        }
+
         // Platform charges breakdown
         $chargeModel = new \App\Models\PlatformChargeModel();
         $activeCharges = $chargeModel->getActiveCharges();
@@ -2449,8 +2458,17 @@ class BuyerApi extends BaseApiController
         if (!$plan)
             return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
 
-        // Check if buyer is blocked
+        // Role validation: check if user can purchase this plan based on their role
         $currentUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        $userRole = $currentUser['role'] ?? '';
+        $userType = $currentUser['user_type'] ?? '';
+
+        // Buyer plan requires buyer role
+        if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+            return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+        }
+
+        // Check if buyer is blocked
         if ($currentUser && !empty($currentUser['blocked_buyer'])) {
             return $this->respond(['success' => false, 'message' => 'Your account is restricted from purchasing buyer subscriptions.'], 403);
         }

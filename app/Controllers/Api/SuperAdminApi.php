@@ -634,12 +634,19 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Email already exists.'], 400);
         }
 
+        if ($mobile) {
+            $mobileExists = $db->table('users')->where('mobile', $mobile)->countAllResults();
+            if ($mobileExists) {
+                return $this->respond(['success' => false, 'message' => 'Mobile number already exists.'], 400);
+            }
+        }
+
         $db->table('users')->insert([
             'name' => $name,
             'email' => $email,
             'mobile' => $mobile,
             'password' => password_hash($password, PASSWORD_DEFAULT),
-            'user_type' => 'buyer',
+            'user_type' => 'admin',
             'role' => 'admin',
             'is_verified' => 1,
             'reliability_score' => 0,
@@ -674,6 +681,14 @@ class SuperAdminApi extends BaseApiController
         $emailExists = $db->table('users')->where('email', $email)->where('id !=', $id)->countAllResults();
         if ($emailExists) {
             return $this->respond(['success' => false, 'message' => 'Email already exists for another user.'], 400);
+        }
+
+        // Check if mobile already exists for another admin
+        if ($mobile) {
+            $mobileExists = $db->table('users')->where('mobile', $mobile)->where('id !=', $id)->countAllResults();
+            if ($mobileExists) {
+                return $this->respond(['success' => false, 'message' => 'Mobile number already exists for another user.'], 400);
+            }
         }
 
         $updateData = [
@@ -1810,7 +1825,7 @@ class SuperAdminApi extends BaseApiController
             ->select('r.*, p.title as original_title, p.listing_type, p.category, p.color, p.used_times, p.usage_label, p.price, p.original_price, p.rental_cost, p.rental_deposit, p.description, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->join('users u', 'u.id = p.seller_id', 'left')
-            ->where('r.status', 'pending')
+            ->where('r.status', 'Changes Pending')
             ->orderBy('r.created_at', 'DESC')
             ->get()->getResultArray();
         
@@ -2039,7 +2054,7 @@ class SuperAdminApi extends BaseApiController
         // seller's "My Products" query (which reads per.admin_remarks as edit_remarks)
         // can display the rejection reason to the seller.
         $db->table('product_edit_requests')->where('id', $id)->update([
-            'status' => 'rejected',
+            'status' => 'Changes Rejected',
             'admin_remarks' => $remarks,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);

@@ -556,6 +556,50 @@ class SellerApi extends BaseApiController
             }
         }
 
+        // Validate original brand listing type compatibility
+        if (!empty($data['orignal_brand_id'])) {
+            $brandId = $data['orignal_brand_id'];
+            $listingTypeId = $data['listing_type_category'];
+            
+            $brand = $db->table('orignal_brands')->where('id', $brandId)->get()->getRowArray();
+            if ($brand) {
+                // Check if brand has listing type restrictions
+                $hasListingTypeRestriction = !empty($brand['listing_type_ids']) || !empty($brand['listing_type_id']);
+                
+                if ($hasListingTypeRestriction) {
+                    $allowedListingTypeIds = [];
+                    if (!empty($brand['listing_type_ids'])) {
+                        // Parse comma-separated or JSON listing_type_ids
+                        $listingTypeIdsStr = $brand['listing_type_ids'];
+                        if (is_string($listingTypeIdsStr)) {
+                            // Try JSON first
+                            $decoded = json_decode($listingTypeIdsStr, true);
+                            if (is_array($decoded)) {
+                                $allowedListingTypeIds = $decoded;
+                            } else {
+                                // Fallback to comma-separated
+                                $allowedListingTypeIds = explode(',', $listingTypeIdsStr);
+                            }
+                        } elseif (is_array($listingTypeIdsStr)) {
+                            $allowedListingTypeIds = $listingTypeIdsStr;
+                        }
+                    } elseif (!empty($brand['listing_type_id'])) {
+                        $allowedListingTypeIds = [$brand['listing_type_id']];
+                    }
+                    
+                    // Normalize to integers for comparison
+                    $allowedListingTypeIds = array_map('intval', $allowedListingTypeIds);
+                    
+                    if (!in_array((int)$listingTypeId, $allowedListingTypeIds)) {
+                        return $this->respond([
+                            'success' => false, 
+                            'message' => 'The selected original brand is not available for this listing type. Please select a different brand or change the listing type.'
+                        ], 422);
+                    }
+                }
+            }
+        }
+
         // Check if admin review is required
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
         $reviewRequired = ($reviewSetting && ($reviewSetting['setting_value'] == '1' || $reviewSetting['setting_value'] == 'true'));
@@ -1528,6 +1572,50 @@ class SellerApi extends BaseApiController
             }
         }
 
+        // Validate original brand listing type compatibility
+        $orignalBrandId = $processedData['orignal_brand_id'] ?? $product['orignal_brand_id'] ?? null;
+        $listingTypeId = $processedData['listing_type_category'] ?? $product['listing_type_category'] ?? null;
+        
+        if (!empty($orignalBrandId) && !empty($listingTypeId)) {
+            $brand = $db->table('orignal_brands')->where('id', $orignalBrandId)->get()->getRowArray();
+            if ($brand) {
+                // Check if brand has listing type restrictions
+                $hasListingTypeRestriction = !empty($brand['listing_type_ids']) || !empty($brand['listing_type_id']);
+                
+                if ($hasListingTypeRestriction) {
+                    $allowedListingTypeIds = [];
+                    if (!empty($brand['listing_type_ids'])) {
+                        // Parse comma-separated or JSON listing_type_ids
+                        $listingTypeIdsStr = $brand['listing_type_ids'];
+                        if (is_string($listingTypeIdsStr)) {
+                            // Try JSON first
+                            $decoded = json_decode($listingTypeIdsStr, true);
+                            if (is_array($decoded)) {
+                                $allowedListingTypeIds = $decoded;
+                            } else {
+                                // Fallback to comma-separated
+                                $allowedListingTypeIds = explode(',', $listingTypeIdsStr);
+                            }
+                        } elseif (is_array($listingTypeIdsStr)) {
+                            $allowedListingTypeIds = $listingTypeIdsStr;
+                        }
+                    } elseif (!empty($brand['listing_type_id'])) {
+                        $allowedListingTypeIds = [$brand['listing_type_id']];
+                    }
+                    
+                    // Normalize to integers for comparison
+                    $allowedListingTypeIds = array_map('intval', $allowedListingTypeIds);
+                    
+                    if (!in_array((int)$listingTypeId, $allowedListingTypeIds)) {
+                        return $this->respond([
+                            'success' => false, 
+                            'message' => 'The selected original brand is not available for this listing type. Please select a different brand or change the listing type.'
+                        ], 422);
+                    }
+                }
+            }
+        }
+
         // Handle new image uploads for edit request
         $tempImages = [];
         $files = $this->request->getFiles();
@@ -1879,6 +1967,50 @@ class SellerApi extends BaseApiController
             }
         }
 
+        // Validate original brand listing type compatibility
+        $orignalBrandId = $updateData['orignal_brand_id'] ?? $product['orignal_brand_id'] ?? null;
+        $listingTypeId = $updateData['listing_type_category'] ?? $product['listing_type_category'] ?? null;
+        
+        if (!empty($orignalBrandId) && !empty($listingTypeId)) {
+            $brand = $db->table('orignal_brands')->where('id', $orignalBrandId)->get()->getRowArray();
+            if ($brand) {
+                // Check if brand has listing type restrictions
+                $hasListingTypeRestriction = !empty($brand['listing_type_ids']) || !empty($brand['listing_type_id']);
+                
+                if ($hasListingTypeRestriction) {
+                    $allowedListingTypeIds = [];
+                    if (!empty($brand['listing_type_ids'])) {
+                        // Parse comma-separated or JSON listing_type_ids
+                        $listingTypeIdsStr = $brand['listing_type_ids'];
+                        if (is_string($listingTypeIdsStr)) {
+                            // Try JSON first
+                            $decoded = json_decode($listingTypeIdsStr, true);
+                            if (is_array($decoded)) {
+                                $allowedListingTypeIds = $decoded;
+                            } else {
+                                // Fallback to comma-separated
+                                $allowedListingTypeIds = explode(',', $listingTypeIdsStr);
+                            }
+                        } elseif (is_array($listingTypeIdsStr)) {
+                            $allowedListingTypeIds = $listingTypeIdsStr;
+                        }
+                    } elseif (!empty($brand['listing_type_id'])) {
+                        $allowedListingTypeIds = [$brand['listing_type_id']];
+                    }
+                    
+                    // Normalize to integers for comparison
+                    $allowedListingTypeIds = array_map('intval', $allowedListingTypeIds);
+                    
+                    if (!in_array((int)$listingTypeId, $allowedListingTypeIds)) {
+                        return $this->respond([
+                            'success' => false, 
+                            'message' => 'The selected original brand is not available for this listing type. Please select a different brand or change the listing type.'
+                        ], 422);
+                    }
+                }
+            }
+        }
+
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         // Snapshot current images BEFORE any deletions/uploads so previous_data can include them
@@ -1991,7 +2123,7 @@ class SellerApi extends BaseApiController
             // Check if there's already a pending edit request for this product
             $existingRequest = $db->table('product_edit_requests')
                 ->where('product_id', $id)
-                ->where('status', 'pending')
+                ->where('status', 'Changes Pending')
                 ->where('editor_role', 'admin')
                 ->get()->getRowArray();
 
@@ -2479,6 +2611,15 @@ class SellerApi extends BaseApiController
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
 
+        // Role validation: check if user can purchase this plan based on their role
+        $userRole = $user['role'] ?? '';
+        $userType = $user['user_type'] ?? '';
+
+        // Seller plan requires seller role
+        if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
+            return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+        }
+
         $chargeModel = new \App\Models\PlatformChargeModel();
         $activeCharges = $chargeModel->getActiveCharges();
         $chargeBreakdown = [];
@@ -2701,8 +2842,17 @@ class SellerApi extends BaseApiController
         if (!$plan)
             return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
 
-        // Check if seller is blocked
+        // Role validation: check if user can purchase this plan based on their role
         $currentUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        $userRole = $currentUser['role'] ?? '';
+        $userType = $currentUser['user_type'] ?? '';
+
+        // Seller plan requires seller role
+        if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
+            return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+        }
+
+        // Check if seller is blocked
         if ($currentUser && !empty($currentUser['blocked_seller'])) {
             return $this->respond(['success' => false, 'message' => 'Your account is restricted from purchasing seller subscriptions.'], 403);
         }

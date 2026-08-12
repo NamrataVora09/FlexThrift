@@ -70,6 +70,14 @@ class AuthApi extends BaseApiController
             ], 403);
         }
 
+        // Check if user is verified
+        if (empty($user['is_verified']) || $user['is_verified'] == '0') {
+            return $this->respond([
+                'success' => false,
+                'message' => 'Please verify your account before logging in. Check your email for verification instructions.',
+            ], 403);
+        }
+
         if (!password_verify($password, $user['password'])) {
             log_message('warning', 'Failed login attempt for: ' . $email);
             return $this->respond([
@@ -194,6 +202,14 @@ class AuthApi extends BaseApiController
             return $this->respond([
                 'success' => false,
                 'message' => 'Your account roles have been blocked by admin',
+            ], 403);
+        }
+
+        // Check if user is verified
+        if (empty($user['is_verified']) || $user['is_verified'] == '0') {
+            return $this->respond([
+                'success' => false,
+                'message' => 'Please verify your account before logging in. Check your email for verification instructions.',
             ], 403);
         }
 
@@ -575,7 +591,19 @@ class AuthApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Role switching not allowed'], 403);
         }
 
+        // Check if the target role is blocked before allowing switch
+        if ($newRole === 'buyer' && !empty($user['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer privileges have been restricted by the administrator.'], 403);
+        }
+
+        if ($newRole === 'seller' && !empty($user['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller privileges have been restricted by the administrator.'], 403);
+        }
+
         $this->userModel->update($user['id'], ['role' => $newRole]);
+
+        // Fetch updated user data to return fresh blocked status
+        $updatedUser = $this->userModel->find($user['id']);
 
         $token = JWT::encode([
             'user_id' => $user['id'],
@@ -583,13 +611,13 @@ class AuthApi extends BaseApiController
             'role'    => $newRole,
         ]);
 
-        $user['role'] = $newRole;
+        $updatedUser['role'] = $newRole;
 
         return $this->respond([
             'success' => true,
             'message' => "Switched to $newRole",
             'data'    => [
-                'user'  => $this->sanitizeUser($user, $newRole),
+                'user'  => $this->sanitizeUser($updatedUser, $newRole),
                 'token' => $token,
             ],
         ]);

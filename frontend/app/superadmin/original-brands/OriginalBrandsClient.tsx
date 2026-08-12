@@ -330,7 +330,7 @@ export default function OriginalBrandsClient() {
                       <tr key={b.id}>
                         <td style={{ ...tdStyle, paddingLeft: '1.5rem' }}>
                           {b.brand_image ? (
-                            <img src={`http://localhost:8080/${b.brand_image}`} alt={b.brand_name} style={logoStyle} />
+                            <img src={`${process.env.NEXT_PUBLIC_API_URL}/${b.brand_image}`} alt={b.brand_name} style={logoStyle} />
                           ) : (
                             <div style={logoPlaceholder}><i className="bi bi-image"></i></div>
                           )}

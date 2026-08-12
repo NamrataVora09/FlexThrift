@@ -33,6 +33,7 @@ interface AuthContextType {
   switchRole: (role: string) => Promise<{ success: boolean; message?: string }>;
   refreshKey: number;
   triggerRefresh: () => void;
+  setUser: (user: User | null) => void;
 }
 
 interface RegisterData {
@@ -65,8 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
 
-        // For admins, force a background refresh to catch any block status changes
-        if (parsedUser.role === 'admin') {
+        // For admins and both users, force a background refresh to catch any block status changes
+        if (parsedUser.role === 'admin' || parsedUser.user_type === 'both') {
           api.get<User>('/auth/me').then(res => {
             if (res.success && res.data) {
               setUser(res.data);
@@ -151,14 +152,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const switchRole = useCallback(async (role: string) => {
-    const res = await api.post<{ user: User }>(`/auth/switch-role/${role}`);
+    const res = await api.post<{ user: User; token: string }>(`/auth/switch-role/${role}`);
     if (res.success && res.data) {
+      // Update token if provided in response
+      if (res.data.token) {
+        setToken(res.data.token);
+        localStorage.setItem('flex_token', res.data.token);
+      }
+      // Update user with fresh data from backend
       setUser(res.data.user);
       localStorage.setItem('flex_user', JSON.stringify(res.data.user));
       return { success: true };
     }
     return { success: false, message: res.message };
-  }, []);
+  }, [setToken]);
 
   const triggerRefresh = useCallback(() => {
     setRefreshKey(prev => prev + 1);
@@ -181,6 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         switchRole,
         refreshKey,
         triggerRefresh,
+        setUser,
       }}
     >
       {children}

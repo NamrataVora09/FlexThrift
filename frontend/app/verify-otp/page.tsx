@@ -19,9 +19,18 @@ export default function VerifyOtpPage() {
   const cooldownRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const savedEmail = sessionStorage.getItem('otp_email');
-    if (!savedEmail) { router.push('/'); return; }
-    setEmail(savedEmail);
+    // Check for email in URL query parameter first (from login redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlEmail = urlParams.get('email');
+    
+    if (urlEmail) {
+      setEmail(decodeURIComponent(urlEmail));
+      sessionStorage.setItem('otp_email', decodeURIComponent(urlEmail));
+    } else {
+      const savedEmail = sessionStorage.getItem('otp_email');
+      if (!savedEmail) { router.push('/'); return; }
+      setEmail(savedEmail);
+    }
   }, [router]);
 
   useEffect(() => {

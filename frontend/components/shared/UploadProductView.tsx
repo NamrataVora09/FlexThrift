@@ -1253,6 +1253,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
                     </div>
                     {obOpen && (
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #ced4da', borderTop: 'none', borderRadius: '0 0 8px 8px', zIndex: 1050, maxHeight: 220, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 8px', borderBottom: '1px solid #f1f3f5' }}>
+                          <button type="button" onClick={() => setObOpen(false)} style={{ background: 'none', border: 'none', color: '#6c757d', padding: '2px 6px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                            <i className="bi bi-x-lg"></i>
+                          </button>
+                        </div>
                         {filteredOriginalBrands.map(b => (
                           <div key={b.id} onClick={() => selectOb(b)} style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: '1px solid #f1f3f5', transition: 'background 0.15s' }}
                             onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'} onMouseLeave={e => e.currentTarget.style.background = ''}>

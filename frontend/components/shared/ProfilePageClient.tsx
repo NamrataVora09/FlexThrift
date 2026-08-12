@@ -52,7 +52,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
   const [activeSellerPlan, setActiveSellerPlan] = useState<string | null>(null);
   const [imgUploading, setImgUploading] = useState(false);
   const [form, setForm] = useState({
-    name: '', mobile: '', alternate_mobile: '', gender: '',
+    name: '', email: '', mobile: '', alternate_mobile: '', gender: '',
     address: '', pin_code: '', city: '', state: '',
   });
 
@@ -63,6 +63,7 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
         setUser(u);
         setForm({
           name: u.name || '',
+          email: u.email || '',
           mobile: u.mobile || '',
           alternate_mobile: u.alternate_mobile || '',
           gender: u.gender || '',
@@ -594,6 +595,12 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                       <label>Full Name</label>
                       <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                     </div>
+                   
+                      <div className="col-md-6 modal-field">
+                        <label>Email</label>
+                        <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                      </div>
+                   
                     <div className="col-md-6 modal-field">
                       <label>Gender</label>
                       <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>

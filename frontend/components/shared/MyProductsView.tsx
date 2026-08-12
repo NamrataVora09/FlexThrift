@@ -15,6 +15,8 @@ interface Product {
   image: string; created_at: string; rental_cost: string;
   pending_reason?: string;
   edit_request?: 'pending' | 'approved' | 'rejected' | null;
+  edit_status?: string | null;
+  edit_remarks?: string | null;
   // Populated only when product is rejected at product level (e.g. brand block) AND
   // also has a separately-rejected edit request — so seller sees both reasons.
   edit_rejection_remarks?: string | null;
@@ -247,24 +249,25 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                           <td style={tdStyle}>
                             {(() => {
                               const rawStatus = p.status?.trim() || '';
+                              const editStatus = p.edit_status?.trim() || '';
                               const editRequest = p.edit_request?.trim() || '';
 
-                              // Determine display status based on edit_request field
-                              // Only show edit_request status if it's pending or rejected
+                              // Determine display status based on edit_status field (from product_edit_requests)
+                              // Only show edit_status if it's pending or rejected
                               // If it's approved or null, show the normal product status
                               let displayStatus = rawStatus;
                               let displayLabel = rawStatus
                                 ? rawStatus.toUpperCase()
                                 : 'UNKNOWN';
 
-                              if (editRequest === 'pending') {
+                              if (editStatus === 'pending' || editStatus === 'Changes Pending') {
                                 displayStatus = 'edit_pending';
-                                displayLabel = 'PENDING EDIT';
-                              } else if (editRequest === 'rejected') {
+                                displayLabel = 'CHANGES PENDING';
+                              } else if (editStatus === 'rejected' || editStatus === 'Changes Rejected') {
                                 displayStatus = 'edit_rejected';
-                                displayLabel = 'REJECTED CHANGES';
+                                displayLabel = 'CHANGES REJECTED';
                               }
-                              // edit_request === 'approved' or null or empty: use normal status
+                              // edit_status === 'approved' or null or empty: use normal status
 
                               const statusStyle = STATUS_COLORS[displayStatus] || { bg: '#f3f4f6', color: '#6b7280' };
 
@@ -288,9 +291,18 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                                     }
                                     {displayLabel}
                                   </span>
-                                  {p.admin_remarks && (() => {
-                                    // Only show remarks if edit was rejected or product is rejected
-                                    if (editRequest !== 'rejected' && rawStatus !== 'rejected' && rawStatus !== 'rejected_changes') return null;
+                                  {/* Show edit_remarks when edit is rejected */}
+                                  {p.edit_remarks && (editStatus === 'rejected' || editStatus === 'Changes Rejected') && (() => {
+                                    let remark = String(p.edit_remarks || '').trim();
+                                    if (!remark) return null;
+                                    return (
+                                      <div style={{ fontSize: '0.7rem', color: '#dc2626', marginTop: 4, maxWidth: 150, wordBreak: 'break-word' }}>
+                                        <i className="bi bi-info-circle me-1"></i>{remark}
+                                      </div>
+                                    );
+                                  })()}
+                                  {/* Show admin_remarks for product-level rejections */}
+                                  {p.admin_remarks && (rawStatus === 'rejected' || rawStatus === 'rejected_changes') && (() => {
                                     // Strip internal metadata: remove [pre_status:...] tag and system prefixes
                                     let remark = String(p.admin_remarks || '')
                                       .replace(/\[pre_status:[a-z_]+\]/gi, '')

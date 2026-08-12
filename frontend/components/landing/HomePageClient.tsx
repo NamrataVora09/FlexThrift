@@ -474,7 +474,16 @@ export default function HomePageClient() {
     setSidebarLoading(true);
     const res = await login(sidebarEmail, sidebarPassword);
     setSidebarLoading(false);
-    if (!res.success) { setSidebarError(res.message || 'Login failed'); return; }
+    if (!res.success) {
+      // Check if the error is about verification
+      if (res.message?.includes('verify your account') || res.message?.includes('verify')) {
+        alert('Please verify your account before logging in. Redirecting to verification page...');
+        router.push(`/verify-otp?email=${encodeURIComponent(sidebarEmail)}`);
+        return;
+      }
+      setSidebarError(res.message || 'Login failed');
+      return;
+    }
     try {
       const u = JSON.parse(localStorage.getItem('flex_user') || '{}');
       if (u.role === 'super_admin') router.push('/superadmin');
@@ -495,7 +504,16 @@ export default function HomePageClient() {
     setSidebarLoading(true);
     const res = await login(sidebarEmail, sidebarPassword);
     setSidebarLoading(false);
-    if (!res.success) { setSidebarError(res.message || 'Login failed'); return; }
+    if (!res.success) {
+      // Check if the error is about verification
+      if (res.message?.includes('verify your account') || res.message?.includes('verify')) {
+        alert('Please verify your account before logging in. Redirecting to verification page...');
+        router.push(`/verify-otp?email=${encodeURIComponent(sidebarEmail)}`);
+        return;
+      }
+      setSidebarError(res.message || 'Login failed');
+      return;
+    }
     
     const u = JSON.parse(localStorage.getItem('flex_user') || '{}');
     if (u.role === 'super_admin') router.push('/superadmin');

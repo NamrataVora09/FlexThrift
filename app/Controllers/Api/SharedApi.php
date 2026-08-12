@@ -1421,14 +1421,64 @@ class SharedApi extends BaseApiController
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
         $db = \Config\Database::connect();
 
+        $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$currentUser) {
+            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+        }
+
         $updateData = [];
+        // For admin users, allow email editing
         $allowed = ['name', 'mobile', 'alternate_mobile', 'gender', 'address', 'pin_code', 'city', 'state'];
+        if ($currentUser['role'] === 'admin' || $currentUser['role'] === 'super_admin' || $currentUser['role'] === 'superadmin') {
+            $allowed[] = 'email';
+        }
+        
         foreach ($allowed as $field) {
             if (isset($data[$field]))
                 $updateData[$field] = $data[$field];
         }
         if (empty($updateData))
             return $this->respond(['success' => false, 'message' => 'No data to update'], 400);
+
+        // Validate alternate mobile number uniqueness
+        if (isset($updateData['alternate_mobile']) && !empty($updateData['alternate_mobile'])) {
+            $alternateMobile = $updateData['alternate_mobile'];
+            
+            // Check if alternate mobile is same as primary mobile
+            $primaryMobile = $updateData['mobile'] ?? $currentUser['mobile'];
+            if ($alternateMobile === $primaryMobile) {
+                return $this->respond(['success' => false, 'message' => 'Alternate mobile number cannot be same as primary mobile number'], 400);
+            }
+            
+            // Check if alternate mobile exists as primary mobile for any other user
+            $existsAsPrimary = $db->table('users')
+                ->where('mobile', $alternateMobile)
+                ->where('id !=', $jwtUser['user_id'])
+                ->countAllResults();
+            if ($existsAsPrimary > 0) {
+                return $this->respond(['success' => false, 'message' => 'Alternate mobile number already exists as primary mobile for another user'], 400);
+            }
+            
+            // Check if alternate mobile exists as alternate mobile for any other user
+            $existsAsAlternate = $db->table('users')
+                ->where('alternate_mobile', $alternateMobile)
+                ->where('id !=', $jwtUser['user_id'])
+                ->countAllResults();
+            if ($existsAsAlternate > 0) {
+                return $this->respond(['success' => false, 'message' => 'Alternate mobile number already exists for another user'], 400);
+            }
+        }
+
+        // Validate email uniqueness for admin users
+        if (isset($updateData['email']) && !empty($updateData['email'])) {
+            $emailExists = $db->table('users')
+                ->where('email', $updateData['email'])
+                ->where('id !=', $jwtUser['user_id'])
+                ->countAllResults();
+            if ($emailExists > 0) {
+                return $this->respond(['success' => false, 'message' => 'Email already exists for another user'], 400);
+            }
+        }
 
         $updateData['updated_at'] = date('Y-m-d H:i:s');
         $db->table('users')->where('id', $jwtUser['user_id'])->update($updateData);

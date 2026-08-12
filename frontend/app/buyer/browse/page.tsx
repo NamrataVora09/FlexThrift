@@ -1698,7 +1698,18 @@ function ProductCard({ p, wishlisted, onWishlist }: ProductCardProps) {
                     ₹{rentalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-[10px] ml-1 text-[#5a5c5c] font-medium uppercase">/day</span>
                   </span>
                   {/* Empty space to match sale badge height */}
-                  <div className="h-[18px]" />
+                  {
+                    p.orignal_brand && (
+                      <div className="px-2 py-0.5 rounded-full bg-[#d6b06b] max-w-[100px]">
+
+                        <p className="text-[10px] font-bold text-white m-0! truncate uppercase">
+                          {p.orignal_brand}
+                        </p>
+
+
+                      </div>
+                    )
+                  }
                 </div>
               ) : (
                 <div className="flex flex-col items-end">
