@@ -837,20 +837,35 @@ class AdminApi extends BaseApiController
         $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
         if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
-        // Role validation: check if user can purchase this plan based on their role
         $planUserType = $plan['user_type'] ?? '';
+
+        // 1. Account global block check
+        if (!empty($user['is_blocked'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+        }
+
+        // 2. Role-specific block check (applies to ALL users including admins if superadmin blocked their role)
+        if ($planUserType === 'seller' && !empty($user['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.'], 403);
+        }
+        if ($planUserType === 'buyer' && !empty($user['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+        }
+
+        // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
         $userRole = $user['role'] ?? '';
         $userType = $user['user_type'] ?? '';
+        $isGlobalAdmin = in_array($userRole, ['admin', 'super_admin', 'superadmin']) || in_array($userType, ['admin', 'super_admin', 'superadmin']);
 
-        if ($planUserType === 'seller') {
-            // Seller plan requires seller role
-            if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
-                return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
-            }
-        } elseif ($planUserType === 'buyer') {
-            // Buyer plan requires buyer role
-            if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-                return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+        if (!$isGlobalAdmin) {
+            if ($planUserType === 'seller') {
+                if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
+                    return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+                }
+            } elseif ($planUserType === 'buyer') {
+                if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+                    return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+                }
             }
         }
 
@@ -965,21 +980,36 @@ class AdminApi extends BaseApiController
         $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
         if (!$plan) return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
 
-        // Role validation: check if user can purchase this plan based on their role
-        $planUserType = $plan['user_type'] ?? '';
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        $planUserType = $plan['user_type'] ?? '';
+
+        // 1. Account global block check
+        if (!empty($user['is_blocked'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+        }
+
+        // 2. Role-specific block check (applies to ALL users including admins if superadmin blocked their role)
+        if ($planUserType === 'seller' && !empty($user['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.'], 403);
+        }
+        if ($planUserType === 'buyer' && !empty($user['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+        }
+
+        // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
         $userRole = $user['role'] ?? '';
         $userType = $user['user_type'] ?? '';
+        $isGlobalAdmin = in_array($userRole, ['admin', 'super_admin', 'superadmin']) || in_array($userType, ['admin', 'super_admin', 'superadmin']);
 
-        if ($planUserType === 'seller') {
-            // Seller plan requires seller role
-            if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
-                return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
-            }
-        } elseif ($planUserType === 'buyer') {
-            // Buyer plan requires buyer role
-            if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-                return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+        if (!$isGlobalAdmin) {
+            if ($planUserType === 'seller') {
+                if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
+                    return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+                }
+            } elseif ($planUserType === 'buyer') {
+                if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+                    return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+                }
             }
         }
 

@@ -2218,13 +2218,25 @@ class BuyerApi extends BaseApiController
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
 
-        // Role validation: check if user can purchase this plan based on their role
+        // 1. Account global block check
+        if (!empty($user['is_blocked'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+        }
+
+        // 2. Check if buyer role is explicitly blocked by superadmin
+        if (!empty($user['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+        }
+
+        // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
         $userRole = $user['role'] ?? '';
         $userType = $user['user_type'] ?? '';
+        $isGlobalAdmin = in_array($userRole, ['admin', 'super_admin', 'superadmin']) || in_array($userType, ['admin', 'super_admin', 'superadmin']);
 
-        // Buyer plan requires buyer role
-        if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-            return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+        if (!$isGlobalAdmin) {
+            if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+                return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+            }
         }
 
         // Platform charges breakdown
@@ -2462,15 +2474,23 @@ class BuyerApi extends BaseApiController
         $currentUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
         $userRole = $currentUser['role'] ?? '';
         $userType = $currentUser['user_type'] ?? '';
+        $isGlobalAdmin = in_array($userRole, ['admin', 'super_admin', 'superadmin']) || in_array($userType, ['admin', 'super_admin', 'superadmin']);
 
-        // Buyer plan requires buyer role
-        if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-            return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+        // 1. Account global block check
+        if (!empty($currentUser['is_blocked'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
         }
 
-        // Check if buyer is blocked
-        if ($currentUser && !empty($currentUser['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account is restricted from purchasing buyer subscriptions.'], 403);
+        // 2. Check if buyer role is explicitly blocked by superadmin
+        if (!empty($currentUser['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+        }
+
+        // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
+        if (!$isGlobalAdmin) {
+            if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+                return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+            }
         }
 
         // Note: Allowing users to buy multiple subscriptions/stack them.

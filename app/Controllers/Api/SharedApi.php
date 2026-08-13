@@ -1369,6 +1369,42 @@ class SharedApi extends BaseApiController
         if (!$plan)
             return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
+        // Role & Block validation
+        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+        if (!$user) {
+            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+        }
+
+        // 1. Account global block check
+        if (!empty($user['is_blocked'])) {
+            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+        }
+
+        // 2. Role-specific block check (applies to ALL users including admins if superadmin blocked their role)
+        if ($plan['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
+            return $this->respond(['success' => false, 'message' => 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.'], 403);
+        }
+        if ($plan['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+        }
+
+        // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
+        $userRole = $user['role'] ?? '';
+        $userType = $user['user_type'] ?? '';
+        $isGlobalAdmin = in_array($userRole, ['admin', 'super_admin', 'superadmin']) || in_array($userType, ['admin', 'super_admin', 'superadmin']);
+
+        if (!$isGlobalAdmin) {
+            if ($plan['user_type'] === 'seller') {
+                if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
+                    return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+                }
+            } elseif ($plan['user_type'] === 'buyer') {
+                if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+                    return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+                }
+            }
+        }
+
         // Stacking Logic: Find the latest expiry among active plans for the same user type
         $latestActive = $db->table('user_subscriptions us')
             ->join('subscription_plans sp', 'sp.id = us.plan_id')
@@ -1426,65 +1462,112 @@ class SharedApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        $updateData = [];
-        // For admin users, allow email editing
-        $allowed = ['name', 'mobile', 'alternate_mobile', 'gender', 'address', 'pin_code', 'city', 'state'];
-        if ($currentUser['role'] === 'admin' || $currentUser['role'] === 'super_admin' || $currentUser['role'] === 'superadmin') {
-            $allowed[] = 'email';
-        }
-        
-        foreach ($allowed as $field) {
-            if (isset($data[$field]))
-                $updateData[$field] = $data[$field];
-        }
-        if (empty($updateData))
-            return $this->respond(['success' => false, 'message' => 'No data to update'], 400);
+        $requiredFields = [
+            'name'             => 'Name',
+            'mobile'           => 'Mobile number',
+            'alternate_mobile' => 'Alternate mobile number',
+            'email'            => 'Email',
+            'gender'           => 'Gender',
+            'address'          => 'Address',
+            'pin_code'         => 'Pin code',
+            'city'             => 'City',
+            'state'            => 'State',
+        ];
 
-        // Validate alternate mobile number uniqueness
-        if (isset($updateData['alternate_mobile']) && !empty($updateData['alternate_mobile'])) {
-            $alternateMobile = $updateData['alternate_mobile'];
-            
-            // Check if alternate mobile is same as primary mobile
-            $primaryMobile = $updateData['mobile'] ?? $currentUser['mobile'];
-            if ($alternateMobile === $primaryMobile) {
-                return $this->respond(['success' => false, 'message' => 'Alternate mobile number cannot be same as primary mobile number'], 400);
-            }
-            
-            // Check if alternate mobile exists as primary mobile for any other user
-            $existsAsPrimary = $db->table('users')
-                ->where('mobile', $alternateMobile)
-                ->where('id !=', $jwtUser['user_id'])
-                ->countAllResults();
-            if ($existsAsPrimary > 0) {
-                return $this->respond(['success' => false, 'message' => 'Alternate mobile number already exists as primary mobile for another user'], 400);
-            }
-            
-            // Check if alternate mobile exists as alternate mobile for any other user
-            $existsAsAlternate = $db->table('users')
-                ->where('alternate_mobile', $alternateMobile)
-                ->where('id !=', $jwtUser['user_id'])
-                ->countAllResults();
-            if ($existsAsAlternate > 0) {
-                return $this->respond(['success' => false, 'message' => 'Alternate mobile number already exists for another user'], 400);
+        foreach ($requiredFields as $field => $label) {
+            if (!isset($data[$field]) || trim((string)$data[$field]) === '') {
+                return $this->respond(['success' => false, 'message' => "{$label} is mandatory and cannot be empty."], 400);
             }
         }
 
-        // Validate email uniqueness for admin users
-        if (isset($updateData['email']) && !empty($updateData['email'])) {
-            $emailExists = $db->table('users')
-                ->where('email', $updateData['email'])
-                ->where('id !=', $jwtUser['user_id'])
-                ->countAllResults();
-            if ($emailExists > 0) {
-                return $this->respond(['success' => false, 'message' => 'Email already exists for another user'], 400);
-            }
+        $name            = trim((string)$data['name']);
+        $mobile          = trim((string)$data['mobile']);
+        $alternateMobile = trim((string)$data['alternate_mobile']);
+        $email           = strtolower(trim((string)$data['email']));
+        $gender          = trim((string)$data['gender']);
+        $address         = trim((string)$data['address']);
+        $pinCode         = trim((string)$data['pin_code']);
+        $city            = trim((string)$data['city']);
+        $state           = trim((string)$data['state']);
+
+        // 1. Email format check — must contain @, a domain, and a valid TLD (e.g. .com, .in, .org)
+        $emailRegex = '/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,6}$/';
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match($emailRegex, $email)) {
+            return $this->respond(['success' => false, 'message' => 'Invalid email address. Please enter a valid email (e.g. example@gmail.com).'], 400);
         }
 
-        $updateData['updated_at'] = date('Y-m-d H:i:s');
+        // 1a. Mobile number format check (must be exactly 10 digits)
+        if (!preg_match('/^[6-9]\d{9}$/', $mobile)) {
+            return $this->respond(['success' => false, 'message' => 'Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9.'], 400);
+        }
+
+        // 1b. Alternate mobile number format check (must be exactly 10 digits)
+        if (!preg_match('/^[6-9]\d{9}$/', $alternateMobile)) {
+            return $this->respond(['success' => false, 'message' => 'Alternate mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9.'], 400);
+        }
+
+        // 1c. Pin code format check (must be exactly 6 digits)
+        if (!preg_match('/^\d{6}$/', $pinCode)) {
+            return $this->respond(['success' => false, 'message' => 'Pin code must be a valid 6-digit number.'], 400);
+        }
+
+        // 2. Primary mobile vs Alternate mobile check
+        if ($mobile === $alternateMobile) {
+            return $this->respond(['success' => false, 'message' => 'Alternate mobile number cannot be the same as primary mobile number.'], 400);
+        }
+
+        // 3. Primary mobile uniqueness check (check both mobile and alternate_mobile columns for other users)
+        $mobileAsPrimary = $db->table('users')
+            ->where('mobile', $mobile)
+            ->where('id !=', $jwtUser['user_id'])
+            ->countAllResults();
+        $mobileAsAlternate = $db->table('users')
+            ->where('alternate_mobile', $mobile)
+            ->where('id !=', $jwtUser['user_id'])
+            ->countAllResults();
+        if ($mobileAsPrimary > 0 || $mobileAsAlternate > 0) {
+            return $this->respond(['success' => false, 'message' => 'Mobile number is already registered by another user.'], 400);
+        }
+
+        // 4. Alternate mobile uniqueness check (check both mobile and alternate_mobile columns for other users)
+        $altAsPrimary = $db->table('users')
+            ->where('mobile', $alternateMobile)
+            ->where('id !=', $jwtUser['user_id'])
+            ->countAllResults();
+        $altAsAlternate = $db->table('users')
+            ->where('alternate_mobile', $alternateMobile)
+            ->where('id !=', $jwtUser['user_id'])
+            ->countAllResults();
+        if ($altAsPrimary > 0 || $altAsAlternate > 0) {
+            return $this->respond(['success' => false, 'message' => 'Alternate mobile number is already registered by another user.'], 400);
+        }
+
+        // 5. Email uniqueness check for all users
+        $emailExists = $db->table('users')
+            ->where('email', $email)
+            ->where('id !=', $jwtUser['user_id'])
+            ->countAllResults();
+        if ($emailExists > 0) {
+            return $this->respond(['success' => false, 'message' => 'Email is already registered by another user.'], 400);
+        }
+
+        $updateData = [
+            'name'             => $name,
+            'mobile'           => $mobile,
+            'alternate_mobile' => $alternateMobile,
+            'email'            => $email,
+            'gender'           => $gender,
+            'address'          => $address,
+            'pin_code'         => $pinCode,
+            'city'             => $city,
+            'state'            => $state,
+            'updated_at'       => date('Y-m-d H:i:s'),
+        ];
+
         $db->table('users')->where('id', $jwtUser['user_id'])->update($updateData);
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        return $this->respond(['success' => true, 'message' => 'Profile updated', 'data' => $user]);
+        return $this->respond(['success' => true, 'message' => 'Profile updated successfully', 'data' => $user]);
     }
 
     /**

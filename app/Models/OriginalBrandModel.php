@@ -27,13 +27,14 @@ class OriginalBrandModel extends Model
             $id = (int)$listingTypeId;
             $builder->groupStart()
                 // listing_type_ids set and contains this id
-                ->where("listing_type_ids IS NOT NULL AND JSON_CONTAINS(listing_type_ids, '$id')", null, false)
-                // OR listing_type_ids not set, fall back to listing_type_id
+                ->where("listing_type_ids IS NOT NULL AND listing_type_ids != '' AND listing_type_ids != '[]' AND listing_type_ids != 'null' AND JSON_CONTAINS(listing_type_ids, '$id')", null, false)
+                // OR listing_type_ids not set or empty, fall back to listing_type_id
                 ->orGroupStart()
-                    ->where('listing_type_ids IS NULL', null, false)
+                    ->where("listing_type_ids IS NULL OR listing_type_ids = '' OR listing_type_ids = '[]' OR listing_type_ids = 'null'", null, false)
                     ->groupStart()
                         ->where('listing_type_id', $id)
                         ->orWhere('listing_type_id IS NULL', null, false)
+                        ->orWhere('listing_type_id', 0)
                     ->groupEnd()
                 ->groupEnd()
             ->groupEnd();
