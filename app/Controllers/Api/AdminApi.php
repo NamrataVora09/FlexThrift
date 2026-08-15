@@ -300,7 +300,54 @@ class AdminApi extends BaseApiController
             ->get()->getRowArray();
         if (!$product) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
-        $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+        $images = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
+
+        // Check if there is a pending edit request for this product
+        $pendingRequest = $db->table('product_edit_requests')
+            ->where('product_id', $id)
+            ->where('status', 'changesPending')
+            ->orderBy('created_at', 'DESC')
+            ->get()->getRowArray();
+
+        if ($pendingRequest) {
+            $updatedData = json_decode($pendingRequest['updated_data'] ?? '{}', true) ?: [];
+            foreach ($updatedData as $k => $v) {
+                if ($v !== null) {
+                    $product[$k] = $v;
+                }
+            }
+
+            $tempImages = json_decode($pendingRequest['temp_images'] ?? '[]', true) ?: [];
+            $deletedIds = json_decode($pendingRequest['deleted_images_ids'] ?? '[]', true) ?: [];
+
+            if (!empty($deletedIds)) {
+                $deletedIdList = [];
+                foreach ($deletedIds as $del) {
+                    if (is_numeric($del)) {
+                        $deletedIdList[] = (int)$del;
+                    } elseif (is_array($del) && isset($del['id'])) {
+                        $deletedIdList[] = (int)$del['id'];
+                    }
+                }
+                if (!empty($deletedIdList)) {
+                    $images = array_values(array_filter($images, function($img) use ($deletedIdList) {
+                        return !in_array((int)($img['id'] ?? 0), $deletedIdList, true);
+                    }));
+                }
+            }
+
+            if (!empty($tempImages)) {
+                foreach ($tempImages as $tempPath) {
+                    $images[] = [
+                        'id' => null,
+                        'product_id' => $id,
+                        'image_path' => $tempPath,
+                        'display_order' => count($images) + 1,
+                    ];
+                }
+            }
+        }
+
         $product['images'] = $images;
         return $this->respond(['success' => true, 'data' => $product]);
     }
@@ -420,6 +467,11 @@ class AdminApi extends BaseApiController
             
             // Remove fields that shouldn't be updated
             unset($mergedData['id'], $mergedData['created_at']);
+
+            // Ensure specifications column is stored as a JSON string
+            if (isset($mergedData['specifications']) && (is_array($mergedData['specifications']) || is_object($mergedData['specifications']))) {
+                $mergedData['specifications'] = json_encode($mergedData['specifications']);
+            }
             
             $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($mergedData);
             if (!$productUpdate) {
@@ -1250,23 +1302,6 @@ class AdminApi extends BaseApiController
         $expiryDate = $plan['duration_hours'] > 0
             ? date('Y-m-d H:i:s', time() + (int) round((float) $plan['duration_hours'] * 3600))
             : '2099-12-31 23:59:59';
-
-        // ── QUEUE / STACKING OPTION (COMMENTED OUT) ──────────────────────────
-        // $latestActive = $db->table('user_subscriptions us')
-        //     ->join('subscription_plans sp', 'sp.id = us.plan_id')
-        //     ->where('us.user_id', $userId)
-        //     ->where('us.is_active', 1)
-        //     ->where('sp.user_type', $plan['user_type'])
-        //     ->where('us.expires_at >', date('Y-m-d H:i:s'))
-        //     ->orderBy('us.expires_at', 'DESC')
-        //     ->get()->getRowArray();
-        // $durationHours = (float) $plan['duration_hours'];
-        // $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
-        // $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
-        // $expiryDate = $durationHours > 0
-        //     ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
-        //     : '2099-12-31 23:59:59';
-        // ─────────────────────────────────────────────────────────────────────
 
         $inserted = $db->table('user_subscriptions')->insert([
             'user_id'                   => $userId,

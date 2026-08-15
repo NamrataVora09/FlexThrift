@@ -635,9 +635,15 @@ class SuperAdminApi extends BaseApiController
         }
 
         if ($mobile) {
+            // Check mobile doesn't already exist as primary mobile
             $mobileExists = $db->table('users')->where('mobile', $mobile)->countAllResults();
             if ($mobileExists) {
                 return $this->respond(['success' => false, 'message' => 'Mobile number already exists.'], 400);
+            }
+            // Check mobile doesn't already exist as alternate mobile of another user
+            $altMobileExists = $db->table('users')->where('alternate_mobile', $mobile)->countAllResults();
+            if ($altMobileExists) {
+                return $this->respond(['success' => false, 'message' => 'Mobile number is already used as an alternate mobile by another user.'], 400);
             }
         }
 
@@ -683,11 +689,22 @@ class SuperAdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Email already exists for another user.'], 400);
         }
 
-        // Check if mobile already exists for another admin
+        // Check if mobile already exists for another user
         if ($mobile) {
+            // Check mobile doesn't already exist as primary mobile of another user
             $mobileExists = $db->table('users')->where('mobile', $mobile)->where('id !=', $id)->countAllResults();
             if ($mobileExists) {
                 return $this->respond(['success' => false, 'message' => 'Mobile number already exists for another user.'], 400);
+            }
+            // Check mobile doesn't already exist as alternate mobile of another user
+            $altMobileExists = $db->table('users')->where('alternate_mobile', $mobile)->where('id !=', $id)->countAllResults();
+            if ($altMobileExists) {
+                return $this->respond(['success' => false, 'message' => 'Mobile number is already used as an alternate mobile by another user.'], 400);
+            }
+            // Check mobile is not the same as the admin's own alternate_mobile
+            $admin = $db->table('users')->where('id', $id)->get()->getRowArray();
+            if ($admin && !empty($admin['alternate_mobile']) && $admin['alternate_mobile'] === $mobile) {
+                return $this->respond(['success' => false, 'message' => 'Mobile number cannot be the same as the alternate mobile number.'], 400);
             }
         }
 
@@ -1813,7 +1830,54 @@ class SuperAdminApi extends BaseApiController
             ->get()->getRowArray();
         if (!$product) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
-        $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+        $images = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
+
+        // Check if there is a pending edit request for this product
+        $pendingRequest = $db->table('product_edit_requests')
+            ->where('product_id', $id)
+            ->where('status', 'changesPending')
+            ->orderBy('created_at', 'DESC')
+            ->get()->getRowArray();
+
+        if ($pendingRequest) {
+            $updatedData = json_decode($pendingRequest['updated_data'] ?? '{}', true) ?: [];
+            foreach ($updatedData as $k => $v) {
+                if ($v !== null) {
+                    $product[$k] = $v;
+                }
+            }
+
+            $tempImages = json_decode($pendingRequest['temp_images'] ?? '[]', true) ?: [];
+            $deletedIds = json_decode($pendingRequest['deleted_images_ids'] ?? '[]', true) ?: [];
+
+            if (!empty($deletedIds)) {
+                $deletedIdList = [];
+                foreach ($deletedIds as $del) {
+                    if (is_numeric($del)) {
+                        $deletedIdList[] = (int)$del;
+                    } elseif (is_array($del) && isset($del['id'])) {
+                        $deletedIdList[] = (int)$del['id'];
+                    }
+                }
+                if (!empty($deletedIdList)) {
+                    $images = array_values(array_filter($images, function($img) use ($deletedIdList) {
+                        return !in_array((int)($img['id'] ?? 0), $deletedIdList, true);
+                    }));
+                }
+            }
+
+            if (!empty($tempImages)) {
+                foreach ($tempImages as $tempPath) {
+                    $images[] = [
+                        'id' => null,
+                        'product_id' => $id,
+                        'image_path' => $tempPath,
+                        'display_order' => count($images) + 1,
+                    ];
+                }
+            }
+        }
+
         $product['images'] = $images;
         return $this->respond(['success' => true, 'data' => $product]);
     }
@@ -1925,6 +1989,11 @@ class SuperAdminApi extends BaseApiController
             $updatedData['status'] = 'approved';
             $updatedData['updated_at'] = date('Y-m-d H:i:s');
             $updatedData['edit_request'] = null;
+
+            // Ensure specifications column is stored as a JSON string
+            if (isset($updatedData['specifications']) && (is_array($updatedData['specifications']) || is_object($updatedData['specifications']))) {
+                $updatedData['specifications'] = json_encode($updatedData['specifications']);
+            }
             
             $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($updatedData);
             if (!$productUpdate) {

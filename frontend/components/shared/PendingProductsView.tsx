@@ -21,7 +21,7 @@ interface Product {
   allow_alter_fitting?: number; condition_description?: string; fitting_charge?: string;
   suggested_sale_price?: string; suggested_rental_cost?: string; rental_start_date?: string;
   rental_end_date?: string; is_featured?: number; admin_remarks?: string; price_category?: string;
-  required_badges?: number; edit_request?: string;
+  required_badges?: number; edit_request?: string; specifications?: string;
 }
 
 interface EditRequest {
@@ -41,6 +41,7 @@ interface EditRequest {
   rental_deposit?: string;
   price?: string;
   original_price?: string;
+  specifications?: string;
 }
 
 interface RejectionTemplate {
@@ -93,6 +94,166 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
       </div>
     );
   }
+
+  const renderSpecifications = (specsData: string | object | undefined | null) => {
+    if (!specsData) return <div className="text-muted small">None</div>;
+    let parsed: Record<string, any> = {};
+    if (typeof specsData === 'string') {
+      try {
+        parsed = JSON.parse(specsData);
+      } catch {
+        return <div className="small text-muted">{specsData}</div>;
+      }
+    } else if (typeof specsData === 'object') {
+      parsed = specsData as Record<string, any>;
+    }
+
+    const keys = Object.keys(parsed).filter(k => parsed[k] !== undefined && parsed[k] !== null && String(parsed[k]).trim() !== '');
+    if (keys.length === 0) return <div className="text-muted small">None</div>;
+
+    return (
+      <div className="d-flex flex-wrap gap-2 mt-1">
+        {keys.map((key) => (
+          <div key={key} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '4px 10px', fontSize: '0.75rem' }}>
+            <span className="text-muted me-1">{key}:</span>
+            <span className="fw-bold">{String(parsed[key])}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderDiffSpecifications = (origSpecsData: string | object | undefined | null, newSpecsData: string | object | undefined | null) => {
+    let orig: Record<string, any> = {};
+    let updated: Record<string, any> = {};
+
+    if (origSpecsData) {
+      if (typeof origSpecsData === 'string') {
+        try { orig = JSON.parse(origSpecsData); } catch {}
+      } else if (typeof origSpecsData === 'object') { orig = origSpecsData as Record<string, any>; }
+    }
+
+    if (newSpecsData) {
+      if (typeof newSpecsData === 'string') {
+        try { updated = JSON.parse(newSpecsData); } catch {}
+      } else if (typeof newSpecsData === 'object') { updated = newSpecsData as Record<string, any>; }
+    }
+
+    const allKeys = Array.from(new Set([...Object.keys(orig), ...Object.keys(updated)]));
+    if (allKeys.length === 0) return <div className="text-muted small">None</div>;
+
+    return (
+      <div className="d-flex flex-wrap gap-2 mt-1">
+        {allKeys.map((key) => {
+          const oldVal = orig[key] !== undefined ? String(orig[key]) : undefined;
+          const newVal = updated[key] !== undefined ? String(updated[key]) : undefined;
+
+          if (oldVal === newVal) {
+            return (
+              <div key={key} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '4px 10px', fontSize: '0.75rem' }}>
+                <span className="text-muted me-1">{key}:</span>
+                <span className="fw-bold">{newVal || oldVal}</span>
+              </div>
+            );
+          } else {
+            return (
+              <div key={key} style={{ background: '#ecfdf5', border: '1px solid #10b981', borderRadius: 8, padding: '4px 10px', fontSize: '0.75rem' }}>
+                <span className="text-muted me-1">{key}:</span>
+                {oldVal !== undefined ? <span className="text-danger me-1" style={{ textDecoration: 'line-through', opacity: 0.6 }}>{oldVal}</span> : null}
+                <span className="fw-bold text-success">{newVal !== undefined ? newVal : 'Removed'}</span>
+              </div>
+            );
+          }
+        })}
+      </div>
+    );
+  };
+
+  const renderBillThumbnails = (
+    billData: string | string[] | undefined | null,
+    badgeText?: string,
+    badgeBg: string = 'bg-secondary',
+    borderColor: string = '#e2e8f0',
+    opacity: number = 1
+  ) => {
+    if (!billData) return null;
+    let paths: string[] = [];
+    if (Array.isArray(billData)) {
+      paths = billData;
+    } else if (typeof billData === 'string') {
+      if (billData.startsWith('[')) {
+        try { paths = JSON.parse(billData); } catch { paths = [billData]; }
+      } else {
+        paths = [billData];
+      }
+    }
+
+    paths = paths.filter(Boolean);
+    if (paths.length === 0) return null;
+
+    return (
+      <div className="row g-2 mt-1">
+        {paths.map((path, idx) => {
+          const fullUrl = resolveUrl(path);
+          const isPdf = path.toLowerCase().endsWith('.pdf');
+
+          return (
+            <div className="col-6 col-sm-4" key={idx}>
+              <div
+                onClick={() => window.open(fullUrl, '_blank')}
+                title="Click to view full bill document"
+                style={{
+                  position: 'relative',
+                  height: 95,
+                  border: `2px solid ${borderColor}`,
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  background: '#f8fafc',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'transform 0.15s ease-in-out',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.03)')}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                {isPdf ? (
+                  <div className="text-center p-2">
+                    <i className="bi bi-file-earmark-pdf text-danger" style={{ fontSize: '2rem' }}></i>
+                    <span className="d-block text-truncate small fw-bold text-dark" style={{ fontSize: '0.6rem', maxWidth: 90 }}>
+                      {path.split('/').pop()}
+                    </span>
+                  </div>
+                ) : (
+                  <img
+                    src={fullUrl}
+                    alt={`Bill ${idx + 1}`}
+                    className="w-100 h-100"
+                    style={{ objectFit: 'cover', opacity }}
+                  />
+                )}
+                {badgeText && (
+                  <span
+                    className={`badge ${badgeBg} position-absolute top-0 end-0 m-1 shadow-sm`}
+                    style={{ fontSize: '0.55rem', zIndex: 2 }}
+                  >
+                    {badgeText}
+                  </span>
+                )}
+                <div
+                  className="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-60 text-white text-center py-1 small"
+                  style={{ fontSize: '0.6rem', backdropFilter: 'blur(2px)' }}
+                >
+                  <i className="bi bi-eye me-1"></i>View Bill
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   // Reject modal
   const [rejectModal, setRejectModal] = useState<{ id: number; title: string; type: 'product' | 'edit_request' | 'admin_edit' } | null>(null);
@@ -261,6 +422,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
       // Backend bug workaround: Use previous_data to get original images and calculate temp_images
       let originalImages: any[] = res.data.original_images || [];
       let previousImagePaths: string[] = [];
+      let effectiveOriginal = { ...res.data.original };
 
       if (res.data.request?.previous_data) {
         try {
@@ -268,14 +430,17 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
             ? JSON.parse(res.data.request.previous_data)
             : res.data.request.previous_data;
 
-          if (previousData._images && Array.isArray(previousData._images)) {
-            previousImagePaths = previousData._images;
-            // Map previous image paths to current image objects
-            originalImages = previousImagePaths
-              .map((path: string) => {
-                return (res.data.original_images || []).find((img: any) => img.image_path === path);
-              })
-              .filter((img: any) => img !== undefined);
+          if (previousData && typeof previousData === 'object') {
+            effectiveOriginal = { ...effectiveOriginal, ...previousData };
+            if (previousData._images && Array.isArray(previousData._images)) {
+              previousImagePaths = previousData._images;
+              // Map previous image paths to current image objects
+              originalImages = previousImagePaths
+                .map((path: string) => {
+                  return (res.data.original_images || []).find((img: any) => img.image_path === path);
+                })
+                .filter((img: any) => img !== undefined);
+            }
           }
         } catch (e) {
           console.error('Failed to parse previous_data:', e);
@@ -290,7 +455,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
 
       const data: ComparisonData = {
         request: res.data.request,
-        original: res.data.original,
+        original: effectiveOriginal,
         original_images: originalImages,
         temp_images: tempImages,
         deleted_images_ids: deletedImagesIds,
@@ -934,29 +1099,18 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Price</label><div className="fw-bold small" style={{ color: '#ffc63a' }}>₹{Number(inspecting.listing_type === 'rent' ? (inspecting.rental_cost || 0) : (inspecting.price || inspecting.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}{inspecting.listing_type === 'rent' ? ' /day' : ''}</div></div></div>
                       <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Used Times</label><div className="fw-bold small">{inspecting.used_times || '0'}</div></div></div>
                     </div>
+                    {inspecting.specifications && (
+                      <div className="mt-3">
+                        <label className="text-muted small fw-bold text-uppercase mb-1 d-block">Specifications / Attributes</label>
+                        {renderSpecifications(inspecting.specifications)}
+                      </div>
+                    )}
                     {Number(inspecting.has_bill) && inspecting.bill_image ? (
-                      <div className="mt-3 p-3 border rounded-3" style={{ background: 'rgba(255,193,7,0.08)', borderColor: 'rgba(255,193,7,0.3)' }}>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div className="small fw-bold" style={{ color: '#854d0e' }}><i className="bi bi-file-earmark-check me-1"></i>Bill Available</div>
-                          {(() => {
-                            let billPaths: string[] = [];
-                            if (inspecting.bill_image.startsWith('[')) {
-                              try {
-                                billPaths = JSON.parse(inspecting.bill_image);
-                              } catch {
-                                billPaths = [inspecting.bill_image];
-                              }
-                            } else {
-                              billPaths = [inspecting.bill_image];
-                            }
-                            const firstBill = billPaths[0];
-                            return (
-                              <a href={resolveUrl(firstBill)} target="_blank" rel="noreferrer" className="btn btn-warning btn-sm py-1 px-3 small rounded-pill">
-                                View Bill {billPaths.length > 1 ? `(${billPaths.length})` : ''}
-                              </a>
-                            );
-                          })()}
-                        </div>
+                      <div className="mt-3">
+                        <label className="text-muted small fw-bold text-uppercase mb-1 d-block">
+                          <i className="bi bi-receipt me-1"></i>Bill Document / Photograph
+                        </label>
+                        {renderBillThumbnails(inspecting.bill_image, 'VERIFIED BILL', 'bg-warning text-dark', '#f59e0b', 1)}
                       </div>
                     ) : null}
                   </div>
@@ -1006,6 +1160,12 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       { l: 'Used Times', v: comp.original?.used_times ?? 'N/A' },
                       { l: 'Allow Alteration', v: Number(comp.original?.allow_alter_fitting) ? 'Yes' : 'No' },
                     ])}
+                    {comp.original?.specifications && (
+                      <div className="mb-3">
+                        <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Attributes (Specifications)</h6>
+                        {renderSpecifications(comp.original.specifications)}
+                      </div>
+                    )}
                     {renderCompSection('Pricing', [
                       { l: 'Original Price', v: '₹' + Number(comp.original?.original_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
                       {
@@ -1027,12 +1187,39 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         v: [comp.original.rental_start_date, comp.original.rental_end_date].filter(Boolean).join(' to ') || 'N/A'
                       }
                     ].filter((item): item is { l: string; v: any } => !!item))}
+                    {(() => {
+                      const origBill = comp.original?.bill_image;
+                      const updated = JSON.parse(comp.request?.updated_data || '{}');
+                      const updatedBill = updated?.bill_image;
+                      const isBillChanged = Boolean(updatedBill && updatedBill !== origBill);
+                      const isBillRemoved = Boolean(origBill && updated?.has_bill === 0);
+
+                      if (!origBill && !Number(comp.original?.has_bill)) return null;
+
+                      return (
+                        <div className="mt-4">
+                          <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">
+                            <i className="bi bi-receipt me-1"></i>Original Bill Image(s)
+                          </h6>
+                          {origBill ? (
+                            renderBillThumbnails(
+                              origBill,
+                              isBillChanged ? 'REPLACED' : isBillRemoved ? 'DELETING' : 'ORIGINAL',
+                              isBillChanged || isBillRemoved ? 'bg-danger' : 'bg-secondary',
+                              isBillChanged || isBillRemoved ? '#ef4444' : '#e2e8f0',
+                              isBillChanged || isBillRemoved ? 0.35 : 1
+                            )
+                          ) : (
+                            <div className="text-muted small">No bill uploaded originally</div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="mt-4">
                       <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Original Images ({(comp.original_images || []).length})</h6>
                       <div className="row g-2">
                         {(comp.original_images || []).map((img: any, i: number) => {
                           const deletedImages = comp.deleted_images_ids || [];
-                          // Check if image is deleted by ID or by image path (new format)
                           const isDeleted = deletedImages.some((del: any) =>
                             (typeof del === 'object' && del.id === img.id) ||
                             (typeof del === 'object' && del.image_path === img.image_path) ||
@@ -1079,6 +1266,12 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             { l: 'Used Times', v: diff(String(orig.used_times ?? ''), String(updated.used_times ?? '')) },
                             { l: 'Allow Alteration', v: diff(Number(orig.allow_alter_fitting) ? 'Yes' : 'No', Number(updated.allow_alter_fitting) ? 'Yes' : 'No') },
                           ])}
+                          {(orig.specifications || updated.specifications) && (
+                            <div className="mb-3">
+                              <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">Attributes (Specifications)</h6>
+                              {renderDiffSpecifications(orig.specifications, updated.specifications)}
+                            </div>
+                          )}
                           {renderCompSection('Pricing', [
                             { l: 'Original Price', v: diff('₹' + Number(orig.original_price || 0), '₹' + Number(updated.original_price || 0)) },
                             {
@@ -1103,6 +1296,34 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                               v: diff([orig.rental_start_date, orig.rental_end_date].filter(Boolean).join(' to ') || 'N/A', [updated.rental_start_date, updated.rental_end_date].filter(Boolean).join(' to ') || 'N/A')
                             }
                           ].filter((item): item is { l: string; v: any } => !!item))}
+                          {(() => {
+                            const origBill = comp.original?.bill_image;
+                            const updatedBill = updated?.bill_image;
+                            const isBillChanged = Boolean(updatedBill && updatedBill !== origBill);
+                            const isBillRemoved = Boolean(origBill && updated?.has_bill !== undefined && Number(updated.has_bill) === 0);
+
+                            // Only render proposed bill section if the bill image was changed or removed in this edit
+                            if (!isBillChanged && !isBillRemoved) return null;
+
+                            return (
+                              <div className="mt-4">
+                                <h6 className="fw-bold text-success text-uppercase small border-bottom border-success pb-1 mb-2">
+                                  <i className="bi bi-receipt me-1"></i>Proposed Bill Image(s)
+                                </h6>
+                                {isBillChanged && updatedBill ? (
+                                  renderBillThumbnails(
+                                    updatedBill,
+                                    'NEW BILL',
+                                    'bg-success',
+                                    '#10b981',
+                                    1
+                                  )
+                                ) : isBillRemoved ? (
+                                  <div className="badge bg-danger p-2">Bill status changed to No Bill</div>
+                                ) : null}
+                              </div>
+                            );
+                          })()}
                           {/* New images */}
                           {(() => {
                             const tempImages = comp.temp_images || [];

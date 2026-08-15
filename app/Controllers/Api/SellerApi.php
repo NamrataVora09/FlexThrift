@@ -1504,11 +1504,11 @@ class SellerApi extends BaseApiController
         if (!$product)
             return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
-        // If the product has never been actioned by admin (pending) or was rejected,
-        // apply the seller's edits directly to the product — no edit request needed.
+        // If the product has never been approved (still pending) or was rejected,
+        // apply changes directly for ALL users — no edit request needed.
+        // Edit requests are only for already-approved products.
         $productStatus = $product['status'] ?? 'pending';
-        $isDirectEdit = !in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin'])
-            && in_array($productStatus, ['pending', 'rejected']);
+        $isDirectEdit = in_array($productStatus, ['pending', 'rejected']);
 
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
         $processedData = $this->cleanProductData($data, $db);
@@ -1768,6 +1768,8 @@ class SellerApi extends BaseApiController
                 'dispatch_state',
                 'dispatch_pin_code',
                 'has_bill',
+                'bill_image',
+                'specifications',
                 'allow_alter_fitting',
                 'brand_id',
                 'orignal_brand_id',
@@ -1920,10 +1922,13 @@ class SellerApi extends BaseApiController
         $hasImageChanges = ($imageFiles && count($imageFiles) > 0) || ($deletedIds && !empty($deletedIds));
         $hasDataChanges = !empty($updateData) && count($updateData) > 0;
 
-        // If review is required, use edit request workflow for sellers and admins
-        // Superadmin can bypass approval and update directly
-        // This applies to both data changes AND image-only changes
-        if ($reviewRequired && !in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+        // If review is required, use edit request workflow for sellers and admins.
+        // EXCEPTION: If the product is still pending or rejected (not yet approved),
+        // changes are always applied directly — no edit request needed for any role.
+        $productStatus = $product['status'] ?? 'pending';
+        $isUnapprovedProduct = in_array($productStatus, ['pending', 'rejected']);
+
+        if ($reviewRequired && !in_array($jwtUser['role'], ['super_admin', 'superadmin']) && !$isUnapprovedProduct) {
             // Use the editProduct workflow instead - create edit request, don't modify actual product
             // The editProduct method will handle the data from the request directly
             return $this->editProduct($id);
@@ -2034,9 +2039,10 @@ class SellerApi extends BaseApiController
             }
         }
 
-        // Determine if this edit request will be pending review
+        // Determine if this edit request will be pending review.
+        // Never create an edit request for unapproved (pending/rejected) products.
         $isPendingEdit = false;
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+        if (!$isUnapprovedProduct && !in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             if ($jwtUser['role'] === 'admin' || $reviewRequired) {
                 $isPendingEdit = true;
             }
@@ -2083,7 +2089,42 @@ class SellerApi extends BaseApiController
         // Initialize tempImages for admin edit request workflow
         $tempImages = [];
 
-        // Status logic:
+        // ── DIRECT APPLY for unapproved (pending/rejected) products ─────────────
+        // For products that have never been approved, all edits by any role are
+        // applied directly to the product — no edit request, no review needed.
+        // (Image uploads/deletions already happened above; just apply data + bill)
+        if ($isUnapprovedProduct) {
+            // Keep status as pending — still awaiting first approval
+            unset($updateData['status']);
+            $updateData['edit_request'] = null;
+            $updateData['pending_reason'] = null;
+
+            // Handle new bill image upload
+            $billFilesArr = $this->request->getFiles()['bill_images'] ?? null;
+            if ($billFilesArr) {
+                $billUploadPath = FCPATH . 'uploads/bills/';
+                if (!is_dir($billUploadPath)) mkdir($billUploadPath, 0777, true);
+                $billPaths = [];
+                $count = 0;
+                foreach ($billFilesArr as $billFile) {
+                    if ($billFile && $billFile->isValid() && !$billFile->hasMoved() && $count < 2) {
+                        $newName = $billFile->getRandomName();
+                        $billFile->move($billUploadPath, $newName);
+                        $billPaths[] = 'uploads/bills/' . $newName;
+                        $count++;
+                    }
+                }
+                if (!empty($billPaths)) {
+                    $updateData['bill_image'] = count($billPaths) === 1 ? $billPaths[0] : json_encode($billPaths);
+                    $updateData['has_bill'] = 1;
+                }
+            }
+
+            $db->table('products')->where('id', $id)->update($updateData);
+            return $this->respond(['success' => true, 'message' => 'Product updated successfully']);
+        }
+
+        // Status logic for APPROVED products only:
         // - super_admin: always auto-approved (clear pending_reason)
         // - admin: create product_edit_requests entry (shown separately from new uploads)
         // - seller / both / regular seller: goes to pending with reason 'seller_edit' or 'both_edit' if review is required, otherwise auto-approved.
@@ -2178,6 +2219,8 @@ class SellerApi extends BaseApiController
                     'dispatch_state',
                     'dispatch_pin_code',
                     'has_bill',
+                    'bill_image',
+                    'specifications',
                     'allow_alter_fitting',
                     'brand_id',
                     'orignal_brand_id',
@@ -2272,7 +2315,11 @@ class SellerApi extends BaseApiController
                     'dispatch_state',
                     'dispatch_pin_code',
                     'has_bill',
+                    'bill_image',
+                    'specifications',
                     'allow_alter_fitting',
+                    'brand_id',
+                    'orignal_brand_id',
                 ];
                 $snapshot = [];
                 foreach ($snapshotFields as $field) {
@@ -2340,7 +2387,54 @@ class SellerApi extends BaseApiController
         if (!$product)
             return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
 
-        $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+        $images = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
+
+        // Check if there is a pending edit request for this product
+        $pendingRequest = $db->table('product_edit_requests')
+            ->where('product_id', $id)
+            ->where('status', 'changesPending')
+            ->orderBy('created_at', 'DESC')
+            ->get()->getRowArray();
+
+        if ($pendingRequest) {
+            $updatedData = json_decode($pendingRequest['updated_data'] ?? '{}', true) ?: [];
+            foreach ($updatedData as $k => $v) {
+                if ($v !== null) {
+                    $product[$k] = $v;
+                }
+            }
+
+            // Overlay image changes (deleted & temp images)
+            $tempImages = json_decode($pendingRequest['temp_images'] ?? '[]', true) ?: [];
+            $deletedIds = json_decode($pendingRequest['deleted_images_ids'] ?? '[]', true) ?: [];
+
+            if (!empty($deletedIds)) {
+                $deletedIdList = [];
+                foreach ($deletedIds as $del) {
+                    if (is_numeric($del)) {
+                        $deletedIdList[] = (int)$del;
+                    } elseif (is_array($del) && isset($del['id'])) {
+                        $deletedIdList[] = (int)$del['id'];
+                    }
+                }
+                if (!empty($deletedIdList)) {
+                    $images = array_values(array_filter($images, function($img) use ($deletedIdList) {
+                        return !in_array((int)($img['id'] ?? 0), $deletedIdList, true);
+                    }));
+                }
+            }
+
+            if (!empty($tempImages)) {
+                foreach ($tempImages as $tempPath) {
+                    $images[] = [
+                        'id' => null,
+                        'product_id' => $id,
+                        'image_path' => $tempPath,
+                        'display_order' => count($images) + 1,
+                    ];
+                }
+            }
+        }
 
         return $this->respond(['success' => true, 'data' => array_merge($product, ['images' => $images])]);
     }
@@ -2554,9 +2648,11 @@ class SellerApi extends BaseApiController
 
             $dbKey = $fieldMap[$key] ?? $key;
 
-            // Handle boolean/checkbox fields
+            // Handle boolean/checkbox fields and specifications
             if ($key === 'has_bill' || $key === 'allow_alter_fitting') {
                 $updateData[$dbKey] = $value ? 1 : 0;
+            } elseif ($key === 'specifications') {
+                $updateData[$dbKey] = is_array($value) || is_object($value) ? json_encode($value) : $value;
             } else {
                 $updateData[$dbKey] = $value;
             }
