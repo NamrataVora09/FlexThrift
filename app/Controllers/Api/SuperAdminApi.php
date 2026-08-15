@@ -2,9 +2,9 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\Api\BaseApiController;
+use App\Controllers\Api\AdminApi;
 
-class SuperAdminApi extends BaseApiController
+class SuperAdminApi extends AdminApi
 {
     protected $format = 'json';
 
@@ -1824,8 +1824,10 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $product = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, lt.type_name as listing_category_name')
             ->join('users u', 'u.id = p.seller_id', 'left')
+            ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.id', $id)
             ->get()->getRowArray();
         if (!$product) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
@@ -1886,7 +1888,7 @@ class SuperAdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $requests = $db->table('product_edit_requests r')
-            ->select('r.*, p.title as original_title, p.listing_type, p.category, p.color, p.used_times, p.usage_label, p.price, p.original_price, p.rental_cost, p.rental_deposit, p.description, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count')
+            ->select('r.*, p.title as original_title, p.listing_type, p.listing_type_category, p.listing_type_category as listing_category_name, p.category, p.color, p.used_times, p.usage_label, p.price, p.original_price, p.rental_cost, p.rental_deposit, p.description, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->where('r.status', 'changesPending')
@@ -1911,7 +1913,7 @@ class SuperAdminApi extends BaseApiController
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
         $original = $db->table('products p')
-            ->select('p.*, ob.brand_name as orignal_brand')
+            ->select('p.*, ob.brand_name as orignal_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
             ->where('p.id', $request['product_id'])
             ->get()->getRowArray();
@@ -1940,6 +1942,11 @@ class SuperAdminApi extends BaseApiController
             if ($brand) {
                 $updatedData['orignal_brand'] = $brand['brand_name'];
             }
+        }
+        // Resolve listing type name in updated_data if listing_type_category is present
+        if (!empty($updatedData['listing_type_category'])) {
+            $updatedData['listing_type_name'] = $updatedData['listing_type_category'];
+            $updatedData['listing_category_name'] = $updatedData['listing_type_category'];
         }
         $request['updated_data'] = json_encode($updatedData);
 
@@ -2945,9 +2952,10 @@ class SuperAdminApi extends BaseApiController
 
         $db = \Config\Database::connect();
         $products = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.seller_rating_avg, u.seller_rating_count, lt.type_name as listing_category_name, p.listing_type')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, lt.type_name as listing_category_name, lt.usage_label, p.listing_type, ob.brand_name as orignal_brand')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
+            ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
             ->groupStart()
                 ->where('p.status', 'pending')
                 ->orWhere('p.edit_request', 'pending')

@@ -1587,15 +1587,21 @@ class SellerApi extends BaseApiController
             }
         }
 
-        // Handle bill image upload (up to 2 files — images or PDFs)
+        // Handle retained and newly uploaded bill images (up to 2 files)
+        $retainedBillImagesRaw = $this->request->getPost('retained_bill_images');
+        $retainedBills = [];
+        if ($retainedBillImagesRaw && is_string($retainedBillImagesRaw)) {
+            $retainedBills = json_decode($retainedBillImagesRaw, true) ?: [];
+        }
+
         $newBillImagePath = null;
         $billFiles = $files['bill_images'] ?? null;
+        $billPaths = [];
         if ($billFiles) {
             $billUploadPath = FCPATH . 'uploads/bills/';
             if (!is_dir($billUploadPath))
                 mkdir($billUploadPath, 0777, true);
-            $billPaths = [];
-            $count = 0;
+            $count = count($retainedBills);
             foreach ($billFiles as $billFile) {
                 if ($billFile && $billFile->isValid() && !$billFile->hasMoved() && $count < 2) {
                     $newName = $billFile->getRandomName();
@@ -1608,10 +1614,10 @@ class SellerApi extends BaseApiController
                     $count++;
                 }
             }
-            if (!empty($billPaths)) {
-                // Single file → string; multiple → JSON array (matches addProduct behaviour)
-                $newBillImagePath = count($billPaths) === 1 ? $billPaths[0] : json_encode($billPaths);
-            }
+        }
+        $finalBills = array_values(array_unique(array_merge($retainedBills, $billPaths)));
+        if (!empty($finalBills)) {
+            $newBillImagePath = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
         }
 
         $deletedIds = $this->request->getPost('deleted_images_ids');
@@ -2099,13 +2105,19 @@ class SellerApi extends BaseApiController
             $updateData['edit_request'] = null;
             $updateData['pending_reason'] = null;
 
-            // Handle new bill image upload
+            // Handle retained and new bill image upload
+            $retainedBillImagesRaw = $this->request->getPost('retained_bill_images');
+            $retainedBills = [];
+            if ($retainedBillImagesRaw && is_string($retainedBillImagesRaw)) {
+                $retainedBills = json_decode($retainedBillImagesRaw, true) ?: [];
+            }
+
             $billFilesArr = $this->request->getFiles()['bill_images'] ?? null;
+            $billPaths = [];
             if ($billFilesArr) {
                 $billUploadPath = FCPATH . 'uploads/bills/';
                 if (!is_dir($billUploadPath)) mkdir($billUploadPath, 0777, true);
-                $billPaths = [];
-                $count = 0;
+                $count = count($retainedBills);
                 foreach ($billFilesArr as $billFile) {
                     if ($billFile && $billFile->isValid() && !$billFile->hasMoved() && $count < 2) {
                         $newName = $billFile->getRandomName();
@@ -2114,10 +2126,11 @@ class SellerApi extends BaseApiController
                         $count++;
                     }
                 }
-                if (!empty($billPaths)) {
-                    $updateData['bill_image'] = count($billPaths) === 1 ? $billPaths[0] : json_encode($billPaths);
-                    $updateData['has_bill'] = 1;
-                }
+            }
+            $finalBills = array_values(array_unique(array_merge($retainedBills, $billPaths)));
+            if (!empty($finalBills)) {
+                $updateData['bill_image'] = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
+                $updateData['has_bill'] = 1;
             }
 
             $db->table('products')->where('id', $id)->update($updateData);

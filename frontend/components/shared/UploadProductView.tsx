@@ -933,6 +933,17 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
           fd.append('deleted_images_ids', JSON.stringify(deletedImageIds));
         }
 
+        // Add retained bill images if any
+        if (existingBills.length > 0) {
+          const relativeBills = existingBills.map(url => {
+            if (url.includes('/uploads/')) {
+              return 'uploads/' + url.split('/uploads/')[1];
+            }
+            return url;
+          });
+          fd.append('retained_bill_images', JSON.stringify(relativeBills));
+        }
+
         // Direct update for all roles.
         // Backend handles status and snapshotting for admins, sellers, and both users.
         res = await api.upload(`${apiBasePath}/update-product/${editingProductId}`, fd);

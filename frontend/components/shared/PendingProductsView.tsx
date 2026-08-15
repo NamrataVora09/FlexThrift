@@ -171,10 +171,10 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
 
   const renderBillThumbnails = (
     billData: string | string[] | undefined | null,
-    badgeText?: string,
-    badgeBg: string = 'bg-secondary',
-    borderColor: string = '#e2e8f0',
-    opacity: number = 1
+    badgeConfig?: string | ((path: string) => { badgeText?: string; badgeBg?: string; borderColor?: string; opacity?: number }),
+    defaultBadgeBg: string = 'bg-secondary',
+    defaultBorderColor: string = '#e2e8f0',
+    defaultOpacity: number = 1
   ) => {
     if (!billData) return null;
     let paths: string[] = [];
@@ -196,6 +196,19 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
         {paths.map((path, idx) => {
           const fullUrl = resolveUrl(path);
           const isPdf = path.toLowerCase().endsWith('.pdf');
+
+          let badgeText = typeof badgeConfig === 'string' ? badgeConfig : undefined;
+          let badgeBg = defaultBadgeBg;
+          let borderColor = defaultBorderColor;
+          let opacity = defaultOpacity;
+
+          if (typeof badgeConfig === 'function') {
+            const config = badgeConfig(path);
+            badgeText = config.badgeText;
+            badgeBg = config.badgeBg || defaultBadgeBg;
+            borderColor = config.borderColor || defaultBorderColor;
+            opacity = config.opacity ?? defaultOpacity;
+          }
 
           return (
             <div className="col-6 col-sm-4" key={idx}>
@@ -1060,66 +1073,211 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
       {/* ══ Inspector Modal ══ */}
       {inspecting && (
         <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setInspecting(null)}>
-          <div className="modal-dialog modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" onClick={(e) => e.stopPropagation()}>
             <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
-              <div className="modal-header border-0 pb-0 px-4 pt-4">
-                <h5 className="modal-title fw-bold">{inspecting.title}</h5>
-                <button type="button" className="btn-close" onClick={() => setInspecting(null)}></button>
+              <div className="modal-header border-bottom p-3 px-4">
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <h5 className="modal-title fw-bold mb-0">{inspecting.title}</h5>
+                  {inspecting.product_number && (
+                    <span className="badge bg-dark text-white rounded-pill px-3 py-1 small">#{inspecting.product_number}</span>
+                  )}
+                  <span className="badge bg-warning text-dark rounded-pill px-3 py-1 small text-uppercase font-monospace fw-bold">
+                    {inspecting.listing_type || 'N/A'}
+                  </span>
+                  {inspecting.category && (
+                    <span className="badge bg-light text-dark border rounded-pill px-3 py-1 small">{inspecting.category}</span>
+                  )}
+                  {Number(inspecting.has_bill) ? (
+                    <span className="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-1 small"><i className="bi bi-receipt me-1"></i>Verified Bill</span>
+                  ) : (
+                    <span className="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-3 py-1 small"><i className="bi bi-file-earmark-x me-1"></i>No Bill</span>
+                  )}
+                </div>
+                <button type="button" className="btn-close ms-auto" onClick={() => setInspecting(null)}></button>
               </div>
-              <div className="modal-body p-4">
+              <div className="modal-body p-4 bg-light bg-opacity-50">
                 <div className="row g-4">
-                  {/* Image Gallery */}
-                  <div className="col-md-6">
-                    <div className="rounded-4 overflow-hidden border" style={{ position: 'relative', background: '#f1f5f9', minHeight: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {inspectImages.length > 0 ? (
-                        <img src={resolveUrl(inspectImages[imgIdx]?.image_path)} alt="" style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }} />
-                      ) : (
-                        <div className="text-muted text-center p-4"><i className="bi bi-image" style={{ fontSize: '3rem', opacity: 0.3 }}></i><p className="small mt-2">No images uploaded</p></div>
+                  {/* Left Column: Media & Seller */}
+                  <div className="col-lg-5">
+                    {/* Image Gallery */}
+                    <div className="bg-white p-3 rounded-4 border shadow-sm mb-4">
+                      <div className="rounded-3 overflow-hidden border" style={{ position: 'relative', background: '#f8fafc', minHeight: 320, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {inspectImages.length > 0 ? (
+                          <img src={resolveUrl(inspectImages[imgIdx]?.image_path)} alt={inspecting.title} style={{ maxWidth: '100%', maxHeight: 380, objectFit: 'contain' }} />
+                        ) : (
+                          <div className="text-muted text-center p-4"><i className="bi bi-image" style={{ fontSize: '3.5rem', opacity: 0.3 }}></i><p className="small mt-2">No images uploaded</p></div>
+                        )}
+                      </div>
+                      {inspectImages.length > 1 && (
+                        <>
+                          <div className="d-flex justify-content-between align-items-center mt-3">
+                            <button className="btn btn-sm btn-outline-secondary rounded-pill px-3" onClick={() => setImgIdx((i) => (i - 1 + inspectImages.length) % inspectImages.length)}><i className="bi bi-chevron-left me-1"></i>Prev</button>
+                            <span className="small fw-bold text-muted">{imgIdx + 1} of {inspectImages.length}</span>
+                            <button className="btn btn-sm btn-outline-secondary rounded-pill px-3" onClick={() => setImgIdx((i) => (i + 1) % inspectImages.length)}>Next<i className="bi bi-chevron-right ms-1"></i></button>
+                          </div>
+                          <div className="d-flex gap-2 mt-3 overflow-x-auto pb-1" style={{ maxWidth: '100%' }}>
+                            {inspectImages.map((img, i) => (
+                              <div
+                                key={i}
+                                onClick={() => setImgIdx(i)}
+                                style={{
+                                  width: 54, height: 54, minWidth: 54, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+                                  border: i === imgIdx ? '2px solid #ffc63a' : '1px solid #e2e8f0', opacity: i === imgIdx ? 1 : 0.6
+                                }}
+                              >
+                                <img src={resolveUrl(img.image_path)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" />
+                              </div>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </div>
-                    {inspectImages.length > 1 && (
-                      <div className="d-flex justify-content-center gap-2 mt-2">
-                        <button className="btn btn-sm btn-light border" onClick={() => setImgIdx((i) => (i - 1 + inspectImages.length) % inspectImages.length)}><i className="bi bi-chevron-left"></i></button>
-                        <span className="small text-muted align-self-center">{imgIdx + 1} / {inspectImages.length}</span>
-                        <button className="btn btn-sm btn-light border" onClick={() => setImgIdx((i) => (i + 1) % inspectImages.length)}><i className="bi bi-chevron-right"></i></button>
+
+                    {/* Bill Section */}
+                    <div className="bg-white p-3 rounded-4 border shadow-sm mb-4">
+                      <div className="fw-bold small text-muted text-uppercase mb-2 d-flex align-items-center justify-content-between">
+                        <span><i className="bi bi-receipt me-1 text-primary"></i>Bill Document</span>
+                        {Number(inspecting.has_bill) ? (
+                          <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Yes</span>
+                        ) : (
+                          <span className="badge bg-secondary-subtle text-secondary rounded-pill">No Bill</span>
+                        )}
                       </div>
-                    )}
+                      {Number(inspecting.has_bill) && inspecting.bill_image ? (
+                        renderBillThumbnails(inspecting.bill_image, 'VERIFIED BILL', 'bg-warning text-dark', '#f59e0b', 1)
+                      ) : (
+                        <div className="p-3 bg-light rounded-3 text-center text-muted small"><i className="bi bi-file-earmark-x me-1"></i>No bill uploaded for this item</div>
+                      )}
+                    </div>
+
+                    {/* Seller Profile Card */}
+                    <div className="bg-white p-3 rounded-4 border shadow-sm">
+                      <div className="small text-muted fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>Seller Information</div>
+                      <div className="d-flex align-items-center gap-3">
+                        <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg, #ffc63a 0%, #f59e0b 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1.1rem', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                          {inspecting.seller_name?.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-grow-1 min-w-0">
+                          <div className="fw-bold text-truncate">{inspecting.seller_name}</div>
+                          {showRatings && renderStars(Number(inspecting.seller_rating_avg || 0), Number(inspecting.seller_rating_count || 0))}
+                        </div>
+                      </div>
+                      <hr className="my-2 opacity-25" />
+                      <div className="row g-2 small">
+                        <div className="col-12"><span className="text-muted me-2"><i className="bi bi-envelope me-1"></i>Email:</span><span className="fw-semibold">{inspecting.seller_email || 'N/A'}</span></div>
+                        <div className="col-12"><span className="text-muted me-2"><i className="bi bi-telephone me-1"></i>Mobile:</span><span className="fw-semibold">{inspecting.seller_mobile || 'N/A'}</span></div>
+                      </div>
+                    </div>
                   </div>
-                  {/* Details */}
-                  <div className="col-md-6">
-                    <div className="mb-3">
-                      <label className="text-muted small fw-bold text-uppercase mb-1 d-block">Full Description</label>
-                      <div className="p-3 bg-light rounded-3 small" style={{ minHeight: 80 }}>{inspecting.description || 'No description'}</div>
+
+                  {/* Right Column: Detailed Product Data */}
+                  <div className="col-lg-7">
+                    {/* Full Description */}
+                    <div className="bg-white p-3 rounded-4 border shadow-sm mb-4">
+                      <label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}><i className="bi bi-card-text me-1 text-primary"></i>Full Description</label>
+                      <div className="p-3 bg-light rounded-3 small text-dark" style={{ minHeight: 80, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                        {inspecting.description || 'No description provided.'}
+                      </div>
                     </div>
-                    <div className="row g-3">
-                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Contact</label><div className="fw-bold small">{inspecting.seller_name}</div></div></div>
-                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Mobile</label><div className="fw-bold small">{inspecting.seller_mobile || 'N/A'}</div></div></div>
-                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Category</label><div className="fw-bold small">{inspecting.category || 'N/A'}</div></div></div>
-                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Color / Size</label><div className="fw-bold small">{inspecting.color || '—'} / {inspecting.size || '—'}</div></div></div>
-                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Price</label><div className="fw-bold small" style={{ color: '#ffc63a' }}>₹{Number(inspecting.listing_type === 'rent' ? (inspecting.rental_cost || 0) : (inspecting.price || inspecting.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}{inspecting.listing_type === 'rent' ? ' /day' : ''}</div></div></div>
-                      <div className="col-6"><div className="p-3 bg-light rounded-3"><label className="text-muted small fw-bold text-uppercase mb-1 d-block" style={{ fontSize: '0.6rem' }}>Used Times</label><div className="fw-bold small">{inspecting.used_times || '0'}</div></div></div>
+
+                    {/* Overview & Categorization */}
+                    <div className="bg-white p-3 rounded-4 border shadow-sm mb-4">
+                      <h6 className="fw-bold text-uppercase small text-muted border-bottom pb-2 mb-3" style={{ fontSize: '0.7rem', letterSpacing: 0.5 }}>
+                        <i className="bi bi-diagram-3 me-1 text-primary"></i>Categorization & Identification
+                      </h6>
+                      <div className="row g-2">
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Product Code</label><div className="fw-bold small">{inspecting.product_number || 'N/A'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Listing</label><div className="fw-bold small text-capitalize">{inspecting.listing_type || 'N/A'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Listing Type</label><div className="fw-bold small text-capitalize">{inspecting.listing_type_category || inspecting.listing_category_name || inspecting.listing_type_name || 'N/A'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Category</label><div className="fw-bold small">{inspecting.category || 'N/A'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Sub Category</label><div className="fw-bold small">{inspecting.sub_category || 'N/A'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Product Type</label><div className="fw-bold small">{inspecting.product_type || 'N/A'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Original Brand</label><div className="fw-bold small">{inspecting.orignal_brand || 'N/A'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Seller Brand</label><div className="fw-bold small">{inspecting.seller_brand || 'N/A'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Gender</label><div className="fw-bold small">{inspecting.gender || 'N/A'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Color / Size</label><div className="fw-bold small">{inspecting.color || '—'} / {inspecting.size || '—'}</div></div></div>
+                      </div>
                     </div>
+
+                    {/* Pricing & Rental Details */}
+                    <div className="bg-white p-3 rounded-4 border shadow-sm mb-4">
+                      <h6 className="fw-bold text-uppercase small text-muted border-bottom pb-2 mb-3" style={{ fontSize: '0.7rem', letterSpacing: 0.5 }}>
+                        <i className="bi bi-currency-rupee me-1 text-primary"></i>Pricing & Financials
+                      </h6>
+                      <div className="row g-2">
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Original MRP</label><div className="fw-bold small text-decoration-line-through text-muted">₹{Number(inspecting.original_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div></div>
+                        {inspecting.listing_type !== 'rent' && (
+                          <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Selling Price</label><div className="fw-bold small text-success">₹{Number(inspecting.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div></div>
+                        )}
+                        {(inspecting.listing_type === 'rent' || inspecting.listing_type === 'both' || inspecting.rental_cost) && (
+                          <>
+                            <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Daily Rental Cost</label><div className="fw-bold small" style={{ color: '#ffc63a' }}>₹{Number(inspecting.rental_cost || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} /day</div></div></div>
+                            <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Security Deposit</label><div className="fw-bold small">₹{Number(inspecting.rental_deposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div></div>
+                          </>
+                        )}
+                        {inspecting.suggested_sale_price && parseFloat(inspecting.suggested_sale_price) > 0 && (
+                          <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Suggested Sale Price</label><div className="fw-bold small">₹{Number(inspecting.suggested_sale_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div></div>
+                        )}
+                        {inspecting.suggested_rental_cost && parseFloat(inspecting.suggested_rental_cost) > 0 && (
+                          <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Suggested Rental Cost</label><div className="fw-bold small">₹{Number(inspecting.suggested_rental_cost).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div></div>
+                        )}
+                        {(inspecting.rental_start_date || inspecting.rental_end_date) && (
+                          <div className="col-12"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Rental Availability Period</label><div className="fw-bold small">{[inspecting.rental_start_date, inspecting.rental_end_date].filter(Boolean).join(' to ')}</div></div></div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Condition & Alterations */}
+                    <div className="bg-white p-3 rounded-4 border shadow-sm mb-4">
+                      <h6 className="fw-bold text-uppercase small text-muted border-bottom pb-2 mb-3" style={{ fontSize: '0.7rem', letterSpacing: 0.5 }}>
+                        <i className="bi bi-shield-check me-1 text-primary"></i>Condition & Alterations
+                      </h6>
+                      <div className="row g-2">
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Used Times</label><div className="fw-bold small">{inspecting.used_times || '0'} {inspecting.usage_label || 'Uses'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Allow Alteration</label><div className="fw-bold small">{Number(inspecting.allow_alter_fitting) ? 'Yes' : 'No'}</div></div></div>
+                        {inspecting.fitting_charge && parseFloat(inspecting.fitting_charge) > 0 && (
+                          <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Fitting Charge</label><div className="fw-bold small">₹{Number(inspecting.fitting_charge).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div></div>
+                        )}
+                        {inspecting.condition_description && (
+                          <div className="col-12"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Condition Description</label><div className="fw-bold small">{inspecting.condition_description}</div></div></div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Dispatch Location */}
+                    <div className="bg-white p-3 rounded-4 border shadow-sm mb-4">
+                      <h6 className="fw-bold text-uppercase small text-muted border-bottom pb-2 mb-3" style={{ fontSize: '0.7rem', letterSpacing: 0.5 }}>
+                        <i className="bi bi-geo-alt me-1 text-primary"></i>Dispatch Location
+                      </h6>
+                      <div className="row g-2">
+                        {inspecting.dispatch_address && (
+                          <div className="col-12"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Address</label><div className="fw-bold small">{inspecting.dispatch_address}</div></div></div>
+                        )}
+                        <div className="col-6"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>City</label><div className="fw-bold small">{inspecting.dispatch_city || 'N/A'}</div></div></div>
+                        <div className="col-6"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>State / Pincode</label><div className="fw-bold small">{inspecting.dispatch_state || 'N/A'} {inspecting.dispatch_pin_code ? `- ${inspecting.dispatch_pin_code}` : ''}</div></div></div>
+                      </div>
+                    </div>
+
+                    {/* Custom Specifications / Attributes */}
                     {inspecting.specifications && (
-                      <div className="mt-3">
-                        <label className="text-muted small fw-bold text-uppercase mb-1 d-block">Specifications / Attributes</label>
+                      <div className="bg-white p-3 rounded-4 border shadow-sm">
+                        <h6 className="fw-bold text-uppercase small text-muted border-bottom pb-2 mb-3" style={{ fontSize: '0.7rem', letterSpacing: 0.5 }}>
+                          <i className="bi bi-sliders me-1 text-primary"></i>Specifications & Attributes
+                        </h6>
                         {renderSpecifications(inspecting.specifications)}
                       </div>
                     )}
-                    {Number(inspecting.has_bill) && inspecting.bill_image ? (
-                      <div className="mt-3">
-                        <label className="text-muted small fw-bold text-uppercase mb-1 d-block">
-                          <i className="bi bi-receipt me-1"></i>Bill Document / Photograph
-                        </label>
-                        {renderBillThumbnails(inspecting.bill_image, 'VERIFIED BILL', 'bg-warning text-dark', '#f59e0b', 1)}
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               </div>
-              <div className="modal-footer border-0 p-4 pt-0">
-                <div className="d-flex gap-2 w-100">
-                  <button className="btn flex-grow-1 py-2 rounded-3" style={btnApprove} onClick={() => { setApproveModal({ id: inspecting.id, title: inspecting.title }); setInspecting(null); }}><i className="bi bi-check-lg me-1"></i>Approve</button>
-                  <button className="btn flex-grow-1 py-2 rounded-3" style={btnReject} onClick={() => { setRejectModal({ id: inspecting.id, title: inspecting.title, type: 'product' }); setRejectReason(''); setInspecting(null); }}><i className="bi bi-x-lg me-1"></i>Reject</button>
+              <div className="modal-footer border-top p-3 px-4 bg-white">
+                <div className="d-flex gap-3 w-100">
+                  <button className="btn flex-grow-1 py-2.5 rounded-3 fw-bold" style={btnApprove} onClick={() => { setApproveModal({ id: inspecting.id, title: inspecting.title }); setInspecting(null); }}>
+                    <i className="bi bi-check-lg me-1"></i>Approve Product
+                  </button>
+                  <button className="btn flex-grow-1 py-2.5 rounded-3 fw-bold" style={btnReject} onClick={() => { setRejectModal({ id: inspecting.id, title: inspecting.title, type: 'product' }); setRejectReason(''); setInspecting(null); }}>
+                    <i className="bi bi-x-lg me-1"></i>Reject Product
+                  </button>
                 </div>
               </div>
             </div>
@@ -1148,8 +1306,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       { l: 'Category', v: comp.original?.category },
                       { l: 'Sub Category', v: comp.original?.sub_category || 'N/A' },
                       { l: 'Product Type', v: comp.original?.product_type || 'N/A' },
-                      { l: 'Listing Type', v: comp.original?.listing_type?.charAt(0).toUpperCase() + comp.original?.listing_type?.slice(1) || 'N/A' },
-                      { l: 'Listing Category', v: comp.original?.listing_category_name || 'N/A' },
+                      { l: 'Listing', v: comp.original?.listing_type?.charAt(0).toUpperCase() + comp.original?.listing_type?.slice(1) || 'N/A' },
+                      { l: 'Listing Type', v: comp.original?.listing_type_category || comp.original?.listing_category_name || comp.original?.listing_type_name || 'N/A' },
                     ])}
                     {renderCompSection('Specs', [
                       { l: 'Color', v: comp.original?.color || 'N/A' },
@@ -1191,8 +1349,25 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       const origBill = comp.original?.bill_image;
                       const updated = JSON.parse(comp.request?.updated_data || '{}');
                       const updatedBill = updated?.bill_image;
-                      const isBillChanged = Boolean(updatedBill && updatedBill !== origBill);
-                      const isBillRemoved = Boolean(origBill && updated?.has_bill === 0);
+
+                      const parseBillPaths = (data: any): string[] => {
+                        if (!data) return [];
+                        if (Array.isArray(data)) return data.filter(Boolean);
+                        if (typeof data === 'string') {
+                          if (data.startsWith('[')) {
+                            try { return (JSON.parse(data) as string[]).filter(Boolean); } catch { return [data]; }
+                          }
+                          return [data];
+                        }
+                        return [];
+                      };
+
+                      const normalizeBill = (p: string) => (p || '').replace(/^uploads\/products\/(temp\/)?/, '').replace(/^\//, '').trim();
+                      const isSameBill = (p1: string, p2: string) => p1 === p2 || (normalizeBill(p1) === normalizeBill(p2) && normalizeBill(p1) !== '');
+
+                      const origPaths = parseBillPaths(origBill);
+                      const isBillRemoved = Boolean(origPaths.length > 0 && updated?.has_bill !== undefined && Number(updated.has_bill) === 0);
+                      const updatedPaths = isBillRemoved ? [] : (updatedBill !== undefined ? parseBillPaths(updatedBill) : origPaths);
 
                       if (!origBill && !Number(comp.original?.has_bill)) return null;
 
@@ -1201,13 +1376,17 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                           <h6 className="fw-bold text-muted text-uppercase small border-bottom pb-1 mb-2">
                             <i className="bi bi-receipt me-1"></i>Original Bill Image(s)
                           </h6>
-                          {origBill ? (
+                          {origPaths.length > 0 ? (
                             renderBillThumbnails(
-                              origBill,
-                              isBillChanged ? 'REPLACED' : isBillRemoved ? 'DELETING' : 'ORIGINAL',
-                              isBillChanged || isBillRemoved ? 'bg-danger' : 'bg-secondary',
-                              isBillChanged || isBillRemoved ? '#ef4444' : '#e2e8f0',
-                              isBillChanged || isBillRemoved ? 0.35 : 1
+                              origPaths,
+                              (path: string) => {
+                                const isRetained = !isBillRemoved && updatedPaths.some(u => isSameBill(path, u));
+                                if (isRetained) {
+                                  return { badgeText: 'ORIGINAL', badgeBg: 'bg-secondary', borderColor: '#e2e8f0', opacity: 1 };
+                                } else {
+                                  return { badgeText: isBillRemoved ? 'DELETING' : 'REPLACED', badgeBg: 'bg-danger', borderColor: '#ef4444', opacity: 0.35 };
+                                }
+                              }
                             )
                           ) : (
                             <div className="text-muted small">No bill uploaded originally</div>
@@ -1254,8 +1433,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             { l: 'Category', v: diff(orig.category || '', updated.category || '') },
                             { l: 'Sub Category', v: diff(orig.sub_category || 'N/A', updated.sub_category || 'N/A') },
                             { l: 'Product Type', v: diff(orig.product_type || 'N/A', updated.product_type || 'N/A') },
-                            { l: 'Listing Type', v: diff(orig.listing_type?.charAt(0).toUpperCase() + orig.listing_type?.slice(1) || 'N/A', updated.listing_type?.charAt(0).toUpperCase() + updated.listing_type?.slice(1) || 'N/A') },
-                            { l: 'Listing Category', v: diff(orig.listing_category_name || 'N/A', updated.listing_category_name || 'N/A') },
+                            { l: 'Listing', v: diff(orig.listing_type?.charAt(0).toUpperCase() + orig.listing_type?.slice(1) || 'N/A', updated.listing_type?.charAt(0).toUpperCase() + updated.listing_type?.slice(1) || 'N/A') },
+                            { l: 'Listing Type', v: diff(orig.listing_type_category || orig.listing_category_name || orig.listing_type_name || 'N/A', updated.listing_type_category || updated.listing_category_name || updated.listing_type_name || 'N/A') },
                           ])}
                           {renderCompSection('Specs', [
                             { l: 'Color', v: diff(orig.color || 'N/A', updated.color || 'N/A') },
@@ -1299,24 +1478,49 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                           {(() => {
                             const origBill = comp.original?.bill_image;
                             const updatedBill = updated?.bill_image;
-                            const isBillChanged = Boolean(updatedBill && updatedBill !== origBill);
-                            const isBillRemoved = Boolean(origBill && updated?.has_bill !== undefined && Number(updated.has_bill) === 0);
+
+                            const parseBillPaths = (data: any): string[] => {
+                              if (!data) return [];
+                              if (Array.isArray(data)) return data.filter(Boolean);
+                              if (typeof data === 'string') {
+                                if (data.startsWith('[')) {
+                                  try { return (JSON.parse(data) as string[]).filter(Boolean); } catch { return [data]; }
+                                }
+                                return [data];
+                              }
+                              return [];
+                            };
+
+                            const normalizeBill = (p: string) => (p || '').replace(/^uploads\/products\/(temp\/)?/, '').replace(/^\//, '').trim();
+                            const isSameBill = (p1: string, p2: string) => p1 === p2 || (normalizeBill(p1) === normalizeBill(p2) && normalizeBill(p1) !== '');
+
+                            const origPaths = parseBillPaths(origBill);
+                            const isBillRemoved = Boolean(origPaths.length > 0 && updated?.has_bill !== undefined && Number(updated.has_bill) === 0);
+                            const updatedPaths = isBillRemoved ? [] : (updatedBill !== undefined ? parseBillPaths(updatedBill) : origPaths);
+
+                            const hasBillChanged = origPaths.length !== updatedPaths.length ||
+                              origPaths.some(op => !updatedPaths.some(up => isSameBill(op, up))) ||
+                              updatedPaths.some(up => !origPaths.some(op => isSameBill(op, up)));
 
                             // Only render proposed bill section if the bill image was changed or removed in this edit
-                            if (!isBillChanged && !isBillRemoved) return null;
+                            if (!hasBillChanged && !isBillRemoved) return null;
 
                             return (
                               <div className="mt-4">
                                 <h6 className="fw-bold text-success text-uppercase small border-bottom border-success pb-1 mb-2">
                                   <i className="bi bi-receipt me-1"></i>Proposed Bill Image(s)
                                 </h6>
-                                {isBillChanged && updatedBill ? (
+                                {updatedPaths.length > 0 ? (
                                   renderBillThumbnails(
-                                    updatedBill,
-                                    'NEW BILL',
-                                    'bg-success',
-                                    '#10b981',
-                                    1
+                                    updatedPaths,
+                                    (path: string) => {
+                                      const isNew = !origPaths.some(op => isSameBill(path, op));
+                                      if (isNew) {
+                                        return { badgeText: 'NEW BILL', badgeBg: 'bg-success', borderColor: '#10b981', opacity: 1 };
+                                      } else {
+                                        return { badgeText: 'RETAINED', badgeBg: 'bg-secondary', borderColor: '#e2e8f0', opacity: 1 };
+                                      }
+                                    }
                                   )
                                 ) : isBillRemoved ? (
                                   <div className="badge bg-danger p-2">Bill status changed to No Bill</div>
@@ -1406,8 +1610,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
 
         const fields: Array<{ label: string; prevKey: string; currKey: string; format?: (v: any) => string }> = [
           { label: 'Title', prevKey: 'title', currKey: 'title' },
-          { label: 'Listing Type', prevKey: 'listing_type', currKey: 'listing_type' },
-          { label: 'Category', prevKey: 'listing_type_category', currKey: 'listing_type_category' },
+          { label: 'Listing', prevKey: 'listing_type', currKey: 'listing_type' },
+          { label: 'Listing Type', prevKey: 'listing_type_category', currKey: 'listing_type_category' },
           { label: 'Product Type', prevKey: 'product_type', currKey: 'product_type' },
           { label: 'Category', prevKey: 'category', currKey: 'category' },
           { label: 'Sub-Category', prevKey: 'sub_category', currKey: 'sub_category' },
@@ -1458,7 +1662,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                       {renderCompSection('General', [
                         { l: 'Title', v: prev.title || adminEditDiff.title },
                         { l: 'Category', v: prev.category || adminEditDiff.category },
-                        { l: 'Listing Type', v: prev.listing_type || adminEditDiff.listing_type },
+                        { l: 'Listing', v: prev.listing_type || adminEditDiff.listing_type },
+                        { l: 'Listing Type', v: prev.listing_type_category || adminEditDiff.listing_type_category || 'N/A' },
                       ])}
                       {renderCompSection('Specs', [
                         { l: 'Color', v: prev.color || 'N/A' },
@@ -1500,7 +1705,8 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             {renderCompSection('General', [
                               { l: 'Title', v: diff(prev.title || '', curr.title || '') },
                               { l: 'Category', v: diff(prev.category || '', curr.category || '') },
-                              { l: 'Listing Type', v: diff(prev.listing_type || '', curr.listing_type || '') },
+                              { l: 'Listing', v: diff(prev.listing_type || '', curr.listing_type || '') },
+                              { l: 'Listing Type', v: diff(prev.listing_type_category || '', curr.listing_type_category || '') },
                             ])}
                             {renderCompSection('Specs', [
                               { l: 'Color', v: diff(prev.color || '', curr.color || '') },
