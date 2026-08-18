@@ -1596,6 +1596,9 @@ class SellerApi extends BaseApiController
 
         $newBillImagePath = null;
         $billFiles = $files['bill_images'] ?? null;
+        if ($billFiles && !is_array($billFiles)) {
+            $billFiles = [$billFiles];
+        }
         $billPaths = [];
         if ($billFiles) {
             $billUploadPath = FCPATH . 'uploads/bills/';
@@ -1616,8 +1619,21 @@ class SellerApi extends BaseApiController
             }
         }
         $finalBills = array_values(array_unique(array_merge($retainedBills, $billPaths)));
+        $requestedHasBill = isset($data['has_bill']) ? (int)$data['has_bill'] : (int)($processedData['has_bill'] ?? 0);
+        if ($requestedHasBill === 1 && empty($finalBills)) {
+            return $this->respond([
+                'success' => false,
+                'message' => 'Please upload a bill image or uncheck "I have a bill".',
+                'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
+            ], 422);
+        }
         if (!empty($finalBills)) {
             $newBillImagePath = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
+            $processedData['bill_image'] = $newBillImagePath;
+            $processedData['has_bill'] = 1;
+        } elseif ($retainedBillImagesRaw !== null || $billFiles !== null) {
+            $processedData['bill_image'] = null;
+            $processedData['has_bill'] = 0;
         }
 
         $deletedIds = $this->request->getPost('deleted_images_ids');
@@ -1733,9 +1749,19 @@ class SellerApi extends BaseApiController
             // Merge new changes with existing changes - new values take precedence
             $mergedData = array_merge($existingData, $processedData);
 
-            // Also merge temp images if there are new ones
+            // Also merge temp images if there are new ones,
+            // but first remove any temp images the seller explicitly deleted in this edit.
             $existingTempImages = json_decode($existingRequest['temp_images'] ?? '[]', true);
-            $mergedTempImages = array_unique(array_merge($existingTempImages, $tempImages));
+            $removedTempImages = [];
+            $removedTempRaw = $this->request->getPost('removed_temp_images');
+            if ($removedTempRaw && is_string($removedTempRaw)) {
+                $removedTempImages = json_decode($removedTempRaw, true) ?: [];
+            }
+            // Strip any temp images the seller removed in this edit submission
+            $filteredExistingTemp = array_values(array_filter($existingTempImages, function ($path) use ($removedTempImages) {
+                return !in_array($path, $removedTempImages);
+            }));
+            $mergedTempImages = array_values(array_unique(array_merge($filteredExistingTemp, $tempImages)));
 
             $updateData = [
                 'updated_data' => json_encode($mergedData),
@@ -2113,6 +2139,9 @@ class SellerApi extends BaseApiController
             }
 
             $billFilesArr = $this->request->getFiles()['bill_images'] ?? null;
+            if ($billFilesArr && !is_array($billFilesArr)) {
+                $billFilesArr = [$billFilesArr];
+            }
             $billPaths = [];
             if ($billFilesArr) {
                 $billUploadPath = FCPATH . 'uploads/bills/';
@@ -2128,9 +2157,20 @@ class SellerApi extends BaseApiController
                 }
             }
             $finalBills = array_values(array_unique(array_merge($retainedBills, $billPaths)));
+            $requestedHasBill = isset($data['has_bill']) ? (int)$data['has_bill'] : (int)($updateData['has_bill'] ?? 0);
+            if ($requestedHasBill === 1 && empty($finalBills)) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'Please upload a bill image or uncheck "I have a bill".',
+                    'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
+                ], 422);
+            }
             if (!empty($finalBills)) {
                 $updateData['bill_image'] = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
                 $updateData['has_bill'] = 1;
+            } elseif ($retainedBillImagesRaw !== null || $billFilesArr !== null) {
+                $updateData['bill_image'] = null;
+                $updateData['has_bill'] = 0;
             }
 
             $db->table('products')->where('id', $id)->update($updateData);
@@ -2656,7 +2696,7 @@ class SellerApi extends BaseApiController
 
         foreach ($data as $key => $value) {
             // Skip keys we already handled or that shouldn't be in products table
-            if (in_array($key, ['category_id', 'sub_category_id', 'listing_type_category', 'product_type', 'images', 'product_images', 'jwt_user', 'deleted_images_ids', 'temp_images', 'bill_images']))
+            if (in_array($key, ['category_id', 'sub_category_id', 'listing_type_category', 'product_type', 'images', 'product_images', 'jwt_user', 'deleted_images_ids', 'temp_images', 'bill_images', 'retained_bill_images', 'removed_temp_images', 'retained_images']))
                 continue;
 
             $dbKey = $fieldMap[$key] ?? $key;

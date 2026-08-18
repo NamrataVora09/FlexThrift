@@ -940,10 +940,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
                       </span>
                     </div>
                   )}
-                  {product.condition_description && (
+                  {(product.condition_description || product.description) && (
                     <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
                       <span style={{ fontWeight: 600, color: '#111827', width: 200, flexShrink: 0 }}>Condition Notes</span>
-                      <span style={{ color: '#6b7280' }}>{product.condition_description}</span>
+                      <span style={{ color: '#6b7280' }}>{product.condition_description || product.description}</span>
                     </div>
                   )}
                   {product.listing_type === 'rent' && product.allow_alter_fitting !== undefined && (

@@ -11,9 +11,11 @@ async function safeFetch<T = any>(
   revalidateSeconds: number = 60
 ): Promise<T | null> {
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      next: { revalidate: revalidateSeconds },
-    });
+    const fetchOptions: RequestInit = revalidateSeconds === 0
+      ? { cache: 'no-store' }
+      : { next: { revalidate: revalidateSeconds } };
+
+    const res = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && json.data !== undefined) return json.data;
@@ -67,5 +69,20 @@ export async function getProductDetail(id: string) {
 }
 
 export async function getLandingContent() {
-  return safeFetch('/landing-content', 60);
+  return safeFetch('/landing-content', 0);
+}
+
+/**
+ * Fetch the configured SEO settings for a specific page key from the DB.
+ * Used by server-side generateMetadata() to serve correct meta tags on initial HTML load.
+ * Uses no-store so admin changes to SEO are reflected immediately.
+ */
+export async function getSeoSetting(pageKey: string) {
+  return safeFetch<{
+    title: string | null;
+    meta_description: string | null;
+    meta_keywords: string | null;
+    og_title: string | null;
+    og_description: string | null;
+  }>(`/shared/seo-settings/${pageKey}`, 0);
 }

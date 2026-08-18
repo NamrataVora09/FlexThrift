@@ -109,6 +109,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [billPreviews, setBillPreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<any[]>([]);
   const [deletedImageIds, setDeletedImageIds] = useState<number[]>([]);
+  const [removedTempImagePaths, setRemovedTempImagePaths] = useState<string[]>([]);
 
   // Form state
   const [f, setF] = useState({
@@ -627,7 +628,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (idx < existingImages.length) {
       const removed = existingImages[idx];
       setExistingImages(prev => prev.filter((_, i) => i !== idx));
-      if (removed.id) setDeletedImageIds(prev => [...prev, removed.id]);
+      if (removed.id) {
+        setDeletedImageIds(prev => [...prev, removed.id]);
+      } else if (removed.image_path) {
+        setRemovedTempImagePaths(prev => [...prev, removed.image_path]);
+      }
     } else {
       const fileIdx = idx - existingImages.length;
       const nextFiles = files.filter((_, i) => i !== fileIdx);
@@ -920,6 +925,13 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         }
       }
 
+      // Validate bill requirement
+      if (f.has_bill && existingBills.length + billFiles.length === 0) {
+        setError("Please upload at least one bill image or uncheck 'I have a bill'.");
+        setSubmitting(false);
+        return;
+      }
+
       // Include dynamic attributes
       fd.append('specifications', JSON.stringify(attributeValues));
 
@@ -933,16 +945,19 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
           fd.append('deleted_images_ids', JSON.stringify(deletedImageIds));
         }
 
-        // Add retained bill images if any
-        if (existingBills.length > 0) {
-          const relativeBills = existingBills.map(url => {
-            if (url.includes('/uploads/')) {
-              return 'uploads/' + url.split('/uploads/')[1];
-            }
-            return url;
-          });
-          fd.append('retained_bill_images', JSON.stringify(relativeBills));
+        // Add removed temp images if any
+        if (removedTempImagePaths.length > 0) {
+          fd.append('removed_temp_images', JSON.stringify(removedTempImagePaths));
         }
+
+        // Add retained bill images (send relative paths, or empty array if all removed)
+        const relativeBills = existingBills.map(url => {
+          if (url.includes('/uploads/')) {
+            return 'uploads/' + url.split('/uploads/')[1];
+          }
+          return url;
+        });
+        fd.append('retained_bill_images', JSON.stringify(relativeBills));
 
         // Direct update for all roles.
         // Backend handles status and snapshotting for admins, sellers, and both users.

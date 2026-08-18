@@ -472,7 +472,7 @@ class SuperAdminApi extends AdminApi
             'delivery' => $db->table('users')->where('user_type', 'delivery')->countAllResults(),
             'admins' => $db->table('users')->where('role', 'admin')->countAllResults(),
             'total_products' => $db->table('products')->countAllResults(),
-            'pending_products' => $db->table('products')->groupStart()->where('status', 'pending')->orWhere('edit_request', 'pending')->groupEnd()->countAllResults(),
+            'pending_products' => $db->table('products')->groupStart()->where('status', 'pending')->orWhere('edit_request', '1')->orWhere('edit_request', 'pending')->groupEnd()->countAllResults(),
             'approved_products' => $db->table('products')->where('status', 'approved')->countAllResults(),
             'total_offers' => $db->table('offers')->countAllResults(),
             'pending_offers' => $db->table('offers')->where('status', 'pending')->countAllResults(),
@@ -1880,6 +1880,7 @@ class SuperAdminApi extends AdminApi
             }
         }
 
+        $product['condition_description'] = $product['description'] ?? '';
         $product['images'] = $images;
         return $this->respond(['success' => true, 'data' => $product]);
     }
@@ -2001,8 +2002,17 @@ class SuperAdminApi extends AdminApi
             if (isset($updatedData['specifications']) && (is_array($updatedData['specifications']) || is_object($updatedData['specifications']))) {
                 $updatedData['specifications'] = json_encode($updatedData['specifications']);
             }
+
+            // Filter to only valid columns of the products table (excluding id and created_at)
+            $allowedColumns = $db->getFieldNames('products');
+            $productUpdateData = [];
+            foreach ($updatedData as $col => $val) {
+                if (in_array($col, $allowedColumns, true) && $col !== 'id' && $col !== 'created_at') {
+                    $productUpdateData[$col] = $val;
+                }
+            }
             
-            $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($updatedData);
+            $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($productUpdateData);
             if (!$productUpdate) {
                 log_message('error', "Failed to update product ID: {$request['product_id']} for edit request ID: {$id}");
                 return $this->respond(['success' => false, 'message' => 'Failed to update product'], 500);
@@ -2958,6 +2968,7 @@ class SuperAdminApi extends AdminApi
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
             ->groupStart()
                 ->where('p.status', 'pending')
+                ->orWhere('p.edit_request', '1')
                 ->orWhere('p.edit_request', 'pending')
             ->groupEnd()
             ->orderBy('p.created_at', 'ASC')
@@ -2965,6 +2976,7 @@ class SuperAdminApi extends AdminApi
 
         // Attach images for each product
         foreach ($products as &$product) {
+            $product['condition_description'] = $product['description'] ?? '';
             $product['images'] = $db->table('product_images')
                 ->where('product_id', $product['id'])
                 ->orderBy('display_order', 'ASC')
@@ -5153,8 +5165,9 @@ private function processImage($source, $subDir): ?string
             'hero_slides', 'display_categories', 'cta_title', 'cta_subtitle',
             'footer_description', 'section_title_categories', 'section_title_products',
             'footer_quick_links', 'footer_policy_links', 'footer_social_links',
+            'footer_sections', 'footer_category_links', 'footer_section_titles',
             'how_it_works_steps', 'stats_banner', 'trust_features', 'testimonials',
-            'aot_sections', 'category_cards',
+            'aot_sections', 'category_cards', 'site_name',
         ];
 
         $saved = 0;

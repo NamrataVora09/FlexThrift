@@ -6,14 +6,28 @@ import { SystemProvider } from '@/lib/system-context';
 import BootstrapClient from '@/components/BootstrapClient';
 import ToastProvider from '@/components/ToastProvider';
 
-import { getLandingContent } from '@/lib/server-fetch';
+import { getLandingContent, getSeoSetting } from '@/lib/server-fetch';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const content = await getLandingContent();
+  const [content, seo] = await Promise.all([
+    getLandingContent(),
+    getSeoSetting('home'),
+  ]);
+
   const siteName = content?.site_name || 'Flex Market';
+  const title = seo?.title || siteName;
+  const description = seo?.meta_description || `Buy, Sell & Rent — ${siteName}`;
+  const keywords = seo?.meta_keywords || undefined;
+
   return {
-    title: siteName,
-    description: `Buy, Sell & Rent — ${siteName}`,
+    title,
+    description,
+    ...(keywords && { keywords }),
+    openGraph: {
+      title: seo?.og_title || title,
+      description: seo?.og_description || description,
+      siteName,
+    },
   };
 }
 

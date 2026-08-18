@@ -129,13 +129,13 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
 
     if (origSpecsData) {
       if (typeof origSpecsData === 'string') {
-        try { orig = JSON.parse(origSpecsData); } catch {}
+        try { orig = JSON.parse(origSpecsData); } catch { }
       } else if (typeof origSpecsData === 'object') { orig = origSpecsData as Record<string, any>; }
     }
 
     if (newSpecsData) {
       if (typeof newSpecsData === 'string') {
-        try { updated = JSON.parse(newSpecsData); } catch {}
+        try { updated = JSON.parse(newSpecsData); } catch { }
       } else if (typeof newSpecsData === 'object') { updated = newSpecsData as Record<string, any>; }
     }
 
@@ -510,12 +510,12 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
   const adminEdits = products.filter(p => p.pending_reason === 'admin_edit');
   const sellerEdits = products.filter(p => p.pending_reason === 'seller_edit');
   const bothEdits = products.filter(p => p.pending_reason === 'both_edit');
-  
+
   // Filter edit requests by editor_role
   const adminEditRequests = editRequests.filter(r => r.editor_role === 'admin');
   const sellerEditRequests = editRequests.filter(r => r.editor_role === 'seller' || !r.editor_role);
-  
-  const totalItems = newUploads.length + adminEdits.length + sellerEdits.length + bothEdits.length + editRequests.length;
+
+  const totalItems = newUploads.length + adminEditRequests.length + (sellerEditRequests.length > 0 ? sellerEditRequests.length : sellerEdits.length) + bothEdits.length;
 
   return (
     <DashboardLayout requiredRoles={[role]}>
@@ -676,72 +676,94 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
             )}
 
             {/* ── Seller Edits Pending ── */}
-            {sellerEdits.length > 0 && (
+            {(sellerEditRequests.length > 0 || sellerEdits.length > 0) && (
               <>
                 <div className="mb-4 d-flex align-items-center gap-2 mt-5">
-                  <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#212529', fontWeight: 600 }}>Seller Edits Pending</span>
+                  <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#212529', fontWeight: 600 }}>Seller Edit Requests</span>
                   <hr className="flex-grow-1 opacity-25" />
                 </div>
                 <div className="row g-4 mb-5">
-                  {sellerEdits.map((p) => (
-                    <div className="col-md-6 col-xxl-4" key={p.id}>
-                      <div style={{ border: 'none', borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.3s', height: '100%', display: 'flex', flexDirection: 'column' }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                        {/* Thumbnail */}
-                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {p.images && p.images.length > 0 ? (
-                            <img src={resolveUrl(p.images[0].image_path)} alt={p.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
-                          )}
-                          <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{p.listing_type?.charAt(0).toUpperCase() + p.listing_type?.slice(1) || 'N/A'}</span>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">PENDING EDIT</span>
-                          </div>
-                        </div>
-                        {/* Body */}
-                        <div style={{ padding: '1.5rem', flexGrow: 1 }}>
-                          <div className="d-flex justify-content-between align-items-start mb-3">
-                            <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{p.title}</h5>
-                            <div className="text-end">
-                              <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>
-                                ₹{Number(p.listing_type === 'rent' ? (p.rental_cost || 0) : (p.price || p.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                {p.listing_type === 'rent' && <small className="ms-1" style={{ fontSize: '0.65rem', textTransform: 'lowercase' }}>/day</small>}
-                              </div>
-                              {p.listing_type === 'rent' && p.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(p.rental_deposit).toLocaleString('en-IN', { minimumFractionDigits: 2 })} deposit</small>}
+                  {(sellerEditRequests.length > 0 ? sellerEditRequests : sellerEdits).map((r: any) => {
+                    const reqId = r.id;
+                    const isEditReq = sellerEditRequests.length > 0 || Boolean(r.product_id);
+                    const title = r.title || r.original_title || 'Untitled Product';
+                    const isRent = r.listing_type === 'rent';
+                    const price = isRent ? (r.rental_cost || 0) : (r.price || r.original_price || 0);
+
+                    return (
+                      <div className="col-md-6 col-xxl-4" key={r.id}>
+                        <div style={{ border: 'none', borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.3s', height: '100%', display: 'flex', flexDirection: 'column' }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                          {/* Thumbnail */}
+                          <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {r.images && r.images.length > 0 ? (
+                              <img src={resolveUrl(r.images[0].image_path)} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
+                            )}
+                            <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
+                              <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{r.listing_type?.charAt(0).toUpperCase() + r.listing_type?.slice(1) || 'N/A'}</span>
+                              <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">SELLER EDIT</span>
                             </div>
                           </div>
-                          <div className="mb-3 d-flex flex-wrap gap-2">
-                            {p.category && <span style={tagBadge}><i className="bi bi-tag small me-1"></i>{p.category}</span>}
-                            {p.color && <span style={tagBadge}><i className="bi bi-palette small me-1"></i>{p.color}</span>}
-                            {p.used_times && <span style={tagBadge}>{p.used_times} {p.usage_label || 'Uses'}</span>}
-                          </div>
-                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1.25rem' }}>
-                            <div className="small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>Seller Profile</div>
-                            <div className="d-flex align-items-center gap-2">
-                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#3b82f6', border: '1px solid #e2e8f0' }}>{p.seller_name?.charAt(0).toUpperCase()}</div>
-                              <div className="flex-grow-1">
-                                <div className="fw-bold small">{p.seller_name}</div>
-                                {showRatings && renderStars(Number(p.seller_rating_avg || 0), Number(p.seller_rating_count || 0))}
+                          {/* Body */}
+                          <div style={{ padding: '1.5rem', flexGrow: 1 }}>
+                            <div className="d-flex justify-content-between align-items-start mb-3">
+                              <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{title}</h5>
+                              <div className="text-end">
+                                <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>
+                                  ₹{Number(price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  {isRent && <small className="ms-1" style={{ fontSize: '0.65rem', textTransform: 'lowercase' }}>/day</small>}
+                                </div>
+                                {isRent && r.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(r.rental_deposit).toLocaleString('en-IN', { minimumFractionDigits: 2 })} deposit</small>}
                               </div>
                             </div>
+                            <div className="mb-3 d-flex flex-wrap gap-2">
+                              {r.category && <span style={tagBadge}><i className="bi bi-tag small me-1"></i>{r.category}</span>}
+                              {r.color && <span style={tagBadge}><i className="bi bi-palette small me-1"></i>{r.color}</span>}
+                              {r.used_times !== undefined && r.used_times !== null && <span style={tagBadge}>{r.used_times} {r.usage_label || 'Uses'}</span>}
+                            </div>
+                            <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1.25rem' }}>
+                              <div className="small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>Seller Profile</div>
+                              <div className="d-flex align-items-center gap-2">
+                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#3b82f6', border: '1px solid #e2e8f0' }}>{r.seller_name?.charAt(0).toUpperCase()}</div>
+                                <div className="flex-grow-1">
+                                  <div className="fw-bold small">{r.seller_name}</div>
+                                  {showRatings && renderStars(Number(r.seller_rating_avg || 0), Number(r.seller_rating_count || 0))}
+                                </div>
+                              </div>
+                            </div>
+                            {r.description && <p className="small text-muted mb-0" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.description}</p>}
                           </div>
-                          {p.description && <p className="small text-muted mb-0" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>}
-                        </div>
-                        {/* Actions */}
-                        <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
-                          <div className="row g-2">
-                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => setApproveModal({ id: p.id, title: p.title })}><i className="bi bi-check-lg me-1"></i>Approve</button></div>
-                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: p.id, title: p.title, type: 'product' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
+                          {/* Actions */}
+                          <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
+                            <div className="row g-2">
+                              <div className="col-6">
+                                <button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => isEditReq ? approveEdit(reqId) : setApproveModal({ id: reqId, title })}>
+                                  <i className="bi bi-check-lg me-1"></i>Approve
+                                </button>
+                              </div>
+                              <div className="col-6">
+                                <button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: reqId, title, type: isEditReq ? 'edit_request' : 'product' }); setRejectReason(''); }}>
+                                  <i className="bi bi-x-lg me-1"></i>Reject
+                                </button>
+                              </div>
+                            </div>
+                            {isEditReq ? (
+                              <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => openComparison(reqId)}>
+                                <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
+                              </button>
+                            ) : (
+                              <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => openInspector(reqId)}>
+                                <i className="bi bi-eye me-1"></i> Inspect Product & Images
+                              </button>
+                            )}
                           </div>
-                          <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => setAdminEditDiff(p)}>
-                            <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -817,76 +839,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
               </>
             )}
 
-            {/* ── Edit Requests (Seller Edits via product_edit_requests table) ── */}
-            {sellerEditRequests.length > 0 && (
-              <>
-                <div className="mb-4 d-flex align-items-center gap-2 mt-5">
-                  <span className="badge rounded-pill" style={{ background: '#ffc63a', color: '#212529', fontWeight: 600 }}>Seller Edit Requests</span>
-                  <hr className="flex-grow-1 opacity-25" />
-                </div>
-                <div className="row g-4 mb-5">
-                  {sellerEditRequests.map((r) => (
-                    <div className="col-md-6 col-xxl-4" key={r.id}>
-                      <div style={{ border: 'none', borderRadius: 20, background: '#fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.3s', height: '100%', display: 'flex', flexDirection: 'column' }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-8px)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                        {/* Thumbnail */}
-                        <div style={{ height: 200, background: '#e2e8f0', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {r.images && r.images.length > 0 ? (
-                            <img src={resolveUrl(r.images[0].image_path)} alt={r.original_title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <i className="bi bi-image" style={{ fontSize: '3rem', color: '#94a3b8' }}></i>
-                          )}
-                          <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 5 }}>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">{r.listing_type?.charAt(0).toUpperCase() + r.listing_type?.slice(1)}</span>
-                            <span className="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill small">SELLER EDIT</span>
-                          </div>
-                        </div>
-                        {/* Body */}
-                        <div style={{ padding: '1.5rem', flexGrow: 1 }}>
-                          <div className="d-flex justify-content-between align-items-start mb-3">
-                            <h5 className="fw-bold mb-0 text-truncate" style={{ maxWidth: 200 }}>{r.original_title}</h5>
-                            <div className="text-end">
-                              <div className="fw-bold fs-5" style={{ color: '#ffc63a' }}>
-                                ₹{Number(r.listing_type === 'rent' ? (r.rental_cost || 0) : (r.price || r.original_price || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                {r.listing_type === 'rent' && <small className="ms-1" style={{ fontSize: '0.65rem', textTransform: 'lowercase' }}>/day</small>}
-                              </div>
-                              {r.listing_type === 'rent' && r.rental_deposit && <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>+ ₹{Number(r.rental_deposit).toLocaleString('en-IN', { minimumFractionDigits: 2 })} deposit</small>}
-                            </div>
-                          </div>
-                          <div className="mb-3 d-flex flex-wrap gap-2">
-                            {r.category && <span style={tagBadge}><i className="bi bi-tag small me-1"></i>{r.category}</span>}
-                            {r.color && <span style={tagBadge}><i className="bi bi-palette small me-1"></i>{r.color}</span>}
-                            {r.used_times && <span style={tagBadge}>{r.used_times} {r.usage_label || 'Uses'}</span>}
-                          </div>
-                          <div style={{ background: '#f1f5f9', borderRadius: 12, padding: '10px 15px', marginBottom: '1.25rem' }}>
-                            <div className="small text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '0.65rem', letterSpacing: 0.5 }}>Seller Profile</div>
-                            <div className="d-flex align-items-center gap-2">
-                              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#3b82f6', border: '1px solid #e2e8f0' }}>{r.seller_name?.charAt(0).toUpperCase()}</div>
-                              <div className="flex-grow-1">
-                                <div className="fw-bold small">{r.seller_name}</div>
-                                {showRatings && renderStars(Number(r.seller_rating_avg || 0), Number(r.seller_rating_count || 0))}
-                              </div>
-                            </div>
-                          </div>
-                          {r.description && <p className="small text-muted mb-0" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.description}</p>}
-                        </div>
-                        {/* Actions */}
-                        <div style={{ padding: '1.5rem', borderTop: '1px solid #f1f5f9', background: '#fbfcfd' }} className="d-flex flex-column gap-2">
-                          <div className="row g-2">
-                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnApprove} onClick={() => openComparison(r.id)}><i className="bi bi-eye me-1"></i>Approve</button></div>
-                            <div className="col-6"><button className="btn w-100 py-2 rounded-3 small" style={btnReject} onClick={() => { setRejectModal({ id: r.id, title: r.original_title, type: 'edit_request' }); setRejectReason(''); }}><i className="bi bi-x-lg me-1"></i>Reject</button></div>
-                          </div>
-                          <button className="btn btn-white border w-100 py-2 rounded-3 fw-bold shadow-sm small" onClick={() => openComparison(r.id)}>
-                            <i className="bi bi-arrow-left-right me-1"></i> Review Changes & Act
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+
 
           </>
         ) : (
@@ -1163,10 +1116,14 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         </div>
                       </div>
                       <hr className="my-2 opacity-25" />
-                      <div className="row g-2 small">
-                        <div className="col-12"><span className="text-muted me-2"><i className="bi bi-envelope me-1"></i>Email:</span><span className="fw-semibold">{inspecting.seller_email || 'N/A'}</span></div>
-                        <div className="col-12"><span className="text-muted me-2"><i className="bi bi-telephone me-1"></i>Mobile:</span><span className="fw-semibold">{inspecting.seller_mobile || 'N/A'}</span></div>
-                      </div>
+                      {role === 'super_admin' ? (
+                        <div className="row g-2 small">
+                          <div className="col-12"><span className="text-muted me-2"><i className="bi bi-envelope me-1"></i>Email:</span><span className="fw-semibold">{inspecting.seller_email || 'N/A'}</span></div>
+                          <div className="col-12"><span className="text-muted me-2"><i className="bi bi-telephone me-1"></i>Mobile:</span><span className="fw-semibold">{inspecting.seller_mobile || 'N/A'}</span></div>
+                        </div>
+                      ) : (
+                        <div className="text-muted small fst-italic"><i className="bi bi-lock me-1"></i>Contact details restricted to Super Admin</div>
+                      )}
                     </div>
                   </div>
 
@@ -1195,7 +1152,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Original Brand</label><div className="fw-bold small">{inspecting.orignal_brand || 'N/A'}</div></div></div>
                         <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Seller Brand</label><div className="fw-bold small">{inspecting.seller_brand || 'N/A'}</div></div></div>
                         <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Gender</label><div className="fw-bold small">{inspecting.gender || 'N/A'}</div></div></div>
-                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Color / Size</label><div className="fw-bold small">{inspecting.color || '—'} / {inspecting.size || '—'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Color</label><div className="fw-bold small">{inspecting.color || 'N/A'}</div></div></div>
                       </div>
                     </div>
 
@@ -1233,13 +1190,14 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         <i className="bi bi-shield-check me-1 text-primary"></i>Condition & Alterations
                       </h6>
                       <div className="row g-2">
-                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Used Times</label><div className="fw-bold small">{inspecting.used_times || '0'} {inspecting.usage_label || 'Uses'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Used Times</label><div className="fw-bold small">{inspecting.used_times || '0'}</div></div></div>
+                        <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Usage Label</label><div className="fw-bold small">{inspecting.usage_label || 'Times Used'}</div></div></div>
                         <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Allow Alteration</label><div className="fw-bold small">{Number(inspecting.allow_alter_fitting) ? 'Yes' : 'No'}</div></div></div>
                         {inspecting.fitting_charge && parseFloat(inspecting.fitting_charge) > 0 && (
                           <div className="col-6 col-sm-4"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Fitting Charge</label><div className="fw-bold small">₹{Number(inspecting.fitting_charge).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div></div>
                         )}
-                        {inspecting.condition_description && (
-                          <div className="col-12"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Condition Description</label><div className="fw-bold small">{inspecting.condition_description}</div></div></div>
+                        {(inspecting.description || inspecting.condition_description) && (
+                          <div className="col-12"><div className="p-2 bg-light rounded-3"><label className="text-muted small fw-semibold text-uppercase d-block" style={{ fontSize: '0.6rem' }}>Condition Description</label><div className="fw-bold small">{inspecting.description || inspecting.condition_description}</div></div></div>
                         )}
                       </div>
                     </div>
@@ -1311,11 +1269,11 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                     ])}
                     {renderCompSection('Specs', [
                       { l: 'Color', v: comp.original?.color || 'N/A' },
-                      { l: 'Size', v: comp.original?.size || 'N/A' },
                       { l: 'Gender', v: comp.original?.gender || 'N/A' },
                       { l: 'Original Brand', v: comp.original?.orignal_brand || 'N/A' },
                       { l: 'Seller Brand', v: comp.original?.seller_brand || 'N/A' },
                       { l: 'Used Times', v: comp.original?.used_times ?? 'N/A' },
+                      { l: 'Usage Label', v: comp.original?.usage_label || 'Times Used' },
                       { l: 'Allow Alteration', v: Number(comp.original?.allow_alter_fitting) ? 'Yes' : 'No' },
                     ])}
                     {comp.original?.specifications && (
@@ -1336,7 +1294,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                     ].filter((item): item is { l: string; v: any } => !!item))}
                     {renderCompSection('Details', [
                       { l: 'Description', v: <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{comp.original?.description || 'No description'}</div> },
-                      { l: 'Condition Description', v: comp.original?.condition_description || 'N/A' },
+                      { l: 'Condition Description', v: comp.original?.description || comp.original?.condition_description || 'N/A' },
                       { l: 'Has Bill', v: Number(comp.original?.has_bill) ? 'Yes' : 'No' },
                       { l: 'Dispatch Location', v: [comp.original?.dispatch_city, comp.original?.dispatch_state].filter(Boolean).join(', ') || 'N/A' },
                       comp.original?.fitting_charge && parseFloat(comp.original.fitting_charge) > 0 && { l: 'Fitting Charge', v: '₹' + Number(comp.original.fitting_charge).toLocaleString('en-IN', { minimumFractionDigits: 2 }) },
@@ -1438,11 +1396,11 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                           ])}
                           {renderCompSection('Specs', [
                             { l: 'Color', v: diff(orig.color || 'N/A', updated.color || 'N/A') },
-                            { l: 'Size', v: diff(orig.size || 'N/A', updated.size || 'N/A') },
                             { l: 'Gender', v: diff(orig.gender || 'N/A', updated.gender || 'N/A') },
                             { l: 'Original Brand', v: diff(orig.orignal_brand || 'N/A', updated.orignal_brand || 'N/A') },
                             { l: 'Seller Brand', v: diff(orig.seller_brand || 'N/A', updated.seller_brand || 'N/A') },
                             { l: 'Used Times', v: diff(String(orig.used_times ?? ''), String(updated.used_times ?? '')) },
+                            { l: 'Usage Label', v: diff(orig.usage_label || 'Times Used', updated.usage_label || orig.usage_label || 'Times Used') },
                             { l: 'Allow Alteration', v: diff(Number(orig.allow_alter_fitting) ? 'Yes' : 'No', Number(updated.allow_alter_fitting) ? 'Yes' : 'No') },
                           ])}
                           {(orig.specifications || updated.specifications) && (
@@ -1466,7 +1424,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                           ].filter((item): item is { l: string; v: any } => !!item))}
                           {renderCompSection('Details', [
                             { l: 'Description', v: <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{diff(orig.description || 'No description', updated.description || 'No description')}</div> },
-                            { l: 'Condition Description', v: diff(orig.condition_description || 'N/A', updated.condition_description || 'N/A') },
+                            { l: 'Condition Description', v: diff(orig.description || orig.condition_description || 'N/A', updated.description || updated.condition_description || 'N/A') },
                             { l: 'Has Bill', v: diff(Number(orig.has_bill) ? 'Yes' : 'No', Number(updated.has_bill) ? 'Yes' : 'No') },
                             { l: 'Dispatch Location', v: diff([orig.dispatch_city, orig.dispatch_state].filter(Boolean).join(', ') || 'N/A', [updated.dispatch_city, updated.dispatch_state].filter(Boolean).join(', ') || 'N/A') },
                             (orig.fitting_charge || updated.fitting_charge) && parseFloat(orig.fitting_charge || '0') > 0 || parseFloat(updated.fitting_charge || '0') > 0 ? { l: 'Fitting Charge', v: diff('₹' + Number(orig.fitting_charge || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }), '₹' + Number(updated.fitting_charge || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })) } : null,
@@ -1566,7 +1524,7 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                             }).map((img: any) => img.image_path);
 
                             const allFinalImages = [...finalImages, ...tempImages];
-                            
+
                             return (
                               <div className="mt-4" style={{ background: 'rgba(16,185,129,0.05)', padding: '12px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.2)' }}>
                                 <h6 className="fw-bold text-success text-uppercase small border-bottom border-success pb-1 mb-2">Final Image State After Approval ({allFinalImages.length})</h6>
@@ -1603,10 +1561,10 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
       {adminEditDiff && (() => {
         const prev = adminEditDiff.previous_data ? (() => { try { return JSON.parse(adminEditDiff.previous_data!); } catch { return {}; } })() : {};
         const curr = adminEditDiff as any;
-        const editorRole = 
+        const editorRole =
           adminEditDiff.pending_reason === 'admin_edit' ? 'Admin' :
-          adminEditDiff.pending_reason === 'both_edit' ? 'Both User' :
-          adminEditDiff.pending_reason === 'seller_edit' ? 'Seller' : 'User';
+            adminEditDiff.pending_reason === 'both_edit' ? 'Both User' :
+              adminEditDiff.pending_reason === 'seller_edit' ? 'Seller' : 'User';
 
         const fields: Array<{ label: string; prevKey: string; currKey: string; format?: (v: any) => string }> = [
           { label: 'Title', prevKey: 'title', currKey: 'title' },

@@ -182,7 +182,7 @@ export default function SAProductDetailClient() {
                   {p.gender && <div className="col-6"><div className="p-3 bg-light rounded-3"><small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>GENDER</small><div className="fw-bold small">{p.gender}</div></div></div>}
                 </div>
 
-                {p.condition_description && (<><small className="text-muted d-block mb-1">Condition</small><p className="small mb-3">{p.condition_description}</p></>)}
+                {(p.condition_description || p.description) && (<><small className="text-muted d-block mb-1">Condition</small><p className="small mb-3">{p.condition_description || p.description}</p></>)}
 
                 {/* Dispatch */}
                 {(p.dispatch_address || p.dispatch_city) && (

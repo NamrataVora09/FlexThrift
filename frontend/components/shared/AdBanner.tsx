@@ -51,7 +51,7 @@ export function VideoAdPlayer({
     <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
       <video
         src={src}
-        className={className}
+        className={`${className} object-fill`}
         style={style}
         autoPlay
         muted={muted}
@@ -152,11 +152,11 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
               {ad.ad_type === 'video' ? (
                 <VideoAdPlayer
                   src={mediaUrl}
-                  className="w-full h-full object-contain"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  className="w-full  "
+                  style={{ width: '100%',  maxHeight: '300px'}}
                 />
               ) : (
-                <img src={mediaUrl} alt={ad.title} className="w-full h-full object-contain" />
+                <img src={mediaUrl} alt={ad.title} className="w-full max-h-75 " />
               )}
             </MediaLinkWrapper>
           </div>
@@ -184,15 +184,15 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
               <VideoAdPlayer
                 src={mediaUrl}
                 className="img-fluid rounded shadow-sm w-100"
-                style={{ objectFit: 'contain', maxHeight: '600px' }}
+                style={{ maxHeight: '300px' }}
               />
             ) : (
               <img
                 src={mediaUrl}
                 alt={ad.title}
                 className="img-fluid rounded shadow-sm w-100"
-                style={{ objectFit: 'contain', maxHeight: '600px' }}
-              />
+                style={{ maxHeight: '300px' }}
+              />  
             )}
           </MediaLinkWrapper>
           {ad.short_description && (
@@ -214,7 +214,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             src={mediaUrl}
             className="img-fluid rounded shadow-sm w-100"
             style={{
-              objectFit: 'contain',
+            
               maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : position === 'sidebar' ? '300px' : 'auto',
             }}
           />
@@ -224,7 +224,6 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             alt={ad.title}
             className="img-fluid rounded shadow-sm w-100"
             style={{
-              objectFit: 'contain',
               maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : position === 'sidebar' ? '300px' : 'auto',
             }}
           />

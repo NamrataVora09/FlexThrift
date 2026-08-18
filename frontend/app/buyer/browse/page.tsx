@@ -1260,13 +1260,13 @@ export default function BrowsePage() {
                               {infeedAd.ad_type === 'video' ? (
                                 <VideoAdPlayer
                                   src={adMediaUrl}
-                                  style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }}
+                                  style={{ width: '100%', maxHeight: 300, display: 'block', borderRadius: 12 }}
                                 />
                               ) : (
                                 <img
                                   src={adMediaUrl}
                                   alt={infeedAd.title}
-                                  style={{ width: '100%', maxHeight: 400, objectFit: 'cover', display: 'block', borderRadius: 12 }}
+                                  style={{ width: '100%', maxHeight: 300, display: 'block', borderRadius: 12 }}
                                 />
                               )}
                             </a>

@@ -256,7 +256,7 @@ class AdminApi extends BaseApiController
         $jwtUser = $this->request->jwt_user;
         $db = \Config\Database::connect();
         $builder = $db->table('product_edit_requests r')
-            ->select('r.*, p.title as original_title, p.listing_type, p.listing_type_category, p.listing_type_category as listing_category_name, u.name as seller_name, u.reliability_score')
+            ->select('r.*, p.title as original_title, p.product_number, p.original_price, p.price, p.rental_cost, p.rental_deposit, p.listing_type, p.listing_type_category, p.category, p.color, p.used_times, p.has_bill, p.listing_type_category as listing_category_name, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, u.reliability_score')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->where('r.status', 'changesPending');
@@ -267,6 +267,46 @@ class AdminApi extends BaseApiController
 
         $requests = $builder->orderBy('r.created_at', 'DESC')
             ->get()->getResultArray();
+
+        foreach ($requests as &$req) {
+            $updated = json_decode($req['updated_data'] ?? '{}', true) ?: [];
+            $req['title'] = $updated['title'] ?? $req['original_title'] ?? 'Untitled Product';
+            $req['price'] = $updated['price'] ?? $req['price'] ?? 0;
+            $req['rental_cost'] = $updated['rental_cost'] ?? $req['rental_cost'] ?? 0;
+            $req['rental_deposit'] = $updated['rental_deposit'] ?? $req['rental_deposit'] ?? 0;
+            $req['original_price'] = $updated['original_price'] ?? $req['original_price'] ?? 0;
+            $req['category'] = $updated['category'] ?? $req['category'] ?? '';
+            $req['color'] = $updated['color'] ?? $req['color'] ?? '';
+            $req['used_times'] = $updated['used_times'] ?? $req['used_times'] ?? 0;
+            $req['usage_label'] = $updated['usage_label'] ?? $req['usage_label'] ?? 'Uses';
+            $req['description'] = $updated['description'] ?? $updated['condition_description'] ?? '';
+
+            // Fetch images: temp_images first, then original non-deleted product images
+            $tempImages = json_decode($req['temp_images'] ?? '[]', true) ?: [];
+            $imgList = [];
+            if (!empty($tempImages)) {
+                foreach ($tempImages as $tPath) {
+                    $imgList[] = ['image_path' => $tPath];
+                }
+            }
+            $prodImages = $db->table('product_images')->where('product_id', $req['product_id'])->orderBy('display_order', 'ASC')->get()->getResultArray();
+            foreach ($prodImages as $pImg) {
+                $deletedIds = json_decode($req['deleted_images_ids'] ?? '[]', true) ?: [];
+                $isDeleted = false;
+                foreach ($deletedIds as $del) {
+                    if ((is_numeric($del) && (int)$del === (int)$pImg['id']) || (is_array($del) && isset($del['id']) && (int)$del['id'] === (int)$pImg['id'])) {
+                        $isDeleted = true;
+                        break;
+                    }
+                }
+                if (!$isDeleted) {
+                    $imgList[] = ['image_path' => $pImg['image_path']];
+                }
+            }
+            $req['images'] = $imgList;
+        }
+        unset($req);
+
         return $this->respond(['success' => true, 'data' => $requests]);
     }
 
@@ -467,16 +507,22 @@ class AdminApi extends BaseApiController
             $mergedData['status'] = 'approved';
             $mergedData['updated_at'] = date('Y-m-d H:i:s');
             $mergedData['edit_request'] = null;
-            
-            // Remove fields that shouldn't be updated
-            unset($mergedData['id'], $mergedData['created_at']);
 
             // Ensure specifications column is stored as a JSON string
             if (isset($mergedData['specifications']) && (is_array($mergedData['specifications']) || is_object($mergedData['specifications']))) {
                 $mergedData['specifications'] = json_encode($mergedData['specifications']);
             }
+
+            // Filter to only valid columns of the products table (excluding id and created_at)
+            $allowedColumns = $db->getFieldNames('products');
+            $productUpdateData = [];
+            foreach ($mergedData as $col => $val) {
+                if (in_array($col, $allowedColumns, true) && $col !== 'id' && $col !== 'created_at') {
+                    $productUpdateData[$col] = $val;
+                }
+            }
             
-            $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($mergedData);
+            $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($productUpdateData);
             if (!$productUpdate) {
                 log_message('error', "Failed to update product ID: {$request['product_id']} for edit request ID: {$id}");
                 return $this->respond(['success' => false, 'message' => 'Failed to update product'], 500);

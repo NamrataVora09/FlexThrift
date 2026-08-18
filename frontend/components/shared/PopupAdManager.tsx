@@ -88,7 +88,7 @@ export default function PopupAdManager() {
 
   // Re-show popup on every route change (except superadmin routes)
   useEffect(() => {
-    if (isSuperAdminRoute) return ;
+    if (isSuperAdminRoute) return;
     const pageKey = getPageKeyFromPathname(pathname);
     fetchAndShow(pageKey);
   }, [pathname, isSuperAdminRoute, fetchAndShow]);
@@ -101,8 +101,8 @@ export default function PopupAdManager() {
   if (!baseUrl && typeof window !== 'undefined') {
     baseUrl = window.location.origin;
   }
-  const mediaUrl = ad.media_path.startsWith('http') 
-    ? ad.media_path 
+  const mediaUrl = ad.media_path.startsWith('http')
+    ? ad.media_path
     : `${baseUrl}/uploads/advertisements/${ad.media_path.replace(/^\//, '')}`;
 
   return (
@@ -132,8 +132,9 @@ export default function PopupAdManager() {
           background: '#fff',
           borderRadius: '1.25rem',
           overflow: 'hidden',
-          maxWidth: 520,
           width: '100%',
+          maxWidth: '75%',
+          maxHeight: '85%',
           boxShadow: '0 24px 64px rgba(0,0,0,0.35)',
           animation: 'slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1)',
         }}
@@ -175,7 +176,7 @@ export default function PopupAdManager() {
               <>
                 <video
                   src={mediaUrl}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{ width: '100%', height: '100%' , objectFit:'fill' }}
                   autoPlay
                   muted={isMuted}
                   loop
@@ -207,7 +208,7 @@ export default function PopupAdManager() {
               <img
                 src={mediaUrl}
                 alt={ad.title}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                style={{ width: '100%', height: '100%' }}
               />
             )}
           </MediaLinkWrapper>
