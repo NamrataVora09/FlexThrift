@@ -1759,8 +1759,10 @@ class SharedApi extends BaseApiController
             ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
             ->orderBy('t.created_at', 'DESC');
 
-        // Always scope to the logged-in user's transactions
-        $txBuilder->where('t.user_id', $jwtUser['user_id']);
+        // Scope query to user unless admin/super_admin
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin', 'admin'])) {
+            $txBuilder->where('t.user_id', $jwtUser['user_id']);
+        }
 
         // Apply Range Filter to transactions
         switch ($range) {
@@ -1786,10 +1788,13 @@ class SharedApi extends BaseApiController
         $freeSubBuilder = $db->table('user_subscriptions us')
             ->select('us.*, sp.name as plan_name_from_plan, sp.user_type as plan_user_type')
             ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
-            ->where('us.user_id', $jwtUser['user_id'])
             ->where('us.amount_paid', 0)
-            ->where('us.payment_status', 'paid')
+            ->whereIn('us.payment_status', ['paid', 'completed', 'success'])
             ->where('(us.merchant_transaction_id IS NULL OR us.merchant_transaction_id = "")');
+
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin', 'admin'])) {
+            $freeSubBuilder->where('us.user_id', $jwtUser['user_id']);
+        }
 
         // Apply same date-range filter on the free-sub query
         switch ($range) {
@@ -1865,12 +1870,12 @@ class SharedApi extends BaseApiController
             }
         }
 
-        // 2. Fetch Subscription specific data (for Plan Breakdown)
+        // 2. Fetch Subscription specific data (for Plan Breakdown & Discounts)
         $subBuilder = $db->table('user_subscriptions us')
-            ->select('us.*, sp.name as plan_name, sp.user_type as plan_user_type')
+            ->select('us.*, sp.name as plan_name, sp.user_type as plan_user_type, sp.price as plan_price')
             ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left');
 
-        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
+        if (!in_array($jwtUser['role'], ['super_admin', 'superadmin', 'admin'])) {
             $subBuilder->where('us.user_id', $jwtUser['user_id']);
         }
         
@@ -1891,7 +1896,7 @@ class SharedApi extends BaseApiController
             case 'all_time': default: break;
         }
 
-        $subs = $subBuilder->where('us.payment_status', 'paid')->get()->getResultArray();
+        $subs = $subBuilder->whereIn('us.payment_status', ['paid', 'completed', 'success'])->get()->getResultArray();
         
         // 3. Calculate Summary Stats from successful transactions
         $totalTxs = count($successfulTxs);
@@ -1944,13 +1949,13 @@ class SharedApi extends BaseApiController
                 'summary' => [
                     'total_subscriptions' => $totalTxs, // Renaming semantically in frontend if needed, but keeping key for compat
                     'total_spent' => $totalRevenue,
-                    'total_discount' => array_reduce($subs, fn($carry, $item) => $carry + (float)$item['referral_discount_applied'], 0),
+                    'total_discount' => array_reduce($subs, fn($carry, $item) => $carry + $this->calculateSubscriptionDiscount($item), 0),
                     'total_plans' => $db->table('subscription_plans')->countAll(),
                 ],
                 'charts' => [
                     'amount_discount' => [
-                        'buyer' => ['spent' => $buyerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'buyer') ? (float)$i['referral_discount_applied'] : 0), 0)],
-                        'seller' => ['spent' => $sellerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'seller') ? (float)$i['referral_discount_applied'] : 0), 0)],
+                        'buyer' => ['spent' => $buyerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'buyer') ? $this->calculateSubscriptionDiscount($i) : 0), 0)],
+                        'seller' => ['spent' => $sellerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'seller') ? $this->calculateSubscriptionDiscount($i) : 0), 0)],
                     ],
                     'monthly_stats' => $this->getMonthlyStats($successfulTxs, $subs, $range),
                     'plan_breakdown' => [
@@ -1964,6 +1969,15 @@ class SharedApi extends BaseApiController
                 'user_type' => $userType
             ]
         ]);
+    }
+
+    private function calculateSubscriptionDiscount(array $s): float
+    {
+        $referralDisc = (float) ($s['referral_discount_applied'] ?? 0);
+        $planPrice = (float) ($s['plan_price'] ?? 0);
+        $amtPaid = (float) ($s['amount_paid'] ?? 0);
+        $priceDiffDisc = ($planPrice > 0 && $amtPaid < $planPrice) ? ($planPrice - $amtPaid) : 0;
+        return max($referralDisc, $priceDiffDisc);
     }
 
     private function getMonthlyStats($transactions, $subs, $range = 'all_time')
@@ -1999,11 +2013,11 @@ class SharedApi extends BaseApiController
                 if ($s && $s['plan_user_type'] === 'seller') {
                     $stats[$label]['seller_spent'] += $amt;
                     $stats[$label]['seller_count']++;
-                    $stats[$label]['discount'] += (float)$s['referral_discount_applied'];
+                    $stats[$label]['discount'] += $this->calculateSubscriptionDiscount($s);
                 } else {
                     $stats[$label]['buyer_spent'] += $amt;
                     $stats[$label]['buyer_count']++;
-                    if ($s) $stats[$label]['discount'] += (float)$s['referral_discount_applied'];
+                    if ($s) $stats[$label]['discount'] += $this->calculateSubscriptionDiscount($s);
                 }
             } else {
                 $stats[$label]['buyer_spent'] += $amt;

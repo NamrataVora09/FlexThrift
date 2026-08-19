@@ -579,6 +579,20 @@ export default function BrowsePage() {
     });
   };
 
+  const setSpecValue = (attrName: string, val: string) => {
+    setFilters(prev => {
+      const next = { ...prev, specs: { ...prev.specs } };
+      if (!val) {
+        delete (next.specs as any)[attrName];
+      } else {
+        next.specs[attrName] = [val];
+      }
+      setPage(1);
+      navigate(activeType, search, next);
+      return next;
+    });
+  };
+
   const applyPriceFilter = () => {
     const newF = { ...filters, minPrice: priceInput.min, maxPrice: priceInput.max };
     setFilters(newF);
@@ -1059,6 +1073,7 @@ export default function BrowsePage() {
                   sidebarSubCategories={sidebarSubCategories}
                   setFilter={setFilter}
                   setSpecFilter={setSpecFilter}
+                  setSpecValue={setSpecValue}
                   applyPriceFilter={applyPriceFilter}
                   clearAllFilters={clearAllFilters}
                   activeChips={activeChips}
@@ -1379,6 +1394,7 @@ export default function BrowsePage() {
             sidebarSubCategories={sidebarSubCategories}
             setFilter={setFilter}
             setSpecFilter={setSpecFilter}
+            setSpecValue={setSpecValue}
             applyPriceFilter={applyPriceFilter}
             clearAllFilters={clearAllFilters}
             activeChips={activeChips}
@@ -1776,6 +1792,7 @@ interface EliteSidebarProps {
   sidebarSubCategories: Array<{ id: number; name: string; field_config?: string }>;
   setFilter: (key: keyof Omit<ActiveFilters, 'specs'>, val: string) => void;
   setSpecFilter: (attrName: string, val: string) => void;
+  setSpecValue?: (attrName: string, val: string) => void;
   applyPriceFilter: () => void;
   clearAllFilters: () => void;
   activeChips: { label: string; key: string }[];
@@ -1788,7 +1805,7 @@ interface EliteSidebarProps {
 function EliteSidebar({
   filters, priceInput, setPriceInput, filterOptions, dynamicAttrs,
   visibleProductTypes, sidebarCategories, sidebarSubCategories,
-  setFilter, setSpecFilter, applyPriceFilter,
+  setFilter, setSpecFilter, setSpecValue, applyPriceFilter,
   clearAllFilters, activeChips, onShowMore, listingTypes = [], activeType, onTypeChange,
 }: EliteSidebarProps) {
   const [open, setOpen] = useState<Record<string, boolean>>({
@@ -2204,37 +2221,35 @@ function EliteSidebar({
                     style={{ border: '1px solid #acadad', borderRadius: 10, paddingLeft: 12 }}
                     placeholder={`Search ${attr.name}…`}
                     value={filters.specs[attr.name]?.[0] || ''}
-                    onChange={(e) => setSpecFilter(attr.name, e.target.value)}
+                    onChange={(e) => {
+                      if (setSpecValue) setSpecValue(attr.name, e.target.value);
+                      else setSpecFilter(attr.name, e.target.value);
+                    }}
                   />
                 )}
               </div>
             );
           }
 
-          /* ── numeric / number / range: range slider ── */
+          /* ── numeric / number / range: numeric input box ── */
           if (renderAs === 'numeric') {
-            const numMin = 0;
-            const numMax = 100000;
-            const step = 1;
-            const curVal = Number(filters.specs[attr.name]?.[0]) || numMin;
             return (
               <div key={attr.name} className="em-sidebar-section">
                 <SectionTitle id={section} label={attr.name} count={(filters.specs[attr.name] || []).length} />
                 {open[section] !== false && (
-                  <div>
-                    <input
-                      type="range"
-                      className="em-range"
-                      min={numMin} max={numMax} step={step}
-                      value={curVal}
-                      onChange={(e) => setSpecFilter(attr.name, e.target.value)}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#5a5c5c', fontWeight: 600 }}>
-                      <span>{numMin}</span>
-                      <span style={{ fontWeight: 800, color: '#0c0f0f' }}>{curVal}</span>
-                      <span>{numMax}</span>
-                    </div>
-                  </div>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="em-price-inp"
+                    style={{ border: '1px solid #acadad', borderRadius: 10, paddingLeft: 12 }}
+                    placeholder={`Enter ${attr.name}…`}
+                    value={filters.specs[attr.name]?.[0] || ''}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, '');
+                      if (setSpecValue) setSpecValue(attr.name, val);
+                      else setSpecFilter(attr.name, val);
+                    }}
+                  />
                 )}
               </div>
             );

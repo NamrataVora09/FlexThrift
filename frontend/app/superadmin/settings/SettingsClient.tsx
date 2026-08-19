@@ -141,19 +141,9 @@ export default function SettingsClient() {
           {/* ── Platform Rules ── */}
           <Section title="Platform Rules" icon="bi-sliders">
             <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Commission Rate (%)</label>
-                <input type="number" step="0.1" min="0" max="100" className="form-control" style={inputStyle} value={settings.commission_rate !== undefined ? settings.commission_rate : ''} onChange={(e) => update('commission_rate', e.target.value)} />
-                <small className="text-muted">Platform fee on each transaction</small>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Default Delivery Charge (₹)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.default_delivery_charge !== undefined ? settings.default_delivery_charge : (settings.delivery_charge !== undefined ? settings.delivery_charge : '')} onChange={(e) => update('default_delivery_charge', e.target.value)} />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Minimum Order Value (₹)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.min_order_value !== undefined ? settings.min_order_value : ''} onChange={(e) => update('min_order_value', e.target.value)} />
-              </div>
+            
+
+
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Max Images per Product</label>
                 <input type="number" min="1" max="20" className="form-control" style={inputStyle} value={settings.max_images_per_product !== undefined ? settings.max_images_per_product : ''} onChange={(e) => update('max_images_per_product', e.target.value)} />
@@ -162,11 +152,7 @@ export default function SettingsClient() {
                 <label className="form-label fw-semibold">OTP Expiry (minutes)</label>
                 <input type="number" min="1" className="form-control" style={inputStyle} value={settings.otp_expiry_minutes !== undefined ? settings.otp_expiry_minutes : ''} onChange={(e) => update('otp_expiry_minutes', e.target.value)} />
               </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Blocked from Approvals (days)</label>
-                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.blocked_from_approvals_days !== undefined ? settings.blocked_from_approvals_days : ''} onChange={(e) => update('blocked_from_approvals_days', e.target.value)} />
-                <small className="text-muted">Days a seller stays blocked from approvals after violations</small>
-              </div>
+
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Max Original Price (₹)</label>
                 <input

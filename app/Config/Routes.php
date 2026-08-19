@@ -43,6 +43,7 @@ function register_api_routes($routes)
     // Public shared routes
     $routes->group('shared', function ($routes) {
         $routes->get('advertisements', 'Api\SharedApi::advertisements');
+        $routes->get('seo-settings/(:any)', 'Api\SharedApi::getSeoSettingByPage/$1');
     });
 
     // Public product browsing (no login required)

@@ -14,13 +14,18 @@ export default function SystemLockBlocker({ children }: { children: React.ReactN
       try {
         const res = await api.get<any>('/landing-content');
         if (res.success && res.data && (res.data.global_system_lock === '1' || res.data.global_system_lock === 'true')) {
-          // If locked, check if user is NOT superadmin
-          if (!['super_admin', 'superadmin'].includes(user?.role || '')) {
+          // If user is superadmin, always allow access even when locked
+          if (['super_admin', 'superadmin'].includes(user?.role || '')) {
+            setIsLocked(false);
+          } else {
             setIsLocked(true);
           }
+        } else {
+          setIsLocked(false);
         }
       } catch (err) {
         console.error("Failed to check system lock:", err);
+        setIsLocked(false);
       } finally {
         setLoading(false);
       }

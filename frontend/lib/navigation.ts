@@ -80,7 +80,6 @@ export function getNavigation(role: string): NavSection[] {
             { label: 'My Products', href: '/admin/my-products', icon: 'bi bi-box-seam' },
             { label: 'Analytics', href: '/admin/analytics', icon: 'bi bi-bar-chart' },
             { label: 'Offers', href: '/admin/offers', icon: 'bi bi-tags' },
-            { label: 'All Offers On Platform', href: '/admin/all-platform-offers', icon: 'bi bi-globe' },
           ],
         },
         {

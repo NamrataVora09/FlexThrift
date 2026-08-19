@@ -377,7 +377,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
           <div className="col-md-4">
             <div className="metric-card">
               <i className="bi bi-currency-rupee metric-icon"></i>
-              <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}</div>
+              <div className="metric-value">₹{Number(summaryData?.summary.total_discount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
               <div className="metric-label">Total Discounts Availed</div>
             </div>
           </div>

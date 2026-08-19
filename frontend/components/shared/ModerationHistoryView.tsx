@@ -164,7 +164,6 @@ export default function ModerationHistoryView({ role }: Props) {
                       <td style={tdStyle}>
                         <div className="fw-bold small">{item.seller_name}</div>
                         <div className="text-muted small">{item.seller_email}</div>
-                        <div className="mt-1">{renderStars(Number(item.seller_rating_avg || 0), Number(item.seller_rating_count || 0))}</div>
                       </td>
 
                       {/* Status */}

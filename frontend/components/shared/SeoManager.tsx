@@ -72,6 +72,28 @@ export default function SeoManager({
         if (data.og_description || desc) {
           ogDesc.setAttribute('content', data.og_description || desc);
         }
+
+        // Update Twitter Title
+        let twTitle = document.querySelector('meta[name="twitter:title"]');
+        if (!twTitle) {
+          twTitle = document.createElement('meta');
+          twTitle.setAttribute('name', 'twitter:title');
+          document.head.appendChild(twTitle);
+        }
+        if (data.og_title || title) {
+          twTitle.setAttribute('content', data.og_title || title);
+        }
+
+        // Update Twitter Description
+        let twDesc = document.querySelector('meta[name="twitter:description"]');
+        if (!twDesc) {
+          twDesc = document.createElement('meta');
+          twDesc.setAttribute('name', 'twitter:description');
+          document.head.appendChild(twDesc);
+        }
+        if (data.og_description || desc) {
+          twDesc.setAttribute('content', data.og_description || desc);
+        }
       } else {
         // Fallback to defaults
         if (defaultTitle) document.title = defaultTitle;
