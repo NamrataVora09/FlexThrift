@@ -2356,20 +2356,21 @@ class BuyerApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'This plan requires payment'], 400);
         }
 
-        // Block if user already has an active, non-exhausted subscription
-        $activeSub = $db->table('user_subscriptions us')
-            ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
-            ->select('us.*')
-            ->where('us.user_id', $userId)
-            ->where('us.is_active', 1)
-            ->where('us.expires_at >', date('Y-m-d H:i:s'))
-            ->groupStart()
-                ->where('sp.max_listings IS NULL')
-                ->orWhere('us.usage_count <', 'sp.max_listings', false)
-            ->groupEnd()
-            ->get()->getRowArray();
+        // Block if user already has an active, non-exhausted BUYER subscription
+        $query = $db->query(
+            "SELECT us.id FROM user_subscriptions us
+             LEFT JOIN subscription_plans sp ON sp.id = us.plan_id
+             WHERE us.user_id = ?
+               AND sp.user_type = 'buyer'
+               AND us.is_active = 1
+               AND us.expires_at > NOW()
+               AND (sp.plan_type = 'duration' OR sp.limit_value IS NULL OR sp.limit_value = 0 OR us.usage_count < sp.limit_value)
+             LIMIT 1",
+            [(int) $userId]
+        );
+        $activeSub = ($query && is_object($query)) ? $query->getRowArray() : null;
         if ($activeSub) {
-            return $this->respond(['success' => false, 'message' => 'You already have an active subscription. Please wait until it expires or is exhausted before activating a new plan.'], 409);
+            return $this->respond(['success' => false, 'message' => 'You already have an active buyer subscription. Please wait until it expires or is exhausted before activating a new plan.'], 409);
         }
 
         // Activate the subscription
