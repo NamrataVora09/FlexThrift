@@ -709,7 +709,7 @@ class AdminApi extends BaseApiController
                     'product_type', 'category', 'sub_category', 'color', 'gender',
                     'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
                     'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                    'has_bill', 'allow_alter_fitting',
+                    'has_bill', 'bill_image', 'allow_alter_fitting',
                 ];
                 $updateData = [];
                 foreach ($restoreFields as $field) {

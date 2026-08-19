@@ -36,6 +36,7 @@ interface FormMeta {
   colors: Array<{ id: number; name: string; hex_code: string }>;
   genders: Array<{ id: number; name: string }>;
   original_brands: Array<{ id: number; brand_name: string; brand_image?: string; listing_type_id?: number | string | null; listing_type_ids?: string | null }>;
+  seller_brands?: Array<{ id: number; brand_name: string; brand_image?: string; listing_type_id?: number | string | null; listing_type_ids?: string | null }>;
   config: Record<string, string>;
   pricing_rules: PricingRule[];
   rental_pricing_rules: PricingRule[];
@@ -123,10 +124,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const [attributeValues, setAttributeValues] = useState<Record<string, string>>({});
   const [dynamicAttributes, setDynamicAttributes] = useState<Attribute[]>([]);
 
-  // Original Brand search
+  // Original & Seller Brand search
   const [obSearch, setObSearch] = useState('');
   const [obOpen, setObOpen] = useState(false);
   const [selectedOb, setSelectedOb] = useState<{ id: number; name: string } | null>(null);
+  const [sbSearch, setSbSearch] = useState('');
 
   // Helper to resolve media URLs (handles both old filename-only and new prefixed paths)
   const resolveUrl = (path: string, type: 'product' | 'bill' = 'product') => {
@@ -564,6 +566,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     setF(prev => {
       const next = { ...prev, [name]: val };
 
+      if (name === 'has_bill' && !val) {
+        setExistingBills([]);
+        setBillFiles([]);
+        setBillPreviews([]);
+      }
+
       // Cascading Resets - Only trigger when user manually changes values
       if (name === 'listing_type_category') {
         next.product_type = '';
@@ -698,7 +706,22 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     if (obSearch && !b.brand_name.toLowerCase().includes(obSearch.toLowerCase())) return false;
     // Only filter by listing type if a listing type is selected AND the brand has listing type restrictions
     if (f.listing_type_category && (b.listing_type_ids || b.listing_type_id)) {
-      return filterBrandByListingType(b, Number(f.listing_type_category));
+      const ltId = Number(f.listing_type_category);
+      if (!isNaN(ltId) && ltId > 0) {
+        return filterBrandByListingType(b, ltId);
+      }
+    }
+    return true;
+  });
+
+  const filteredSellerBrands = (meta?.seller_brands || []).filter(b => {
+    if (sbSearch && !b.brand_name.toLowerCase().includes(sbSearch.toLowerCase())) return false;
+    // Only filter by listing type if a listing type is selected AND the brand has listing type restrictions
+    if (f.listing_type_category && (b.listing_type_ids || b.listing_type_id)) {
+      const ltId = Number(f.listing_type_category);
+      if (!isNaN(ltId) && ltId > 0) {
+        return filterBrandByListingType(b, ltId);
+      }
     }
     return true;
   });
@@ -902,10 +925,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         const key = fieldMap[k] || k;
         // Skip gender field if it's hidden
         if (k === 'gender' && fieldConfigs.gender === 'hidden') return;
-        if (typeof v === 'boolean') { if (v) fd.append(key, '1'); } else fd.append(key, v);
+        if (typeof v === 'boolean') { fd.append(key, v ? '1' : '0'); } else fd.append(key, v);
       });
       files.forEach(file => fd.append('product_images[]', file));
-      billFiles.forEach(file => fd.append('bill_images[]', file));
+      if (f.has_bill) {
+        billFiles.forEach(file => fd.append('bill_images[]', file));
+      }
 
       // Validate image count and size before upload
       const maxImages = Number(cfg.max_product_images || 2);
@@ -950,13 +975,13 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
           fd.append('removed_temp_images', JSON.stringify(removedTempImagePaths));
         }
 
-        // Add retained bill images (send relative paths, or empty array if all removed)
-        const relativeBills = existingBills.map(url => {
+        // Add retained bill images (send relative paths, or empty array if has_bill is false or all removed)
+        const relativeBills = f.has_bill ? existingBills.map(url => {
           if (url.includes('/uploads/')) {
             return 'uploads/' + url.split('/uploads/')[1];
           }
           return url;
-        });
+        }) : [];
         fd.append('retained_bill_images', JSON.stringify(relativeBills));
 
         // Direct update for all roles.

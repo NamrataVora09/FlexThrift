@@ -1620,20 +1620,21 @@ class SellerApi extends BaseApiController
         }
         $finalBills = array_values(array_unique(array_merge($retainedBills, $billPaths)));
         $requestedHasBill = isset($data['has_bill']) ? (int)$data['has_bill'] : (int)($processedData['has_bill'] ?? 0);
-        if ($requestedHasBill === 1 && empty($finalBills)) {
-            return $this->respond([
-                'success' => false,
-                'message' => 'Please upload a bill image or uncheck "I have a bill".',
-                'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
-            ], 422);
-        }
-        if (!empty($finalBills)) {
+        if ($requestedHasBill === 0) {
+            $processedData['bill_image'] = null;
+            $processedData['has_bill'] = 0;
+            $newBillImagePath = null;
+        } else {
+            if (empty($finalBills)) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'Please upload a bill image or uncheck "I have a bill".',
+                    'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
+                ], 422);
+            }
             $newBillImagePath = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
             $processedData['bill_image'] = $newBillImagePath;
             $processedData['has_bill'] = 1;
-        } elseif ($retainedBillImagesRaw !== null || $billFiles !== null) {
-            $processedData['bill_image'] = null;
-            $processedData['has_bill'] = 0;
         }
 
         $deletedIds = $this->request->getPost('deleted_images_ids');
@@ -1699,7 +1700,12 @@ class SellerApi extends BaseApiController
             }
 
             // Save new bill image directly to the product
-            if ($newBillImagePath !== null) {
+            if ($requestedHasBill === 0) {
+                $db->table('products')->where('id', $id)->update([
+                    'bill_image' => null,
+                    'has_bill'   => 0,
+                ]);
+            } elseif ($newBillImagePath !== null) {
                 $db->table('products')->where('id', $id)->update([
                     'bill_image' => $newBillImagePath,
                     'has_bill'   => 1,
@@ -1713,7 +1719,10 @@ class SellerApi extends BaseApiController
         // Check if there's already a pending edit request for this product
 
         // Inject new bill image into processedData so it is captured in the edit request
-        if ($newBillImagePath !== null) {
+        if ($requestedHasBill === 0) {
+            $processedData['bill_image'] = null;
+            $processedData['has_bill']   = 0;
+        } elseif ($newBillImagePath !== null) {
             $processedData['bill_image'] = $newBillImagePath;
             $processedData['has_bill']   = 1;
         }
@@ -2158,19 +2167,19 @@ class SellerApi extends BaseApiController
             }
             $finalBills = array_values(array_unique(array_merge($retainedBills, $billPaths)));
             $requestedHasBill = isset($data['has_bill']) ? (int)$data['has_bill'] : (int)($updateData['has_bill'] ?? 0);
-            if ($requestedHasBill === 1 && empty($finalBills)) {
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Please upload a bill image or uncheck "I have a bill".',
-                    'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
-                ], 422);
-            }
-            if (!empty($finalBills)) {
-                $updateData['bill_image'] = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
-                $updateData['has_bill'] = 1;
-            } elseif ($retainedBillImagesRaw !== null || $billFilesArr !== null) {
+            if ($requestedHasBill === 0) {
                 $updateData['bill_image'] = null;
                 $updateData['has_bill'] = 0;
+            } else {
+                if (empty($finalBills)) {
+                    return $this->respond([
+                        'success' => false,
+                        'message' => 'Please upload a bill image or uncheck "I have a bill".',
+                        'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
+                    ], 422);
+                }
+                $updateData['bill_image'] = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
+                $updateData['has_bill'] = 1;
             }
 
             $db->table('products')->where('id', $id)->update($updateData);
