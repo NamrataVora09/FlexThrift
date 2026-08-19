@@ -1346,6 +1346,22 @@ class AdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'This plan requires payment'], 400);
         }
 
+        // Block if user already has an active, non-exhausted subscription
+        $activeSub = $db->table('user_subscriptions us')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
+            ->select('us.*')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('us.expires_at >', date('Y-m-d H:i:s'))
+            ->groupStart()
+                ->where('sp.max_listings IS NULL')
+                ->orWhere('us.usage_count <', 'sp.max_listings', false)
+            ->groupEnd()
+            ->get()->getRowArray();
+        if ($activeSub) {
+            return $this->respond(['success' => false, 'message' => 'You already have an active subscription. Please wait until it expires or is exhausted before activating a new plan.'], 409);
+        }
+
         // Activate the subscription
         $now = date('Y-m-d H:i:s');
         $expiryDate = $plan['duration_hours'] > 0
