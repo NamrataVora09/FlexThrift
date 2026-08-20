@@ -1376,35 +1376,6 @@ class SuperAdminApi extends AdminApi
             ->join('users u', 'u.id = b.seller_id', 'left')
             ->orderBy('b.created_at', 'DESC')
             ->get()->getResultArray();
-
-        // Process brands to include listing type info
-        foreach ($brands as &$b) {
-            $listingTypeNames = [];
-            
-            // Check listing_type_ids (JSON array - primary)
-            if (!empty($b['listing_type_ids'])) {
-                try {
-                    $ltIds = json_decode($b['listing_type_ids'], true);
-                    if (is_array($ltIds)) {
-                        foreach ($ltIds as $ltId) {
-                            $lt = $db->table('listing_types')->where('id', $ltId)->select('type_name')->get()->getRowArray();
-                            if ($lt) $listingTypeNames[] = $lt['type_name'];
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // JSON decode error, skip
-                }
-            }
-            
-            // Fallback to single listing_type_id (for backward compatibility)
-            if (empty($listingTypeNames) && !empty($b['listing_type_id'])) {
-                $lt = $db->table('listing_types')->where('id', $b['listing_type_id'])->get()->getRowArray();
-                if ($lt) $listingTypeNames[] = $lt['type_name'];
-            }
-            
-            $b['listing_type_names'] = $listingTypeNames;
-            $b['listing_type_ids'] = !empty($b['listing_type_ids']) ? json_decode($b['listing_type_ids'], true) : [];
-        }
         
         return $this->respond(['success' => true, 'data' => $brands]);
     }
@@ -1437,28 +1408,6 @@ class SuperAdminApi extends AdminApi
             return $this->respond(['success' => false, 'message' => 'Seller already has a brand. Each seller can have only one brand.'], 400);
         }
 
-        // Handle multiple listing types
-        $ltIds = $this->request->getPost('listing_type_ids');
-        if ($ltIds) {
-            if (is_string($ltIds)) {
-                $ltIds = json_decode($ltIds, true);
-            }
-            if (is_array($ltIds) && !empty($ltIds)) {
-                $ltIds = array_filter(array_map('intval', $ltIds));
-                $data['listing_type_ids'] = json_encode(array_values($ltIds));
-                $data['listing_type_id'] = $ltIds[0] ?? null;
-            }
-        }
-
-        // Fallback: single listing_type_id if listing_type_ids not provided
-        if (empty($data['listing_type_ids'])) {
-            $ltId = $this->request->getPost('listing_type_id');
-            if ($ltId) {
-                $data['listing_type_id'] = $ltId;
-                $data['listing_type_ids'] = json_encode([(int)$ltId]);
-            }
-        }
-
         $db->table('brands')->insert($data);
         return $this->respond(['success' => true, 'message' => 'Seller brand created and assigned.']);
     }
@@ -1477,31 +1426,6 @@ class SuperAdminApi extends AdminApi
         if ($isBlocked !== null) $data['is_blocked'] = $isBlocked;
         $isActive = $this->request->getPost('is_active');
         if ($isActive !== null) $data['is_active'] = $isActive;
-
-        // Handle multiple listing types
-        $ltIds = $this->request->getPost('listing_type_ids');
-        if ($ltIds !== null) {
-            if (is_string($ltIds)) {
-                $ltIds = json_decode($ltIds, true);
-            }
-            if (is_array($ltIds) && !empty($ltIds)) {
-                $ltIds = array_filter(array_map('intval', $ltIds));
-                $data['listing_type_ids'] = json_encode(array_values($ltIds));
-                $data['listing_type_id'] = $ltIds[0] ?? null;
-            } else {
-                $data['listing_type_ids'] = null;
-                $data['listing_type_id'] = null;
-            }
-        } else {
-            // Fallback: single listing_type_id if listing_type_ids not provided
-            $ltId = $this->request->getPost('listing_type_id');
-            if ($ltId !== null) {
-                $data['listing_type_id'] = $ltId ?: null;
-                if ($ltId) {
-                    $data['listing_type_ids'] = json_encode([(int)$ltId]);
-                }
-            }
-        }
 
         if (empty($data)) return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
         $db->table('brands')->where('id', $id)->update($data);
@@ -4025,29 +3949,6 @@ private function processImage($source, $subDir): ?string
                     if ($seller) $sellerId = $seller['id'];
                 }
                 if ($sellerId) $rec['seller_id'] = $sellerId;
-
-                // Listing Type Resolution (multiple types by comma-separated names or JSON array)
-                $ltIds = [];
-                $ltInput = $data['listing_types'] ?? $data['listing_type_ids'] ?? '';
-                if ($ltInput) {
-                    if (strpos($ltInput, '[') === 0) {
-                        $ltIds = json_decode($ltInput, true) ?: [];
-                    } else {
-                        $names = array_map('trim', explode(',', $ltInput));
-                        $lts = $db->table('listing_types')->whereIn('LOWER(type_name)', array_map('strtolower', $names))->get()->getResultArray();
-                        $ltIds = array_column($lts, 'id');
-                    }
-                    
-                    // Validation: If listing type was provided but not found, skip this row
-                    if (empty($ltIds)) {
-                        $skipped++;
-                        $errors[] = "Row {$row}: Listing type '{$ltInput}' not found. Please check the spelling.";
-                        continue;
-                    }
-                }
-                
-                $rec['listing_type_ids'] = json_encode(array_map('intval', $ltIds));
-                if (!empty($ltIds)) $rec['listing_type_id'] = $ltIds[0]; // For backward compatibility
 
                 if (!empty($data['description'])) $rec['description'] = $data['description'];
                 

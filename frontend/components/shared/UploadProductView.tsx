@@ -716,13 +716,6 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
   const filteredSellerBrands = (meta?.seller_brands || []).filter(b => {
     if (sbSearch && !b.brand_name.toLowerCase().includes(sbSearch.toLowerCase())) return false;
-    // Only filter by listing type if a listing type is selected AND the brand has listing type restrictions
-    if (f.listing_type_category && (b.listing_type_ids || b.listing_type_id)) {
-      const ltId = Number(f.listing_type_category);
-      if (!isNaN(ltId) && ltId > 0) {
-        return filterBrandByListingType(b, ltId);
-      }
-    }
     return true;
   });
 

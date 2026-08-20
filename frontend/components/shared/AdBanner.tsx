@@ -51,7 +51,7 @@ export function VideoAdPlayer({
     <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
       <video
         src={src}
-        className={`${className} object-fill`}
+        className={`${className} object-cover`}
         style={style}
         autoPlay
         muted={muted}
@@ -184,14 +184,14 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
               <VideoAdPlayer
                 src={mediaUrl}
                 className="img-fluid rounded shadow-sm w-100"
-                style={{ maxHeight: '300px' }}
+                style={{ maxHeight: '400px' }}
               />
             ) : (
               <img
                 src={mediaUrl}
                 alt={ad.title}
                 className="img-fluid rounded shadow-sm w-100"
-                style={{ maxHeight: '300px' }}
+                style={{ maxHeight: '400px' }}
               />  
             )}
           </MediaLinkWrapper>
@@ -215,7 +215,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             className="img-fluid rounded shadow-sm w-100"
             style={{
             
-              maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : position === 'sidebar' ? '300px' : 'auto',
+              maxHeight: position === 'top_banner' || position === 'footer' ? '400px' : position === 'sidebar' ? '300px' : 'auto',
             }}
           />
         ) : (
@@ -224,7 +224,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             alt={ad.title}
             className="img-fluid rounded shadow-sm w-100"
             style={{
-              maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : position === 'sidebar' ? '300px' : 'auto',
+              maxHeight: position === 'top_banner' || position === 'footer' ? '400px' : position === 'sidebar' ? '300px' : 'auto',
             }}
           />
         )}

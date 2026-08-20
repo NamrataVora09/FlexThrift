@@ -566,14 +566,7 @@ class SellerApi extends BaseApiController
             }
         }
 
-        if (!empty($data['brand_id'])) {
-            if (!$this->validateBrandListingType($db, 'brands', $data['brand_id'], $data['listing_type_category'] ?? null)) {
-                return $this->respond([
-                    'success' => false, 
-                    'message' => 'The selected brand is not available for this listing type. Please select a different brand or change the listing type.'
-                ], 422);
-            }
-        }
+      
 
         // Check if admin review is required
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
@@ -1561,14 +1554,7 @@ class SellerApi extends BaseApiController
             }
         }
 
-        if (!empty($sellerBrandId) && !empty($listingTypeId)) {
-            if (!$this->validateBrandListingType($db, 'brands', $sellerBrandId, $listingTypeId)) {
-                return $this->respond([
-                    'success' => false, 
-                    'message' => 'The selected brand is not available for this listing type. Please select a different brand or change the listing type.'
-                ], 422);
-            }
-        }
+      
 
         // Handle new image uploads for edit request
         $tempImages = [];
@@ -2023,14 +2009,7 @@ class SellerApi extends BaseApiController
             }
         }
 
-        if (!empty($sellerBrandId) && !empty($listingTypeId)) {
-            if (!$this->validateBrandListingType($db, 'brands', $sellerBrandId, $listingTypeId)) {
-                return $this->respond([
-                    'success' => false, 
-                    'message' => 'The selected brand is not available for this listing type. Please select a different brand or change the listing type.'
-                ], 422);
-            }
-        }
+       
 
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
