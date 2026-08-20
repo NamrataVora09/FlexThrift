@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { getIPLocationCoords } from '@/lib/geolocation';
 
 export default function GeolocationBlocker({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -11,39 +12,70 @@ export default function GeolocationBlocker({ children }: { children: React.React
   const [loading, setLoading] = useState(true);
   const [errorType, setErrorType] = useState<'denied' | 'unavailable' | 'timeout' | null>(null);
 
+  const [blockMessage, setBlockMessage] = useState<string>('');
+
+  const checkLocationByIP = useCallback(async () => {
+    try {
+      // Fetch IP-based lat/lon using ip-api.com (or ipapi.co)
+      const ipLoc = await getIPLocationCoords();
+      let query = '';
+      if (ipLoc?.lat && ipLoc?.lng) {
+        query = `?lat=${ipLoc.lat}&lng=${ipLoc.lng}`;
+      }
+
+      const res = await api.get<any>(`/auth/check-location${query}`);
+      if (res.success && res.data && res.data.restriction_enabled && !res.data.is_allowed) {
+        setIsBlocked(true);
+        setBlockMessage(res.data.message || 'Access restricted to authorized zones only.');
+      } else {
+        setIsBlocked(false);
+      }
+    } catch {
+      // Cannot determine location — allow through (fail open)
+      setIsBlocked(false);
+    }
+    setLoading(false);
+  }, []);
+
   const checkLocation = useCallback(() => {
-    // Admins and SuperAdmins bypass location checks
-    if (user?.role === 'admin' || user?.role === 'super_admin') {
+    // Only SuperAdmin bypasses location checks
+    if (user?.role === 'super_admin') {
       setLoading(false);
       return;
     }
 
     if (!navigator.geolocation) {
-      setLoading(false);
+      // No GPS support — fall back to IP-based detection
+      checkLocationByIP();
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setIsBlocked(false);
-        setLoading(false);
-      },
-      (error) => {
-        if (error.code === error.PERMISSION_DENIED) {
-           setErrorType('denied');
-           setIsBlocked(true);
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-           setErrorType('unavailable');
-           setIsBlocked(false); // Only block if denied as per user requirement "if user mistakenly denies"
-        } else if (error.code === error.TIMEOUT) {
-           setErrorType('timeout');
-           setIsBlocked(false);
+      async (pos) => {
+        try {
+          const res = await api.get<any>(`/auth/check-location?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`);
+          if (res.success && res.data && res.data.restriction_enabled && !res.data.is_allowed) {
+            setIsBlocked(true);
+            setBlockMessage(res.data.message || 'Access restricted to authorized zones only.');
+          } else {
+            setIsBlocked(false);
+          }
+        } catch {
+          setIsBlocked(false);
         }
         setLoading(false);
       },
+      async (error) => {
+        // GPS denied, unavailable, or timed out — fall back silently to IP-based detection
+        setErrorType(
+          error.code === error.PERMISSION_DENIED ? 'denied' :
+          error.code === error.POSITION_UNAVAILABLE ? 'unavailable' : 'timeout'
+        );
+        await checkLocationByIP();
+      },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, []);
+  }, [user, checkLocationByIP]);
 
   useEffect(() => {
     // Check if restriction is enabled from landing-content or shared settings
@@ -129,12 +161,11 @@ export default function GeolocationBlocker({ children }: { children: React.React
         </div>
         
         <h1 style={{ fontWeight: 800, fontSize: '2rem', marginBottom: '1rem', color: '#000' }}>
-          Location Access Required
+          {blockMessage.includes('not yet available') || blockMessage.includes('restricted') ? 'Service Unavailable in Your Zone' : 'Location Access Required'}
         </h1>
         
         <p style={{ maxWidth: '500px', color: '#666', lineHeight: 1.6, marginBottom: '2rem' }}>
-          To ensure we comply with local regulations and provide services only in authorized zones, we require your GPS location. 
-          It seems you have denied location access.
+          {blockMessage || 'To ensure we comply with local regulations and provide services only in authorized zones, we require your GPS location.'}
         </p>
 
         <div style={{

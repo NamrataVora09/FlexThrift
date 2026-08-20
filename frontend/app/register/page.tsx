@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { useSystem } from '@/lib/system-context';
 import SeoManager from '@/components/shared/SeoManager';
+import { getIPLocationCoords } from '@/lib/geolocation';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -44,14 +45,104 @@ export default function RegisterPage() {
   const [pinCodeError, setPinCodeError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [coords, setCoords] = useState({ lat: '', lng: '' });
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [locationDetected, setLocationDetected] = useState(false);
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) return;
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = String(pos.coords.latitude);
+        const lng = String(pos.coords.longitude);
+        setCoords({ lat, lng });
+
+        let stateFound = '';
+        let cityFound = '';
+
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+          if (res.ok) {
+            const data = await res.json();
+            stateFound = data?.address?.state || data?.address?.region || data?.address?.state_district || '';
+            cityFound = data?.address?.city || data?.address?.town || data?.address?.village || data?.address?.county || '';
+          }
+        } catch (e) {
+          console.warn('Client reverse-geocode error, trying backend endpoint...', e);
+        }
+
+        if (!stateFound) {
+          try {
+            const backendRes = await api.get<any>(`/auth/reverse-geocode?lat=${lat}&lng=${lng}`);
+            if (backendRes.success && backendRes.data?.state) {
+              stateFound = backendRes.data.state;
+              cityFound = backendRes.data.city || '';
+            }
+          } catch (e) {
+            console.warn('Backend reverse-geocode error:', e);
+          }
+        }
+
+        if (stateFound) {
+          setFormData(prev => ({
+            ...prev,
+            state: stateFound,
+            city: prev.city || cityFound
+          }));
+          setLocationDetected(true);
+        }
+        setDetectingLocation(false);
+      },
+      async (err) => {
+        // GPS denied or unavailable — fetch IP-based lat/lon using ip-api.com
+        console.info('GPS unavailable/denied, fetching IP-based geolocation (ip-api.com):', err.message);
+        try {
+          const ipLoc = await getIPLocationCoords();
+          if (ipLoc?.lat && ipLoc?.lng) {
+            setCoords({ lat: ipLoc.lat, lng: ipLoc.lng });
+
+            let stateFound = ipLoc.state || '';
+            let cityFound = ipLoc.city || '';
+
+            // Reverse geocode IP coords via backend if state was missing
+            if (!stateFound) {
+              const backendRes = await api.get<any>(`/auth/reverse-geocode?lat=${ipLoc.lat}&lng=${ipLoc.lng}`);
+              if (backendRes.success && backendRes.data?.state) {
+                stateFound = backendRes.data.state;
+                cityFound = backendRes.data.city || cityFound;
+              }
+            }
+
+            if (stateFound) {
+              setFormData(prev => ({
+                ...prev,
+                state: stateFound,
+                city: prev.city || cityFound
+              }));
+              setLocationDetected(true);
+            }
+          } else {
+            // Fallback to check-location endpoint
+            const ipRes = await api.get<any>('/auth/check-location');
+            if (ipRes.success && ipRes.data?.state_detected) {
+              setFormData(prev => ({
+                ...prev,
+                state: prev.state || ipRes.data.state_detected,
+              }));
+              setLocationDetected(true);
+            }
+          }
+        } catch (e) {
+          console.warn('IP-based location fallback error:', e);
+        }
+        setDetectingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setCoords({ lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) }),
-        () => { }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
+    detectLocation();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

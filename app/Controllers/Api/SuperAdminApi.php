@@ -2273,17 +2273,28 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
-        $name    = $data['zone_name'] ?? null;
-        $polygon = $data['zone_polygon'] ?? null;
-        $state   = $data['state'] ?? null;
-        $stateCode = $data['state_code'] ?? null;
-        if (!$name) return $this->respond(['success' => false, 'message' => 'Zone name is required.'], 400);
-        if (!$state) return $this->respond(['success' => false, 'message' => 'State is required for zone restriction.'], 400);
+        $state   = trim($data['state'] ?? $data['zone_name'] ?? '');
+        $name    = trim($data['zone_name'] ?? $state);
+        $stateCode = trim($data['state_code'] ?? '');
+
+        if (!$state && !$name) {
+            return $this->respond(['success' => false, 'message' => 'State name is required.'], 400);
+        }
+
+        // Check if state zone already exists
+        $existing = $db->table('allowed_zones')
+            ->where('LOWER(state)', strtolower($state))
+            ->orWhere('LOWER(zone_name)', strtolower($name))
+            ->get()->getRowArray();
+
+        if ($existing) {
+            return $this->respond(['success' => false, 'message' => 'Zone/State already exists.'], 400);
+        }
+
         $db->table('allowed_zones')->insert([
             'zone_name'   => $name,
             'state'       => $state,
             'state_code'  => $stateCode,
-            'zone_polygon'=> $polygon,
             'is_active'   => 1,
             'created_at'  => date('Y-m-d H:i:s'),
         ]);

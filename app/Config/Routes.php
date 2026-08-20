@@ -35,6 +35,10 @@ function register_api_routes($routes)
     $routes->post('auth/google-login', 'Api\AuthApi::googleLogin');
     $routes->post('auth/forgot-password', 'Api\AuthApi::forgotPassword');
     $routes->post('auth/reset-password', 'Api\AuthApi::resetPassword');
+    $routes->get('auth/reverse-geocode', 'Api\AuthApi::reverseGeocode');
+    $routes->post('auth/reverse-geocode', 'Api\AuthApi::reverseGeocode');
+    $routes->get('auth/check-location', 'Api\AuthApi::checkLocation');
+    $routes->post('auth/check-location', 'Api\AuthApi::checkLocation');
 
     // Public landing page content
     $routes->get('landing-content', 'Api\SharedApi::landingContent');

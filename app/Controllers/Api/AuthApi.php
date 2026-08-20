@@ -86,6 +86,40 @@ class AuthApi extends BaseApiController
             ], 401);
         }
 
+        // Zone restriction check on login
+        helper(['geolocation', 'utilityClass']);
+        $enableZones = getSystemSetting('enable_zone_restriction', '0');
+        $userRole = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : ($user['user_type'] ?? ''));
+
+        if ($enableZones === '1' && $userRole !== 'super_admin') {
+            $clientLat = $this->request->getJsonVar('user_latitude') ?? $this->request->getJsonVar('latitude');
+            $clientLng = $this->request->getJsonVar('user_longitude') ?? $this->request->getJsonVar('longitude');
+            $ip = getUserIP();
+            $loc = getLocationFromIP($ip);
+
+            // Priority 1: GPS coordinates sent by browser at login time
+            $detectedState = null;
+            if (!empty($clientLat) && !empty($clientLng)) {
+                $geoData = getStateFromCoordinates($clientLat, $clientLng);
+                $detectedState = $geoData['state'] ?? null;
+            }
+
+            // Priority 2: IP-based geolocation via ipapi.co (fallback when GPS was denied/unavailable)
+            // NOTE: stored user state and pin_code are intentionally excluded — only real-time location sources are trusted.
+            if (empty($detectedState) && !empty($loc['state'])) {
+                $detectedState = $loc['state'];
+            }
+
+            if (!empty($detectedState) && !isStateAllowed($detectedState)) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'Sorry, access is not available in ' . "\"{$detectedState}\"" . '. Login is restricted to authorised zones only.',
+                    'state_detected' => $detectedState,
+                    'is_outside_zone' => true
+                ], 403);
+            }
+        }
+
         // Determine effective role — for 'both' users, redirect based on which role is blocked
         $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
         if ($user['user_type'] === 'both') {
@@ -414,28 +448,30 @@ class AuthApi extends BaseApiController
         
         $clientLat = $data['user_latitude'] ?? null;
         $clientLng = $data['user_longitude'] ?? null;
-        $clientState = $data['state'] ?? $data['user_state'] ?? null;
+        // NOTE: Form state/PIN are intentionally NOT used for zone gating — only GPS and IP are trusted sources.
+
+        // Priority 1: Reverse-geocode GPS coordinates sent by browser
+        $detectedState = null;
+        if (!empty($clientLat) && !empty($clientLng)) {
+            $geoData = getStateFromCoordinates($clientLat, $clientLng);
+            if (!empty($geoData['state'])) {
+                $detectedState = $geoData['state'];
+                if (empty($data['city']) && !empty($geoData['city'])) {
+                    $data['city'] = $geoData['city'];
+                }
+            }
+        }
+
+        // Priority 2: IP-based geolocation via ipapi.co (used when GPS was denied or unavailable)
+        if (empty($detectedState) && !empty($loc['state'])) {
+            $detectedState = $loc['state'];
+        }
 
         $zoneMatch = false;
         $detectedZone = null;
-        $detectedState = $clientState ?: ($loc['state'] ?? null);
-
-        // 3. Last Fallback: Check PIN code (Especially for Localhost/Blocked GPS)
-        if (empty($detectedState) && !empty($data['pin_code'])) {
-            $detectedState = getStateFromPinCode($data['pin_code']);
-        }
 
         if ($enableZones === '1') {
-            // 1. Priority: Check GPS coordinates against Polygon zones (Highest accuracy)
-            if (!empty($clientLat) && !empty($clientLng)) {
-                $detectedZone = isLocationAllowed((float)$clientLat, (float)$clientLng);
-                if ($detectedZone) {
-                    $zoneMatch = true;
-                }
-            }
-
-            // 2. Fallback: Check state name (from IP or client)
-            if (!$zoneMatch && !empty($detectedState)) {
+            if (!empty($detectedState)) {
                 $detectedZone = isStateAllowed($detectedState);
                 if ($detectedZone) {
                     $zoneMatch = true;
@@ -453,8 +489,8 @@ class AuthApi extends BaseApiController
                     'user_type'  => $data['user_type'],
                     'ip'         => $ip,
                     'country'    => $loc['country'] ?? null,
-                    'state'      => $clientState,
-                    'city'       => $loc['city'] ?? null,
+                    'state'      => $detectedState,
+                    'city'       => $data['city'] ?? ($loc['city'] ?? null),
                     'latitude'   => $clientLat ?: ($loc['latitude'] ?? null),
                     'longitude'  => $clientLng ?: ($loc['longitude'] ?? null),
                     'is_allowed' => 0,
@@ -1019,5 +1055,80 @@ class AuthApi extends BaseApiController
             log_message('error', 'Email failed to send to: ' . $to);
             log_message('error', 'Email Debugger: ' . $email->printDebugger(['headers', 'subject', 'body']));
         }
+    }
+
+    /**
+     * Reverse geocode latitude and longitude to return state and city to client
+     */
+    public function reverseGeocode()
+    {
+        helper(['geolocation']);
+        $lat = $this->request->getVar('latitude') ?? $this->request->getVar('lat');
+        $lng = $this->request->getVar('longitude') ?? $this->request->getVar('lng');
+
+        if (empty($lat) || empty($lng)) {
+            return $this->respond(['success' => false, 'message' => 'Latitude and longitude are required.'], 400);
+        }
+
+        $geo = getStateFromCoordinates($lat, $lng);
+
+        if ($geo && !empty($geo['state'])) {
+            return $this->respond([
+                'success' => true,
+                'data'    => $geo
+            ]);
+        }
+
+        return $this->respond(['success' => false, 'message' => 'Unable to resolve state from coordinates.'], 404);
+    }
+
+    /**
+     * Check if a location (coordinates or state) is allowed under zone restriction
+     */
+    public function checkLocation()
+    {
+        helper(['geolocation', 'utilityClass']);
+        $enableZones = getSystemSetting('enable_zone_restriction', '0');
+
+        if ($enableZones !== '1') {
+            return $this->respond([
+                'success' => true,
+                'is_allowed' => true,
+                'restriction_enabled' => false,
+            ]);
+        }
+
+        $lat   = $this->request->getVar('latitude') ?? $this->request->getVar('lat');
+        $lng   = $this->request->getVar('longitude') ?? $this->request->getVar('lng');
+        $state = $this->request->getVar('state');
+
+        $detectedState = $state;
+
+        if (empty($detectedState) && !empty($lat) && !empty($lng)) {
+            $geoData = getStateFromCoordinates($lat, $lng);
+            $detectedState = $geoData['state'] ?? null;
+        }
+
+        if (empty($detectedState)) {
+            $ip = getUserIP();
+            $loc = getLocationFromIP($ip);
+            $detectedState = $loc['state'] ?? null;
+        }
+
+        $isAllowed = false;
+        if (!empty($detectedState)) {
+            $zone = isStateAllowed($detectedState);
+            if ($zone) {
+                $isAllowed = true;
+            }
+        }
+
+        return $this->respond([
+            'success' => true,
+            'is_allowed' => $isAllowed,
+            'state_detected' => $detectedState,
+            'restriction_enabled' => true,
+            'message' => $isAllowed ? 'Location authorized' : ('Sorry, our services are not yet available in ' . ($detectedState ? "\"{$detectedState}\"" : 'your area') . '. Access is restricted to authorised zones only.')
+        ]);
     }
 }

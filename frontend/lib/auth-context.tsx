@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { api } from './api';
+import { getIPLocationCoords } from './geolocation';
 
 interface User {
   id: number;
@@ -23,7 +24,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password: string, coords?: { latitude?: string; longitude?: string }) => Promise<{ success: boolean; message?: string }>;
   sendOtp: (email: string) => Promise<{ success: boolean; message?: string }>;
   verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
@@ -106,8 +107,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('flex_user', JSON.stringify(userData));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{ user: User; token: string }>('/auth/login', { email, password });
+  const login = useCallback(async (email: string, password: string, coords?: { latitude?: string; longitude?: string }) => {
+    let lat = coords?.latitude || '';
+    let lng = coords?.longitude || '';
+
+    if ((!lat || !lng) && typeof window !== 'undefined') {
+      if (navigator.geolocation) {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000, maximumAge: 60000 });
+          });
+          lat = String(pos.coords.latitude);
+          lng = String(pos.coords.longitude);
+        } catch {
+          // GPS permission denied or unavailable
+        }
+      }
+
+      // If GPS denied/unavailable/ignored, detect via IP (ip-api.com) and get lat/lon
+      if (!lat || !lng) {
+        const ipLocation = await getIPLocationCoords();
+        if (ipLocation) {
+          lat = ipLocation.lat;
+          lng = ipLocation.lng;
+        }
+      }
+    }
+
+    const res = await api.post<{ user: User; token: string }>('/auth/login', {
+      email,
+      password,
+      user_latitude: lat,
+      user_longitude: lng,
+    });
     if (res.success && res.data) {
       setAuth(res.data.user, res.data.token);
       return { success: true };
