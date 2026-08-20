@@ -1824,9 +1824,10 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $product = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, lt.type_name as listing_category_name')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, b.brand_name as seller_brand, lt.type_name as listing_category_name')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->join('brands b', 'b.id = p.brand_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.id', $id)
             ->get()->getRowArray();
@@ -1914,8 +1915,9 @@ class SuperAdminApi extends AdminApi
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
         $original = $db->table('products p')
-            ->select('p.*, ob.brand_name as orignal_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
+            ->select('p.*, ob.brand_name as orignal_brand, b.brand_name as seller_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->join('brands b', 'b.id = p.brand_id', 'left')
             ->where('p.id', $request['product_id'])
             ->get()->getRowArray();
 
@@ -1942,6 +1944,12 @@ class SuperAdminApi extends AdminApi
             $brand = $db->table('orignal_brands')->where('id', $updatedData['orignal_brand_id'])->get()->getRowArray();
             if ($brand) {
                 $updatedData['orignal_brand'] = $brand['brand_name'];
+            }
+        }
+        if (!empty($updatedData['brand_id'])) {
+            $brand = $db->table('brands')->where('id', $updatedData['brand_id'])->get()->getRowArray();
+            if ($brand) {
+                $updatedData['seller_brand'] = $brand['brand_name'];
             }
         }
         // Resolve listing type name in updated_data if listing_type_category is present
@@ -2199,7 +2207,7 @@ class SuperAdminApi extends AdminApi
                     'product_type', 'category', 'sub_category', 'color', 'gender',
                     'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
                     'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                    'has_bill', 'bill_image', 'allow_alter_fitting',
+                    'has_bill', 'allow_alter_fitting',
                 ];
                 $updateData = [];
                 foreach ($restoreFields as $field) {
@@ -2273,28 +2281,17 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
-        $state   = trim($data['state'] ?? $data['zone_name'] ?? '');
-        $name    = trim($data['zone_name'] ?? $state);
-        $stateCode = trim($data['state_code'] ?? '');
-
-        if (!$state && !$name) {
-            return $this->respond(['success' => false, 'message' => 'State name is required.'], 400);
-        }
-
-        // Check if state zone already exists
-        $existing = $db->table('allowed_zones')
-            ->where('LOWER(state)', strtolower($state))
-            ->orWhere('LOWER(zone_name)', strtolower($name))
-            ->get()->getRowArray();
-
-        if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'Zone/State already exists.'], 400);
-        }
-
+        $name    = $data['zone_name'] ?? null;
+        $polygon = $data['zone_polygon'] ?? null;
+        $state   = $data['state'] ?? null;
+        $stateCode = $data['state_code'] ?? null;
+        if (!$name) return $this->respond(['success' => false, 'message' => 'Zone name is required.'], 400);
+        if (!$state) return $this->respond(['success' => false, 'message' => 'State is required for zone restriction.'], 400);
         $db->table('allowed_zones')->insert([
             'zone_name'   => $name,
             'state'       => $state,
             'state_code'  => $stateCode,
+            'zone_polygon'=> $polygon,
             'is_active'   => 1,
             'created_at'  => date('Y-m-d H:i:s'),
         ]);
@@ -2973,10 +2970,11 @@ class SuperAdminApi extends AdminApi
 
         $db = \Config\Database::connect();
         $products = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, lt.type_name as listing_category_name, lt.usage_label, p.listing_type, ob.brand_name as orignal_brand')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, lt.type_name as listing_category_name, lt.usage_label, p.listing_type, ob.brand_name as orignal_brand, b.brand_name as seller_brand')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->join('brands b', 'b.id = p.brand_id', 'left')
             ->groupStart()
                 ->where('p.status', 'pending')
                 ->orWhere('p.edit_request', '1')

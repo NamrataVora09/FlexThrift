@@ -17,7 +17,7 @@ class AdminApi extends BaseApiController
 
         $pendingProductsQuery = $db->table('products p')
             ->where('p.status', 'pending');
-        
+
         $pendingEditsQuery = $db->table('product_edit_requests r')
             ->join('products p', 'p.id = r.product_id', 'left')
             ->where('r.status', 'pending');
@@ -52,7 +52,7 @@ class AdminApi extends BaseApiController
         return $this->respond([
             'success' => true,
             'data' => [
-                'user' => ['id' => (int) $user['id'], 'name' => $user['name'], 'role' => $jwtUser['role']], 
+                'user' => ['id' => (int) $user['id'], 'name' => $user['name'], 'role' => $jwtUser['role']],
                 'stats' => $stats,
                 'recent_offers' => $recentOffers
             ],
@@ -144,7 +144,7 @@ class AdminApi extends BaseApiController
 
         foreach ($users as &$u) {
             $u['products_uploaded_count'] = $db->table('products')->where('seller_id', $u['id'])->countAllResults();
-            
+
             // Mask sensitive details for regular admins
             if ($jwtUser['role'] === 'admin') {
                 $u['email'] = '********';
@@ -165,7 +165,7 @@ class AdminApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         $adminId = $jwtUser['user_id'];
-        $db      = \Config\Database::connect();
+        $db = \Config\Database::connect();
 
         $reports = $db->table('user_reports r')
             ->select('r.*, reporter.name as reporter_name, reporter.email as reporter_email,
@@ -191,7 +191,7 @@ class AdminApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         $adminId = $jwtUser['user_id'];
-        $db      = \Config\Database::connect();
+        $db = \Config\Database::connect();
 
         $report = $db->table('user_reports')
             ->where('id', $reportId)
@@ -202,8 +202,8 @@ class AdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Report not found or not assigned to you'], 404);
         }
 
-        $input      = $this->request->getPost() ?: ($this->request->getJSON(true) ?: []);
-        $action     = $input['action'] ?? 'dismiss';
+        $input = $this->request->getPost() ?: ($this->request->getJSON(true) ?: []);
+        $action = $input['action'] ?? 'dismiss';
         $adminNotes = $input['admin_notes'] ?? null;
 
         $reported = $db->table('users')->where('id', $report['reported_id'])->get()->getRowArray();
@@ -221,27 +221,27 @@ class AdminApi extends BaseApiController
             $actionTaken = 'blocked';
         } elseif ($action === 'unblock') {
             $db->table('users')->where('id', $reported['id'])->update([
-                'is_blocked'  => 0,
+                'is_blocked' => 0,
                 'is_suspended' => 0,
-                'updated_at'  => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
             $actionTaken = 'none';
         } elseif ($action === 'unsuspend') {
             $db->table('users')->where('id', $reported['id'])->update([
-                'is_suspended'      => 0,
-                'suspended_at'      => null,
+                'is_suspended' => 0,
+                'suspended_at' => null,
                 'suspension_reason' => null,
-                'updated_at'        => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
             $actionTaken = 'none';
         }
 
         $db->table('user_reports')->where('id', $reportId)->update([
-            'status'      => 'reviewed',
+            'status' => 'reviewed',
             'reviewed_by' => $adminId,
             'admin_notes' => $adminNotes,
             'action_taken' => $actionTaken,
-            'updated_at'  => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond(['success' => true, 'message' => 'Report handled successfully', 'action' => $actionTaken]);
@@ -294,7 +294,7 @@ class AdminApi extends BaseApiController
                 $deletedIds = json_decode($req['deleted_images_ids'] ?? '[]', true) ?: [];
                 $isDeleted = false;
                 foreach ($deletedIds as $del) {
-                    if ((is_numeric($del) && (int)$del === (int)$pImg['id']) || (is_array($del) && isset($del['id']) && (int)$del['id'] === (int)$pImg['id'])) {
+                    if ((is_numeric($del) && (int) $del === (int) $pImg['id']) || (is_array($del) && isset($del['id']) && (int) $del['id'] === (int) $pImg['id'])) {
                         $isDeleted = true;
                         break;
                     }
@@ -319,7 +319,7 @@ class AdminApi extends BaseApiController
         $db = \Config\Database::connect();
         $type = $this->request->getGet('type');
         $builder = $db->table('rejection_templates');
-        if($type) {
+        if ($type) {
             $builder->where('type', $type);
         }
         $templates = $builder->orderBy('created_at', 'DESC')->get()->getResultArray();
@@ -334,13 +334,15 @@ class AdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $product = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, lt.type_name as listing_category_name')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, b.brand_name as seller_brand, lt.type_name as listing_category_name')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->join('brands b', 'b.id = p.brand_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.id', $id)
             ->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        if (!$product)
+            return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
         $images = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
 
@@ -366,14 +368,14 @@ class AdminApi extends BaseApiController
                 $deletedIdList = [];
                 foreach ($deletedIds as $del) {
                     if (is_numeric($del)) {
-                        $deletedIdList[] = (int)$del;
+                        $deletedIdList[] = (int) $del;
                     } elseif (is_array($del) && isset($del['id'])) {
-                        $deletedIdList[] = (int)$del['id'];
+                        $deletedIdList[] = (int) $del['id'];
                     }
                 }
                 if (!empty($deletedIdList)) {
-                    $images = array_values(array_filter($images, function($img) use ($deletedIdList) {
-                        return !in_array((int)($img['id'] ?? 0), $deletedIdList, true);
+                    $images = array_values(array_filter($images, function ($img) use ($deletedIdList) {
+                        return !in_array((int) ($img['id'] ?? 0), $deletedIdList, true);
                     }));
                 }
             }
@@ -402,11 +404,13 @@ class AdminApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-        if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        if (!$request)
+            return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
         $original = $db->table('products p')
-            ->select('p.*, ob.brand_name as orignal_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
+            ->select('p.*, ob.brand_name as orignal_brand, b.brand_name as seller_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->join('brands b', 'b.id = p.brand_id', 'left')
             ->where('p.id', $request['product_id'])
             ->get()->getRowArray();
 
@@ -433,6 +437,12 @@ class AdminApi extends BaseApiController
             $brand = $db->table('orignal_brands')->where('id', $updatedData['orignal_brand_id'])->get()->getRowArray();
             if ($brand) {
                 $updatedData['orignal_brand'] = $brand['brand_name'];
+            }
+        }
+        if (!empty($updatedData['brand_id'])) {
+            $brand = $db->table('brands')->where('id', $updatedData['brand_id'])->get()->getRowArray();
+            if ($brand) {
+                $updatedData['seller_brand'] = $brand['brand_name'];
             }
         }
         // Resolve listing type name in updated_data if listing_type_category is present
@@ -487,22 +497,23 @@ class AdminApi extends BaseApiController
         try {
             $db = \Config\Database::connect();
             $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-            if (!$request) return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
+            if (!$request)
+                return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
 
             $editData = json_decode($request['updated_data'], true) ?: [];
             if (empty($editData)) {
                 return $this->respond(['success' => false, 'message' => 'Invalid update data'], 400);
             }
-            
+
             // Get current product data to preserve fields that weren't updated
             $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
             if (!$currentProduct) {
                 return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
             }
-            
+
             // Merge edit data with current product data (edit data takes precedence for changed fields)
             $mergedData = array_merge($currentProduct, $editData);
-            
+
             // Force status back to approved after merging edit
             $mergedData['status'] = 'approved';
             $mergedData['updated_at'] = date('Y-m-d H:i:s');
@@ -521,7 +532,7 @@ class AdminApi extends BaseApiController
                     $productUpdateData[$col] = $val;
                 }
             }
-            
+
             $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($productUpdateData);
             if (!$productUpdate) {
                 log_message('error', "Failed to update product ID: {$request['product_id']} for edit request ID: {$id}");
@@ -536,28 +547,28 @@ class AdminApi extends BaseApiController
                     $finalPath = str_replace('uploads/products/temp/', 'uploads/products/', $tempPath);
                     $tempFullPath = FCPATH . $tempPath;
                     $finalFullPath = FCPATH . $finalPath;
-                    
+
                     if (file_exists($tempFullPath)) {
                         // Ensure target directory exists
                         $targetDir = dirname($finalFullPath);
                         if (!is_dir($targetDir)) {
                             mkdir($targetDir, 0777, true);
                         }
-                        
+
                         // Move the file
                         if (rename($tempFullPath, $finalFullPath)) {
                             // Insert with final path
                             $db->table('product_images')->insert([
-                                'product_id' => $request['product_id'], 
-                                'image_path' => $finalPath, 
+                                'product_id' => $request['product_id'],
+                                'image_path' => $finalPath,
                                 'created_at' => date('Y-m-d H:i:s')
                             ]);
                         }
                     } else {
                         // If temp file doesn't exist, still insert with temp path (fallback)
                         $db->table('product_images')->insert([
-                            'product_id' => $request['product_id'], 
-                            'image_path' => $tempPath, 
+                            'product_id' => $request['product_id'],
+                            'image_path' => $tempPath,
                             'created_at' => date('Y-m-d H:i:s')
                         ]);
                     }
@@ -570,29 +581,29 @@ class AdminApi extends BaseApiController
                 // Handle both old format (IDs only) and new format (with paths)
                 $validIds = [];
                 $pathsToDelete = [];
-                
+
                 foreach ($deletedIds as $item) {
                     if (is_numeric($item)) {
                         // Old format: just ID
-                        $validIds[] = (int)$item;
+                        $validIds[] = (int) $item;
                     } elseif (is_array($item) && isset($item['id'])) {
                         // New format: array with id and image_path
-                        $validIds[] = (int)$item['id'];
+                        $validIds[] = (int) $item['id'];
                         if (isset($item['image_path'])) {
                             $pathsToDelete[] = $item['image_path'];
                         }
                     }
                 }
-                
+
                 if (!empty($validIds)) {
                     // Get the image paths before deletion for file cleanup
                     $imagesToDelete = $db->table('product_images')
                         ->whereIn('id', $validIds)
                         ->get()->getResultArray();
-                    
+
                     // Delete from database
                     $db->table('product_images')->whereIn('id', $validIds)->delete();
-                    
+
                     // Delete files from filesystem
                     foreach ($imagesToDelete as $img) {
                         $filePath = FCPATH . $img['image_path'];
@@ -601,7 +612,7 @@ class AdminApi extends BaseApiController
                         }
                     }
                 }
-                
+
                 // Also delete files from the paths array (new format)
                 foreach ($pathsToDelete as $path) {
                     $filePath = FCPATH . $path;
@@ -705,11 +716,26 @@ class AdminApi extends BaseApiController
             $previousData = json_decode($product['previous_data'], true);
             if (is_array($previousData)) {
                 $restoreFields = [
-                    'title', 'description', 'listing_type', 'listing_type_category',
-                    'product_type', 'category', 'sub_category', 'color', 'gender',
-                    'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
-                    'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                    'has_bill', 'bill_image', 'allow_alter_fitting',
+                    'title',
+                    'description',
+                    'listing_type',
+                    'listing_type_category',
+                    'product_type',
+                    'category',
+                    'sub_category',
+                    'color',
+                    'gender',
+                    'used_times',
+                    'original_price',
+                    'price',
+                    'rental_cost',
+                    'rental_deposit',
+                    'dispatch_address',
+                    'dispatch_city',
+                    'dispatch_state',
+                    'dispatch_pin_code',
+                    'has_bill',
+                    'allow_alter_fitting',
                 ];
                 $updateData = [];
                 foreach ($restoreFields as $field) {
@@ -796,7 +822,7 @@ class AdminApi extends BaseApiController
     public function personalOffers()
     {
         $jwtUser = $this->request->jwt_user;
-        $db      = \Config\Database::connect();
+        $db = \Config\Database::connect();
 
         // ── Received (admin is seller) – matches SellerApi::offers() ──
         $received = $db->table('offers o')
@@ -835,8 +861,12 @@ class AdminApi extends BaseApiController
 
         // Attach offer history
         $historyModel = new \App\Models\OfferHistoryModel();
-        foreach ($received as &$o) { $o['history'] = $historyModel->getHistoryByOffer($o['id']); }
-        foreach ($sent as &$o)     { $o['history'] = $historyModel->getHistoryByOffer($o['id']); }
+        foreach ($received as &$o) {
+            $o['history'] = $historyModel->getHistoryByOffer($o['id']);
+        }
+        foreach ($sent as &$o) {
+            $o['history'] = $historyModel->getHistoryByOffer($o['id']);
+        }
         unset($o);
 
         // Booked dates for rental conflict detection (both sent and received offers)
@@ -857,13 +887,13 @@ class AdminApi extends BaseApiController
         usort($all, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
         return $this->respond([
-            'success'              => true,
-            'data'                 => $all,
-            'bookedDates'          => $bookedDates,
-            'acceptanceLimitDays'  => (float) getSystemSetting('offer_acceptance_limit_days', 7),
-            'ratingPeriod'         => (float) getSystemSetting('seller_rating_period_days', 7),
+            'success' => true,
+            'data' => $all,
+            'bookedDates' => $bookedDates,
+            'acceptanceLimitDays' => (float) getSystemSetting('offer_acceptance_limit_days', 7),
+            'ratingPeriod' => (float) getSystemSetting('seller_rating_period_days', 7),
             'rejectionWindowHours' => (float) getSystemSetting('seller_rejection_window_hours', 24),
-            'minRentalDays'        => (float) getSystemSetting('min_rental_days', 3),
+            'minRentalDays' => (float) getSystemSetting('min_rental_days', 3),
         ]);
     }
     public function toggleUserStatus($userId)
@@ -879,7 +909,8 @@ class AdminApi extends BaseApiController
         }
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
-        if (!$user) return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+        if (!$user)
+            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
 
         $isActive = !$user['is_blocked'] && $user['is_verified'];
         if ($isActive) {
@@ -906,7 +937,8 @@ class AdminApi extends BaseApiController
         }
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
-        if (!$user) return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+        if (!$user)
+            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
 
         $col = $role === 'seller' ? 'blocked_seller' : 'blocked_buyer';
         $current = $user[$col] ?? 0;
@@ -916,12 +948,12 @@ class AdminApi extends BaseApiController
         if ($role === 'seller') {
             if (!$current) { // Just blocked
                 $db->table('products')
-                   ->where(['seller_id' => $userId, 'status' => 'approved'])
-                   ->update(['status' => 'inactive']);
+                    ->where(['seller_id' => $userId, 'status' => 'approved'])
+                    ->update(['status' => 'inactive']);
             } else { // Just unblocked
                 $db->table('products')
-                   ->where(['seller_id' => $userId, 'status' => 'inactive'])
-                   ->update(['status' => 'approved']);
+                    ->where(['seller_id' => $userId, 'status' => 'inactive'])
+                    ->update(['status' => 'approved']);
             }
         }
 
@@ -936,7 +968,8 @@ class AdminApi extends BaseApiController
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
 
         $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
         $planUserType = $plan['user_type'] ?? '';
 
@@ -977,7 +1010,7 @@ class AdminApi extends BaseApiController
         $totalCharges = 0;
         $breakdown = [];
         foreach ($activeCharges as $charge) {
-            $amt = $charge['charge_type'] === 'percentage' ? ($basePrice * $charge['charge_value'] / 100) : (float)$charge['charge_value'];
+            $amt = $charge['charge_type'] === 'percentage' ? ($basePrice * $charge['charge_value'] / 100) : (float) $charge['charge_value'];
             $totalCharges += $amt;
             $breakdown[] = ['name' => $charge['charge_name'], 'type' => $charge['charge_type'], 'value' => $charge['charge_value'], 'amount' => $amt];
         }
@@ -986,12 +1019,13 @@ class AdminApi extends BaseApiController
             ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
             ->get()->getResultArray();
         $cfg = [];
-        foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+        foreach ($settingsRows as $s)
+            $cfg[$s['setting_key']] = $s['setting_value'];
         $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
 
         $referralDiscount = 0;
-        $referralBalance = (float)($user['referral_balance'] ?? 0);
-        $hasUsed = (int)($user['has_used_referral'] ?? 0);
+        $referralBalance = (float) ($user['referral_balance'] ?? 0);
+        $hasUsed = (int) ($user['has_used_referral'] ?? 0);
         $expiry = $user['referral_expires_at'] ?? null;
         if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
             $referralBalance = 0.0;
@@ -1022,17 +1056,19 @@ class AdminApi extends BaseApiController
     {
         $data = $this->request->getJSON(true);
         $code = strtoupper(trim($data['code'] ?? ''));
-        $planId = (int)($data['plan_id'] ?? 0);
+        $planId = (int) ($data['plan_id'] ?? 0);
         $db = \Config\Database::connect();
 
         if (!$code)
             return $this->respond(['success' => false, 'message' => 'Coupon code is required'], 400);
 
         $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
 
         $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
-        if (!$coupon) return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
+        if (!$coupon)
+            return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
 
         // ── Expiry check ──────────────────────────────────────────────────────
         $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
@@ -1040,26 +1076,26 @@ class AdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
 
         // ── Per-user usage limit ──────────────────────────────────────────────
-        if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
-            $jwtUser     = $this->request->jwt_user;
+        if ($coupon['usage_limit'] !== null && (int) $coupon['usage_limit'] > 0) {
+            $jwtUser = $this->request->jwt_user;
             $adminUserId = $jwtUser['user_id'];
             $userUsedCount = $db->table('coupon_usage')
                 ->where('coupon_id', $coupon['id'])
                 ->where('user_id', $adminUserId)
                 ->countAllResults();
-            if ($userUsedCount >= (int)$coupon['usage_limit'])
+            if ($userUsedCount >= (int) $coupon['usage_limit'])
                 return $this->respond(['success' => false, 'message' => 'You have already used this coupon the maximum number of times.']);
         }
 
         // ── Minimum purchase check ────────────────────────────────────────────
-        $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
-        if ((float)$plan['price'] < $cpnMinPurchase)
+        $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+        if ((float) $plan['price'] < $cpnMinPurchase)
             return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
 
         // ── Calculate discount ────────────────────────────────────────────────
         $discount = $coupon['discount_type'] === 'percentage'
             ? ($plan['price'] * $coupon['discount_value'] / 100)
-            : (float)$coupon['discount_value'];
+            : (float) $coupon['discount_value'];
         if ($coupon['max_discount'] && $discount > $coupon['max_discount'])
             $discount = $coupon['max_discount'];
 
@@ -1073,13 +1109,14 @@ class AdminApi extends BaseApiController
         $data = $this->request->getJSON(true);
         $db = \Config\Database::connect();
 
-        $planId = (int)($data['plan_id'] ?? 0);
+        $planId = (int) ($data['plan_id'] ?? 0);
         $couponCode = strtoupper(trim($data['coupon_code'] ?? ''));
         $callbackUrl = trim($data['callback_url'] ?? '');
-        $useReferral = (bool)($data['use_referral'] ?? true);
+        $useReferral = (bool) ($data['use_referral'] ?? true);
 
         $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         $planUserType = $plan['user_type'] ?? '';
@@ -1114,23 +1151,23 @@ class AdminApi extends BaseApiController
             }
         }
 
-        $basePrice = (float)$plan['price'];
+        $basePrice = (float) $plan['price'];
         $chargeModel = new \App\Models\PlatformChargeModel();
         $totalCharges = 0;
         foreach ($chargeModel->getActiveCharges() as $c) {
-            $totalCharges += $c['charge_type'] === 'percentage' ? ($basePrice * $c['charge_value'] / 100) : (float)$c['charge_value'];
+            $totalCharges += $c['charge_type'] === 'percentage' ? ($basePrice * $c['charge_value'] / 100) : (float) $c['charge_value'];
         }
 
         $discount = 0;
         $couponId = null;
         if ($couponCode) {
             $cpn = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
-            $cpnMinPurchase = (float)($cpn['min_order_amount'] ?? $cpn['min_purchase'] ?? 0);
+            $cpnMinPurchase = (float) ($cpn['min_order_amount'] ?? $cpn['min_purchase'] ?? 0);
             $cpnExpiresAt = $cpn['valid_until'] ?? $cpn['expires_at'] ?? null;
 
             // Per-user usage limit check
             $cpnUserUsed = 0;
-            if ($cpn && $cpn['usage_limit'] !== null && (int)$cpn['usage_limit'] > 0) {
+            if ($cpn && $cpn['usage_limit'] !== null && (int) $cpn['usage_limit'] > 0) {
                 $cpnUserUsed = $db->table('coupon_usage')
                     ->where('coupon_id', $cpn['id'])
                     ->where('user_id', $userId)
@@ -1140,28 +1177,30 @@ class AdminApi extends BaseApiController
             if (
                 $cpn && $basePrice >= $cpnMinPurchase
                 && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())
-                && ($cpn['usage_limit'] === null || (int)$cpn['usage_limit'] <= 0 || $cpnUserUsed < (int)$cpn['usage_limit'])
+                && ($cpn['usage_limit'] === null || (int) $cpn['usage_limit'] <= 0 || $cpnUserUsed < (int) $cpn['usage_limit'])
             ) {
-                $discount = $cpn['discount_type'] === 'percentage' ? ($basePrice * $cpn['discount_value'] / 100) : (float)$cpn['discount_value'];
-                if ($cpn['max_discount'] && $discount > $cpn['max_discount']) $discount = $cpn['max_discount'];
+                $discount = $cpn['discount_type'] === 'percentage' ? ($basePrice * $cpn['discount_value'] / 100) : (float) $cpn['discount_value'];
+                if ($cpn['max_discount'] && $discount > $cpn['max_discount'])
+                    $discount = $cpn['max_discount'];
                 $couponId = $cpn['id'];
             }
         }
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         $referralDiscount = 0;
-        $referralBalance = (float)($user['referral_balance'] ?? 0);
+        $referralBalance = (float) ($user['referral_balance'] ?? 0);
         $exp = $user['referral_expires_at'] ?? null;
         if ($exp && $exp !== '0000-00-00 00:00:00' && strtotime($exp) <= time()) {
             $referralBalance = 0.0;
         }
-        if ($useReferral && $referralBalance > 0 && (int)($user['has_used_referral'] ?? 0) === 0) {
+        if ($useReferral && $referralBalance > 0 && (int) ($user['has_used_referral'] ?? 0) === 0) {
             if (!$exp || $exp === '0000-00-00 00:00:00' || strtotime($exp) > time()) {
                 $settingsRows = $db->table('system_settings')
                     ->whereIn('setting_key', ['referral_max_discount_percent'])
                     ->get()->getResultArray();
                 $cfg = [];
-                foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+                foreach ($settingsRows as $s)
+                    $cfg[$s['setting_key']] = $s['setting_value'];
                 $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
 
                 $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
@@ -1173,20 +1212,28 @@ class AdminApi extends BaseApiController
         $merchantOrderId = 'SUB-ADM-' . $userId . '-' . time();
         $redirectUrl = $callbackUrl ? str_replace('{id}', $merchantOrderId, $callbackUrl) : base_url("admin/payment-callback?id={$merchantOrderId}");
 
-        $payload = ['merchantOrderId' => $merchantOrderId, 'amount' => (int)($final * 100), 'paymentFlow' => ['type' => 'PG_CHECKOUT', 'merchantUrls' => ['redirectUrl' => $redirectUrl]]];
+        $payload = ['merchantOrderId' => $merchantOrderId, 'amount' => (int) ($final * 100), 'paymentFlow' => ['type' => 'PG_CHECKOUT', 'merchantUrls' => ['redirectUrl' => $redirectUrl]]];
 
         // Always insert with starts_at = NOW for the pending record.
         // verifyPayment will recalculate the correct stacking dates after payment confirms.
         $nowStr = date('Y-m-d H:i:s');
         $durationHours = (float) $plan['duration_hours'];
         $pendingExpiry = $durationHours > 0
-            ? date('Y-m-d H:i:s', time() + (int)round($durationHours * 3600))
+            ? date('Y-m-d H:i:s', time() + (int) round($durationHours * 3600))
             : '2099-12-31 23:59:59';
 
         $db->table('user_subscriptions')->insert([
-            'user_id' => $userId, 'plan_id' => $planId, 'coupon_id' => $couponId, 'starts_at' => $nowStr, 'expires_at' => $pendingExpiry,
-            'usage_count' => 0, 'is_active' => 0, 'payment_status' => 'pending', 'amount_paid' => $final,
-            'referral_discount_applied' => $referralDiscount, 'merchant_transaction_id' => $merchantOrderId,
+            'user_id' => $userId,
+            'plan_id' => $planId,
+            'coupon_id' => $couponId,
+            'starts_at' => $nowStr,
+            'expires_at' => $pendingExpiry,
+            'usage_count' => 0,
+            'is_active' => 0,
+            'payment_status' => 'pending',
+            'amount_paid' => $final,
+            'referral_discount_applied' => $referralDiscount,
+            'merchant_transaction_id' => $merchantOrderId,
         ]);
 
         $phonepe = new \App\Libraries\PhonePe();
@@ -1202,8 +1249,10 @@ class AdminApi extends BaseApiController
         $id = $this->request->getGet('id');
         $db = \Config\Database::connect();
         $dbSub = $db->table('user_subscriptions')->where('merchant_transaction_id', $id)->get()->getRowArray();
-        if (!$dbSub) return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
-        if ($dbSub['is_active'] == 1) return $this->respond(['status' => 'success', 'message' => 'Already active']);
+        if (!$dbSub)
+            return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
+        if ($dbSub['is_active'] == 1)
+            return $this->respond(['status' => 'success', 'message' => 'Already active']);
 
         $phonepe = new \App\Libraries\PhonePe();
         $status = $phonepe->getOrderStatus($id);
@@ -1211,7 +1260,7 @@ class AdminApi extends BaseApiController
 
         if ($state === 'COMPLETED') {
             $plan = $db->table('subscription_plans')->where('id', $dbSub['plan_id'])->get()->getRowArray();
-            
+
             // Stacking Logic: Find the latest expiry among active plans of the SAME user type (buyer/seller)
             $latestActive = $db->table('user_subscriptions us')
                 ->join('subscription_plans sp', 'sp.id = us.plan_id')
@@ -1223,10 +1272,10 @@ class AdminApi extends BaseApiController
                 ->get()->getRowArray();
 
             $durationHours = (float) $plan['duration_hours'];
-            $startsAt  = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
-            $baseTime  = $latestActive ? strtotime($latestActive['expires_at']) : time();
+            $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+            $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
             $expiresAt = $durationHours > 0
-                ? date('Y-m-d H:i:s', $baseTime + (int)round($durationHours * 3600))
+                ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
                 : '2099-12-31 23:59:59';
 
             $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
@@ -1238,44 +1287,44 @@ class AdminApi extends BaseApiController
             ]);
 
             if (!empty($dbSub['coupon_id'])) {
-                $cId = (int)$dbSub['coupon_id'];
+                $cId = (int) $dbSub['coupon_id'];
                 $existingUsage = $db->table('coupon_usage')->where(['coupon_id' => $cId, 'user_id' => $dbSub['user_id']])->get()->getRowArray();
-                
-                    $db->table('coupon_usage')->insert([
-                        'coupon_id' => $cId,
-                        'user_id'   => $dbSub['user_id'],
-                        'used_at'   => date('Y-m-d H:i:s')
-                    ]);
-                
+
+                $db->table('coupon_usage')->insert([
+                    'coupon_id' => $cId,
+                    'user_id' => $dbSub['user_id'],
+                    'used_at' => date('Y-m-d H:i:s')
+                ]);
+
                 $db->query("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?", [$cId]);
             }
             $this->recalibrateUserSubscriptions($dbSub['user_id'], $plan['user_type']);
-            
+
             // Sync with users table (Set to the absolute latest expiry)
             $db->table('users')->where('id', $dbSub['user_id'])->update([
                 'subscription_tier' => $plan['name'],
                 'subscription_expires_at' => $expiresAt,
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
-            
+
             // Deduct only the used referral discount from balance (not zero the whole balance)
             if ((float) $dbSub['referral_discount_applied'] > 0) {
                 $subUser = $db->table('users')->where('id', $dbSub['user_id'])->get()->getRowArray();
-                $newBalance = max(0, (float)($subUser['referral_balance'] ?? 0) - (float)$dbSub['referral_discount_applied']);
+                $newBalance = max(0, (float) ($subUser['referral_balance'] ?? 0) - (float) $dbSub['referral_discount_applied']);
                 $db->table('users')->where('id', $dbSub['user_id'])->update([
                     'referral_balance' => $newBalance,
-                    'updated_at'       => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
             }
-            
+
             $db->table('transactions')->insert([
-                'user_id' => $dbSub['user_id'], 
-                'type' => 'subscription', 
-                'amount' => $dbSub['amount_paid'], 
-                'description' => 'Subscription Stacking: ' . $plan['name'], 
-                'payment_method' => 'online', 
-                'payment_status' => 'completed', 
-                'transaction_id' => $id, 
+                'user_id' => $dbSub['user_id'],
+                'type' => 'subscription',
+                'amount' => $dbSub['amount_paid'],
+                'description' => 'Subscription Stacking: ' . $plan['name'],
+                'payment_method' => 'online',
+                'payment_status' => 'completed',
+                'transaction_id' => $id,
                 'created_at' => date('Y-m-d H:i:s')
             ]);
             return $this->respond(['status' => 'success', 'message' => 'Payment verified and plans stacked!']);
@@ -1284,7 +1333,7 @@ class AdminApi extends BaseApiController
         if ($state === 'FAILED' || $state === 'CANCELLED') {
             $db->table('user_subscriptions')->where('id', $dbSub['id'])->update([
                 'payment_status' => 'failed',
-                'updated_at'     => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
             return $this->respond(['status' => 'failed', 'message' => 'Payment failed or was cancelled.']);
         }
@@ -1346,23 +1395,6 @@ class AdminApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'This plan requires payment'], 400);
         }
 
-        // Block if user already has an active, non-exhausted subscription of the same user_type (seller/buyer)
-        $query = $db->query(
-            "SELECT us.id FROM user_subscriptions us
-             LEFT JOIN subscription_plans sp ON sp.id = us.plan_id
-             WHERE us.user_id = ?
-               AND sp.user_type = ?
-               AND us.is_active = 1
-               AND us.expires_at > NOW()
-               AND (sp.plan_type = 'duration' OR sp.limit_value IS NULL OR sp.limit_value = 0 OR us.usage_count < sp.limit_value)
-             LIMIT 1",
-            [(int) $userId, $plan['user_type'] ?? 'seller']
-        );
-        $activeSub = ($query && is_object($query)) ? $query->getRowArray() : null;
-        if ($activeSub) {
-            return $this->respond(['success' => false, 'message' => 'You already have an active subscription for this user role. Please wait until it expires or is exhausted before activating a new plan.'], 409);
-        }
-
         // Activate the subscription
         $now = date('Y-m-d H:i:s');
         $expiryDate = $plan['duration_hours'] > 0
@@ -1370,19 +1402,19 @@ class AdminApi extends BaseApiController
             : '2099-12-31 23:59:59';
 
         $inserted = $db->table('user_subscriptions')->insert([
-            'user_id'                   => $userId,
-            'plan_id'                   => $plan['id'],
-            'coupon_id'                 => null,
-            'starts_at'                 => $now,
-            'expires_at'                => $expiryDate,
-            'usage_count'               => 0,
-            'is_active'                 => 1,
-            'payment_status'            => 'paid',
-            'amount_paid'               => 0,
+            'user_id' => $userId,
+            'plan_id' => $plan['id'],
+            'coupon_id' => null,
+            'starts_at' => $now,
+            'expires_at' => $expiryDate,
+            'usage_count' => 0,
+            'is_active' => 1,
+            'payment_status' => 'paid',
+            'amount_paid' => 0,
             'referral_discount_applied' => 0,
-            'merchant_transaction_id'   => null,
-            'created_at'                => $now,
-            'updated_at'                => $now,
+            'merchant_transaction_id' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
         if (!$inserted) {
             return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
