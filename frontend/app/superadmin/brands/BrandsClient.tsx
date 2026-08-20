@@ -12,7 +12,6 @@ import { confirmToast } from '@/lib/toast-utils';
 interface Brand { id: number; brand_name: string; seller_id: number; seller_name: string | null; seller_mobile: string | null; is_blocked: string; rejection_reason: string | null; is_active?: string | number; description?: string; created_at: string; }
 interface Seller { id: number; name: string; email: string; user_type: string; }
 interface Product { id: number; title: string; product_number: string; brand_id: number | null; listing_type_id?: number | null; status: string; }
-interface ListingType { id: number; type_name: string; }
 interface RejectionTemplate { id: number; template_text: string; type: string; }
 
 const thStyle: React.CSSProperties = { backgroundColor: '#f8f9fa', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, color: '#677788', padding: '1.1rem 1rem' };
@@ -29,7 +28,6 @@ export default function BrandsClient() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showTag, setShowTag] = useState(false);
-  const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
   const [createForm, setCreateForm] = useState({ seller_id: '', brand_name: '', description: '' });
   const [sellerSearch, setSellerSearch] = useState('');
   const [sellerDropdownOpen, setSellerDropdownOpen] = useState(false);
@@ -78,12 +76,10 @@ export default function BrandsClient() {
     Promise.all([
       api.get<Brand[]>('/superadmin/brands'),
       api.get<Seller[]>('/superadmin/sellers-list'),
-      api.get<{ listing_types: ListingType[] }>('/shared/taxonomy'),
       api.get<RejectionTemplate[]>('/superadmin/rejection-templates?type=Brands'),
-    ]).then(([br, sl, tx, rt]) => {
+    ]).then(([br, sl, rt]) => {
       if (br.success && br.data) setBrands(br.data);
       if (sl.success && sl.data) setSellers(sl.data);
-      if (tx.success && tx.data) setListingTypes(tx.data.listing_types || []);
       if (rt.success && rt.data) setRejectionTemplates(rt.data);
       setLoading(false);
     });
@@ -313,9 +309,9 @@ export default function BrandsClient() {
 
         <BulkCsvUpload
           endpoint="/superadmin/bulk-upload-brands"
-          templateCsv='brand_name,listing_types,seller_email,description\nNike,"Clothing, Footwear, Accessories",seller@example.com,Premium sportswear\nAdidas,"Footwear, Sports",admin@example.com,Sports & lifestyle'
+          templateCsv='brand_name,seller_email,description\nNike,seller@example.com,Premium sportswear\nAdidas,admin@example.com,Sports & lifestyle'
           templateFilename="brands_template.csv"
-          formatGuide="brand_name (required), listing_types (Listing Type Names, comma separated), seller_email (User Email), description"
+          formatGuide="brand_name (required), seller_email (User Email — links brand to seller), description (optional)"
           title="Bulk Upload Brands"
           onSuccess={load}
         />
@@ -526,17 +522,47 @@ export default function BrandsClient() {
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
                     <label style={labelStyle}>1. Select User (Seller/Hybrid)</label>
-                    <select className="form-select" style={inputStyle} value={tagSellerId} onChange={(e) => handleTagSellerChange(e.target.value)}>
-                      <option value="">Choose a user...</option>
-                      {sellers.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
-                    </select>
+                    <div style={{
+                      ...inputStyle,
+                      background: '#f0f2f5',
+                      color: '#4b566b',
+                      cursor: 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      userSelect: 'none',
+                    }}>
+                      <i className="bi bi-lock-fill" style={{ color: '#adb5bd', fontSize: '0.75rem', flexShrink: 0 }}></i>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {tagSellerId
+                          ? (sellers.find(s => String(s.id) === tagSellerId)?.name
+                              ? `${sellers.find(s => String(s.id) === tagSellerId)!.name} (${sellers.find(s => String(s.id) === tagSellerId)!.email})`
+                              : `User #${tagSellerId}`)
+                          : <span className="text-muted fst-italic">No seller selected</span>}
+                      </span>
+                    </div>
+                    <div className="form-text small mt-1 text-muted">User is fixed to this brand\'s seller.</div>
                   </div>
                   <div className="col-md-6">
                     <label style={labelStyle}>2. Select Target Brand</label>
-                    <select className="form-select" style={inputStyle} value={tagBrandId} onChange={(e) => setTagBrandId(e.target.value)}>
-                      <option value="">Choose a brand...</option>
-                      {brands.map((b) => <option key={b.id} value={b.id}>{b.brand_name}</option>)}
-                    </select>
+                    <div style={{
+                      ...inputStyle,
+                      background: '#f0f2f5',
+                      color: '#4b566b',
+                      cursor: 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      userSelect: 'none',
+                    }}>
+                      <i className="bi bi-lock-fill" style={{ color: '#adb5bd', fontSize: '0.75rem', flexShrink: 0 }}></i>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {tagBrandId
+                          ? (brands.find(b => String(b.id) === tagBrandId)?.brand_name || `Brand #${tagBrandId}`)
+                          : <span className="text-muted fst-italic">No brand selected</span>}
+                      </span>
+                    </div>
+                    <div className="form-text small mt-1 text-muted">Brand is fixed and cannot be changed here.</div>
                   </div>
                 </div>
 

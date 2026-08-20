@@ -4886,63 +4886,30 @@ private function processImage($source, $subDir): ?string
     }
 
     /**
-     * Create a new error message
+     * Create a new error message — DISABLED
+     * Message keys are system-defined and cannot be created by SuperAdmin.
      */
     public function createErrorMessage()
     {
-        $db = \Config\Database::connect();
-        $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
-
-        // Validation
-        if (empty($data['message_key'])) {
-            return $this->respond(['success' => false, 'message' => 'Message key is required'], 400);
-        }
-        if (empty($data['message_value'])) {
-            return $this->respond(['success' => false, 'message' => 'Message value is required'], 400);
-        }
-
-        // Check if key already exists
-        $existing = $db->table('app_messages')
-            ->where('message_key', $data['message_key'])
-            ->get()
-            ->getRowArray();
-
-        if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'Message key already exists'], 400);
-        }
-
-        // Insert new message
-        $insertData = [
-            'message_key' => $data['message_key'],
-            'message_value' => $data['message_value'],
-            'category' => $data['category'] ?? 'general',
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ];
-
-        try {
-            $result = $db->table('app_messages')->insert($insertData);
-            if ($result) {
-                return $this->respond(['success' => true, 'message' => 'Error message created successfully']);
-            }
-        } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => 'Failed to create message: ' . $e->getMessage()], 500);
-        }
-
-        return $this->respond(['success' => false, 'message' => 'Failed to create error message'], 500);
+        return $this->respond([
+            'success' => false,
+            'message' => 'Creating new message keys is not allowed. Message keys are system-defined.',
+        ], 403);
     }
 
     /**
-     * Update an error message by ID
+     * Update an error message by ID.
+     * Only message_value and category can be changed. message_key is immutable.
      */
     public function updateErrorMessage($id)
     {
         $db = \Config\Database::connect();
         $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
 
-        // Validation
-        if (empty($data['message_value'])) {
-            return $this->respond(['success' => false, 'message' => 'Message value is required'], 400);
+        // Reject blank message_value
+        $messageValue = trim($data['message_value'] ?? '');
+        if ($messageValue === '') {
+            return $this->respond(['success' => false, 'message' => 'Message value cannot be blank'], 400);
         }
 
         // Check if message exists
@@ -4955,11 +4922,11 @@ private function processImage($source, $subDir): ?string
             return $this->respond(['success' => false, 'message' => 'Error message not found'], 404);
         }
 
-        // Update message
+        // Only update message_value and category — message_key is immutable
         $updateData = [
-            'message_value' => $data['message_value'],
-            'category' => $data['category'] ?? $message['category'],
-            'updated_at' => date('Y-m-d H:i:s'),
+            'message_value' => $messageValue,
+            'category'      => $data['category'] ?? $message['category'],
+            'updated_at'    => date('Y-m-d H:i:s'),
         ];
 
         try {
@@ -4971,28 +4938,15 @@ private function processImage($source, $subDir): ?string
     }
 
     /**
-     * Delete an error message by ID
+     * Delete an error message by ID — DISABLED
+     * Message keys are system-defined and cannot be deleted by SuperAdmin.
      */
     public function deleteErrorMessage($id)
     {
-        $db = \Config\Database::connect();
-
-        // Check if message exists
-        $message = $db->table('app_messages')
-            ->where('id', $id)
-            ->get()
-            ->getRowArray();
-
-        if (!$message) {
-            return $this->respond(['success' => false, 'message' => 'Error message not found'], 404);
-        }
-
-        try {
-            $db->table('app_messages')->where('id', $id)->delete();
-            return $this->respond(['success' => true, 'message' => 'Error message deleted successfully']);
-        } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => 'Failed to delete message: ' . $e->getMessage()], 500);
-        }
+        return $this->respond([
+            'success' => false,
+            'message' => 'Deleting message keys is not allowed. Message keys are system-defined.',
+        ], 403);
     }
 
     /**

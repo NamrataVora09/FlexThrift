@@ -500,6 +500,7 @@ class SharedApi extends BaseApiController
 
     /**
      * POST /api/v1/shared/update-app-message/{id}
+     * SuperAdmin may only edit message_value. Key is immutable, value cannot be blank.
      */
     public function updateAppMessage($id)
     {
@@ -510,62 +511,38 @@ class SharedApi extends BaseApiController
 
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
-        $value = $data['message_value'] ?? '';
+        $value = trim($data['message_value'] ?? '');
+
+        if ($value === '') {
+            return $this->respond(['success' => false, 'message' => 'Message value cannot be blank'], 400);
+        }
 
         $db->table('app_messages')->where('id', $id)->update(['message_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => 'Message updated']);
     }
 
     /**
-     * POST /api/v1/shared/add-app-message
+     * POST /api/v1/shared/add-app-message — DISABLED
+     * Message keys are system-defined and cannot be created via the API.
      */
     public function addAppMessage()
     {
-        $jwtUser = $this->request->jwt_user;
-        if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $db = \Config\Database::connect();
-        $data = $this->request->getJSON(true);
-        $key = $data['message_key'] ?? '';
-        $value = $data['message_value'] ?? '';
-        $category = $data['category'] ?? 'general';
-
-        if (!$key || !$value) {
-            return $this->respond(['success' => false, 'message' => 'Key and value are required'], 422);
-        }
-
-        // Check duplicate
-        $existing = $db->table('app_messages')->where('message_key', $key)->get()->getRowArray();
-        if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'Message key already exists'], 422);
-        }
-
-        $db->table('app_messages')->insert([
-            'message_key' => $key,
-            'message_value' => $value,
-            'category' => $category,
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        return $this->respond(['success' => true, 'message' => 'Message added', 'id' => $db->insertID()]);
+        return $this->respond([
+            'success' => false,
+            'message' => 'Creating new message keys is not allowed. Message keys are system-defined.',
+        ], 403);
     }
 
     /**
-     * POST /api/v1/shared/delete-app-message/{id}
+     * POST /api/v1/shared/delete-app-message/{id} — DISABLED
+     * Message keys are system-defined and cannot be deleted via the API.
      */
     public function deleteAppMessage($id)
     {
-        $jwtUser = $this->request->jwt_user;
-        if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $db = \Config\Database::connect();
-        $db->table('app_messages')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Message deleted']);
+        return $this->respond([
+            'success' => false,
+            'message' => 'Deleting message keys is not allowed. Message keys are system-defined.',
+        ], 403);
     }
 
     /**
@@ -882,7 +859,7 @@ class SharedApi extends BaseApiController
     public function brands()
     {
         $db = \Config\Database::connect();
-        $brands = $db->table('brands')->orderBy('name', 'ASC')->get()->getResultArray();
+        $brands = $db->table('brands')->orderBy('brand_name', 'ASC')->get()->getResultArray();
         return $this->respond(['success' => true, 'data' => $brands]);
     }
 
@@ -890,7 +867,7 @@ class SharedApi extends BaseApiController
     {
         $data = $this->request->getJSON(true);
         $db = \Config\Database::connect();
-        $db->table('brands')->insert(['name' => $data['name'], 'seller_id' => $this->request->jwt_user['user_id'], 'created_at' => date('Y-m-d H:i:s')]);
+        $db->table('brands')->insert(['brand_name' => $data['brand_name'] ?? $data['name'] ?? '', 'seller_id' => $this->request->jwt_user['user_id'], 'created_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => 'Brand created'], 201);
     }
 
