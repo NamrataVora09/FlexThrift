@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
 import { useToast } from '@/lib/toast';
 
 // ── Inline rental calendar (reused from ProductDetailClient) ────────────────
@@ -211,6 +210,7 @@ function useNow(intervalMs = 1000) {
 }
 
 export default function Page() {
+  const { toastSuccess, toastError } = useToast();
   const now = useNow(1000);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [filter, setFilter] = useState<string>('all');
@@ -262,7 +262,7 @@ export default function Page() {
       setActionModal(null);
       load();
     } else {
-      toast.error(res?.message || 'Action failed');
+      toastError('offer_cancel_failed', res?.message || 'Failed to cancel offer');
     }
   };
 
@@ -275,7 +275,7 @@ export default function Page() {
       setActionModal(null);
       load();
     } else {
-      toast.error(res?.message || 'Failed to confirm dates');
+      toastError('dates_update_failed', res?.message || 'Failed to confirm dates');
     }
   };
 
@@ -288,11 +288,11 @@ export default function Page() {
     });
     setRatingLoading(false);
     if (res.success) {
-      toast.success('Rating submitted successfully!');
+      toastSuccess('rating_submitted_success', 'Rating submitted successfully!');
       setRatingModal(null);
       load();
     } else {
-      toast.error(res.message || 'Failed to submit rating');
+      toastError('rating_submitted_failed', res.message || 'Failed to submit rating');
     }
   };
 

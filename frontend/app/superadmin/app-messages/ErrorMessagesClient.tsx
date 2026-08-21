@@ -70,7 +70,7 @@ export default function ErrorMessagesClient() {
         setMessages(res.data);
       }
     } catch (err: any) {
-      toastError('generic_error', 'Failed to load messages');
+      toastError('app_messages_load_failed', 'Failed to load messages');
     } finally {
       setLoading(false);
     }
@@ -95,16 +95,16 @@ export default function ErrorMessagesClient() {
         category: formData.category,
       });
       if (res.success) {
-        toastSuccess('cms_page_update_success', 'Message updated successfully!');
+        toastSuccess('app_messages_update_success', 'Message updated successfully!');
         setShowEditModal(false);
         setEditingMessage(null);
         setFormData({ message_value: '', category: 'general' });
         await loadMessages();
       } else {
-        toastError('generic_error', res.message || 'Failed to update message');
+        toastError('app_messages_update_failed', res.message || 'Failed to update message');
       }
     } catch (err: any) {
-      toastError('generic_error', err.message || 'Failed to update message');
+      toastError('app_messages_update_failed', err.message || 'Failed to update message');
     } finally {
       setSubmitting(false);
     }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 interface Contact {
   id: number;
@@ -27,6 +27,7 @@ interface Contact {
 }
 
 export default function Page() {
+  const { toastSuccess, toastError } = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [ratingModal, setRatingModal] = useState<{ sellerId: number; productId: number } | null>(null);
@@ -62,10 +63,10 @@ export default function Page() {
     if (res?.success) {
       setRatingModal(null);
       setRatingComment('');
-      toast.success('Endorsement submitted successfully!');
+      toastSuccess('endorsement_submitted_success', 'Endorsement submitted successfully!');
       load();
     } else {
-      toast.error(res?.message || 'Something went wrong');
+      toastError('endorsement_submitted_failed', res?.message || 'Something went wrong');
     }
   };
 

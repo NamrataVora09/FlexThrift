@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 interface ChargeItem {
   name: string;
@@ -32,6 +32,7 @@ interface CheckoutData {
 }
 
 export default function SellerCheckoutPlanPage() {
+  const { toastError } = useToast();
   const params = useParams();
   const router = useRouter();
   const planId = params.id as string;
@@ -102,7 +103,7 @@ export default function SellerCheckoutPlanPage() {
     if (res.success && res.data?.redirect_url) {
       window.location.href = res.data.redirect_url;
     } else {
-      toast.error(res.message || 'Failed to initiate payment. Please try again.');
+      toastError('payment_initiation_failed', res.message || 'Failed to initiate payment. Please try again.');
       setPaying(false);
     }
   }, [checkoutData, planId, appliedCoupon, useReferral]);

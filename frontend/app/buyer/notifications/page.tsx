@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 interface Notification {
   id: number;
@@ -38,6 +38,7 @@ function getRelatedLink(title: string, relatedId: number) {
 }
 
 export default function Page() {
+  const { toastSuccess, toastError } = useToast();
   const [items, setItems] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingRead, setMarkingRead] = useState(false);
@@ -56,10 +57,10 @@ export default function Page() {
     setMarkingRead(true);
     const res = await api.post('/buyer/mark-notifications-read');
     if (res?.success) {
-      toast.success('All notifications marked as read');
+      toastSuccess('notifications_marked_read', 'All notifications marked as read');
       load();
     } else {
-      toast.error(res?.message || 'Failed to mark notifications as read');
+      toastError('notifications_mark_read_failed', res?.message || 'Failed to mark notifications as read');
     }
     setMarkingRead(false);
   };

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface Charge { id: number; charge_name: string; charge_type: string; charge_value: string; is_active: string; created_at: string; }
@@ -15,6 +15,7 @@ const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: '0.8rem', c
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.6rem 1.5rem' };
 
 export default function FeeManagementClient() {
+  const { toastSuccess, toastError } = useToast();
   const [charges, setCharges] = useState<Charge[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -49,10 +50,10 @@ export default function FeeManagementClient() {
     confirmToast('Delete this charge?', async () => {
       const res = await api.post(`/superadmin/delete-charge/${id}`);
       if (res.success) {
-        toast.success('Charge deleted');
+        toastSuccess('charge_delete_success', 'Charge deleted');
         load();
       } else {
-        toast.error(res.message || 'Delete failed');
+        toastError('charge_delete_failed', res.message || 'Delete failed');
       }
     }, 'Delete');
   };
@@ -63,7 +64,7 @@ export default function FeeManagementClient() {
     if (res.success) {
       load();
     } else {
-      toast.error(res.message || 'Failed to toggle status');
+      toastError('charge_update_failed', res.message || 'Failed to toggle status');
     }
   };
 

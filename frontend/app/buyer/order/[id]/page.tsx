@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1').replace('/api/v1', '');
 
@@ -72,6 +72,7 @@ const fmt = (d?: string) => {
 };
 
 export default function OrderDetailPage() {
+  const { toastSuccess, toastError } = useToast();
   const params = useParams();
   const router = useRouter();
   const orderId = params?.id as string;
@@ -111,10 +112,10 @@ export default function OrderDetailPage() {
       setShowReview(false);
       setRating(0);
       setReviewComment('');
-      toast.success('Reward sent successfully!');
+      toastSuccess('reward_sent_success', 'Reward sent successfully!');
       load();
     } else {
-      toast.error(res?.message || 'Failed to submit review');
+      toastError('review_submit_failed', res?.message || 'Failed to submit review');
     }
   };
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, ChangeEvent } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1').replace('/api/v1', '');
 
@@ -46,6 +46,7 @@ const statusColor: Record<string, string> = {
 };
 
 export default function SellerChatPage() {
+  const { toastError } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [selected, setSelected] = useState<Conversation | null>(null);
@@ -104,12 +105,12 @@ export default function SellerChatPage() {
       try {
         const data = await api.upload(`/seller/offer-messages/${selected.offer_id}/upload`, formData);
         if (!data.success) { 
-          toast.error(data.message || 'Upload failed'); 
+          toastError('file_upload_failed', data.message || 'Upload failed'); 
           setSending(false); 
           return; 
         }
       } catch {
-        toast.error('Upload failed'); 
+        toastError('file_upload_failed', 'Upload failed'); 
         setSending(false); 
         return;
       }
@@ -118,7 +119,7 @@ export default function SellerChatPage() {
     } else {
       const res = await api.post(`/seller/offer-messages/${selected.offer_id}`, { message: input.trim() });
       if (!res?.success) { 
-        toast.error(res?.message || 'Failed to send'); 
+        toastError('message_send_failed', res?.message || 'Failed to send'); 
         setSending(false); 
         return; 
       }

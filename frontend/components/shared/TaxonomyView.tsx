@@ -5,7 +5,6 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
-import toast from 'react-hot-toast';
 import HexColorPicker from '@/components/shared/HexColorPicker';
 
 interface ListingType { id: number; type_name?: string; name?: string; image?: string; field_config?: string; gender_config?: string; created_at?: string; }
@@ -241,9 +240,7 @@ export default function TaxonomyView() {
       toastSuccess('taxonomy_update_success', 'Successfully updated!');
       load();
     } else {
-     toast.error(res.message || 'Your request is Failed', {
-  style: { background: '#ff4444', color: '#fff' },
-});
+      toastError('taxonomy_update_failed', res.message || 'Your request failed');
     }
   };
 
@@ -257,13 +254,13 @@ export default function TaxonomyView() {
     const res = await api.upload<{ message: string; inserted: number; skipped: number; errors: string[] }>('/superadmin/bulk-upload-catalogue', fd);
     setCsvUploading(false);
     if (res.success) {
-      toast.success(res.data?.message || res.message || 'Upload complete');
+      toastSuccess('csv_upload_success', res.data?.message || res.message || 'Upload complete');
       setCsvFile(null);
       const fileInput = document.getElementById('csvFileInput') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
       load();
     } else {
-      toast.error(res.message || 'Upload failed');
+      toastError('csv_upload_failed', res.message || 'Upload failed');
     }
   };
 

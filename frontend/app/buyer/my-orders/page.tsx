@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 interface Order {
   id: number;
@@ -28,6 +28,7 @@ interface Order {
 const statusFilters = ['all', 'pending', 'confirmed', 'dispatched', 'delivered', 'completed', 'cancelled'];
 
 function MyOrdersInner() {
+  const { toastSuccess, toastError } = useToast();
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +54,7 @@ function MyOrdersInner() {
     load();
     const successMsg = searchParams.get('success');
     if (successMsg) {
-      toast.success(decodeURIComponent(successMsg));
+      toastSuccess('generic_success', decodeURIComponent(successMsg));
       // Clean up URL without re-render
       window.history.replaceState({}, '', '/buyer/my-orders');
     }
@@ -84,7 +85,7 @@ function MyOrdersInner() {
     if (res?.success && res.data?.redirect_url) {
       window.location.href = res.data.redirect_url;
     } else {
-      toast.error(res?.message || 'Failed to initiate payment. Please try again.');
+      toastError('payment_initiation_failed', res?.message || 'Failed to initiate payment. Please try again.');
     }
   };
 
@@ -101,10 +102,10 @@ function MyOrdersInner() {
       setReviewModal(null);
       setRating(0);
       setReviewComment('');
-      toast.success('Reward sent successfully!');
+      toastSuccess('reward_sent_success', 'Reward sent successfully!');
       load();
     } else {
-      toast.error(res?.message || 'Failed to submit review');
+      toastError('review_submit_failed', res?.message || 'Failed to submit review');
     }
   };
 

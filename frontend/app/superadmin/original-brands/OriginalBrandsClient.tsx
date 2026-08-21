@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface OBrand {
@@ -33,6 +33,7 @@ const logoStyle: React.CSSProperties = { width: 50, height: 50, objectFit: 'cont
 const logoPlaceholder: React.CSSProperties = { ...logoStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: '1.2rem' };
 
 export default function OriginalBrandsClient() {
+  const { toastSuccess, toastError } = useToast();
   const [brands, setBrands] = useState<OBrand[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -139,7 +140,7 @@ export default function OriginalBrandsClient() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (addLtIds.length === 0) {
-      toast.error('Please select at least one listing type');
+      toastError('original_brand_listing_type_required', 'Please select at least one listing type');
       return;
     }
 
@@ -154,7 +155,7 @@ export default function OriginalBrandsClient() {
       const res = await api.upload('/superadmin/add-original-brand', fd);
       setSubmitting(false);
       if (res.success) {
-        toast.success('Brand created successfully!');
+        toastSuccess('original_brand_create_success', 'Brand created successfully!');
         setShowAdd(false);
         setAddName('');
         setAddDesc('');
@@ -163,11 +164,11 @@ export default function OriginalBrandsClient() {
         setAddLtSearch('');
         load();
       } else {
-        toast.error(res.message || 'Failed');
+        toastError('original_brand_create_failed', res.message || 'Failed to create brand');
       }
     } catch (err) {
       setSubmitting(false);
-      toast.error('Error creating brand');
+      toastError('original_brand_create_failed', 'Error creating brand');
     }
   };
 
@@ -196,7 +197,7 @@ export default function OriginalBrandsClient() {
     e.preventDefault();
     if (!showEdit) return;
     if (editLtIds.length === 0) {
-      toast.error('Please select at least one listing type');
+      toastError('original_brand_listing_type_required', 'Please select at least one listing type');
       return;
     }
 
@@ -212,15 +213,15 @@ export default function OriginalBrandsClient() {
       const res = await api.upload(`/superadmin/update-original-brand/${showEdit.id}`, fd);
       setSubmitting(false);
       if (res.success) {
-        toast.success('Brand updated successfully!');
+        toastSuccess('original_brand_update_success', 'Brand updated successfully!');
         setShowEdit(null);
         load();
       } else {
-        toast.error(res.message || 'Failed');
+        toastError('original_brand_update_failed', res.message || 'Failed to update brand');
       }
     } catch (err) {
       setSubmitting(false);
-      toast.error('Error updating brand');
+      toastError('original_brand_update_failed', 'Error updating brand');
     }
   };
 
@@ -229,13 +230,13 @@ export default function OriginalBrandsClient() {
       try {
         const res = await api.post(`/superadmin/delete-original-brand/${id}`);
         if (res.success) {
-          toast.success('Brand deleted successfully');
+          toastSuccess('original_brand_delete_success', 'Brand deleted successfully');
           load();
         } else {
-          toast.error(res.message || 'Delete failed');
+          toastError('original_brand_delete_failed', res.message || 'Failed to delete brand');
         }
       } catch (err) {
-        toast.error('Error deleting brand');
+        toastError('original_brand_delete_failed', 'Error deleting brand');
       }
     }, 'Delete');
   };

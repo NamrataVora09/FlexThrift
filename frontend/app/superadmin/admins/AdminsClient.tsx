@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface Admin {
@@ -21,6 +21,7 @@ const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.75rem',
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', fontSize: '0.875rem', padding: '0.6rem 1rem', borderRadius: '0.5rem' };
 
 export default function AdminsClient() {
+  const { toastSuccess, toastError } = useToast();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -85,10 +86,10 @@ export default function AdminsClient() {
     confirmToast(`Are you sure you want to ${action} this admin?`, async () => {
       const res = await api.post(`/superadmin/toggle-admin-status/${id}`);
       if (res.success) {
-        toast.success(`Admin ${action}d successfully`);
+        toastSuccess('admin_status_updated', `Admin ${action}d successfully`);
         load();
       } else {
-        toast.error(res.message || 'Action failed');
+        toastError('admin_status_update_failed', res.message || 'Failed to update status');
       }
     }, action.charAt(0).toUpperCase() + action.slice(1));
   };
@@ -100,10 +101,10 @@ export default function AdminsClient() {
     confirmToast(message, async () => {
       const res = await api.post(`/superadmin/toggle-admin-rights/${id}/${role}`);
       if (res.success) {
-        toast.success(`Admin ${action}ed from ${roleLabel} operations`);
+        toastSuccess('admin_role_updated', `Admin ${action}ed from ${roleLabel} operations`);
         load();
       } else {
-        toast.error(res.message || 'Action failed');
+        toastError('admin_role_update_failed', res.message || 'Failed to update role operations');
       }
     }, action.charAt(0).toUpperCase() + action.slice(1));
   };
@@ -112,10 +113,10 @@ export default function AdminsClient() {
     confirmToast('Are you sure you want to delete this admin? This cannot be undone.', async () => {
       const res = await api.post(`/superadmin/delete-admin/${id}`);
       if (res.success) {
-        toast.success('Admin deleted successfully');
+        toastSuccess('admin_delete_success', 'Admin deleted successfully');
         load();
       } else {
-        toast.error(res.message || 'Delete failed');
+        toastError('admin_delete_failed', res.message || 'Failed to delete admin');
       }
     }, 'Delete');
   };
@@ -134,10 +135,10 @@ export default function AdminsClient() {
       fd.append('action', action);
       const res = await api.post('/superadmin/bulk-toggle-admin-rights', fd);
       if (res.success) {
-        toast.success(`Broad access ${actionLabel}ed successfully`);
+        toastSuccess('admin_bulk_rights_updated', `Broad access ${actionLabel}ed successfully`);
         load();
       } else {
-        toast.error(res.message || 'Bulk update failed');
+        toastError('admin_bulk_rights_failed', res.message || 'Failed to update rights');
       }
     }, actionLabel.charAt(0).toUpperCase() + actionLabel.slice(1));
   };
@@ -145,7 +146,7 @@ export default function AdminsClient() {
   const createAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mobileError || emailError) {
-      toast.error('Please fix the errors before submitting');
+      toastError('form_validation_error', 'Please fix the errors before submitting');
       return;
     }
     setSubmitting(true);
@@ -157,14 +158,14 @@ export default function AdminsClient() {
     });
     setSubmitting(false);
     if (res.success) {
-      toast.success('Administrator created!');
+      toastSuccess('admin_create_success', 'Administrator created!');
       setShowModal(false);
       setForm({ name: '', email: '', mobile: '', password: '' });
       setMobileError(false);
       setEmailError(false);
       load();
     } else {
-      toast.error(res.message || 'Failed to create admin');
+      toastError('admin_create_failed', res.message || 'Failed to create admin');
     }
   };
 
@@ -201,7 +202,7 @@ export default function AdminsClient() {
   const updateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mobileError || emailError) {
-      toast.error('Please fix the errors before submitting');
+      toastError('form_validation_error', 'Please fix the errors before submitting');
       return;
     }
     if (!editingAdmin) return;
@@ -214,7 +215,7 @@ export default function AdminsClient() {
     });
     setSubmitting(false);
     if (res.success) {
-      toast.success('Administrator updated!');
+      toastSuccess('admin_update_success', 'Administrator updated!');
       setEditModal(false);
       setEditingAdmin(null);
       setForm({ name: '', email: '', mobile: '', password: '' });
@@ -222,7 +223,7 @@ export default function AdminsClient() {
       setEmailError(false);
       load();
     } else {
-      toast.error(res.message || 'Failed to update admin');
+      toastError('admin_update_failed', res.message || 'Failed to update admin');
     }
   };
 

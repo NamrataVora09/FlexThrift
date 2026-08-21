@@ -87,8 +87,8 @@ export default function SettingsClient() {
       fd.append('to_date', toDate);
       const res = await api.post('/superadmin/bulk-delete-rejected', fd);
       setDeleting(false);
-      if (res.success) toastSuccess('generic_success', res.message || 'Cleanup complete');
-      else toastError('generic_error', res.message || 'Failed');
+      if (res.success) toastSuccess('bulk_delete_rejected_success', res.message || 'Rejected products deleted successfully!');
+      else toastError('bulk_delete_rejected_error', res.message || 'Failed to delete rejected products');
     }, 'Delete All');
   };
 
