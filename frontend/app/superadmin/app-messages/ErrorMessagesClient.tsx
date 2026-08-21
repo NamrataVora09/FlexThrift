@@ -149,20 +149,7 @@ export default function ErrorMessagesClient() {
           <p className="text-muted small">
             View and edit system-wide messages shown to users across the platform. SuperAdmin only.
           </p>
-          <div style={{
-            background: '#fff3cd',
-            border: '1px solid #ffc107',
-            borderRadius: 8,
-            padding: '10px 16px',
-            fontSize: '0.82rem',
-            color: '#856404',
-            marginTop: 8,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}>
-            
-          </div>
+         
         </div>
 
         {/* Controls Section */}
