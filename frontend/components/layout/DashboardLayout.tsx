@@ -8,6 +8,8 @@ import DashboardSidebar from './DashboardSidebar';
 import { getDashboardPath } from '@/lib/navigation';
 import { showToast } from '@/lib/toast';
 
+import SeoManager from '@/components/shared/SeoManager';
+
 interface Props {
   children: ReactNode;
   requiredRoles?: string[];
@@ -159,6 +161,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
 
   return (
     <div>
+      <SeoManager />
       <DashboardTopbar onToggleSidebar={toggleSidebar} />
 
       {/* Mobile overlay */}

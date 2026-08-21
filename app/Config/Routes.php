@@ -352,7 +352,9 @@ function register_api_routes($routes)
         $routes->post('update-cms-page/(:any)', 'Api\SuperAdminApi::updateCmsPage/$1');
         $routes->post('delete-cms-page/(:num)', 'Api\SuperAdminApi::deleteCmsPage/$1');
         $routes->get('seo-settings', 'Api\SuperAdminApi::getSeoSettings');
+        $routes->post('seo-settings', 'Api\SuperAdminApi::createSeoSetting');
         $routes->post('seo-settings/(:num)', 'Api\SuperAdminApi::updateSeoSetting/$1');
+        $routes->delete('seo-settings/(:num)', 'Api\SuperAdminApi::deleteSeoSetting/$1');
         $routes->get('financial-reports', 'Api\SuperAdminApi::financialReports');
         $routes->get('reports', 'Api\SuperAdminApi::reports');
         // Bulk uploads

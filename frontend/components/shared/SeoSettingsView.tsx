@@ -27,12 +27,24 @@ export default function SeoSettingsView() {
 
   // Editing state
   const [editing, setEditing] = useState<SeoSetting | null>(null);
+  const [editPageName, setEditPageName] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editKeywords, setEditKeywords] = useState('');
   const [editOgTitle, setEditOgTitle] = useState('');
   const [editOgDescription, setEditOgDescription] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Creating new SEO setting state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newPageName, setNewPageName] = useState('');
+  const [newRoute, setNewRoute] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [newKeywords, setNewKeywords] = useState('');
+  const [newOgTitle, setNewOgTitle] = useState('');
+  const [newOgDescription, setNewOgDescription] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const fetchSettings = () => {
     setLoading(true);
@@ -101,6 +113,7 @@ export default function SeoSettingsView() {
   // Edit Handlers
   const startEdit = (setting: SeoSetting) => {
     setEditing(setting);
+    setEditPageName(setting.page_name || '');
     setEditTitle(setting.title || '');
     setEditDescription(setting.meta_description || '');
     setEditKeywords(setting.meta_keywords || '');
@@ -114,6 +127,7 @@ export default function SeoSettingsView() {
 
     setSaving(true);
     const res = await api.post(`/superadmin/seo-settings/${editing.id}`, {
+      page_name: editPageName,
       title: editTitle,
       meta_description: editDescription,
       meta_keywords: editKeywords,
@@ -128,6 +142,57 @@ export default function SeoSettingsView() {
       fetchSettings();
     } else {
       toastError('seo_setting_update_failed', res.message || 'Failed to update SEO settings.');
+    }
+  };
+
+  // Create Custom Page Handler
+  const handleCreateNewSeo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPageName.trim() || !newRoute.trim()) {
+      toastError('seo_validation_error', 'Page name and route path are required.');
+      return;
+    }
+
+    setCreating(true);
+    const res = await api.post('/superadmin/seo-settings', {
+      page_name: newPageName.trim(),
+      route: newRoute.trim(),
+      title: newTitle.trim() || undefined,
+      meta_description: newDescription.trim() || undefined,
+      meta_keywords: newKeywords.trim() || undefined,
+      og_title: newOgTitle.trim() || undefined,
+      og_description: newOgDescription.trim() || undefined,
+    });
+    setCreating(false);
+
+    if (res.success) {
+      toastSuccess('seo_create_success', 'New page SEO configuration created successfully!');
+      setShowAddModal(false);
+      setNewPageName('');
+      setNewRoute('');
+      setNewTitle('');
+      setNewDescription('');
+      setNewKeywords('');
+      setNewOgTitle('');
+      setNewOgDescription('');
+      fetchSettings();
+    } else {
+      toastError('seo_create_failed', res.message || 'Failed to create SEO setting.');
+    }
+  };
+
+  // Delete Handler
+  const handleDeleteSeo = async (id: number, pageName: string) => {
+    if (!window.confirm(`Are you sure you want to delete the SEO configuration for "${pageName}"?`)) {
+      return;
+    }
+
+    const res = await api.delete(`/superadmin/seo-settings/${id}`);
+    if (res.success) {
+      toastSuccess('seo_delete_success', 'SEO setting deleted successfully.');
+      fetchSettings();
+    } else {
+      toastError('seo_delete_failed', res.message || 'Failed to delete SEO setting.');
     }
   };
 
@@ -148,13 +213,21 @@ export default function SeoSettingsView() {
     <DashboardLayout requiredRoles={['super_admin']}>
       <div className="container-fluid" style={{ paddingBottom: '3rem' }}>
         {/* Header Section */}
-        <div className="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
           <div>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 800, display: 'flex', alignContent: 'center', alignItems: 'center', gap: 10, marginBottom: '0.4rem', color: '#1e2022' }}>
               <i className="bi bi-search" style={{ color: '#ffc63a', fontSize: '1.4rem' }}></i> SEO Configuration Panel
             </h1>
             <p className="text-muted small mb-0">Configure metadata, titles, custom Open Graph sharing settings, and search engine optimization parameters for all platform routes.</p>
           </div>
+          <button
+            type="button"
+            className="btn fw-bold d-flex align-items-center gap-2"
+            onClick={() => setShowAddModal(true)}
+            style={{ background: '#ffc63a', color: '#212529', borderRadius: '0.5rem', padding: '0.6rem 1.25rem', border: 'none' }}
+          >
+            <i className="bi bi-plus-circle-fill"></i> Add Custom Page SEO
+          </button>
         </div>
 
         {/* Dynamic Stats Banner */}
@@ -284,6 +357,7 @@ export default function SeoSettingsView() {
 
                 const isTitleGood = titleLen >= 30 && titleLen <= 65;
                 const isDescGood = descLen >= 80 && descLen <= 165;
+                const isCmsPage = s.page_key.startsWith('cms_');
 
                 return (
                   <div className="col-xl-4 col-md-6" key={s.id}>
@@ -291,10 +365,20 @@ export default function SeoSettingsView() {
                       <div className="card-body p-4 d-flex flex-column h-100">
                         {/* Page Badge & Route */}
                         <div className="d-flex justify-content-between align-items-center mb-3">
-                          <span className="badge" style={{ background: '#f8f9fa', color: '#6c757d', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>
-                            {s.page_name}
+                          <span className={`badge ${isCmsPage ? 'bg-info text-dark' : 'bg-light text-secondary'}`} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>
+                            {isCmsPage ? <i className="bi bi-file-text me-1"></i> : null} {s.page_name}
                           </span>
-                          <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#888' }} className="fw-semibold">{s.route}</span>
+                          <div className="d-flex align-items-center gap-2">
+                            <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#888' }} className="fw-semibold">{s.route}</span>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link text-danger p-0 border-0 ms-1"
+                              title="Delete SEO Config"
+                              onClick={() => handleDeleteSeo(s.id, s.page_name)}
+                            >
+                              <i className="bi bi-trash" style={{ fontSize: '0.9rem' }}></i>
+                            </button>
+                          </div>
                         </div>
 
                         {/* Title Display */}
@@ -352,13 +436,115 @@ export default function SeoSettingsView() {
           </div>
         )}
 
-        {/* Immersive Edit Modal */}
+        {/* Add New Custom Page Modal */}
+        {showAddModal && (
+          <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setShowAddModal(false)}>
+            <div className="modal-dialog modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
+                <div className="modal-header p-3 border-0 bg-dark text-white">
+                  <h5 className="modal-title fw-bold d-flex align-items-center gap-2">
+                    <i className="bi bi-plus-circle" style={{ color: '#ffc63a' }}></i> Add Custom Page SEO Rule
+                  </h5>
+                  <button type="button" className="btn-close btn-close-white" onClick={() => setShowAddModal(false)}></button>
+                </div>
+                <form onSubmit={handleCreateNewSeo}>
+                  <div className="modal-body p-4 bg-light" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold" style={{ color: '#4b566b' }}>Page Name <span className="text-danger">*</span></label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          required
+                          placeholder="e.g. Seasonal Sale Landing"
+                          value={newPageName}
+                          onChange={(e) => setNewPageName(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold" style={{ color: '#4b566b' }}>Route Path <span className="text-danger">*</span></label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          required
+                          placeholder="e.g. /sale or /promotions/summer"
+                          value={newRoute}
+                          onChange={(e) => setNewRoute(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label small fw-bold" style={{ color: '#4b566b' }}>Meta Title</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Meta title for Google search results"
+                          value={newTitle}
+                          onChange={(e) => setNewTitle(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label small fw-bold" style={{ color: '#4b566b' }}>Meta Description</label>
+                        <textarea
+                          className="form-control"
+                          rows={3}
+                          placeholder="Meta description for search engine snippets"
+                          value={newDescription}
+                          onChange={(e) => setNewDescription(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label small fw-bold" style={{ color: '#4b566b' }}>Meta Keywords (Comma-separated)</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="fashion, rental, sale, luxury"
+                          value={newKeywords}
+                          onChange={(e) => setNewKeywords(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold" style={{ color: '#4b566b' }}>Open Graph Title (OG)</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Defaults to Meta Title if empty"
+                          value={newOgTitle}
+                          onChange={(e) => setNewOgTitle(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold" style={{ color: '#4b566b' }}>Open Graph Description (OG)</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Defaults to Meta Description if empty"
+                          value={newOgDescription}
+                          onChange={(e) => setNewOgDescription(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="modal-footer bg-white border-top p-3 d-flex justify-content-end gap-2">
+                    <button type="button" className="btn btn-light" onClick={() => setShowAddModal(false)}>Cancel</button>
+                    <button type="submit" className="btn fw-bold" disabled={creating} style={{ background: '#ffc63a', color: '#212529', border: 'none' }}>
+                      {creating ? 'Saving...' : 'Create SEO Setting'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Modal */}
         {editing && (
           <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setEditing(null)}>
             <div className="modal-dialog modal-xl modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
               <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
-                <div className="modal-header  p-3 border-0" style={{ borderBottom: '2px solid #ffc63a !important' }}>
-                  <h5 className="modal-title fw-bold d-flex align-items-center gap-2"><i className="bi bi-pencil-square" style={{ color: '#ffc63a' }}></i> Configure SEO: <span className="text-warning">{editing.page_name}</span></h5>
+                <div className="modal-header p-3 border-0 bg-dark text-white">
+                  <h5 className="modal-title fw-bold d-flex align-items-center gap-2">
+                    <i className="bi bi-pencil-square" style={{ color: '#ffc63a' }}></i> Configure SEO: <span className="text-warning">{editing.page_name}</span>
+                  </h5>
                   <button type="button" className="btn-close btn-close-white" onClick={() => setEditing(null)}></button>
                 </div>
                 <form onSubmit={handleSave}>
@@ -368,6 +554,19 @@ export default function SeoSettingsView() {
                       <div className="col-lg-6">
                         <div className="card border-0 shadow-sm p-4 h-100" style={{ borderRadius: '0.75rem' }}>
                           <h6 className="fw-bold mb-3 border-bottom pb-2" style={{ color: '#1e2022' }}>SEO Details</h6>
+
+                          {/* Page Name */}
+                          <div className="mb-3">
+                            <label className="form-label small fw-bold" style={{ color: '#4b566b' }}>Page Name / Label <span className="text-danger">*</span></label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              required
+                              style={{ background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' }}
+                              value={editPageName}
+                              onChange={(e) => setEditPageName(e.target.value)}
+                            />
+                          </div>
 
                           {/* SEO Page Title */}
                           <div className="mb-3">
@@ -460,7 +659,7 @@ export default function SeoSettingsView() {
                         </div>
                       </div>
 
-                      {/* Right Column: Live Real-Time Previews (Wow Factor!) */}
+                      {/* Right Column: Live Real-Time Previews */}
                       <div className="col-lg-6">
                         <div className="card border-0 shadow-sm p-4 h-100" style={{ borderRadius: '0.75rem' }}>
                           {/* Google Snippet Preview */}
@@ -484,7 +683,7 @@ export default function SeoSettingsView() {
                           {/* Social Media Card Simulator */}
                           <h6 className="fw-bold mb-3 border-bottom pb-2" style={{ color: '#1e2022' }}>Social Sharing Card Preview (Facebook/X/LinkedIn)</h6>
                           <div className="rounded border overflow-hidden bg-white shadow-sm hover-shadow" style={{ transition: 'all 0.2s', maxWidth: 450, margin: '0 auto', width: '100%' }}>
-                            {/* Card Media (Mock) */}
+                            {/* Card Media */}
                             <div className="position-relative d-flex align-items-center justify-content-center bg-dark" style={{ height: 210 }}>
                               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4))', zIndex: 1 }}></div>
                               <i className="bi bi-globe" style={{ fontSize: '3rem', color: 'rgba(255,198,58,0.7)', zIndex: 2 }}></i>
@@ -513,7 +712,7 @@ export default function SeoSettingsView() {
                       id="save-seo-btn"
                       className="btn fw-bold"
                       disabled={saving}
-                      style={{ background: '#ffc63a', color: '#fff', fontWeight: 700, borderRadius: '0.5rem', padding: '0.6rem 2rem', border: 'none' }}
+                      style={{ background: '#ffc63a', color: '#212529', fontWeight: 700, borderRadius: '0.5rem', padding: '0.6rem 2rem', border: 'none' }}
                     >
                       {saving ? (
                         <><span className="spinner-border spinner-border-sm me-2"></span>Saving Changes...</>

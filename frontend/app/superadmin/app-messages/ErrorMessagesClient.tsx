@@ -161,10 +161,7 @@ export default function ErrorMessagesClient() {
             alignItems: 'center',
             gap: 8,
           }}>
-            <i className="bi bi-lock-fill"></i>
-            <span>
-              <strong>Edit-only mode:</strong> Message keys are fixed and cannot be created or deleted. You can only edit the message text and category.
-            </span>
+            
           </div>
         </div>
 

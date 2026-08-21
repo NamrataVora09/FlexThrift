@@ -2015,10 +2015,29 @@ class SharedApi extends BaseApiController
     /**
      * GET /api/v1/shared/seo-settings/(:any)
      */
-    public function getSeoSettingByPage($pageKey)
+    public function getSeoSettingByPage($pageKey = null)
     {
+        $rawKey = urldecode($pageKey ?? $this->request->getGet('route') ?? '');
+        if (empty($rawKey)) {
+            return $this->respond(['success' => false, 'message' => 'No page key or route provided'], 400);
+        }
+
         $seoModel = new \App\Models\SeoSettingModel();
-        $setting = $seoModel->getByPageKey($pageKey);
+        
+        // 1. Try exact page_key match first
+        $setting = $seoModel->getByPageKey($rawKey);
+        
+        // 2. If not found by page_key, try route path match
+        if (!$setting) {
+            $routePath = '/' . ltrim($rawKey, '/');
+            $setting = $seoModel->where('route', $routePath)->first();
+        }
+
+        // 3. Fallback: sanitize route path matching without leading/trailing query params
+        if (!$setting) {
+            $cleanRoute = '/' . trim(explode('?', $rawKey)[0], '/');
+            $setting = $seoModel->where('route', $cleanRoute)->first();
+        }
         
         if (!$setting) {
             return $this->respond(['success' => false, 'message' => 'SEO settings not found for this page'], 404);
