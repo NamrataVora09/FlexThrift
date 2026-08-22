@@ -313,9 +313,9 @@ const CATEGORY_CARDS = [
     desc: 'Curated fashion from top brands',
     reverse: false,
     imgs: [
-      'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=1200',
-      'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?q=80&w=1200',
-      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=1200',
+      'https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&auto=format&fit=crop&q=60',
     ],
   },
   {
@@ -325,9 +325,9 @@ const CATEGORY_CARDS = [
     desc: 'Watches, bags & more',
     reverse: true,
     imgs: [
-      'https://images.unsplash.com/photo-1596460107916-430662021049?q=80&w=1200',
-      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=1200',
-      'https://images.unsplash.com/photo-1509941943102-10c232535736?q=80&w=1200',
+      'https://images.unsplash.com/photo-1596460107916-430662021049?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1509941943102-10c232535736?w=600&auto=format&fit=crop&q=60',
     ],
   },
   {
@@ -337,9 +337,9 @@ const CATEGORY_CARDS = [
     desc: 'Sneakers, heels & boots',
     reverse: false,
     imgs: [
-      'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1200',
-      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200',
-      'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?q=80&w=1200',
+      'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?w=600&auto=format&fit=crop&q=60',
     ],
   },
   {
@@ -349,9 +349,9 @@ const CATEGORY_CARDS = [
     desc: 'Gadgets & premium tech',
     reverse: true,
     imgs: [
-      'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=1200',
-      'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?q=80&w=1200',
-      'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?q=80&w=1200',
+      'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=600&auto=format&fit=crop&q=60',
     ],
   },
 ];

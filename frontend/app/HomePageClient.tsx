@@ -80,7 +80,7 @@ const defaultHeroSlides: HeroSlide[] = [
     desc: 'Discover high-end fashion and lifestyle essentials reserved for the elite.',
     btnText: 'Explore Marketplace',
     btnHref: '/buyer/browse',
-    img: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070',
+    img: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=65',
   },
   {
     badge: 'RENT LUXURY',
@@ -89,15 +89,15 @@ const defaultHeroSlides: HeroSlide[] = [
     desc: 'Why buy when you can rent high-end fashion and home essentials for a fraction of the cost?',
     btnText: 'View Rental Plans',
     btnHref: '/buyer/browse?listing_type=rent',
-    img: 'https://images.unsplash.com/photo-1540574163026-643ea20ade25?q=80&w=2070',
+    img: 'https://images.unsplash.com/photo-1540574163026-643ea20ade25?w=800&auto=format&fit=crop&q=65',
   },
 ];
 
 const defaultDisplayCategories: DisplayCategory[] = [
-  { name: 'Clothing', img: 'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=1471' },
-  { name: 'Accessories', img: 'https://images.unsplash.com/photo-1596460107916-430662021049?q=80&w=1470' },
-  { name: 'Footwear', img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1412' },
-  { name: 'Electronics', img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=1470' },
+  { name: 'Clothing', img: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&auto=format&fit=crop&q=60' },
+  { name: 'Accessories', img: 'https://images.unsplash.com/photo-1596460107916-430662021049?w=600&auto=format&fit=crop&q=60' },
+  { name: 'Footwear', img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&auto=format&fit=crop&q=60' },
+  { name: 'Electronics', img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600&auto=format&fit=crop&q=60' },
 ];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';

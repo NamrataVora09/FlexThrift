@@ -44,10 +44,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
         <link rel="preconnect" href="https://images.unsplash.com" />
+        
+        {/* Preload the Hero LCP Image in head so download starts immediately with HTML parsing */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;600;700;800&family=Maven+Pro:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
+          rel="preload"
+          as="image"
+          href="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=65"
+          // @ts-ignore
+          fetchPriority="high"
         />
+
+        {/* Non-render-blocking Google Fonts */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Manrope:wght@600;700;800&family=Poppins:wght@400;600;700&display=swap"
+          rel="stylesheet"
+          media="print"
+          // @ts-ignore
+          onLoad="this.media='all'"
+        />
+
+        {/* Non-render-blocking Icon Fonts */}
         <link
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
           rel="stylesheet"
@@ -70,6 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           onLoad="this.media='all'"
         />
         <noscript>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Manrope:wght@600;700;800&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
           <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
           <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
