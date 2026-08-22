@@ -220,14 +220,7 @@ export default function SeoSettingsView() {
             </h1>
             <p className="text-muted small mb-0">Configure metadata, titles, custom Open Graph sharing settings, and search engine optimization parameters for all platform routes.</p>
           </div>
-          <button
-            type="button"
-            className="btn fw-bold d-flex align-items-center gap-2"
-            onClick={() => setShowAddModal(true)}
-            style={{ background: '#ffc63a', color: '#212529', borderRadius: '0.5rem', padding: '0.6rem 1.25rem', border: 'none' }}
-          >
-            <i className="bi bi-plus-circle-fill"></i> Add Custom Page SEO
-          </button>
+
         </div>
 
         {/* Dynamic Stats Banner */}
@@ -368,17 +361,7 @@ export default function SeoSettingsView() {
                           <span className={`badge ${isCmsPage ? 'bg-info text-dark' : 'bg-light text-secondary'}`} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>
                             {isCmsPage ? <i className="bi bi-file-text me-1"></i> : null} {s.page_name}
                           </span>
-                          <div className="d-flex align-items-center gap-2">
-                            <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#888' }} className="fw-semibold">{s.route}</span>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-link text-danger p-0 border-0 ms-1"
-                              title="Delete SEO Config"
-                              onClick={() => handleDeleteSeo(s.id, s.page_name)}
-                            >
-                              <i className="bi bi-trash" style={{ fontSize: '0.9rem' }}></i>
-                            </button>
-                          </div>
+
                         </div>
 
                         {/* Title Display */}
@@ -438,14 +421,14 @@ export default function SeoSettingsView() {
 
         {/* Add New Custom Page Modal */}
         {showAddModal && (
-          <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setShowAddModal(false)}>
+          <div className="modal d-block" tabIndex={-1} style={{ zIndex: 9999 }} onClick={() => setShowAddModal(false)}>
             <div className="modal-dialog modal-lg modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
               <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
-                <div className="modal-header p-3 border-0 bg-dark text-white">
+                <div className="modal-header p-3 border-0 bg-dark text-black">
                   <h5 className="modal-title fw-bold d-flex align-items-center gap-2">
                     <i className="bi bi-plus-circle" style={{ color: '#ffc63a' }}></i> Add Custom Page SEO Rule
                   </h5>
-                  <button type="button" className="btn-close btn-close-white" onClick={() => setShowAddModal(false)}></button>
+                  <button type="button" className="btn-close btn-close-black" onClick={() => setShowAddModal(false)}></button>
                 </div>
                 <form onSubmit={handleCreateNewSeo}>
                   <div className="modal-body p-4 bg-light" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
@@ -538,14 +521,14 @@ export default function SeoSettingsView() {
 
         {/* Edit Modal */}
         {editing && (
-          <div className="modal d-block" tabIndex={-1} style={{ background: 'rgba(0,0,0,0.5)', zIndex: 9999 }} onClick={() => setEditing(null)}>
+          <div className="modal d-block" tabIndex={-1} style={{ zIndex: 9999 }} onClick={() => setEditing(null)}>
             <div className="modal-dialog modal-xl modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
               <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem', overflow: 'hidden' }}>
-                <div className="modal-header p-3 border-0 bg-dark text-white">
+                <div className="modal-header p-3 border-0  text-black">
                   <h5 className="modal-title fw-bold d-flex align-items-center gap-2">
                     <i className="bi bi-pencil-square" style={{ color: '#ffc63a' }}></i> Configure SEO: <span className="text-warning">{editing.page_name}</span>
                   </h5>
-                  <button type="button" className="btn-close btn-close-white" onClick={() => setEditing(null)}></button>
+                  <button type="button" className="btn-close btn-close-black" onClick={() => setEditing(null)}></button>
                 </div>
                 <form onSubmit={handleSave}>
                   <div className="modal-body p-4 bg-light" style={{ maxHeight: '78vh', overflowY: 'auto' }}>
@@ -712,7 +695,7 @@ export default function SeoSettingsView() {
                       id="save-seo-btn"
                       className="btn fw-bold"
                       disabled={saving}
-                      style={{ background: '#ffc63a', color: '#212529', fontWeight: 700, borderRadius: '0.5rem', padding: '0.6rem 2rem', border: 'none' }}
+                      style={{ background: '#ffc63a', color: 'white', fontWeight: 700, borderRadius: '0.5rem', padding: '0.6rem 2rem', border: 'none' }}
                     >
                       {saving ? (
                         <><span className="spinner-border spinner-border-sm me-2"></span>Saving Changes...</>
