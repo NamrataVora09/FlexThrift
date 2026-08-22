@@ -35,7 +35,7 @@ export default function SystemLockBlocker({ children }: { children: React.ReactN
   }, [user]);
 
   if (loading) {
-    return null;
+    return <>{children}</>;
   }
 
   if (isLocked) {

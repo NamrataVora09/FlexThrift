@@ -98,7 +98,7 @@ export default function GeolocationBlocker({ children }: { children: React.React
   }, [checkLocation]);
 
   if (loading) {
-     return null; // Or a splash screen
+    return <>{children}</>;
   }
 
   if (user && Number(user.is_blocked) === 1) {
