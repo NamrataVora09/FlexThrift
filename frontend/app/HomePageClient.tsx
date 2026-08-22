@@ -900,7 +900,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                 }}
               >
                 <div className="hero-overlay"></div>
-                <img src={slide.img} className="hero-img" alt="Hero" />
+                <img src={slide.img} className="hero-img" alt="Hero" fetchPriority={idx === 0 ? 'high' : 'auto'} />
                 <div className="hero-content">
                   <span className="hero-badge">{slide.badge}</span>
                   <h1 className="hero-title">
