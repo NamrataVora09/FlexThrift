@@ -20,6 +20,8 @@ interface AppMessage {
 
 interface SystemContextType {
   settings: SystemSettings;
+  /** Raw landing-content data payload — avoids duplicate fetches in child components. */
+  landingData: Record<string, any> | null;
   isLoading: boolean;
   refreshSettings: () => Promise<void>;
   getMsg: (key: string, fallback: string) => string;
@@ -33,6 +35,7 @@ const SystemContext = createContext<SystemContextType | undefined>(undefined);
 
 export function SystemProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<SystemSettings>(defaultSettings);
+  const [landingData, setLandingData] = useState<Record<string, any> | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
 
@@ -45,6 +48,10 @@ export function SystemProvider({ children }: { children: ReactNode }) {
           ...res.data,
           site_name: siteName
         });
+
+        // Expose raw payload so child components (e.g. HomePageClient) can read
+        // aot_sections, category_cards, etc. without a second /landing-content fetch.
+        setLandingData(res.data);
 
         // Store app messages in a lookup map
         if (Array.isArray(res.data.app_messages)) {
@@ -71,7 +78,7 @@ export function SystemProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <SystemContext.Provider value={{ settings, isLoading, refreshSettings: fetchSettings, getMsg }}>
+    <SystemContext.Provider value={{ settings, landingData, isLoading, refreshSettings: fetchSettings, getMsg }}>
       {children}
     </SystemContext.Provider>
   );

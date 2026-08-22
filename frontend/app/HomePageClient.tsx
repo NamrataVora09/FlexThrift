@@ -1033,6 +1033,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                           <img
                             src={cat.img.startsWith('http') ? cat.img : `http://localhost:8080/${cat.img}`}
                             alt={cat.name}
+                            loading="lazy"
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
                         ) : (

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import LandingNavbar from '../layout/LandingNavbar';
@@ -359,6 +360,9 @@ const CATEGORY_CARDS = [
 
 export default function HomePageClient() {
   const { user, isLoading, isAuthenticated, login, register, verifyOtp, sendOtp, forgotPassword, resetPassword } = useAuth();
+  // PERFORMANCE: Read landing-content data from SystemProvider context so we
+  // don't need to make a second independent fetch call for aot_sections / category_cards.
+  const { landingData } = useSystem();
   const router = useRouter();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -594,22 +598,20 @@ export default function HomePageClient() {
   const [savingAot, setSavingAot] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/landing-content`)
-      .then(r => r.json())
-      .then(res => {
-        if (res.success && res.data?.aot_sections) {
-          try { setAotSections(JSON.parse(res.data.aot_sections)); } catch { }
-        }
-        if (res.success && res.data?.category_cards) {
-          try {
-            const cards = JSON.parse(res.data.category_cards);
-            setCategoryCards(cards);
-            setCatImgIdx(cards.map(() => 0));
-          } catch { }
-        }
-      })
-      .catch(() => { });
-  }, []);
+    // PERFORMANCE: Read aot_sections and category_cards from SystemProvider's
+    // already-fetched landingData instead of making a second /landing-content call.
+    if (!landingData) return;
+    if (landingData.aot_sections) {
+      try { setAotSections(JSON.parse(landingData.aot_sections)); } catch { }
+    }
+    if (landingData.category_cards) {
+      try {
+        const cards = JSON.parse(landingData.category_cards);
+        setCategoryCards(cards);
+        setCatImgIdx(cards.map(() => 0));
+      } catch { }
+    }
+  }, [landingData]);
 
   const persistSections = async (next: AotSection[]) => {
     setSavingAot(true);
@@ -782,6 +784,7 @@ export default function HomePageClient() {
                     <img
                       src={cat.imgs[catImgIdx[i]]}
                       alt={cat.name}
+                      loading="lazy"
                       className="w-full h-full min-h-[400px] object-cover transition-opacity duration-500"
                     />
 
@@ -1188,7 +1191,7 @@ export default function HomePageClient() {
                       {card.imgs.map((img, ii) => (
                         <div key={ii} className="relative group aspect-[4/3] rounded-xl overflow-hidden border-2 border-gray-200 bg-white shadow-sm hover:border-[#ffc63a] transition-all">
                           {img ? (
-                            <img src={img} className="w-full h-full object-cover" />
+                            <img src={img} loading="lazy" className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
                               <i className="bi bi-image text-2xl"></i>

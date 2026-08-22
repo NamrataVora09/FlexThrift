@@ -87,7 +87,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const searchParams = useSearchParams();
   const { user, triggerRefresh } = useAuth();
   const { settings } = useSystem();
-  const { toastSuccess, toastError, toastWarning } = useToast();
+  const { toastSuccess, toastError, toastWarning, resolveMsg } = useToast();
   const imgRef = useRef<HTMLInputElement>(null);
   const billRef = useRef<HTMLInputElement>(null);
   const [meta, setMeta] = useState<FormMeta | null>(null);
@@ -837,13 +837,17 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
     const configs = getFieldConfigs();
     // Only validate gender if it's mandatory (not hidden or optional)
-    if (configs.gender === 'mandatory' && !f.gender) { setError('Gender is required'); setSubmitting(false); return; }
+    if (configs.gender === 'mandatory' && !f.gender) {
+      setError(resolveMsg('gender_required', 'Gender is required'));
+      setSubmitting(false);
+      return;
+    }
 
     // Validate original price doesn't exceed configured max
     if (f.original_price && meta) {
       const maxOrig = parseFloat(meta.config?.max_original_price || '1000000000');
       if (parseFloat(f.original_price) > maxOrig) {
-        setError(`Original price cannot exceed ₹${maxOrig.toLocaleString('en-IN')} (platform limit).`);
+        setError(resolveMsg('max_original_price_exceeded', `Original price cannot exceed ₹{price} (platform limit).`, { price: maxOrig.toLocaleString('en-IN') }));
         setSubmitting(false);
         return;
       }
@@ -859,7 +863,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const maxPrice = (origPrice * (1 - deductionThreshold / 100));
       if (parseFloat(f.price) > maxPrice) {
         const src = found ? found.source : 'Default';
-        setError(`Sale price cannot exceed ₹${maxPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (Original ₹${origPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}${deductionThreshold > 0 ? ` minus ${deductionThreshold}% deduction threshold — ${src} rule` : ''})`);
+        setError(resolveMsg('max_sale_price_exceeded', `Sale price cannot exceed ₹{maxPrice} (Original ₹{origPrice}{deductionMsg})`, {
+          maxPrice: maxPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+          origPrice: origPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+          deductionMsg: deductionThreshold > 0 ? ` minus ${deductionThreshold}% deduction threshold — ${src} rule` : ''
+        }));
         setSubmitting(false);
         return;
       }
@@ -882,7 +890,10 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const enteredDeposit = parseFloat(f.rental_deposit || '0');
       const maxDepositAllowed = (origPrice * (1 - deductionThreshold / 100));
       if (enteredDeposit > maxDepositAllowed) {
-        setError(`Deposit cannot exceed ₹${maxDepositAllowed.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (based on ${deductionThreshold}% base deduction rule)`);
+        setError(resolveMsg('max_deposit_exceeded', `Deposit cannot exceed ₹{maxDeposit} (based on {threshold}% base deduction rule)`, {
+          maxDeposit: maxDepositAllowed.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+          threshold: String(deductionThreshold)
+        }));
         setSubmitting(false);
         return;
       }
@@ -904,7 +915,10 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       if (parseFloat(f.rental_cost) > maxRentalAllowed + 0.01) {
         const src = found ? found.source : 'Global Default';
         const capDesc = maxCapPct === 0 ? 'equals deposit (0% cap)' : `${maxCapPct}% cap based on ${src}`;
-        setError(`Rental cost cannot exceed ₹${maxRentalAllowed.toLocaleString('en-IN', { minimumFractionDigits: 2 })} per day (${capDesc})`);
+        setError(resolveMsg('max_rental_cost_exceeded', `Rental cost cannot exceed ₹{maxRental} per day ({desc})`, {
+          maxRental: maxRentalAllowed.toLocaleString('en-IN', { minimumFractionDigits: 2 }),
+          desc: capDesc
+        }));
         setSubmitting(false);
         return;
       }
@@ -931,21 +945,27 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       const maxImageSizeBytes = maxImageSizeMB * 1024 * 1024;
       
       if (files.length > maxImages) {
-        setError(`Maximum ${maxImages} images allowed per product. You selected ${files.length} images.`);
+        setError(resolveMsg('product_max_images_upload', `Maximum {max} images allowed per product. You selected {count} images.`, {
+          max: String(maxImages),
+          count: String(files.length)
+        }));
         return;
       }
       
       for (const file of files) {
         if (file.size > maxImageSizeBytes) {
           const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-          setError(`Image size exceeds maximum limit of ${maxImageSizeMB}MB. Your image is ${fileSizeMB}MB.`);
+          setError(resolveMsg('image_size_exceeded_upload', `Image size exceeds maximum limit of {max}MB. Your image is {size}MB.`, {
+            max: String(maxImageSizeMB),
+            size: String(fileSizeMB)
+          }));
           return;
         }
       }
 
       // Validate bill requirement
       if (f.has_bill && existingBills.length + billFiles.length === 0) {
-        setError("Please upload at least one bill image or uncheck 'I have a bill'.");
+        setError(resolveMsg('bill_upload_required', "Please upload at least one bill image or uncheck 'I have a bill'."));
         setSubmitting(false);
         return;
       }

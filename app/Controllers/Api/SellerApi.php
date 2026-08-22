@@ -388,7 +388,7 @@ class SellerApi extends BaseApiController
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         if ($user && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role has been blocked by the admin. You cannot upload products.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seller_blocked', 'Your seller role has been blocked by the admin. You cannot upload products.')], 403);
         }
 
         // SuperAdmin bypasses subscription check
@@ -420,10 +420,10 @@ class SellerApi extends BaseApiController
                     ->get()->getRowArray();
                 if ($expiredSub) {
                     log_message('info', 'Found expired subscription: ' . json_encode($expiredSub));
-                    return $this->respond(['success' => false, 'message' => 'Your subscription has expired on ' . date('d M Y', strtotime($expiredSub['expires_at'])) . '. Please renew your plan to upload products.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('seller_sub_expired', 'Your subscription has expired on {date}. Please renew your plan to upload products.', ['date' => date('d M Y', strtotime($expiredSub['expires_at']))])], 403);
                 }
                 log_message('error', 'No active seller subscription found for user_id: ' . $userId);
-                return $this->respond(['success' => false, 'message' => 'No active seller subscription found. Please subscribe to a seller plan to upload products.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('seller_sub_not_found', 'No active seller subscription found. Please subscribe to a seller plan to upload products.')], 403);
             }
 
             // Check subscription limit for quantity-based plans
@@ -435,12 +435,12 @@ class SellerApi extends BaseApiController
 
                 if ($limitValue <= 0) {
                     log_message('error', 'Subscription limit is 0 for user_id: ' . $userId);
-                    return $this->respond(['success' => false, 'message' => 'Your subscription plan has 0 product uploads. Please upgrade your plan to upload products.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('seller_sub_zero_limit', 'Your subscription plan has 0 product uploads. Please upgrade your plan to upload products.')], 403);
                 }
 
                 if ($usageCount >= $limitValue) {
                     log_message('error', 'Subscription limit reached for user_id: ' . $userId . ', Usage: ' . $usageCount . ', Limit: ' . $limitValue);
-                    return $this->respond(['success' => false, 'message' => 'You have reached your product upload limit (' . $limitValue . ' uploads). Please upgrade your plan to upload more products.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('seller_sub_limit_reached', 'You have reached your product upload limit ({limit} uploads). Please upgrade your plan to upload more products.', ['limit' => $limitValue])], 403);
                 }
             }
         }
@@ -666,7 +666,7 @@ class SellerApi extends BaseApiController
             // Validate image count
             $imageCount = is_array($imageFiles) ? count($imageFiles) : 1;
             if ($imageCount > $maxImages) {
-                return $this->respond(['success' => false, 'message' => "Maximum {$maxImages} images allowed per product. You uploaded {$imageCount} images."], 422);
+                return $this->respond(['success' => false, 'message' => getAppMessage('product_max_images_upload', 'Maximum {max} images allowed per product. You uploaded {count} images.', ['max' => $maxImages, 'count' => $imageCount])], 422);
             }
 
             log_message('info', 'Processing product_images array');
@@ -682,14 +682,16 @@ class SellerApi extends BaseApiController
                     $imageSize = $img->getSize();
                     if ($imageSize > $maxImageSizeBytes) {
                         $imageSizeMB = round($imageSize / (1024 * 1024), 2);
-                        return $this->respond(['success' => false, 'message' => "Image size exceeds maximum limit of {$maxImageSizeMB}MB. Your image is {$imageSizeMB}MB."], 422);
+                        return $this->respond(['success' => false, 'message' => getAppMessage('image_size_exceeded_upload', 'Image size exceeds maximum limit of {max}MB. Your image is {size}MB.', ['max' => $maxImageSizeMB, 'size' => $imageSizeMB])], 422);
                     }
 
                     $newName = $img->getRandomName();
                     $img->move($uploadPath, $newName);
+                    // Compress & resize to max 1200×1200 px at quality 75 to reduce file size
+                    compressAndResizeImage($uploadPath . $newName);
                     $db->table('product_images')->insert([
-                        'product_id' => $productId,
-                        'image_path' => 'uploads/products/' . $newName,
+                        'product_id'    => $productId,
+                        'image_path'    => 'uploads/products/' . $newName,
                         'display_order' => $order++,
                     ]);
                     log_message('info', 'Image saved: ' . $newName);
@@ -1568,6 +1570,8 @@ class SellerApi extends BaseApiController
                 if ($img && $img->isValid() && !$img->hasMoved()) {
                     $newName = $img->getRandomName();
                     $img->move($uploadPath, $newName);
+                    // Compress & resize to max 1200×1200 px at quality 75
+                    compressAndResizeImage($uploadPath . $newName);
                     $tempImages[] = 'uploads/products/temp/' . $newName;
                 }
             }
@@ -3337,7 +3341,7 @@ class SellerApi extends BaseApiController
         if ($originalPrice > $maxOriginalPrice) {
             return [
                 'success' => false,
-                'message' => 'Original price cannot exceed ₹' . number_format($maxOriginalPrice, 2) . ' (platform limit).',
+                'message' => getAppMessage('max_original_price_exceeded', 'Original price cannot exceed ₹{price} (platform limit).', ['price' => number_format($maxOriginalPrice, 2)]),
             ];
         }
 

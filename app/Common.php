@@ -17,7 +17,11 @@
 if (!function_exists('getAppMessage')) {
     /**
      * Retrieve a dynamic message from the database.
-     * 
+     *
+     * PERFORMANCE: Bulk-preloads the entire app_messages table on first call
+     * (one SELECT query), then serves all subsequent calls from a static
+     * in-memory array — eliminating N+1 DB queries per request.
+     *
      * @param string $key The message key
      * @param string|null $default Default message if key not found
      * @param array $params Key => Value pairs for placeholder substitution (e.g. ['min' => 3])
@@ -25,51 +29,75 @@ if (!function_exists('getAppMessage')) {
      */
     function getAppMessage(string $key, ?string $default = null, array $params = []): string
     {
-        try {
-            $db = \Config\Database::connect();
-            $message = $db->table('app_messages')
-                ->where('message_key', $key)
-                ->get()
-                ->getRowArray();
+        // $loaded tracks whether we have already fetched all rows from DB.
+        // $cache maps message_key => message_value for the whole table.
+        static $loaded = false;
+        static $cache  = [];
 
-            $output = $message ? $message['message_value'] : ($default ?? $key);
-
-            if (!empty($params)) {
-                $pairs = [];
-                foreach ($params as $k => $v) {
-                    $pairs["{{$k}}"] = $v;
-                    $pairs["{$k}"] = $v;
+        if (!$loaded) {
+            $loaded = true; // mark before query so a recursive call won't loop
+            try {
+                $db   = \Config\Database::connect();
+                $rows = $db->table('app_messages')
+                    ->select('message_key, message_value')
+                    ->get()
+                    ->getResultArray();
+                foreach ($rows as $row) {
+                    $cache[$row['message_key']] = $row['message_value'];
                 }
-                $output = strtr($output, $pairs);
+            } catch (\Exception $e) {
+                // DB unavailable — $cache stays empty; fall back to defaults
             }
-
-            return $output;
-        } catch (\Exception $e) {
-            return $default ?? $key;
         }
+
+        $output = $cache[$key] ?? ($default ?? $key);
+
+        if (!empty($params)) {
+            $pairs = [];
+            foreach ($params as $k => $v) {
+                $pairs["{{$k}}"] = $v;
+                $pairs["{$k}"] = $v;
+            }
+            $output = strtr($output, $pairs);
+        }
+
+        return $output;
     }
 }
+
 if (!function_exists('getSystemSetting')) {
     /**
      * Retrieve a system setting from the database.
-     * 
+     *
+     * PERFORMANCE: Bulk-preloads all system_settings rows on first call,
+     * then serves from a static in-memory array for the rest of the request.
+     *
      * @param string $key The setting key
      * @param mixed $default Default value if key not found
      * @return mixed
      */
     function getSystemSetting(string $key, $default = null)
     {
-        try {
-            $db = \Config\Database::connect();
-            $setting = $db->table('system_settings')
-                ->where('setting_key', $key)
-                ->get()
-                ->getRowArray();
+        static $loaded = false;
+        static $cache  = [];
 
-            return $setting ? $setting['setting_value'] : $default;
-        } catch (\Exception $e) {
-            return $default;
+        if (!$loaded) {
+            $loaded = true;
+            try {
+                $db   = \Config\Database::connect();
+                $rows = $db->table('system_settings')
+                    ->select('setting_key, setting_value')
+                    ->get()
+                    ->getResultArray();
+                foreach ($rows as $row) {
+                    $cache[$row['setting_key']] = $row['setting_value'];
+                }
+            } catch (\Exception $e) {
+                // DB unavailable — fall back to defaults
+            }
         }
+
+        return array_key_exists($key, $cache) ? $cache[$key] : $default;
     }
 }
 

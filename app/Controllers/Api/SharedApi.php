@@ -1577,6 +1577,8 @@ class SharedApi extends BaseApiController
 
         $newName = $file->getRandomName();
         $file->move($uploadPath, $newName);
+        // Compress & resize profile image to max 800×800 px at quality 80
+        compressAndResizeImage($uploadPath . $newName, 800, 800, 80);
         $imagePath = 'uploads/profiles/' . $newName;
 
         $db->table('users')->where('id', $jwtUser['user_id'])->update([
@@ -1707,17 +1709,39 @@ class SharedApi extends BaseApiController
 
     public function featuredProducts()
     {
-        $db = \Config\Database::connect();
-        $products = $db->table('products p')
-            ->select('p.*, u.name as seller_name, ob.brand_name as orignal_brand, b.brand_name as seller_brand, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as image')
-            ->join('users u', 'u.id = p.seller_id', 'left')
-            ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id AND ob.is_active = 1 AND ob.is_blocked = 0', 'left')
-            ->join('brands b', 'b.id = p.brand_id AND b.is_active = 1 AND b.is_blocked = 0', 'left')
-            ->where('p.status', 'approved')
-            ->where('p.is_featured', 1)
-            ->orderBy('p.updated_at', 'DESC')
-            ->limit(12)
-            ->get()->getResultArray();
+        // PERFORMANCE: Cache the featured-products list for 60 seconds using
+        // CI4's built-in file cache. This endpoint is hit on every homepage
+        // load and the result rarely changes mid-session.
+        $cache    = \Config\Services::cache();
+        $cacheKey = 'featured_products_v1';
+
+        $products = $cache->get($cacheKey);
+
+        if ($products === null) {
+            $db = \Config\Database::connect();
+            // Select only the columns the homepage card actually uses
+            // (avoids transmitting large description/config blobs on every home visit)
+            $products = $db->table('products p')
+                ->select(
+                    'p.id, p.title, p.price, p.original_price, p.rental_cost, ' .
+                    'p.listing_type, p.listing_type_category, p.category, ' .
+                    'p.dispatch_city, p.dispatch_state, p.is_featured, p.updated_at, ' .
+                    'u.name as seller_name, ' .
+                    'ob.brand_name as orignal_brand, ' .
+                    'b.brand_name as seller_brand, ' .
+                    '(SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id LIMIT 1) as image'
+                )
+                ->join('users u', 'u.id = p.seller_id', 'left')
+                ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id AND ob.is_active = 1 AND ob.is_blocked = 0', 'left')
+                ->join('brands b', 'b.id = p.brand_id AND b.is_active = 1 AND b.is_blocked = 0', 'left')
+                ->where('p.status', 'approved')
+                ->where('p.is_featured', 1)
+                ->orderBy('p.updated_at', 'DESC')
+                ->limit(12)
+                ->get()->getResultArray();
+
+            $cache->save($cacheKey, $products, 60); // cache for 60 seconds
+        }
 
         return $this->respond(['success' => true, 'data' => $products]);
     }

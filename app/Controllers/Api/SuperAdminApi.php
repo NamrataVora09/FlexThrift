@@ -2672,6 +2672,8 @@ class SuperAdminApi extends AdminApi
             $data['ad_type'] = str_contains($file->getMimeType(), 'video') ? 'video' : 'image';
             $data['media_type'] = $file->getMimeType();
             $file->move(FCPATH . 'uploads/advertisements/', $newName);
+            // Compress image ads to max 1920×1080 at quality 80 (videos are skipped automatically)
+            compressAndResizeImage(FCPATH . 'uploads/advertisements/' . $newName, 1920, 1080, 80);
         }
 
         $db->table('advertisements')->insert($data);
@@ -2829,6 +2831,8 @@ class SuperAdminApi extends AdminApi
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
             $file->move(FCPATH . 'uploads/brands/', $newName);
+            // Compress brand logo to max 600×600 px at quality 80
+            compressAndResizeImage(FCPATH . 'uploads/brands/' . $newName, 600, 600, 80);
             $data['brand_image'] = 'uploads/brands/' . $newName;
         }
 
@@ -2878,6 +2882,8 @@ class SuperAdminApi extends AdminApi
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
             $file->move(FCPATH . 'uploads/brands/', $newName);
+            // Compress brand logo to max 600×600 px at quality 80
+            compressAndResizeImage(FCPATH . 'uploads/brands/' . $newName, 600, 600, 80);
             $data['brand_image'] = 'uploads/brands/' . $newName;
         }
 

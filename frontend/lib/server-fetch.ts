@@ -69,7 +69,9 @@ export async function getProductDetail(id: string) {
 }
 
 export async function getLandingContent() {
-  return safeFetch('/landing-content', 0);
+  // PERFORMANCE: Revalidate every 30 s instead of no-store.
+  // The SSR layer caches the result; admin changes propagate within 30 s.
+  return safeFetch('/landing-content', 30);
 }
 
 /**
@@ -78,11 +80,13 @@ export async function getLandingContent() {
  * Uses no-store so admin changes to SEO are reflected immediately.
  */
 export async function getSeoSetting(pageKey: string) {
+  // PERFORMANCE: Revalidate every 60 s instead of no-store.
+  // SEO tags don't need real-time updates; 60 s window is more than fast enough.
   return safeFetch<{
     title: string | null;
     meta_description: string | null;
     meta_keywords: string | null;
     og_title: string | null;
     og_description: string | null;
-  }>(`/shared/seo-settings/${pageKey}`, 0);
+  }>(`/shared/seo-settings/${pageKey}`, 60);
 }

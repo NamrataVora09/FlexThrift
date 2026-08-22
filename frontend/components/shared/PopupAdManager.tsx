@@ -181,6 +181,7 @@ export default function PopupAdManager() {
                   muted={isMuted}
                   loop
                   playsInline
+                  preload="none"
                 />
                 <button
                   onClick={(e) => {

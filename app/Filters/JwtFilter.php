@@ -17,7 +17,7 @@ class JwtFilter implements FilterInterface
             log_message('error', 'JwtFilter: No valid Bearer token provided');
             return service('response')
                 ->setStatusCode(401)
-                ->setJSON(['success' => false, 'message' => 'No token provided']);
+                ->setJSON(['success' => false, 'message' => getAppMessage('jwt_no_token', 'No token provided')]);
         }
 
         $token = substr($authHeader, 7);
@@ -27,7 +27,7 @@ class JwtFilter implements FilterInterface
             log_message('error', 'JwtFilter: Invalid or expired token');
             return service('response')
                 ->setStatusCode(401)
-                ->setJSON(['success' => false, 'message' => 'Invalid or expired token']);
+                ->setJSON(['success' => false, 'message' => getAppMessage('jwt_invalid_token', 'Invalid or expired token')]);
         }
 
         // Store user data in request for controllers
@@ -39,7 +39,7 @@ class JwtFilter implements FilterInterface
         if ($user && (int)$user['is_blocked'] === 1) {
             return service('response')
                 ->setStatusCode(403)
-                ->setJSON(['success' => false, 'message' => 'Your account has been blocked']);
+                ->setJSON(['success' => false, 'message' => getAppMessage('account_blocked', 'Your account has been blocked')]);
         }
     }
 

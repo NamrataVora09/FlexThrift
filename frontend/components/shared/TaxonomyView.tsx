@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import { useToast } from '@/lib/toast';
+import { useToast, showToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 import HexColorPicker from '@/components/shared/HexColorPicker';
 
@@ -240,7 +240,11 @@ export default function TaxonomyView() {
       toastSuccess('taxonomy_update_success', 'Successfully updated!');
       load();
     } else {
-      toastError('taxonomy_update_failed', res.message || 'Your request failed');
+      if (res.message) {
+        showToast.error(res.message);
+      } else {
+        toastError('taxonomy_update_failed', 'Failed to update taxonomy.');
+      }
     }
   };
 
@@ -556,7 +560,11 @@ Material,text,0,,,`,
       setEditModal(null);
       load();
     } else {
-      toastError('taxonomy_update_failed', res?.message || 'Failed to update. Please try again.');
+      if (res?.message) {
+        showToast.error(res.message);
+      } else {
+        toastError('taxonomy_update_failed', 'Failed to update taxonomy.');
+      }
     }
   };
 
