@@ -9,6 +9,7 @@ import { getDashboardPath } from '@/lib/navigation';
 import { showToast } from '@/lib/toast';
 
 import SeoManager from '@/components/shared/SeoManager';
+import GlobalLoader from '@/components/shared/GlobalLoader';
 
 interface Props {
   children: ReactNode;
@@ -140,13 +141,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
   }, [isLoading, isAuthenticated, requiredRoles, user, router]);
 
   if (isLoading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-        <div className="spinner-border" style={{ color: '#ffc63a' }} role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
+    return <GlobalLoader />;
   }
 
   if (!isAuthenticated || !user) return null;

@@ -10,6 +10,7 @@ import { showToast } from '@/lib/toast';
 import LandingNavbar from '../layout/LandingNavbar';
 import Footer from '../layout/Footer';
 import AdBanner from '../shared/AdBanner';
+import GlobalLoader from '../shared/GlobalLoader';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api/v1').replace(/\/$/, '');
 
@@ -740,7 +741,7 @@ export default function HomePageClient() {
   }, [categoryCards]); // Depend on categoryCards to stay in sync
 
   if (isLoading) {
-    return <div><span>Loading…</span></div>;
+    return <GlobalLoader />;
   }
 
   return (
