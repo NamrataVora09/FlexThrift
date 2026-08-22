@@ -132,8 +132,13 @@ export default function ProductManagementPage() {
   const statusColor = (s: string) => {
     switch (s) {
       case 'approved': return { bg: '#d1fae5', color: '#065f46' };
-      case 'pending': return { bg: '#fef3c7', color: '#92400e' };
-      case 'rejected': return { bg: '#fee2e2', color: '#991b1b' };
+      case 'pending':
+      case 'changesPending':
+      case 'edit_pending': return { bg: '#fef3c7', color: '#92400e' };
+      case 'rejected':
+      case 'rejected_changes':
+      case 'changesRejected':
+      case 'edit_rejected': return { bg: '#fee2e2', color: '#991b1b' };
       case 'inactive': return { bg: '#e5e7eb', color: '#374151' };
       default: return { bg: '#f3f4f6', color: '#6b7280' };
     }

@@ -3012,7 +3012,28 @@ class SuperAdminApi extends AdminApi
         if ($search) {
             $builder->groupStart()->like('p.title', $search)->orLike('p.description', $search)->orLike('p.category', $search)->groupEnd();
         }
-        if ($status) $builder->where('p.status', $status);
+        if ($status) {
+            if ($status === 'pending') {
+                $builder->groupStart()
+                    ->where('p.status', 'pending')
+                    ->orWhere('p.status', 'changesPending')
+                    ->orWhere('p.status', 'edit_pending')
+                    ->orWhere('p.edit_request', 1)
+                    ->orWhere('p.edit_request', '1')
+                    ->orWhere('p.edit_request', 'pending')
+                ->groupEnd();
+            } elseif ($status === 'rejected') {
+                $builder->groupStart()
+                    ->where('p.status', 'rejected')
+                    ->orWhere('p.status', 'rejected_changes')
+                    ->orWhere('p.status', 'changesRejected')
+                    ->orWhere('p.status', 'edit_rejected')
+                    ->orWhere('p.edit_request', 'rejected')
+                ->groupEnd();
+            } else {
+                $builder->where('p.status', $status);
+            }
+        }
         if ($listingType) {
             if (in_array(strtolower($listingType), ['sell', 'rent'])) {
                 $builder->where('p.listing_type', strtolower($listingType));

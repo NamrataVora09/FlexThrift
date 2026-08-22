@@ -116,13 +116,13 @@ class SellerApi extends BaseApiController
                     // Product is already rejected at product level (brand block, etc.).
                     // Keep product-level status & admin_remarks, but surface the edit-request
                     // rejection reason as a secondary message so the seller sees both.
-                    if ($p['edit_status'] === 'rejected' && !empty($p['edit_remarks'])) {
+                    if (in_array($p['edit_status'], ['rejected', 'changesRejected', 'edit_rejected'], true) && !empty($p['edit_remarks'])) {
                         $p['edit_rejection_remarks'] = $p['edit_remarks'];
                     }
                 } else {
                     // No product-level rejection — let edit-request status/remarks take over.
                     $p['status'] = $p['edit_status'];
-                    if ($p['edit_status'] === 'rejected') {
+                    if (in_array($p['edit_status'], ['rejected', 'changesRejected', 'edit_rejected'], true)) {
                         $p['admin_remarks'] = $p['edit_remarks'] ?? 'Edit request rejected';
                     }
                 }
