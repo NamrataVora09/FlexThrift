@@ -9,11 +9,11 @@
  * them directly into the `app_messages` database table in MariaDB/MySQL.
  */
 
-$host   = '127.0.0.1';
+$host   = 'localhost';
 $port   = '3306';
-$dbname = 'flex';
-$user   = 'root';
-$pass   = '';
+$dbname = 'flex-pro';
+$user   = 'flexadmin';
+$pass   = 'gZLYbwsS7a7im2vAqfNi';
 
 try {
     $pdo = new PDO("mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4", $user, $pass);
