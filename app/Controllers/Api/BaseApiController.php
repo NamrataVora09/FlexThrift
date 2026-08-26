@@ -628,6 +628,35 @@ class BaseApiController extends ResourceController
     }
 
     /**
+     * Validates that an updated message value retains all required placeholders/literals present in the original message template.
+     * Returns a user-friendly error message string if validation fails, or null if valid.
+     */
+    protected function validateMessagePlaceholders(string $originalMessage, string $newMessage): ?string
+    {
+        preg_match_all('/\{\$?[a-zA-Z0-9_]+\}/', $originalMessage, $matches);
+        $requiredPlaceholders = array_unique($matches[0] ?? []);
+
+        if (empty($requiredPlaceholders)) {
+            return null;
+        }
+
+        $missing = [];
+        foreach ($requiredPlaceholders as $placeholder) {
+            if (strpos($newMessage, $placeholder) === false) {
+                $missing[] = $placeholder;
+            }
+        }
+
+        if (!empty($missing)) {
+            $missingList = implode(', ', $missing);
+            $requiredList = implode(', ', $requiredPlaceholders);
+            return "Validation failed: Missing required placeholder literal(s): {$missingList}. Total required literal(s) for this message: {$requiredList}. Example usage: \"{$originalMessage}\"";
+        }
+
+        return null;
+    }
+
+    /**
      * Recalibrates the start and end dates of queued subscriptions for a user when their active plan changes or is depleted.
      * This is useful to pull forward queued plans when a quantity-based plan is fully used.
      */

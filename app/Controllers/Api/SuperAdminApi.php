@@ -4956,6 +4956,12 @@ private function processImage($source, $subDir): ?string
             return $this->respond(['success' => false, 'message' => 'Error message not found'], 404);
         }
 
+        // Validate that all required placeholders in the existing message are retained
+        $placeholderError = $this->validateMessagePlaceholders($message['message_value'], $messageValue);
+        if ($placeholderError !== null) {
+            return $this->respond(['success' => false, 'message' => $placeholderError], 400);
+        }
+
         // Only update message_value and category — message_key is immutable
         $updateData = [
             'message_value' => $messageValue,

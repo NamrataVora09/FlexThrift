@@ -1,0 +1,2248 @@
+=========================================================================
+       BACKEND API MESSAGES ANALYSIS (Controller vs BaseApi & DB Seeders)
+=========================================================================
+ Total Unique Response Messages Extracted from Controllers: 443
+ Found in Database Seeders (Mapped & Ready): 423
+ NOT in Database Seeders (Missing or Unmapped): 20
+=========================================================================
+
+🔴 MESSAGES NOT IN DATABASE SEEDERS (20 found):
+-------------------------------------------------------------------------
+[ 1] Message:    "A buyer reported user ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     BuyerApi.php
+
+[ 2] Message:    "A seller has submitted an edit request for product ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[ 3] Message:    "A seller reported user ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[ 4] Message:    "A user has submitted an edit request for product ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[ 5] Message:    "An admin has submitted an edit request for product ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[ 6] Message:    "Buyer sent a message on offer for ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     BuyerApi.php
+
+[ 7] Message:    "Buyer shared media on offer for ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     BuyerApi.php
+
+[ 8] Message:    "Cannot remove genders from ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SuperAdminApi.php
+
+[ 9] Message:    "Good news! The seller has retracted their acceptance on ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[10] Message:    "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} -"
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SuperAdminApi.php
+
+[11] Message:    "Please upload a bill image or uncheck "I have a bill"."
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[12] Message:    "Seller sent a message on your offer for ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[13] Message:    "Seller shared media on your offer for ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[14] Message:    "The buyer has accepted your suggested dates for \"
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     BuyerApi.php
+
+[15] Message:    "The seller has retracted their acceptance of your offer on ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[16] Message:    "The seller has suggested new rental dates for ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+[17] Message:    "User ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     BuyerApi.php, SellerApi.php
+
+[18] Message:    "Your edit request for ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     AdminApi.php, SuperAdminApi.php
+
+[19] Message:    "Your offer for \"
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SuperAdminApi.php
+
+[20] Message:    "Your offer on ""
+     Mapped Key: NOT MAPPED IN BASE_API
+     In KeyMap:  NO
+     In Seeder:  NO
+     Source:     SellerApi.php
+
+
+🟢 MESSAGES FOUND IN DATABASE SEEDERS (423 found):
+-------------------------------------------------------------------------
+[ 1] Message:  "$count rejected products deleted."
+     DB Key:   rejected_products_deleted_count
+     DB Value: "$count rejected products deleted."
+     Source:   SuperAdminApi.php
+
+[ 2] Message:  "20-day rating window has expired."
+     DB Key:   rating_window_20day_expired
+     DB Value: "20-day rating window has expired."
+     Source:   BuyerApi.php
+
+[ 3] Message:  "A delivery photograph is required to confirm delivery"
+     DB Key:   delivery_photo_required
+     DB Value: "A delivery photograph is required to confirm delivery"
+     Source:   SellerApi.php
+
+[ 4] Message:  "A page with this slug already exists."
+     DB Key:   page_slug_exists
+     DB Value: "A page with this slug already exists."
+     Source:   SuperAdminApi.php
+
+[ 5] Message:  "A reason is required"
+     DB Key:   reason_required
+     DB Value: "A reason is required"
+     Source:   BuyerApi.php, SellerApi.php
+
+[ 6] Message:  "Acceptance retracted. Offer has been rejected."
+     DB Key:   offer_acceptance_retracted
+     DB Value: "Acceptance retracted. Offer has been rejected."
+     Source:   SellerApi.php
+
+[ 7] Message:  "Admin created successfully."
+     DB Key:   admin_created
+     DB Value: "Admin created successfully."
+     Source:   SuperAdminApi.php
+
+[ 8] Message:  "Admin deleted successfully."
+     DB Key:   admin_deleted
+     DB Value: "Admin deleted successfully."
+     Source:   SuperAdminApi.php
+
+[ 9] Message:  "Admin not found."
+     DB Key:   admin_not_found
+     DB Value: "Admin not found."
+     Source:   SuperAdminApi.php
+
+[10] Message:  "Admin updated successfully."
+     DB Key:   admin_updated_success
+     DB Value: "Admin updated successfully."
+     Source:   SuperAdminApi.php
+
+[11] Message:  "Advertisement deleted."
+     DB Key:   ad_deleted
+     DB Value: "Advertisement deleted."
+     Source:   SuperAdminApi.php
+
+[12] Message:  "Advertisement updated successfully."
+     DB Key:   ad_updated
+     DB Value: "Advertisement updated successfully."
+     Source:   SuperAdminApi.php
+
+[13] Message:  "Advertisement uploaded successfully."
+     DB Key:   ad_uploaded
+     DB Value: "Advertisement uploaded successfully."
+     Source:   SuperAdminApi.php
+
+[14] Message:  "All"
+     DB Key:   status_all
+     DB Value: "All"
+     Source:   SuperAdminApi.php
+
+[15] Message:  "All notifications marked as read"
+     DB Key:   notifications_all_read
+     DB Value: "All notifications marked as read"
+     Source:   BuyerApi.php
+
+[16] Message:  "Allowed values are required for picklist type."
+     DB Key:   allowed_values_required
+     DB Value: "Allowed values are required for picklist type."
+     Source:   SuperAdminApi.php
+
+[17] Message:  "Already active"
+     DB Key:   subscription_already_active
+     DB Value: "Subscription is already active"
+     Source:   AdminApi.php
+
+[18] Message:  "Already reviewed"
+     DB Key:   already_reviewed
+     DB Value: "Already reviewed"
+     Source:   BuyerApi.php
+
+[19] Message:  "Alternate mobile number cannot be the same as primary mobile number."
+     DB Key:   alternate_mobile_same_as_primary
+     DB Value: "Alternate mobile number cannot be the same as primary mobile number."
+     Source:   SharedApi.php
+
+[20] Message:  "Alternate mobile number is already registered by another user."
+     DB Key:   alternate_mobile_already_registered
+     DB Value: "Alternate mobile number is already registered by another user."
+     Source:   SharedApi.php
+
+[21] Message:  "Alternate mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9."
+     DB Key:   invalid_alternate_mobile_format
+     DB Value: "Alternate mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9."
+     Source:   SharedApi.php
+
+[22] Message:  "An account with this email and mobile number already exists."
+     DB Key:   account_email_mobile_exists
+     DB Value: "An account with this email and mobile number already exists."
+     Source:   AuthApi.php
+
+[23] Message:  "Another buyer\"
+     DB Key:   another_buyer_conflict
+     DB Value: "Another buyer\"
+     Source:   BuyerApi.php
+
+[24] Message:  "Assignment removed successfully."
+     DB Key:   assignment_remove_success
+     DB Value: "Assignment removed successfully."
+     Source:   SuperAdminApi.php
+
+[25] Message:  "Assignment updated successfully."
+     DB Key:   assignment_update_success
+     DB Value: "Assignment updated successfully."
+     Source:   SuperAdminApi.php
+
+[26] Message:  "At least one Category is required."
+     DB Key:   category_required
+     DB Value: "At least one Category is required."
+     Source:   SuperAdminApi.php
+
+[27] Message:  "At least one product type is required."
+     DB Key:   product_type_required
+     DB Value: "At least one product type is required."
+     Source:   SuperAdminApi.php
+
+[28] Message:  "Attribute ID, entity type, and entity ID are required."
+     DB Key:   attribute_assign_fields_required
+     DB Value: "Attribute ID, entity type, and entity ID are required."
+     Source:   SuperAdminApi.php
+
+[29] Message:  "Attribute added successfully."
+     DB Key:   attribute_add_success
+     DB Value: "Attribute added successfully."
+     Source:   SuperAdminApi.php
+
+[30] Message:  "Attribute assigned successfully."
+     DB Key:   attribute_assign_success
+     DB Value: "Attribute assigned successfully."
+     Source:   SuperAdminApi.php
+
+[31] Message:  "Attribute deleted successfully."
+     DB Key:   attribute_delete_success
+     DB Value: "Attribute deleted successfully."
+     Source:   SuperAdminApi.php
+
+[32] Message:  "Attribute is already assigned to this entity."
+     DB Key:   attribute_already_assigned
+     DB Value: "Attribute is already assigned to this entity."
+     Source:   SuperAdminApi.php
+
+[33] Message:  "Attribute name is required."
+     DB Key:   attribute_name_required
+     DB Value: "Attribute name is required."
+     Source:   SuperAdminApi.php
+
+[34] Message:  "Attribute type is required."
+     DB Key:   attribute_type_required
+     DB Value: "Attribute type is required."
+     Source:   SuperAdminApi.php
+
+[35] Message:  "Attribute updated successfully."
+     DB Key:   attribute_update_success
+     DB Value: "Attribute updated successfully."
+     Source:   SuperAdminApi.php
+
+[36] Message:  "Both dates required."
+     DB Key:   both_dates_required
+     DB Value: "Both dates are required."
+     Source:   SuperAdminApi.php
+
+[37] Message:  "Both start and end dates are required"
+     DB Key:   dates_both_required
+     DB Value: "Both start and end dates are required"
+     Source:   SellerApi.php
+
+[38] Message:  "Brand created"
+     DB Key:   brand_create_success
+     DB Value: "Brand created"
+     Source:   SharedApi.php
+
+[39] Message:  "Brand created successfully."
+     DB Key:   brand_create_success
+     DB Value: "Brand created"
+     Source:   SuperAdminApi.php
+
+[40] Message:  "Brand name already exists. Brand names must be unique."
+     DB Key:   brand_name_exists
+     DB Value: "Brand name already exists. Brand names must be unique."
+     Source:   SuperAdminApi.php
+
+[41] Message:  "Brand name and Seller are required."
+     DB Key:   brand_name_seller_required
+     DB Value: "Brand name and Seller are required."
+     Source:   SuperAdminApi.php
+
+[42] Message:  "Brand name is required."
+     DB Key:   brand_name_required
+     DB Value: "Brand name is required."
+     Source:   SuperAdminApi.php
+
+[43] Message:  "Brand updated."
+     DB Key:   brand_updated
+     DB Value: "Brand updated."
+     Source:   SuperAdminApi.php
+
+[44] Message:  "Buyer approved the suggested dates. Deal finalized."
+     DB Key:   buyer_approved_dates_deal_finalized
+     DB Value: "Buyer approved the suggested dates. Deal finalized."
+     Source:   BuyerApi.php
+
+[45] Message:  "Buyer rated successfully!"
+     DB Key:   buyer_rated_success
+     DB Value: "Buyer rated successfully!"
+     Source:   SellerApi.php
+
+[46] Message:  "Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan."
+     DB Key:   buyer_subscription_requires_buyer_role
+     DB Value: "Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan."
+     Source:   AdminApi.php, BuyerApi.php, SharedApi.php
+
+[47] Message:  "CMS page created successfully."
+     DB Key:   cms_page_created
+     DB Value: "CMS page created successfully."
+     Source:   SuperAdminApi.php
+
+[48] Message:  "CMS page deleted successfully."
+     DB Key:   cms_page_deleted
+     DB Value: "CMS page deleted successfully."
+     Source:   SuperAdminApi.php
+
+[49] Message:  "CSV file is empty."
+     DB Key:   csv_file_empty
+     DB Value: "CSV file is empty."
+     Source:   SuperAdminApi.php
+
+[50] Message:  "Can only accept assigned deliveries"
+     DB Key:   delivery_accept_assigned_only
+     DB Value: "Can only accept assigned deliveries"
+     Source:   DeliveryApi.php
+
+[51] Message:  "Cannot delete product with active orders"
+     DB Key:   product_delete_has_orders
+     DB Value: "Cannot delete product with active orders"
+     Source:   SellerApi.php
+
+[52] Message:  "Cannot make offer on your own product"
+     DB Key:   cannot_offer_own_product
+     DB Value: "Cannot make offer on your own product"
+     Source:   BuyerApi.php
+
+[53] Message:  "Cannot report an admin"
+     DB Key:   cannot_report_admin
+     DB Value: "Cannot report an admin"
+     Source:   BuyerApi.php, SellerApi.php
+
+[54] Message:  "Category added."
+     DB Key:   category_added
+     DB Value: "Category added."
+     Source:   SuperAdminApi.php
+
+[55] Message:  "Category name cannot be empty."
+     DB Key:   category_empty
+     DB Value: "Category name cannot be empty."
+     Source:   SuperAdminApi.php
+
+[56] Message:  "Category updated."
+     DB Key:   category_updated
+     DB Value: "Category updated."
+     Source:   SuperAdminApi.php
+
+[57] Message:  "Category with this name already exists."
+     DB Key:   category_exists
+     DB Value: "Category with this name already exists."
+     Source:   SuperAdminApi.php
+
+[58] Message:  "Charge created."
+     DB Key:   charge_create_success
+     DB Value: "Platform charge created"
+     Source:   SuperAdminApi.php
+
+[59] Message:  "Charge deleted."
+     DB Key:   charge_delete_success
+     DB Value: "Platform charge deleted"
+     Source:   SuperAdminApi.php
+
+[60] Message:  "Charge name is required."
+     DB Key:   charge_name_required
+     DB Value: "Charge name is required."
+     Source:   SuperAdminApi.php
+
+[61] Message:  "Charge updated."
+     DB Key:   charge_update_success
+     DB Value: "Platform charge updated"
+     Source:   SuperAdminApi.php
+
+[62] Message:  "Color added."
+     DB Key:   color_added
+     DB Value: "Color added."
+     Source:   SuperAdminApi.php
+
+[63] Message:  "Color updated."
+     DB Key:   color_updated
+     DB Value: "Color updated."
+     Source:   SuperAdminApi.php
+
+[64] Message:  "Color with this hex code already exists. Hex codes must be unique."
+     DB Key:   color_hex_exists
+     DB Value: "Color with this hex code already exists. Hex codes must be unique."
+     Source:   SuperAdminApi.php
+
+[65] Message:  "Color with this name already exists."
+     DB Key:   color_exists
+     DB Value: "Color with this name already exists."
+     Source:   SuperAdminApi.php
+
+[66] Message:  "Contact details not viewed."
+     DB Key:   contact_not_viewed
+     DB Value: "Contact details not viewed."
+     Source:   BuyerApi.php
+
+[67] Message:  "Coupon applied successfully!"
+     DB Key:   coupon_applied_success
+     DB Value: "Coupon applied!"
+     Source:   BuyerApi.php, SellerApi.php
+
+[68] Message:  "Coupon applied!"
+     DB Key:   coupon_applied_success
+     DB Value: "Coupon applied!"
+     Source:   AdminApi.php
+
+[69] Message:  "Coupon code already exists. Use a different code."
+     DB Key:   coupon_code_exists
+     DB Value: "Coupon code already exists. Use a different code."
+     Source:   SharedApi.php
+
+[70] Message:  "Coupon code is required"
+     DB Key:   coupon_code_required
+     DB Value: "Coupon code is required"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[71] Message:  "Coupon created"
+     DB Key:   coupon_create_success
+     DB Value: "Coupon created"
+     Source:   SharedApi.php
+
+[72] Message:  "Coupon deleted"
+     DB Key:   coupon_delete_success
+     DB Value: "Coupon deleted"
+     Source:   SharedApi.php
+
+[73] Message:  "Coupon has expired."
+     DB Key:   coupon_expired
+     DB Value: "Coupon has expired."
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[74] Message:  "Coupon not found"
+     DB Key:   coupon_not_found
+     DB Value: "Coupon not found."
+     Source:   SharedApi.php
+
+[75] Message:  "Coupon toggled"
+     DB Key:   coupon_toggle_success
+     DB Value: "Coupon toggled"
+     Source:   SharedApi.php
+
+[76] Message:  "Coupon updated"
+     DB Key:   coupon_update_success
+     DB Value: "Coupon updated"
+     Source:   SharedApi.php
+
+[77] Message:  "Creating new message keys is not allowed. Message keys are system-defined."
+     DB Key:   message_key_create_not_allowed
+     DB Value: "Creating new message keys is not allowed. Message keys are system-defined."
+     Source:   SharedApi.php, SuperAdminApi.php
+
+[78] Message:  "Daily rental cost exceeds the maximum allowed daily cap."
+     DB Key:   rental_daily_cost_exceeds_cap
+     DB Value: "Daily rental cost exceeds the maximum allowed daily cap."
+     Source:   SellerApi.php
+
+[79] Message:  "Date suggestion sent to buyer"
+     DB Key:   offer_suggestion_sent
+     DB Value: "Date suggestion sent to buyer"
+     Source:   SellerApi.php
+
+[80] Message:  "Date suggestions are only allowed on pending or negotiating offers"
+     DB Key:   offer_suggest_pending_or_negotiating
+     DB Value: "Date suggestions are only allowed on pending or negotiating offers."
+     Source:   SellerApi.php
+
+[81] Message:  "Dates accepted! The deal is now finalized and an order has been created."
+     DB Key:   offer_dates_accepted_with_order
+     DB Value: "Dates accepted! The deal is now finalized and an order has been created."
+     Source:   BuyerApi.php
+
+[82] Message:  "Dates can only be updated for active or rejected offers."
+     DB Key:   offer_dates_update_status_error
+     DB Value: "Dates can only be updated for active or rejected offers."
+     Source:   BuyerApi.php
+
+[83] Message:  "Deleting message keys is not allowed. Message keys are system-defined."
+     DB Key:   message_key_delete_not_allowed
+     DB Value: "Deleting message keys is not allowed. Message keys are system-defined."
+     Source:   SharedApi.php, SuperAdminApi.php
+
+[84] Message:  "Delivery accepted"
+     DB Key:   delivery_accepted
+     DB Value: "Delivery accepted"
+     Source:   DeliveryApi.php
+
+[85] Message:  "Delivery confirmed"
+     DB Key:   order_delivery_confirmed
+     DB Value: "Delivery confirmed"
+     Source:   BuyerApi.php
+
+[86] Message:  "Delivery confirmed successfully"
+     DB Key:   delivery_confirmed_success
+     DB Value: "Delivery confirmed successfully"
+     Source:   SellerApi.php
+
+[87] Message:  "Delivery profile updated"
+     DB Key:   delivery_profile_updated
+     DB Value: "Delivery profile updated"
+     Source:   DeliveryApi.php
+
+[88] Message:  "Edit request approved and merged."
+     DB Key:   edit_request_approve_success
+     DB Value: "Edit request approved and merged."
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[89] Message:  "Edit request not found"
+     DB Key:   edit_request_not_found
+     DB Value: "Edit request not found"
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[90] Message:  "Edit request rejected."
+     DB Key:   edit_request_reject_success
+     DB Value: "Edit request rejected."
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[91] Message:  "Edit request submitted for approval"
+     DB Key:   product_edit_submitted
+     DB Value: "Edit request submitted for approval."
+     Source:   SellerApi.php
+
+[92] Message:  "Email already exists for another user."
+     DB Key:   email_exists_another_user
+     DB Value: "Email already exists for another user."
+     Source:   SuperAdminApi.php
+
+[93] Message:  "Email already exists."
+     DB Key:   email_already_exists
+     DB Value: "This email is already registered."
+     Source:   SuperAdminApi.php
+
+[94] Message:  "Email and OTP are required"
+     DB Key:   otp_verify_fields_required
+     DB Value: "Email and OTP are required"
+     Source:   AuthApi.php
+
+[95] Message:  "Email and password are required"
+     DB Key:   login_fields_required
+     DB Value: "Email and password are required"
+     Source:   AuthApi.php
+
+[96] Message:  "Email is already registered by another user."
+     DB Key:   email_already_registered
+     DB Value: "Email is already registered by another user."
+     Source:   SharedApi.php
+
+[97] Message:  "Email is required"
+     DB Key:   email_required
+     DB Value: "Email is required"
+     Source:   AuthApi.php
+
+[98] Message:  "Email, OTP, and new password are required"
+     DB Key:   password_reset_fields_required
+     DB Value: "Email, OTP, and new password are required"
+     Source:   AuthApi.php
+
+[99] Message:  "Error message not found"
+     DB Key:   error_message_not_found
+     DB Value: "Error message not found."
+     Source:   SuperAdminApi.php
+
+[100] Message:  "Error message updated successfully"
+     DB Key:   error_message_updated
+     DB Value: "Error message updated successfully"
+     Source:   SuperAdminApi.php
+
+[101] Message:  "FAQ created"
+     DB Key:   faq_save_success
+     DB Value: "FAQ saved"
+     Source:   SharedApi.php
+
+[102] Message:  "FAQ deleted"
+     DB Key:   faq_deleted
+     DB Value: "FAQ deleted."
+     Source:   SharedApi.php
+
+[103] Message:  "FAQ updated"
+     DB Key:   faq_save_success
+     DB Value: "FAQ saved"
+     Source:   SharedApi.php
+
+[104] Message:  "Failed to activate subscription"
+     DB Key:   subscription_activate_failed
+     DB Value: "Failed to activate subscription"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[105] Message:  "Failed to connect to PhonePe. Check your credentials."
+     DB Key:   phonepe_connect_failed
+     DB Value: "Failed to connect to PhonePe. Check your credentials."
+     Source:   SuperAdminApi.php
+
+[106] Message:  "Failed to create order"
+     DB Key:   order_create_failed
+     DB Value: "Failed to create order"
+     Source:   SellerApi.php
+
+[107] Message:  "Failed to create product"
+     DB Key:   product_create_failed
+     DB Value: "Failed to create product"
+     Source:   SellerApi.php
+
+[108] Message:  "Failed to create upload directory on server."
+     DB Key:   upload_dir_create_failed
+     DB Value: "Failed to create upload directory on server."
+     Source:   SuperAdminApi.php
+
+[109] Message:  "Failed to initiate payment. Please try again."
+     DB Key:   payment_initiate_failed
+     DB Value: "Failed to initiate payment. Please try again."
+     Source:   BuyerApi.php, SellerApi.php
+
+[110] Message:  "Failed to parse Google token"
+     DB Key:   google_token_parse_failed
+     DB Value: "Failed to parse Google token"
+     Source:   AuthApi.php
+
+[111] Message:  "Failed to read CSV file."
+     DB Key:   failed_read_csv
+     DB Value: "Failed to read CSV file."
+     Source:   SuperAdminApi.php
+
+[112] Message:  "Failed to save file on server."
+     DB Key:   file_save_failed
+     DB Value: "Failed to save file on server."
+     Source:   SuperAdminApi.php
+
+[113] Message:  "Failed to save rating"
+     DB Key:   rating_save_failed
+     DB Value: "Failed to save rating"
+     Source:   BuyerApi.php, SellerApi.php
+
+[114] Message:  "Failed to update message:"
+     DB Key:   message_update_failed_prefix
+     DB Value: "Failed to update message:"
+     Source:   SuperAdminApi.php
+
+[115] Message:  "Failed to update password. Please try again."
+     DB Key:   password_update_failed
+     DB Value: "Failed to update password. Please try again."
+     Source:   AuthApi.php
+
+[116] Message:  "Failed to update product"
+     DB Key:   product_update_failed
+     DB Value: "Failed to update product"
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[117] Message:  "Field name and label are required"
+     DB Key:   validation_field_label_required
+     DB Value: "Field name and label are required."
+     Source:   SuperAdminApi.php
+
+[118] Message:  "File already processed."
+     DB Key:   file_already_processed
+     DB Value: "File already processed."
+     Source:   SuperAdminApi.php
+
+[119] Message:  "File too large. Max 10 MB."
+     DB Key:   file_too_large
+     DB Value: "File too large. Max 10 MB."
+     Source:   BuyerApi.php, SellerApi.php
+
+[120] Message:  "File type not allowed"
+     DB Key:   file_type_not_allowed
+     DB Value: "File type not allowed"
+     Source:   BuyerApi.php, SellerApi.php
+
+[121] Message:  "Filter value is required when filter type is selected"
+     DB Key:   filter_value_required
+     DB Value: "Filter value is required when filter type is selected."
+     Source:   SuperAdminApi.php
+
+[122] Message:  "Gender added."
+     DB Key:   gender_added
+     DB Value: "Gender added."
+     Source:   SuperAdminApi.php
+
+[123] Message:  "Gender updated."
+     DB Key:   gender_updated
+     DB Value: "Gender updated."
+     Source:   SuperAdminApi.php
+
+[124] Message:  "Gender with this name already exists."
+     DB Key:   gender_exists
+     DB Value: "Gender with this name already exists."
+     Source:   SuperAdminApi.php
+
+[125] Message:  "Google credential is required"
+     DB Key:   google_credential_required
+     DB Value: "Google credential is required"
+     Source:   AuthApi.php
+
+[126] Message:  "Image size exceeds maximum limit of {$maxImageSizeMB}MB. Your image is {$imageSizeMB}MB."
+     DB Key:   image_size_exceeds_limit
+     DB Value: "Image size exceeds maximum limit of {$maxImageSizeMB}MB. Your image is {$imageSizeMB}MB."
+     Source:   SellerApi.php
+
+[127] Message:  "Image uploaded."
+     DB Key:   image_uploaded
+     DB Value: "Image uploaded."
+     Source:   SuperAdminApi.php
+
+[128] Message:  "Invalid Google token"
+     DB Key:   google_token_invalid
+     DB Value: "Invalid Google token"
+     Source:   AuthApi.php
+
+[129] Message:  "Invalid catalogue type."
+     DB Key:   invalid_catalogue_type
+     DB Value: "Invalid catalogue type."
+     Source:   SuperAdminApi.php
+
+[130] Message:  "Invalid category IDs:"
+     DB Key:   invalid_category_ids_prefix
+     DB Value: "Invalid category IDs:"
+     Source:   SuperAdminApi.php
+
+[131] Message:  "Invalid email address. Please enter a valid email (e.g. example@gmail.com)."
+     DB Key:   invalid_email_format
+     DB Value: "Invalid email address. Please enter a valid email (e.g. example@gmail.com)."
+     Source:   SharedApi.php
+
+[132] Message:  "Invalid email or password"
+     DB Key:   login_failed
+     DB Value: "Invalid email or password"
+     Source:   AuthApi.php
+
+[133] Message:  "Invalid gender_config value. Must be one of:"
+     DB Key:   invalid_gender_config_prefix
+     DB Value: "Invalid gender_config value. Must be one of:"
+     Source:   SuperAdminApi.php
+
+[134] Message:  "Invalid image:"
+     DB Key:   invalid_image_prefix
+     DB Value: "Invalid image:"
+     Source:   SuperAdminApi.php
+
+[135] Message:  "Invalid listing type ID:"
+     DB Key:   invalid_listing_type_id_prefix
+     DB Value: "Invalid listing type ID:"
+     Source:   SuperAdminApi.php
+
+[136] Message:  "Invalid offer"
+     DB Key:   offer_invalid
+     DB Value: "Invalid offer"
+     Source:   BuyerApi.php, SellerApi.php
+
+[137] Message:  "Invalid or expired OTP"
+     DB Key:   otp_verify_failed
+     DB Value: "Invalid or expired OTP"
+     Source:   AuthApi.php
+
+[138] Message:  "Invalid or expired coupon code."
+     DB Key:   coupon_invalid
+     DB Value: "Invalid or expired coupon code."
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[139] Message:  "Invalid or inactive plan."
+     DB Key:   plan_inactive
+     DB Value: "Invalid or inactive plan."
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[140] Message:  "Invalid order"
+     DB Key:   order_invalid
+     DB Value: "Invalid order"
+     Source:   BuyerApi.php
+
+[141] Message:  "Invalid product type IDs:"
+     DB Key:   invalid_product_type_ids_prefix
+     DB Value: "Invalid product type IDs:"
+     Source:   SuperAdminApi.php
+
+[142] Message:  "Invalid role"
+     DB Key:   invalid_role
+     DB Value: "Invalid role"
+     Source:   AuthApi.php
+
+[143] Message:  "Invalid status."
+     DB Key:   invalid_status
+     DB Value: "Invalid status."
+     Source:   SuperAdminApi.php
+
+[144] Message:  "Invalid table."
+     DB Key:   invalid_table
+     DB Value: "Invalid table."
+     Source:   SuperAdminApi.php
+
+[145] Message:  "Invalid type."
+     DB Key:   invalid_type
+     DB Value: "Invalid type."
+     Source:   SuperAdminApi.php
+
+[146] Message:  "Invalid type. Must be one of:"
+     DB Key:   invalid_type_prefix
+     DB Value: "Invalid type. Must be one of:"
+     Source:   SuperAdminApi.php
+
+[147] Message:  "Invalid update data"
+     DB Key:   invalid_update_data
+     DB Value: "Invalid update data"
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[148] Message:  "Item deleted."
+     DB Key:   item_deleted
+     DB Value: "Item deleted."
+     Source:   SuperAdminApi.php
+
+[149] Message:  "KYC documents uploaded"
+     DB Key:   kyc_uploaded
+     DB Value: "KYC documents uploaded"
+     Source:   SharedApi.php
+
+[150] Message:  "Landing content updated ({$saved} keys saved)."
+     DB Key:   landing_content_updated_count
+     DB Value: "Landing content updated ({$saved} keys saved)."
+     Source:   SuperAdminApi.php
+
+[151] Message:  "Latitude and longitude are required."
+     DB Key:   lat_lng_required
+     DB Value: "Latitude and longitude are required."
+     Source:   AuthApi.php
+
+[152] Message:  "Listing type added."
+     DB Key:   listing_type_added
+     DB Value: "Listing type added."
+     Source:   SuperAdminApi.php
+
+[153] Message:  "Listing type name cannot be empty."
+     DB Key:   listing_type_empty
+     DB Value: "Listing type name cannot be empty."
+     Source:   SuperAdminApi.php
+
+[154] Message:  "Listing type updated."
+     DB Key:   listing_type_updated
+     DB Value: "Listing type updated."
+     Source:   SuperAdminApi.php
+
+[155] Message:  "Listing type with this name already exists."
+     DB Key:   listing_type_exists
+     DB Value: "Listing type with this name already exists."
+     Source:   SuperAdminApi.php
+
+[156] Message:  "Login successful"
+     DB Key:   login_success
+     DB Value: "Login successful"
+     Source:   AuthApi.php
+
+[157] Message:  "Marked as delivered"
+     DB Key:   delivery_marked_delivered
+     DB Value: "Marked as delivered"
+     Source:   DeliveryApi.php
+
+[158] Message:  "Marked as picked up"
+     DB Key:   delivery_picked_up
+     DB Value: "Marked as picked up"
+     Source:   DeliveryApi.php
+
+[159] Message:  "Marked {$count} expired offers as missed. Notifications sent to sellers and buyers."
+     DB Key:   expired_offers_marked_missed_count
+     DB Value: "Marked {$count} expired offers as missed. Notifications sent to sellers and buyers."
+     Source:   SuperAdminApi.php
+
+[160] Message:  "Maximum {$maxImages} images allowed per product. You uploaded {$imageCount} images."
+     DB Key:   product_max_images_exceeded
+     DB Value: "Maximum {$maxImages} images allowed per product. You uploaded {$imageCount} images."
+     Source:   SellerApi.php
+
+[161] Message:  "Message cannot be empty"
+     DB Key:   message_empty
+     DB Value: "Message cannot be empty"
+     Source:   BuyerApi.php, SellerApi.php
+
+[162] Message:  "Message sent"
+     DB Key:   message_sent
+     DB Value: "Message sent"
+     Source:   BuyerApi.php, SellerApi.php
+
+[163] Message:  "Message updated"
+     DB Key:   settings_message_updated
+     DB Value: "Message updated"
+     Source:   SharedApi.php
+
+[164] Message:  "Message value cannot be blank"
+     DB Key:   message_value_blank
+     DB Value: "Message value cannot be blank."
+     Source:   SharedApi.php, SuperAdminApi.php
+
+[165] Message:  "Minimum purchase for this coupon is ₹"
+     DB Key:   coupon_min_purchase_prefix
+     DB Value: "Minimum purchase for this coupon is ₹"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[166] Message:  "Missing ad ID"
+     DB Key:   missing_ad_id
+     DB Value: "Missing ad ID."
+     Source:   SuperAdminApi.php
+
+[167] Message:  "Mobile number already exists for another user."
+     DB Key:   mobile_exists_another_user
+     DB Value: "Mobile number already exists for another user."
+     Source:   SuperAdminApi.php
+
+[168] Message:  "Mobile number already exists."
+     DB Key:   mobile_already_exists_admin
+     DB Value: "Mobile number already exists."
+     Source:   SuperAdminApi.php
+
+[169] Message:  "Mobile number cannot be the same as the alternate mobile number."
+     DB Key:   mobile_same_as_alternate
+     DB Value: "Mobile number cannot be the same as the alternate mobile number."
+     Source:   SuperAdminApi.php
+
+[170] Message:  "Mobile number is already registered by another user."
+     DB Key:   mobile_already_registered
+     DB Value: "Mobile number is already registered by another user."
+     Source:   SharedApi.php
+
+[171] Message:  "Mobile number is already used as an alternate mobile by another user."
+     DB Key:   alternate_mobile_exists
+     DB Value: "Mobile number is already used as an alternate mobile by another user."
+     Source:   SuperAdminApi.php
+
+[172] Message:  "Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9."
+     DB Key:   invalid_mobile_format
+     DB Value: "Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9."
+     Source:   SharedApi.php
+
+[173] Message:  "Name and email are required."
+     DB Key:   name_email_required
+     DB Value: "Name and email are required."
+     Source:   SuperAdminApi.php
+
+[174] Message:  "Name and listing type are required."
+     DB Key:   name_listing_type_required
+     DB Value: "Name and listing type are required."
+     Source:   SuperAdminApi.php
+
+[175] Message:  "Name is required."
+     DB Key:   name_required
+     DB Value: "Name is required."
+     Source:   SuperAdminApi.php
+
+[176] Message:  "Name, email and password are required."
+     DB Key:   name_email_password_required
+     DB Value: "Name, email and password are required."
+     Source:   SuperAdminApi.php
+
+[177] Message:  "New page SEO setting created successfully."
+     DB Key:   seo_setting_create_success
+     DB Value: "New page SEO setting created successfully."
+     Source:   SuperAdminApi.php
+
+[178] Message:  "No account found with this email"
+     DB Key:   email_not_found
+     DB Value: "No account found with this email"
+     Source:   AuthApi.php
+
+[179] Message:  "No active subscription found. Please subscribe to view contact details."
+     DB Key:   subscription_required_for_contact
+     DB Value: "No active subscription found. Please subscribe to view contact details."
+     Source:   BuyerApi.php
+
+[180] Message:  "No brand selected."
+     DB Key:   no_brand_selected
+     DB Value: "No brand selected."
+     Source:   SuperAdminApi.php
+
+[181] Message:  "No data to update"
+     DB Key:   no_data_to_update
+     DB Value: "No data to update"
+     Source:   SuperAdminApi.php
+
+[182] Message:  "No data to update."
+     DB Key:   no_data_to_update
+     DB Value: "No data to update"
+     Source:   SuperAdminApi.php
+
+[183] Message:  "No page key or route provided"
+     DB Key:   no_page_key_or_route
+     DB Value: "No page key or route provided."
+     Source:   SharedApi.php
+
+[184] Message:  "No transaction ID provided"
+     DB Key:   transaction_id_required
+     DB Value: "No transaction ID provided"
+     Source:   BuyerApi.php, SellerApi.php
+
+[185] Message:  "No valid file uploaded"
+     DB Key:   no_valid_file
+     DB Value: "No valid file uploaded"
+     Source:   BuyerApi.php, SellerApi.php
+
+[186] Message:  "No valid image uploaded"
+     DB Key:   no_valid_image
+     DB Value: "No valid image uploaded"
+     Source:   SharedApi.php
+
+[187] Message:  "None of the provided category IDs are valid."
+     DB Key:   category_ids_none_valid
+     DB Value: "None of the provided category IDs are valid."
+     Source:   SuperAdminApi.php
+
+[188] Message:  "None of the provided category IDs exist in the database."
+     DB Key:   category_ids_none_exist
+     DB Value: "None of the provided category IDs exist in the database."
+     Source:   SuperAdminApi.php
+
+[189] Message:  "None of the provided product type IDs are valid."
+     DB Key:   product_type_ids_none_valid
+     DB Value: "None of the provided product type IDs are valid."
+     Source:   SuperAdminApi.php
+
+[190] Message:  "None of the provided product type IDs exist in the database."
+     DB Key:   product_type_ids_none_exist
+     DB Value: "None of the provided product type IDs exist in the database."
+     Source:   SuperAdminApi.php
+
+[191] Message:  "Not found"
+     DB Key:   not_found_error
+     DB Value: "Not found"
+     Source:   AdminApi.php, SharedApi.php, SuperAdminApi.php
+
+[192] Message:  "OTP sent to your email"
+     DB Key:   otp_send_success
+     DB Value: "OTP sent to your email"
+     Source:   AuthApi.php
+
+[193] Message:  "OTP verified successfully"
+     DB Key:   otp_verify_success
+     DB Value: "OTP verified successfully"
+     Source:   AuthApi.php
+
+[194] Message:  "Offer accepted, order created"
+     DB Key:   offer_accepted_order_created
+     DB Value: "Offer accepted, order created"
+     Source:   SellerApi.php
+
+[195] Message:  "Offer cancelled"
+     DB Key:   offer_cancel_success
+     DB Value: "Offer cancelled"
+     Source:   BuyerApi.php
+
+[196] Message:  "Offer dates updated successfully."
+     DB Key:   offer_dates_updated
+     DB Value: "Offer dates updated successfully."
+     Source:   BuyerApi.php
+
+[197] Message:  "Offer must be accepted before rating"
+     DB Key:   offer_must_be_accepted_for_rating
+     DB Value: "Offer must be accepted before rating"
+     Source:   BuyerApi.php, SellerApi.php
+
+[198] Message:  "Offer not found"
+     DB Key:   offer_not_found
+     DB Value: "Offer not found"
+     Source:   BuyerApi.php, SellerApi.php
+
+[199] Message:  "Offer not found or permission denied"
+     DB Key:   offer_not_found_or_denied
+     DB Value: "Offer not found or permission denied"
+     Source:   BuyerApi.php, SellerApi.php
+
+[200] Message:  "Offer rejected"
+     DB Key:   offer_rejected_success
+     DB Value: "Offer rejected"
+     Source:   SellerApi.php
+
+[201] Message:  "Offer submitted successfully"
+     DB Key:   offer_sent_success
+     DB Value: "Offer submitted successfully"
+     Source:   BuyerApi.php
+
+[202] Message:  "Only JPG, PNG, WEBP images are allowed"
+     DB Key:   invalid_image_type
+     DB Value: "Only JPG, PNG, WEBP images are allowed"
+     Source:   SharedApi.php
+
+[203] Message:  "Only negotiating offers can be confirmed"
+     DB Key:   offer_must_be_negotiating
+     DB Value: "Only negotiating offers can be confirmed"
+     Source:   BuyerApi.php
+
+[204] Message:  "Only pending or accepted (within window) offers can be rejected"
+     DB Key:   offer_reject_status_error
+     DB Value: "Only pending or accepted (within window) offers can be rejected"
+     Source:   SellerApi.php
+
+[205] Message:  "Only pending orders can be cancelled"
+     DB Key:   order_must_be_pending
+     DB Value: "Only pending orders can be cancelled"
+     Source:   BuyerApi.php
+
+[206] Message:  "Only super admin can approve system-user uploaded products"
+     DB Key:   superadmin_approve_only
+     DB Value: "Only super admin can approve system-user uploaded products"
+     Source:   SharedApi.php
+
+[207] Message:  "Only super admin can reject system-user uploaded products"
+     DB Key:   superadmin_reject_only
+     DB Value: "Only super admin can reject system-user uploaded products"
+     Source:   SharedApi.php
+
+[208] Message:  "Order can only be confirmed after dispatching"
+     DB Key:   order_confirm_after_dispatch
+     DB Value: "Order can only be confirmed after dispatching"
+     Source:   SellerApi.php
+
+[209] Message:  "Order can only be dispatched after payment is received"
+     DB Key:   order_dispatch_after_payment
+     DB Value: "Order can only be dispatched after payment is received"
+     Source:   SellerApi.php
+
+[210] Message:  "Order cancelled"
+     DB Key:   order_cancel_success
+     DB Value: "Order cancelled"
+     Source:   BuyerApi.php
+
+[211] Message:  "Order cannot be confirmed in current status"
+     DB Key:   order_confirm_status_error
+     DB Value: "Order cannot be confirmed in current status"
+     Source:   BuyerApi.php
+
+[212] Message:  "Order is already"
+     DB Key:   order_is_already_prefix
+     DB Value: "Order is already"
+     Source:   BuyerApi.php
+
+[213] Message:  "Order is already confirmed"
+     DB Key:   order_already_confirmed
+     DB Value: "Order is already confirmed"
+     Source:   BuyerApi.php
+
+[214] Message:  "Order is not in a payable state"
+     DB Key:   order_not_payable
+     DB Value: "Order is not in a payable state"
+     Source:   BuyerApi.php
+
+[215] Message:  "Order marked as dispatched"
+     DB Key:   order_dispatched
+     DB Value: "Order marked as dispatched"
+     Source:   SellerApi.php
+
+[216] Message:  "Order not found"
+     DB Key:   order_not_found
+     DB Value: "Order not found"
+     Source:   BuyerApi.php, DeliveryApi.php, SellerApi.php
+
+[217] Message:  "Order not found for this transaction"
+     DB Key:   order_not_found_transaction
+     DB Value: "Order not found for this transaction"
+     Source:   BuyerApi.php
+
+[218] Message:  "Original brand activated."
+     DB Key:   original_brand_activated
+     DB Value: "Original brand activated."
+     Source:   SuperAdminApi.php
+
+[219] Message:  "Original brand added."
+     DB Key:   original_brand_added
+     DB Value: "Original brand added."
+     Source:   SuperAdminApi.php
+
+[220] Message:  "Original brand blocked and products rejected."
+     DB Key:   original_brand_blocked
+     DB Value: "Original brand blocked and products rejected."
+     Source:   SuperAdminApi.php
+
+[221] Message:  "Original brand deactivated. Brand name hidden from all products (products are NOT detagged)."
+     DB Key:   original_brand_deactivated
+     DB Value: "Original brand deactivated. Brand name hidden from all products (products are NOT detagged)."
+     Source:   SuperAdminApi.php
+
+[222] Message:  "Original brand deleted."
+     DB Key:   original_brand_deleted
+     DB Value: "Original brand deleted."
+     Source:   SuperAdminApi.php
+
+[223] Message:  "Original brand unblocked. Products restored to their original statuses."
+     DB Key:   original_brand_unblocked
+     DB Value: "Original brand unblocked. Products restored to their original statuses."
+     Source:   SuperAdminApi.php
+
+[224] Message:  "Original brand updated."
+     DB Key:   original_brand_updated
+     DB Value: "Original brand updated."
+     Source:   SuperAdminApi.php
+
+[225] Message:  "Page name and route path are required."
+     DB Key:   page_name_route_required
+     DB Value: "Page name and route path are required."
+     Source:   SuperAdminApi.php
+
+[226] Message:  "Page not found."
+     DB Key:   page_not_found
+     DB Value: "Page not found."
+     Source:   SharedApi.php, SuperAdminApi.php
+
+[227] Message:  "Page saved"
+     DB Key:   page_saved
+     DB Value: "Page saved"
+     Source:   SharedApi.php
+
+[228] Message:  "Page updated successfully."
+     DB Key:   page_updated
+     DB Value: "Page updated successfully."
+     Source:   SuperAdminApi.php
+
+[229] Message:  "Password must be at least 6 characters long"
+     DB Key:   password_too_short
+     DB Value: "Password must be at least 6 characters long"
+     Source:   AuthApi.php
+
+[230] Message:  "Password reset OTP sent to your email"
+     DB Key:   password_reset_otp_sent
+     DB Value: "Password reset OTP sent to your email"
+     Source:   AuthApi.php
+
+[231] Message:  "Password reset successfully. You can now login with your new password."
+     DB Key:   password_reset_success
+     DB Value: "Password reset successfully. You can now login with your new password."
+     Source:   AuthApi.php
+
+[232] Message:  "Payload ({$payloadMB}MB) exceeds PHP post_max_size ({$postMax}). Loaded ini: {$iniFile}"
+     DB Key:   payload_size_exceeds_post_max
+     DB Value: "Payload ({$payloadMB}MB) exceeds PHP post_max_size ({$postMax}). Loaded ini: {$iniFile}"
+     Source:   SuperAdminApi.php
+
+[233] Message:  "Payment failed or was cancelled."
+     DB Key:   payment_failed
+     DB Value: "Payment failed or was cancelled."
+     Source:   AdminApi.php, SellerApi.php
+
+[234] Message:  "Payment failed. Please try again."
+     DB Key:   payment_failed_retry
+     DB Value: "Payment failed. Please try again."
+     Source:   BuyerApi.php
+
+[235] Message:  "Payment initiation failed."
+     DB Key:   payment_failed
+     DB Value: "Payment failed or was cancelled."
+     Source:   AdminApi.php
+
+[236] Message:  "Payment is being processed…"
+     DB Key:   payment_being_processed
+     DB Value: "Payment is being processed…"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[237] Message:  "Payment is still processing"
+     DB Key:   payment_still_processing
+     DB Value: "Payment is still processing"
+     Source:   BuyerApi.php
+
+[238] Message:  "Payment received for order #{$orderId}. You can now dispatch the item."
+     DB Key:   payment_received_dispatch_ready
+     DB Value: "Payment received for order #{$orderId}. You can now dispatch the item."
+     Source:   BuyerApi.php
+
+[239] Message:  "Payment successful! Order confirmed."
+     DB Key:   payment_order_success
+     DB Value: "Payment successful! Order confirmed."
+     Source:   BuyerApi.php
+
+[240] Message:  "Payment successful! Subscription activated."
+     DB Key:   payment_success_subscription_activated
+     DB Value: "Payment successful! Subscription activated."
+     Source:   BuyerApi.php, SellerApi.php
+
+[241] Message:  "Payment successful! Your order has been confirmed."
+     DB Key:   payment_success_order_confirmed
+     DB Value: "Payment successful! Your order has been confirmed."
+     Source:   BuyerApi.php
+
+[242] Message:  "Payment verified and plans stacked!"
+     DB Key:   payment_success
+     DB Value: "Payment verified and plans stacked!"
+     Source:   AdminApi.php
+
+[243] Message:  "Pin code must be a valid 6-digit number."
+     DB Key:   invalid_pin_code
+     DB Value: "Pin code must be a valid 6-digit number."
+     Source:   SharedApi.php
+
+[244] Message:  "Plan activated successfully"
+     DB Key:   plan_activated_success
+     DB Value: "Plan activated successfully"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[245] Message:  "Plan assigned successfully."
+     DB Key:   plan_assigned
+     DB Value: "Plan assigned successfully."
+     Source:   SuperAdminApi.php
+
+[246] Message:  "Plan created"
+     DB Key:   plan_create_success
+     DB Value: "Plan created"
+     Source:   SharedApi.php
+
+[247] Message:  "Plan deleted"
+     DB Key:   plan_delete_success
+     DB Value: "Plan deleted"
+     Source:   SharedApi.php
+
+[248] Message:  "Plan not found"
+     DB Key:   plan_not_found
+     DB Value: "Plan not found"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php, SharedApi.php
+
+[249] Message:  "Plan not found or inactive"
+     DB Key:   plan_not_found_or_inactive
+     DB Value: "Plan not found or inactive"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[250] Message:  "Plan not found."
+     DB Key:   plan_not_found
+     DB Value: "Plan not found"
+     Source:   SuperAdminApi.php
+
+[251] Message:  "Plan updated"
+     DB Key:   plan_update_success
+     DB Value: "Plan updated"
+     Source:   SharedApi.php
+
+[252] Message:  "Please upload a valid CSV file."
+     DB Key:   upload_valid_csv_required
+     DB Value: "Please upload a valid CSV file."
+     Source:   SuperAdminApi.php
+
+[253] Message:  "Please verify your account before logging in. Check your email for verification instructions."
+     DB Key:   verify_account_before_login
+     DB Value: "Please verify your account before logging in. Check your email for verification instructions."
+     Source:   AuthApi.php
+
+[254] Message:  "Pricing rule created"
+     DB Key:   pricing_rule_created
+     DB Value: "Pricing rule created"
+     Source:   SuperAdminApi.php
+
+[255] Message:  "Pricing rule deleted"
+     DB Key:   pricing_rule_deleted
+     DB Value: "Pricing rule deleted"
+     Source:   SuperAdminApi.php
+
+[256] Message:  "Pricing rule updated"
+     DB Key:   pricing_rule_updated
+     DB Value: "Pricing rule updated"
+     Source:   SuperAdminApi.php
+
+[257] Message:  "Product approved"
+     DB Key:   product_approved
+     DB Value: "Product approved"
+     Source:   SharedApi.php
+
+[258] Message:  "Product deleted"
+     DB Key:   product_deleted
+     DB Value: "Product deleted"
+     Source:   SellerApi.php
+
+[259] Message:  "Product deleted."
+     DB Key:   product_deleted
+     DB Value: "Product deleted"
+     Source:   SuperAdminApi.php
+
+[260] Message:  "Product edit rejected and restored."
+     DB Key:   product_edit_rejected_restored
+     DB Value: "Product edit rejected and restored."
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[261] Message:  "Product not found"
+     DB Key:   product_not_found
+     DB Value: "Product not found"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php, SharedApi.php, SuperAdminApi.php
+
+[262] Message:  "Product not found or currently unavailable"
+     DB Key:   product_not_found_or_unavailable
+     DB Value: "Product not found or currently unavailable"
+     Source:   BuyerApi.php
+
+[263] Message:  "Product not found."
+     DB Key:   product_not_found
+     DB Value: "Product not found"
+     Source:   BuyerApi.php, SuperAdminApi.php
+
+[264] Message:  "Product pending edit not found"
+     DB Key:   product_pending_edit_not_found
+     DB Value: "Product pending edit not found"
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[265] Message:  "Product rejected"
+     DB Key:   product_rejected
+     DB Value: "Product rejected"
+     Source:   SharedApi.php
+
+[266] Message:  "Product status changed to {$newStatus}."
+     DB Key:   product_status_changed
+     DB Value: "Product status changed to {$newStatus}."
+     Source:   SuperAdminApi.php
+
+[267] Message:  "Product type added."
+     DB Key:   product_type_added
+     DB Value: "Product type added."
+     Source:   SuperAdminApi.php
+
+[268] Message:  "Product type updated."
+     DB Key:   product_type_updated
+     DB Value: "Product type updated."
+     Source:   SuperAdminApi.php
+
+[269] Message:  "Product type with this name already exists in this listing type."
+     DB Key:   product_type_exists
+     DB Value: "Product type with this name already exists in this listing type."
+     Source:   SuperAdminApi.php
+
+[270] Message:  "Product type with this name already exists. Product type names must be unique across all listing types."
+     DB Key:   product_type_exists_global
+     DB Value: "Product type with this name already exists. Product type names must be unique across all listing types."
+     Source:   SuperAdminApi.php
+
+[271] Message:  "Product updated successfully"
+     DB Key:   product_update_success
+     DB Value: "Product updated successfully."
+     Source:   SellerApi.php
+
+[272] Message:  "Profile image updated"
+     DB Key:   profile_image_updated
+     DB Value: "Profile image updated"
+     Source:   SharedApi.php
+
+[273] Message:  "Profile updated successfully"
+     DB Key:   profile_updated_success
+     DB Value: "Profile updated successfully."
+     Source:   SharedApi.php
+
+[274] Message:  "Rating must be between 1 and 5"
+     DB Key:   rating_range_invalid
+     DB Value: "Rating must be between 1 and 5"
+     Source:   BuyerApi.php, SellerApi.php
+
+[275] Message:  "Rating window has expired"
+     DB Key:   rating_window_expired
+     DB Value: "Rating window has expired"
+     Source:   BuyerApi.php, SellerApi.php
+
+[276] Message:  "Registration failed"
+     DB Key:   register_failed
+     DB Value: "Registration failed"
+     Source:   AuthApi.php
+
+[277] Message:  "Registration successful. OTP sent to your email."
+     DB Key:   register_success
+     DB Value: "Registration successful. OTP sent to your email."
+     Source:   AuthApi.php
+
+[278] Message:  "Rejection window has expired. You can no longer retract this accepted offer."
+     DB Key:   rejection_window_expired
+     DB Value: "Rejection window has expired. You can no longer retract this accepted offer."
+     Source:   SellerApi.php
+
+[279] Message:  "Rejection window unavailable for this offer"
+     DB Key:   rejection_window_unavailable
+     DB Value: "Rejection window unavailable for this offer"
+     Source:   SellerApi.php
+
+[280] Message:  "Reliability point awarded successfully!"
+     DB Key:   reliability_point_awarded
+     DB Value: "Reliability point awarded successfully!"
+     Source:   BuyerApi.php
+
+[281] Message:  "Rental deposit exceeds the maximum allowed threshold."
+     DB Key:   rental_deposit_exceeds_threshold
+     DB Value: "Rental deposit exceeds the maximum allowed threshold."
+     Source:   SellerApi.php
+
+[282] Message:  "Rental rule created"
+     DB Key:   rental_rule_created
+     DB Value: "Rental rule created"
+     Source:   SuperAdminApi.php
+
+[283] Message:  "Rental rule deleted"
+     DB Key:   rental_rule_deleted
+     DB Value: "Rental rule deleted"
+     Source:   SuperAdminApi.php
+
+[284] Message:  "Rental rule toggled"
+     DB Key:   rental_rule_toggled
+     DB Value: "Rental rule toggled"
+     Source:   SuperAdminApi.php
+
+[285] Message:  "Rental rule updated"
+     DB Key:   rental_rule_updated
+     DB Value: "Rental rule updated"
+     Source:   SuperAdminApi.php
+
+[286] Message:  "Rental start and end dates are required"
+     DB Key:   offer_dates_required
+     DB Value: "Rental start and end dates are required."
+     Source:   BuyerApi.php
+
+[287] Message:  "Report handled successfully"
+     DB Key:   report_handled_success
+     DB Value: "Report handled successfully"
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[288] Message:  "Report not found"
+     DB Key:   report_not_found
+     DB Value: "Report not found or not assigned to you"
+     Source:   SuperAdminApi.php
+
+[289] Message:  "Report not found or not assigned to you"
+     DB Key:   report_not_found
+     DB Value: "Report not found or not assigned to you"
+     Source:   AdminApi.php
+
+[290] Message:  "Report reassigned"
+     DB Key:   report_reassigned
+     DB Value: "Report reassigned"
+     Source:   SuperAdminApi.php
+
+[291] Message:  "Report submitted successfully"
+     DB Key:   report_submitted_success
+     DB Value: "Report submitted successfully"
+     Source:   BuyerApi.php, SellerApi.php
+
+[292] Message:  "Reported user not found"
+     DB Key:   reported_user_not_found
+     DB Value: "Reported user not found"
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[293] Message:  "Review submitted"
+     DB Key:   order_review_submitted
+     DB Value: "Review submitted"
+     Source:   BuyerApi.php
+
+[294] Message:  "Rights updated successfully."
+     DB Key:   rights_updated
+     DB Value: "Rights updated successfully."
+     Source:   SuperAdminApi.php
+
+[295] Message:  "Role switching not allowed"
+     DB Key:   role_switch_not_allowed
+     DB Value: "Role switching not allowed"
+     Source:   AuthApi.php
+
+[296] Message:  "Rule not found"
+     DB Key:   rule_not_found
+     DB Value: "Rule not found."
+     Source:   SuperAdminApi.php
+
+[297] Message:  "Rule toggled"
+     DB Key:   rule_toggled
+     DB Value: "Rule toggled"
+     Source:   SuperAdminApi.php
+
+[298] Message:  "SEO setting deleted successfully."
+     DB Key:   seo_setting_delete_success
+     DB Value: "SEO setting deleted successfully."
+     Source:   SuperAdminApi.php
+
+[299] Message:  "SEO setting for this page route already exists."
+     DB Key:   seo_setting_route_exists
+     DB Value: "SEO setting for this page route already exists."
+     Source:   SuperAdminApi.php
+
+[300] Message:  "SEO setting not found"
+     DB Key:   seo_setting_not_found
+     DB Value: "SEO setting not found."
+     Source:   SuperAdminApi.php
+
+[301] Message:  "SEO setting updated successfully."
+     DB Key:   seo_updated
+     DB Value: "SEO setting updated successfully."
+     Source:   SuperAdminApi.php
+
+[302] Message:  "SEO settings not found for this page"
+     DB Key:   seo_not_found
+     DB Value: "SEO settings not found for this page"
+     Source:   SharedApi.php
+
+[303] Message:  "Search query is required"
+     DB Key:   search_query_required
+     DB Value: "Search query is required."
+     Source:   SuperAdminApi.php
+
+[304] Message:  "Seller already has a brand. Each seller can have only one brand."
+     DB Key:   seller_has_brand_already
+     DB Value: "Seller already has a brand. Each seller can have only one brand."
+     Source:   SuperAdminApi.php
+
+[305] Message:  "Seller blocked successfully"
+     DB Key:   seller_blocked_success
+     DB Value: "Seller blocked successfully"
+     Source:   BuyerApi.php
+
+[306] Message:  "Seller brand activated."
+     DB Key:   seller_brand_activated
+     DB Value: "Seller brand activated."
+     Source:   SuperAdminApi.php
+
+[307] Message:  "Seller brand blocked and products rejected."
+     DB Key:   seller_brand_blocked
+     DB Value: "Seller brand blocked and products rejected."
+     Source:   SuperAdminApi.php
+
+[308] Message:  "Seller brand created and assigned."
+     DB Key:   seller_brand_created
+     DB Value: "Seller brand created and assigned."
+     Source:   SuperAdminApi.php
+
+[309] Message:  "Seller brand deactivated. Brand name hidden from all products (products are NOT detagged)."
+     DB Key:   seller_brand_deactivated
+     DB Value: "Seller brand deactivated. Brand name hidden from all products (products are NOT detagged)."
+     Source:   SuperAdminApi.php
+
+[310] Message:  "Seller brand deleted."
+     DB Key:   seller_brand_deleted
+     DB Value: "Seller brand deleted."
+     Source:   SuperAdminApi.php
+
+[311] Message:  "Seller brand unblocked. Products restored to their original statuses."
+     DB Key:   seller_brand_unblocked
+     DB Value: "Seller brand unblocked. Products restored to their original statuses."
+     Source:   SuperAdminApi.php
+
+[312] Message:  "Seller brand updated."
+     DB Key:   seller_brand_updated
+     DB Value: "Seller brand updated."
+     Source:   SuperAdminApi.php
+
+[313] Message:  "Seller not found"
+     DB Key:   seller_not_found
+     DB Value: "Seller not found"
+     Source:   BuyerApi.php
+
+[314] Message:  "Seller rated successfully!"
+     DB Key:   seller_rated_success
+     DB Value: "Seller rated successfully!"
+     Source:   BuyerApi.php
+
+[315] Message:  "Seller subscription plan requires seller role. Please enable seller role to purchase this plan."
+     DB Key:   seller_subscription_requires_seller_role
+     DB Value: "Seller subscription plan requires seller role. Please enable seller role to purchase this plan."
+     Source:   AdminApi.php, SellerApi.php, SharedApi.php
+
+[316] Message:  "Seller unblocked successfully"
+     DB Key:   seller_unblocked_success
+     DB Value: "Seller unblocked successfully"
+     Source:   BuyerApi.php
+
+[317] Message:  "Selling price exceeds the maximum allowed threshold."
+     DB Key:   selling_price_exceeds_threshold
+     DB Value: "Selling price exceeds the maximum allowed threshold."
+     Source:   SellerApi.php
+
+[318] Message:  "Server error:"
+     DB Key:   server_error_prefix
+     DB Value: "Server error:"
+     Source:   AdminApi.php, SuperAdminApi.php
+
+[319] Message:  "Settings saved"
+     DB Key:   settings_save_success
+     DB Value: "Settings saved"
+     Source:   SharedApi.php
+
+[320] Message:  "Settings saved successfully."
+     DB Key:   settings_saved_success
+     DB Value: "Settings saved successfully."
+     Source:   SuperAdminApi.php
+
+[321] Message:  "Since the selected parent category has no genders, you must select at least one gender for this sub-category."
+     DB Key:   subcategory_gender_required
+     DB Value: "Since the selected parent category has no genders, you must select at least one gender for this sub-category."
+     Source:   SuperAdminApi.php
+
+[322] Message:  "Slug and title are required."
+     DB Key:   slug_title_required
+     DB Value: "Slug and title are required."
+     Source:   SuperAdminApi.php
+
+[323] Message:  "Sorry, access is not available in"
+     DB Key:   access_not_available_location_prefix
+     DB Value: "Sorry, access is not available in"
+     Source:   AuthApi.php
+
+[324] Message:  "Sorry, our services are not yet available in"
+     DB Key:   services_not_available_location_prefix
+     DB Value: "Sorry, our services are not yet available in"
+     Source:   AuthApi.php
+
+[325] Message:  "Start and end dates are required for rental products."
+     DB Key:   rental_dates_required
+     DB Value: "Start and end dates are required for rental products."
+     Source:   BuyerApi.php
+
+[326] Message:  "State is required for zone restriction."
+     DB Key:   state_required_for_zone
+     DB Value: "State is required for zone restriction."
+     Source:   SuperAdminApi.php
+
+[327] Message:  "Status toggled."
+     DB Key:   status_toggled
+     DB Value: "Status toggled."
+     Source:   SuperAdminApi.php
+
+[328] Message:  "Sub-category added."
+     DB Key:   subcategory_added
+     DB Value: "Sub-category added."
+     Source:   SuperAdminApi.php
+
+[329] Message:  "Sub-category name cannot be empty."
+     DB Key:   subcategory_empty
+     DB Value: "Sub-category name cannot be empty."
+     Source:   SuperAdminApi.php
+
+[330] Message:  "Sub-category updated."
+     DB Key:   subcategory_updated
+     DB Value: "Sub-category updated."
+     Source:   SuperAdminApi.php
+
+[331] Message:  "Sub-category with this name already exists."
+     DB Key:   subcategory_exists
+     DB Value: "Sub-category with this name already exists."
+     Source:   SuperAdminApi.php
+
+[332] Message:  "Subscription activated"
+     DB Key:   subscription_activated
+     DB Value: "Subscription activated"
+     Source:   SharedApi.php
+
+[333] Message:  "Subscription is already active"
+     DB Key:   subscription_already_active_status
+     DB Value: "Subscription is already active"
+     Source:   BuyerApi.php, SellerApi.php
+
+[334] Message:  "Successfully connected to PhonePe! Auth token received."
+     DB Key:   phonepe_connected
+     DB Value: "Successfully connected to PhonePe! Auth token received."
+     Source:   SuperAdminApi.php
+
+[335] Message:  "Switched to $newRole"
+     DB Key:   role_switched_success
+     DB Value: "Switched to $newRole"
+     Source:   AuthApi.php
+
+[336] Message:  "Template added"
+     DB Key:   template_create_success
+     DB Value: "Template created"
+     Source:   SuperAdminApi.php
+
+[337] Message:  "Template deleted"
+     DB Key:   template_deleted
+     DB Value: "Template deleted."
+     Source:   SuperAdminApi.php
+
+[338] Message:  "Template text is required"
+     DB Key:   template_text_required
+     DB Value: "Template text is required."
+     Source:   SuperAdminApi.php
+
+[339] Message:  "Template updated"
+     DB Key:   template_update_success
+     DB Value: "Template updated"
+     Source:   SuperAdminApi.php
+
+[340] Message:  "The selected dates conflict with an existing booking."
+     DB Key:   booking_dates_conflict
+     DB Value: "The selected dates conflict with an existing booking."
+     Source:   BuyerApi.php
+
+[341] Message:  "The selected original brand is not available for this listing type. Please select a different brand or change the listing type."
+     DB Key:   original_brand_listing_type_mismatch
+     DB Value: "The selected original brand is not available for this listing type. Please select a different brand or change the listing type."
+     Source:   SellerApi.php
+
+[342] Message:  "The suggested dates conflict with an existing booking"
+     DB Key:   suggested_dates_conflict
+     DB Value: "The suggested dates conflict with an existing booking"
+     Source:   SellerApi.php
+
+[343] Message:  "This email address and mobile number are each associated with different existing accounts. Please use credentials that belong to a single account."
+     DB Key:   email_mobile_different_accounts
+     DB Value: "This email address and mobile number are each associated with different existing accounts. Please use credentials that belong to a single account."
+     Source:   AuthApi.php
+
+[344] Message:  "This email address is already registered."
+     DB Key:   email_already_registered
+     DB Value: "Email is already registered by another user."
+     Source:   AuthApi.php
+
+[345] Message:  "This mobile number is already registered."
+     DB Key:   mobile_already_registered
+     DB Value: "Mobile number is already registered by another user."
+     Source:   AuthApi.php
+
+[346] Message:  "This offer can no longer be cancelled"
+     DB Key:   offer_cancel_not_allowed
+     DB Value: "This offer can no longer be cancelled"
+     Source:   BuyerApi.php
+
+[347] Message:  "This offer has expired."
+     DB Key:   offer_expired
+     DB Value: "This offer has expired."
+     Source:   SellerApi.php
+
+[348] Message:  "This order is already paid"
+     DB Key:   order_already_paid
+     DB Value: "This order is already paid"
+     Source:   BuyerApi.php
+
+[349] Message:  "This plan requires payment"
+     DB Key:   plan_requires_payment
+     DB Value: "This plan requires payment"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[350] Message:  "This product already has an active offer for the selected dates. Please choose different dates."
+     DB Key:   booking_conflict
+     DB Value: "This product already has an active offer for the selected dates. Please choose different dates."
+     Source:   BuyerApi.php
+
+[351] Message:  "This seller is currently blocked and cannot receive offers."
+     DB Key:   seller_blocked_from_offers
+     DB Value: "This seller is currently blocked and cannot receive offers."
+     Source:   BuyerApi.php
+
+[352] Message:  "This seller is not blocked"
+     DB Key:   seller_not_blocked
+     DB Value: "This seller is not blocked"
+     Source:   BuyerApi.php
+
+[353] Message:  "Transaction not found"
+     DB Key:   transaction_not_found
+     DB Value: "Transaction not found"
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[354] Message:  "Unable to resolve state from coordinates."
+     DB Key:   unable_resolve_state_coordinates
+     DB Value: "Unable to resolve state from coordinates."
+     Source:   AuthApi.php
+
+[355] Message:  "Unauthorized"
+     DB Key:   auth_login_required
+     DB Value: "Unauthorized"
+     Source:   AdminApi.php, AuthApi.php, BuyerApi.php, SellerApi.php, SharedApi.php, SuperAdminApi.php
+
+[356] Message:  "Update failed: coupon not found after update."
+     DB Key:   coupon_update_failed
+     DB Value: "Update failed: coupon not found after update."
+     Source:   SharedApi.php
+
+[357] Message:  "User and plan are required."
+     DB Key:   user_and_plan_required
+     DB Value: "User and plan are required."
+     Source:   SuperAdminApi.php
+
+[358] Message:  "User not found"
+     DB Key:   user_not_found
+     DB Value: "User not found"
+     Source:   AdminApi.php, AuthApi.php, BaseApiController.php, BuyerApi.php, SellerApi.php, SharedApi.php, SuperAdminApi.php
+
+[359] Message:  "Validation failed"
+     DB Key:   validation_failed
+     DB Value: "Validation failed"
+     Source:   AuthApi.php, SellerApi.php
+
+[360] Message:  "Validation rule created successfully"
+     DB Key:   validation_rule_create_success
+     DB Value: "Validation rule created successfully."
+     Source:   SuperAdminApi.php
+
+[361] Message:  "Validation rule deleted successfully"
+     DB Key:   validation_rule_delete_success
+     DB Value: "Validation rule deleted successfully."
+     Source:   SuperAdminApi.php
+
+[362] Message:  "Validation rule for this field already exists"
+     DB Key:   validation_rule_exists
+     DB Value: "Validation rule for this field already exists."
+     Source:   SuperAdminApi.php
+
+[363] Message:  "Validation rule not found"
+     DB Key:   validation_rule_not_found
+     DB Value: "Validation rule not found."
+     Source:   SuperAdminApi.php
+
+[364] Message:  "Validation rule updated successfully"
+     DB Key:   validation_rule_update_success
+     DB Value: "Validation rule updated successfully."
+     Source:   SuperAdminApi.php
+
+[365] Message:  "You already have an active buyer subscription. Please wait until it expires or is exhausted before activating a new plan."
+     DB Key:   buyer_sub_already_active
+     DB Value: "You already have an active buyer subscription. Please wait until it expires or is exhausted before activating a new plan."
+     Source:   BuyerApi.php
+
+[366] Message:  "You already have an active offer on this product."
+     DB Key:   active_offer_already_exists
+     DB Value: "You already have an active offer on this product."
+     Source:   BuyerApi.php
+
+[367] Message:  "You already have an active offer overlapping with these dates."
+     DB Key:   overlap_dates_offer_exists
+     DB Value: "You already have an active offer overlapping with these dates."
+     Source:   BuyerApi.php
+
+[368] Message:  "You already have an active seller subscription. Please wait until it expires or is exhausted before activating a new plan."
+     DB Key:   seller_sub_already_active
+     DB Value: "You already have an active seller subscription. Please wait until it expires or is exhausted before activating a new plan."
+     Source:   SellerApi.php
+
+[369] Message:  "You are blocked from approvals."
+     DB Key:   admin_blocked_from_approvals
+     DB Value: "You are blocked from approvals."
+     Source:   AdminApi.php
+
+[370] Message:  "You are blocked from approving products"
+     DB Key:   admin_blocked_from_product_approval
+     DB Value: "You are blocked from approving products"
+     Source:   SharedApi.php
+
+[371] Message:  "You can only rate the seller after they confirm the safe return of the product."
+     DB Key:   rating_requires_return_confirmed
+     DB Value: "You can only rate the seller after they confirm the safe return of the product."
+     Source:   BuyerApi.php
+
+[372] Message:  "You can only review after the order is delivered"
+     DB Key:   review_requires_delivery
+     DB Value: "You can only review after the order is delivered"
+     Source:   BuyerApi.php
+
+[373] Message:  "You cannot block yourself"
+     DB Key:   cannot_block_self
+     DB Value: "You cannot block yourself"
+     Source:   BuyerApi.php
+
+[374] Message:  "You cannot report yourself"
+     DB Key:   cannot_report_self
+     DB Value: "You cannot report yourself"
+     Source:   BuyerApi.php, SellerApi.php
+
+[375] Message:  "You cannot view your own contact"
+     DB Key:   cannot_view_own_contact
+     DB Value: "You cannot view your own contact"
+     Source:   BuyerApi.php
+
+[376] Message:  "You have already blocked this seller"
+     DB Key:   seller_already_blocked
+     DB Value: "You have already blocked this seller"
+     Source:   BuyerApi.php
+
+[377] Message:  "You have already rated this buyer"
+     DB Key:   already_rated_buyer
+     DB Value: "You have already rated this buyer"
+     Source:   SellerApi.php
+
+[378] Message:  "You have already rated this seller"
+     DB Key:   already_rated_seller
+     DB Value: "You have already rated this seller."
+     Source:   BuyerApi.php
+
+[379] Message:  "You have already rated this seller for self-delivery."
+     DB Key:   already_rated_seller_self_delivery
+     DB Value: "You have already rated this seller for self-delivery."
+     Source:   BuyerApi.php
+
+[380] Message:  "You have already reported this user in the past 7 days"
+     DB Key:   already_reported_user
+     DB Value: "You have already reported this user in the past 7 days"
+     Source:   BuyerApi.php, SellerApi.php
+
+[381] Message:  "You have already used this coupon the maximum number of times."
+     DB Key:   coupon_max_usage_user_reached
+     DB Value: "You have already used this coupon the maximum number of times."
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php
+
+[382] Message:  "You need an active buyer subscription to make offers. Please subscribe to a buyer plan."
+     DB Key:   buyer_subscription_required
+     DB Value: "You need an active buyer subscription to make offers. Please subscribe to a buyer plan."
+     Source:   BuyerApi.php
+
+[383] Message:  "You received a new offer of ₹"
+     DB Key:   received_new_offer_amount_notify
+     DB Value: "You received a new offer of ₹"
+     Source:   BuyerApi.php
+
+[384] Message:  "You received a reliability point for safe self-delivery!"
+     DB Key:   reliability_point_self_delivery
+     DB Value: "You received a reliability point for safe self-delivery!"
+     Source:   BuyerApi.php
+
+[385] Message:  "Your access to user management is restricted."
+     DB Key:   admin_blocked_from_user_management
+     DB Value: "Your access to user management is restricted."
+     Source:   AdminApi.php
+
+[386] Message:  "Your account has been blocked"
+     DB Key:   account_blocked
+     DB Value: "Your account has been blocked."
+     Source:   AuthApi.php
+
+[387] Message:  "Your account has been blocked by admin"
+     DB Key:   account_blocked_admin
+     DB Value: "Your account has been blocked by admin"
+     Source:   AuthApi.php
+
+[388] Message:  "Your account is blocked. Please contact support."
+     DB Key:   account_blocked_support
+     DB Value: "Your account is blocked. Please contact support."
+     Source:   AdminApi.php, BuyerApi.php, SellerApi.php, SharedApi.php
+
+[389] Message:  "Your account is currently blocked from making offers as a buyer."
+     DB Key:   buyer_blocked_from_offers
+     DB Value: "Your account is currently blocked from making offers as a buyer."
+     Source:   BuyerApi.php
+
+[390] Message:  "Your account roles have been blocked by admin"
+     DB Key:   account_roles_blocked
+     DB Value: "Your account roles have been blocked by admin"
+     Source:   AuthApi.php
+
+[391] Message:  "Your buyer privileges have been restricted by the administrator."
+     DB Key:   buyer_privileges_restricted
+     DB Value: "Your buyer privileges have been restricted by the administrator."
+     Source:   AuthApi.php
+
+[392] Message:  "Your buyer role has been blocked by admin"
+     DB Key:   buyer_role_blocked
+     DB Value: "Your buyer role has been blocked by admin"
+     Source:   AuthApi.php
+
+[393] Message:  "Your buyer role has been restricted by the administrator."
+     DB Key:   buyer_role_restricted
+     DB Value: "Your buyer role has been restricted by the administrator."
+     Source:   BuyerApi.php
+
+[394] Message:  "Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan."
+     DB Key:   buyer_role_blocked_purchase
+     DB Value: "Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan."
+     Source:   AdminApi.php, BuyerApi.php, SharedApi.php
+
+[395] Message:  "Your buyer role is currently blocked. Access restricted."
+     DB Key:   buyer_role_blocked_access
+     DB Value: "Your buyer role is currently blocked. Access restricted."
+     Source:   BuyerApi.php
+
+[396] Message:  "Your buyer subscription expired on"
+     DB Key:   buyer_subscription_expired_on
+     DB Value: "Your buyer subscription expired on"
+     Source:   BuyerApi.php
+
+[397] Message:  "Your contact limit has been reached. Please upgrade or renew your plan."
+     DB Key:   contact_limit_reached
+     DB Value: "Your contact limit has been reached. Please upgrade or renew your plan."
+     Source:   BuyerApi.php
+
+[398] Message:  "Your offer of ₹"
+     DB Key:   offer_amount_prefix
+     DB Value: "Your offer of ₹"
+     Source:   SellerApi.php
+
+[399] Message:  "Your order #"
+     DB Key:   order_number_prefix
+     DB Value: "Your order #"
+     Source:   DeliveryApi.php, SellerApi.php
+
+[400] Message:  "Your rating limit has been reached. You get 1 rating opportunity for every 3 unique sellers you contact."
+     DB Key:   rating_limit_reached
+     DB Value: "Your rating limit has been reached. You get 1 rating opportunity for every 3 unique sellers you contact."
+     Source:   BuyerApi.php
+
+[401] Message:  "Your seller privileges have been restricted by the administrator."
+     DB Key:   seller_privileges_restricted
+     DB Value: "Seller privileges restricted"
+     Source:   AuthApi.php
+
+[402] Message:  "Your seller role has been blocked by admin"
+     DB Key:   seller_role_blocked
+     DB Value: "Your seller role has been blocked by admin"
+     Source:   AuthApi.php
+
+[403] Message:  "Your seller role has been restricted by the administrator."
+     DB Key:   seller_role_restricted
+     DB Value: "Your seller role has been restricted by the administrator."
+     Source:   SellerApi.php
+
+[404] Message:  "Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan."
+     DB Key:   seller_role_blocked_purchase
+     DB Value: "Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan."
+     Source:   AdminApi.php, SellerApi.php, SharedApi.php
+
+[405] Message:  "Your seller role is currently blocked. Access restricted."
+     DB Key:   seller_role_blocked_access
+     DB Value: "Your seller role is currently blocked. Access restricted."
+     Source:   SellerApi.php
+
+[406] Message:  "Zone deleted."
+     DB Key:   zone_delete_success
+     DB Value: "Zone deleted successfully."
+     Source:   SuperAdminApi.php
+
+[407] Message:  "Zone name is required."
+     DB Key:   zone_name_required
+     DB Value: "Zone name is required."
+     Source:   SuperAdminApi.php
+
+[408] Message:  "Zone saved successfully."
+     DB Key:   zone_save_success
+     DB Value: "Zone saved successfully"
+     Source:   SuperAdminApi.php
+
+[409] Message:  "Zone status toggled."
+     DB Key:   zone_status_toggled
+     DB Value: "Zone status toggled."
+     Source:   SuperAdminApi.php
+
+[410] Message:  "assign_to admin id is required for reassign"
+     DB Key:   assign_to_admin_required
+     DB Value: "assign_to admin id is required for reassign."
+     Source:   SuperAdminApi.php
+
+[411] Message:  "seller_id and product_id are required"
+     DB Key:   seller_product_id_required
+     DB Value: "seller_id and product_id are required"
+     Source:   BuyerApi.php
+
+[412] Message:  "{$fieldName} must be a number greater than 0."
+     DB Key:   field_must_be_greater_than_zero
+     DB Value: "{$fieldName} must be a number greater than 0."
+     Source:   SharedApi.php
+
+[413] Message:  "{$fieldName} must be a whole number (no decimals allowed)."
+     DB Key:   field_must_be_whole_number
+     DB Value: "{$fieldName} must be a whole number (no decimals allowed)."
+     Source:   SharedApi.php
+
+[414] Message:  "{$fieldName} must be an integer greater than or equal to 1."
+     DB Key:   field_must_be_gte_one
+     DB Value: "{$fieldName} must be an integer greater than or equal to 1."
+     Source:   SuperAdminApi.php
+
+[415] Message:  "{$inserted} brands inserted, {$skipped} skipped."
+     DB Key:   brands_csv_import_result
+     DB Value: "{$inserted} brands inserted, {$skipped} skipped."
+     Source:   SuperAdminApi.php
+
+[416] Message:  "{$inserted} coupons inserted, {$updated} updated, {$skipped} skipped."
+     DB Key:   coupons_csv_import_result
+     DB Value: "{$inserted} coupons inserted, {$updated} updated, {$skipped} skipped."
+     Source:   SuperAdminApi.php
+
+[417] Message:  "{$inserted} plans inserted, {$updated} updated, {$skipped} skipped."
+     DB Key:   plans_csv_import_result
+     DB Value: "{$inserted} plans inserted, {$updated} updated, {$skipped} skipped."
+     Source:   SuperAdminApi.php
+
+[418] Message:  "{$inserted} products inserted, {$skipped} skipped."
+     DB Key:   products_csv_import_result
+     DB Value: "{$inserted} products inserted, {$skipped} skipped."
+     Source:   SuperAdminApi.php
+
+[419] Message:  "{$inserted} records inserted, {$updated} records updated, {$skipped} skipped."
+     DB Key:   records_csv_import_result
+     DB Value: "{$inserted} records inserted, {$updated} records updated, {$skipped} skipped."
+     Source:   SuperAdminApi.php
+
+[420] Message:  "{$inserted} records inserted, {$updated} updated, {$skipped} skipped."
+     DB Key:   records_csv_import_summary
+     DB Value: "{$inserted} records inserted, {$updated} updated, {$skipped} skipped."
+     Source:   SuperAdminApi.php
+
+[421] Message:  "{$inserted} rules inserted, {$skipped} skipped."
+     DB Key:   rules_csv_import_result
+     DB Value: "{$inserted} rules inserted, {$skipped} skipped."
+     Source:   SuperAdminApi.php
+
+[422] Message:  "{$label} is mandatory and cannot be empty."
+     DB Key:   label_mandatory_cannot_be_empty
+     DB Value: "{$label} is mandatory and cannot be empty."
+     Source:   SharedApi.php
+
+[423] Message:  "{$typeLabel} rights {$actionLabel} all administrators."
+     DB Key:   admin_rights_bulk_action_result
+     DB Value: "{$typeLabel} rights {$actionLabel} all administrators."
+     Source:   SuperAdminApi.php
+

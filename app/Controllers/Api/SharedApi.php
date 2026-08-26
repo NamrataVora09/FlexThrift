@@ -517,6 +517,16 @@ class SharedApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'Message value cannot be blank'], 400);
         }
 
+        $existing = $db->table('app_messages')->where('id', $id)->get()->getRowArray();
+        if (!$existing) {
+            return $this->respond(['success' => false, 'message' => 'Error message not found'], 404);
+        }
+
+        $placeholderError = $this->validateMessagePlaceholders($existing['message_value'], $value);
+        if ($placeholderError !== null) {
+            return $this->respond(['success' => false, 'message' => $placeholderError], 400);
+        }
+
         $db->table('app_messages')->where('id', $id)->update(['message_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => 'Message updated']);
     }
