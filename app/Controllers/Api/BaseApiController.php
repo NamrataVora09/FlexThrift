@@ -204,7 +204,6 @@ class BaseApiController extends ResourceController
         'Coupon code is required'                                                        => 'coupon_code_required',
         'Coupon applied!'                                                                => 'coupon_applied_success',
         // ── PLANS & PAYMENTS ─────────────────────────────────────────────────
-        'Plan not found'                                                                 => 'plan_not_found',
         'Plan not found or inactive'                                                     => 'plan_not_found_or_inactive',
         'Invalid or inactive plan.'                                                      => 'plan_inactive',
         'Payment initiation failed.'                                                     => 'payment_failed',
