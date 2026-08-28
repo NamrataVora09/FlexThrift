@@ -55,6 +55,8 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   approved: { bg: '#dcfce7', color: '#15803d' },
   rejected: { bg: '#fee2e2', color: '#dc2626' },
   rejected_changes: { bg: '#fee2e2', color: '#dc2626' },
+  changesPending: { bg: '#fef3c7', color: '#92400e' },
+  changesRejected: { bg: '#fee2e2', color: '#dc2626' },
   edit_pending: { bg: '#fef3c7', color: '#92400e' },
   edit_rejected: { bg: '#fee2e2', color: '#dc2626' },
   edit_approved: { bg: '#dcfce7', color: '#15803d' },
@@ -107,20 +109,57 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
     }, 'Delete');
   };
 
+  const isPendingProduct = (p: Product) => {
+    const rawStatus = p.status?.trim() || '';
+    const editStatus = p.edit_status?.trim() || '';
+    const editRequest = String(p.edit_request || '').trim();
+    return (
+      ['pending', 'edit_pending', 'changesPending'].includes(rawStatus) ||
+      ['pending', 'changesPending'].includes(editStatus) ||
+      editRequest === 'pending'
+    );
+  };
+
+  const isRejectedProduct = (p: Product) => {
+    const rawStatus = p.status?.trim() || '';
+    const editStatus = p.edit_status?.trim() || '';
+    const editRequest = String(p.edit_request || '').trim();
+    return (
+      ['rejected', 'rejected_changes', 'changesRejected', 'edit_rejected'].includes(rawStatus) ||
+      ['rejected', 'changesRejected'].includes(editStatus) ||
+      editRequest === 'rejected'
+    );
+  };
+
+  const isApprovedProduct = (p: Product) => {
+    const rawStatus = p.status?.trim() || '';
+    return (
+      ['approved', 'sold', 'rented', 'active'].includes(rawStatus) &&
+      !isPendingProduct(p) &&
+      !isRejectedProduct(p)
+    );
+  };
+
+  const isInactiveProduct = (p: Product) => {
+    const rawStatus = p.status?.trim() || '';
+    return rawStatus === 'inactive' && !isPendingProduct(p) && !isRejectedProduct(p);
+  };
+
   const filtered = useMemo(() => {
     if (filter === 'all') return products;
-    if (filter === 'approved') return products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status) && p.edit_request !== 'pending');
-    if (filter === 'rejected') return products.filter(p => ['rejected', 'rejected_changes'].includes(p.status) || p.edit_request === 'rejected');
-    if (filter === 'pending') return products.filter(p => p.status === 'pending' || p.edit_request === 'pending');
+    if (filter === 'approved') return products.filter(isApprovedProduct);
+    if (filter === 'rejected') return products.filter(isRejectedProduct);
+    if (filter === 'pending') return products.filter(isPendingProduct);
+    if (filter === 'inactive') return products.filter(isInactiveProduct);
     return products.filter((p) => p.status === filter);
   }, [products, filter]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: products.length };
-    c.pending = products.filter(p => p.status === 'pending' || p.edit_request === 'pending').length;
-    c.approved = products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status) && p.edit_request !== 'pending').length;
-    c.rejected = products.filter(p => ['rejected', 'rejected_changes'].includes(p.status) || p.edit_request === 'rejected').length;
-    c.inactive = products.filter(p => p.status === 'inactive').length;
+    c.pending = products.filter(isPendingProduct).length;
+    c.approved = products.filter(isApprovedProduct).length;
+    c.rejected = products.filter(isRejectedProduct).length;
+    c.inactive = products.filter(isInactiveProduct).length;
     return c;
   }, [products]);
 
@@ -260,10 +299,10 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                                 ? rawStatus.toUpperCase()
                                 : 'UNKNOWN';
 
-                              if (editStatus === 'pending' || editStatus === 'changesPending') {
+                              if (editStatus === 'pending' || editStatus === 'changesPending' || rawStatus === 'changesPending' || rawStatus === 'edit_pending') {
                                 displayStatus = 'edit_pending';
                                 displayLabel = 'CHANGES PENDING';
-                              } else if (editStatus === 'rejected' || editStatus === 'changesRejected') {
+                              } else if (editStatus === 'rejected' || editStatus === 'changesRejected' || rawStatus === 'changesRejected' || rawStatus === 'edit_rejected' || rawStatus === 'rejected_changes') {
                                 displayStatus = 'edit_rejected';
                                 displayLabel = 'CHANGES REJECTED';
                               }
@@ -292,7 +331,7 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                                     {displayLabel}
                                   </span>
                                   {/* Show edit_remarks when edit is rejected */}
-                                  {p.edit_remarks && (editStatus === 'rejected' || editStatus === 'changesRejected') && (() => {
+                                  {p.edit_remarks && (['rejected', 'changesRejected', 'edit_rejected'].includes(editStatus) || ['rejected', 'changesRejected', 'edit_rejected', 'rejected_changes'].includes(rawStatus)) && (() => {
                                     let remark = String(p.edit_remarks || '').trim();
                                     if (!remark) return null;
                                     return (
@@ -362,7 +401,11 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                               >
                                 <i className="bi bi-eye"></i> View
                               </Link>
-                              {isBlockedSeller ? (
+                              {p.status === 'sold' || p.status === 'rented' ? (
+                                <button className="btn btn-sm" style={{ borderRadius: 8, background: '#e5e7eb', color: '#6b7280', cursor: 'not-allowed', border: 'none' }} disabled title="Sold or rented products cannot be edited">
+                                  <i className="bi bi-lock me-1"></i> Edit
+                                </button>
+                              ) : isBlockedSeller ? (
                                 <button className="btn btn-sm" style={{ borderRadius: 8, background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed', border: 'none' }} disabled title="Your seller role is blocked">
                                   <i className="bi bi-pencil me-1"></i> Edit
                                 </button>

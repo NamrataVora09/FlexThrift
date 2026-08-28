@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 interface ChargeItem {
   name: string;
@@ -32,6 +32,7 @@ interface CheckoutData {
 }
 
 export default function SellerCheckoutPlanPage() {
+  const { toastError } = useToast();
   const params = useParams();
   const router = useRouter();
   const planId = params.id as string;
@@ -67,15 +68,36 @@ export default function SellerCheckoutPlanPage() {
   const availableReferral = checkoutData?.total_referral_balance ?? 0;
   const appliedReferral = checkoutData?.referral_discount ?? 0;
   const referralDiscount = useReferral ? appliedReferral : 0;
-  const displayTotal = Math.max(0, basePrice + totalCharges - referralDiscount - couponDiscount);
+  const isReferralCovered = useReferral && referralDiscount >= basePrice && basePrice > 0;
+  const effectiveCouponDiscount = isReferralCovered ? 0 : couponDiscount;
+  const rawTotal = basePrice + totalCharges - referralDiscount - effectiveCouponDiscount;
+  const displayTotal = Math.max(0, rawTotal);
+
+  const isCouponDisabled = isReferralCovered || couponLoading;
+
+  const toggleReferral = () => {
+    setUseReferral(prev => {
+      const next = !prev;
+      if (next) {
+        const willCover = appliedReferral >= basePrice && basePrice > 0;
+        if (willCover) {
+          setAppliedCoupon('');
+          setCouponDiscount(0);
+          setCouponMsg(null);
+        }
+      }
+      return next;
+    });
+  };
 
   const applyCoupon = useCallback(async () => {
-    if (!couponCode.trim()) return;
+    if (!couponCode.trim() || isCouponDisabled) return;
     setCouponLoading(true);
     setCouponMsg(null);
     const res = await api.post<{ discount: number }>('/seller/apply-coupon', {
       code: couponCode.trim().toUpperCase(),
       plan_id: Number(planId),
+      use_referral: useReferral,
     });
     setCouponLoading(false);
     if (res.success && res.data) {
@@ -87,7 +109,7 @@ export default function SellerCheckoutPlanPage() {
       setAppliedCoupon('');
       setCouponMsg({ text: res.message || 'Invalid coupon', ok: false });
     }
-  }, [couponCode, planId]);
+  }, [couponCode, planId, useReferral, isCouponDisabled]);
 
   const processPayment = useCallback(async () => {
     if (!checkoutData) return;
@@ -102,7 +124,7 @@ export default function SellerCheckoutPlanPage() {
     if (res.success && res.data?.redirect_url) {
       window.location.href = res.data.redirect_url;
     } else {
-      toast.error(res.message || 'Failed to initiate payment. Please try again.');
+      toastError('payment_initiation_failed', res.message || 'Failed to initiate payment. Please try again.');
       setPaying(false);
     }
   }, [checkoutData, planId, appliedCoupon, useReferral]);
@@ -176,38 +198,38 @@ export default function SellerCheckoutPlanPage() {
               </div>
 
               {/* Plan privileges */}
-                <div className="mb-4">
-                  <h6 className="fw-bold mb-3">Plan Privileges</h6>
-                  <ul className="list-unstyled mb-0">
-                    {(() => {
-                      const coreFeatures = [
-                        { icon: 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
-                        { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
-                      ];
-                      let customFeatures: { icon: string; text: string }[] = [];
-                      try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) {}
-                      
-                      const filteredCustom = customFeatures.filter(cf => 
-                        cf.text && 
-                        !cf.text.toLowerCase().includes('listing') && 
-                        !cf.text.toLowerCase().includes('validity') && 
-                        !cf.text.toLowerCase().includes('hour')
-                      );
+              <div className="mb-4">
+                <h6 className="fw-bold mb-3">Plan Privileges</h6>
+                <ul className="list-unstyled mb-0">
+                  {(() => {
+                    const coreFeatures = [
+                      { icon: 'storefront', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Listings` },
+                      { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                    ];
+                    let customFeatures: { icon: string; text: string }[] = [];
+                    try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
 
-                      const allFeatures = [...coreFeatures, ...filteredCustom];
+                    const filteredCustom = customFeatures.filter(cf =>
+                      cf.text &&
+                      !cf.text.toLowerCase().includes('listing') &&
+                      !cf.text.toLowerCase().includes('validity') &&
+                      !cf.text.toLowerCase().includes('hour')
+                    );
 
-                      return allFeatures.map((f, i) => (
-                        <li key={i} className="mb-2 small d-flex align-items-start gap-2">
-                          <span className="material-symbols-outlined text-success" style={{ fontSize: '1.2rem', flexShrink: 0, fontVariationSettings: "'FILL' 1" }}>{f.icon}</span>
-                          <span>{f.text}</span>
-                        </li>
-                      ));
-                    })()}
-                    <li className="small d-flex align-items-center text-muted mt-2">
-                      <i className="bi bi-info-circle me-2" />Priority visibility & seller badge
-                    </li>
-                  </ul>
-                </div>
+                    const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                    return allFeatures.map((f, i) => (
+                      <li key={i} className="mb-2 small d-flex align-items-start gap-2">
+                        <span className="material-symbols-outlined text-success" style={{ fontSize: '1.2rem', flexShrink: 0, fontVariationSettings: "'FILL' 1" }}>{f.icon}</span>
+                        <span>{f.text}</span>
+                      </li>
+                    ));
+                  })()}
+                  <li className="small d-flex align-items-center text-muted mt-2">
+                    <i className="bi bi-info-circle me-2" />Priority visibility & seller badge
+                  </li>
+                </ul>
+              </div>
 
               {/* Billing info */}
               <div className="mt-auto pt-4 border-top">
@@ -248,15 +270,22 @@ export default function SellerCheckoutPlanPage() {
                 </div>
               )}
 
-              {couponDiscount > 0 && (
+              {effectiveCouponDiscount > 0 && (
                 <div className="price-row text-success">
                   <span className="fw-bold">Coupon Discount</span>
-                  <span className="fw-bold">- ₹{couponDiscount.toFixed(2)}</span>
+                  <span className="fw-bold">- ₹{effectiveCouponDiscount.toFixed(2)}</span>
                 </div>
               )}
 
               <div className="price-total">
-                <span>Total Payable</span>
+                <div className="d-flex flex-column">
+                  <span>Total Payable</span>
+                  {rawTotal <= 0 && (
+                    <span className="text-muted" style={{ fontSize: '0.68rem', fontWeight: 'normal' }}>
+                      (₹1.00 minimum payment gateway charge)
+                    </span>
+                  )}
+                </div>
                 <span>₹{Math.max(1, displayTotal).toFixed(2)}</span>
               </div>
 
@@ -299,7 +328,7 @@ export default function SellerCheckoutPlanPage() {
                     </div>
                     {basePrice >= (checkoutData.referral_min_purchase || 0) && (
                       <button
-                        onClick={() => setUseReferral(prev => !prev)}
+                        onClick={toggleReferral}
                         style={{
                           background: useReferral ? 'rgba(239,68,68,0.08)' : '#10b981',
                           color: useReferral ? '#ef4444' : '#fff',
@@ -327,17 +356,22 @@ export default function SellerCheckoutPlanPage() {
                   <input
                     type="text"
                     className="form-control coupon-input text-uppercase"
-                    placeholder="Enter code"
+                    placeholder={isReferralCovered ? "Coupon disabled (Referral covers price)" : "Enter code"}
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
-                    disabled={couponLoading}
+                    onKeyDown={(e) => e.key === 'Enter' && !isCouponDisabled && applyCoupon()}
+                    disabled={isCouponDisabled}
                   />
-                  <button className="btn btn-outline-secondary coupon-btn fw-bold" onClick={applyCoupon} disabled={couponLoading}>
+                  <button className="btn btn-outline-secondary coupon-btn fw-bold" onClick={applyCoupon} disabled={isCouponDisabled}>
                     {couponLoading ? <span className="spinner-border spinner-border-sm" /> : 'Apply'}
                   </button>
                 </div>
-                {couponMsg && (
+                {isReferralCovered ? (
+                  <div className="small mt-1 text-warning d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
+                    <i className="bi bi-info-circle" />
+                    Referral credit covers the plan price. Coupon code cannot be applied.
+                  </div>
+                ) : couponMsg && (
                   <div className={`small mt-1 ${couponMsg.ok ? 'text-success' : 'text-danger'}`}>
                     <i className={`bi ${couponMsg.ok ? 'bi-check-circle' : 'bi-exclamation-circle'} me-1`} />
                     {couponMsg.text}

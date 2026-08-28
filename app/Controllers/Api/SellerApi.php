@@ -116,13 +116,13 @@ class SellerApi extends BaseApiController
                     // Product is already rejected at product level (brand block, etc.).
                     // Keep product-level status & admin_remarks, but surface the edit-request
                     // rejection reason as a secondary message so the seller sees both.
-                    if ($p['edit_status'] === 'rejected' && !empty($p['edit_remarks'])) {
+                    if (in_array($p['edit_status'], ['rejected', 'changesRejected', 'edit_rejected'], true) && !empty($p['edit_remarks'])) {
                         $p['edit_rejection_remarks'] = $p['edit_remarks'];
                     }
                 } else {
                     // No product-level rejection — let edit-request status/remarks take over.
                     $p['status'] = $p['edit_status'];
-                    if ($p['edit_status'] === 'rejected') {
+                    if (in_array($p['edit_status'], ['rejected', 'changesRejected', 'edit_rejected'], true)) {
                         $p['admin_remarks'] = $p['edit_remarks'] ?? 'Edit request rejected';
                     }
                 }
@@ -388,7 +388,7 @@ class SellerApi extends BaseApiController
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         if ($user && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role has been blocked by the admin. You cannot upload products.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seller_blocked', 'Your seller role has been blocked by the admin. You cannot upload products.')], 403);
         }
 
         // SuperAdmin bypasses subscription check
@@ -420,10 +420,10 @@ class SellerApi extends BaseApiController
                     ->get()->getRowArray();
                 if ($expiredSub) {
                     log_message('info', 'Found expired subscription: ' . json_encode($expiredSub));
-                    return $this->respond(['success' => false, 'message' => 'Your subscription has expired on ' . date('d M Y', strtotime($expiredSub['expires_at'])) . '. Please renew your plan to upload products.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('seller_sub_expired', 'Your subscription has expired on {date}. Please renew your plan to upload products.', ['date' => date('d M Y', strtotime($expiredSub['expires_at']))])], 403);
                 }
                 log_message('error', 'No active seller subscription found for user_id: ' . $userId);
-                return $this->respond(['success' => false, 'message' => 'No active seller subscription found. Please subscribe to a seller plan to upload products.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('seller_sub_not_found', 'No active seller subscription found. Please subscribe to a seller plan to upload products.')], 403);
             }
 
             // Check subscription limit for quantity-based plans
@@ -435,12 +435,12 @@ class SellerApi extends BaseApiController
 
                 if ($limitValue <= 0) {
                     log_message('error', 'Subscription limit is 0 for user_id: ' . $userId);
-                    return $this->respond(['success' => false, 'message' => 'Your subscription plan has 0 product uploads. Please upgrade your plan to upload products.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('seller_sub_zero_limit', 'Your subscription plan has 0 product uploads. Please upgrade your plan to upload products.')], 403);
                 }
 
                 if ($usageCount >= $limitValue) {
                     log_message('error', 'Subscription limit reached for user_id: ' . $userId . ', Usage: ' . $usageCount . ', Limit: ' . $limitValue);
-                    return $this->respond(['success' => false, 'message' => 'You have reached your product upload limit (' . $limitValue . ' uploads). Please upgrade your plan to upload more products.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('seller_sub_limit_reached', 'You have reached your product upload limit ({limit} uploads). Please upgrade your plan to upload more products.', ['limit' => $limitValue])], 403);
                 }
             }
         }
@@ -566,14 +566,7 @@ class SellerApi extends BaseApiController
             }
         }
 
-        if (!empty($data['brand_id'])) {
-            if (!$this->validateBrandListingType($db, 'brands', $data['brand_id'], $data['listing_type_category'] ?? null)) {
-                return $this->respond([
-                    'success' => false, 
-                    'message' => 'The selected brand is not available for this listing type. Please select a different brand or change the listing type.'
-                ], 422);
-            }
-        }
+      
 
         // Check if admin review is required
         $reviewSetting = $db->table('system_settings')->where('setting_key', 'product_approval_required')->get()->getRowArray();
@@ -673,7 +666,7 @@ class SellerApi extends BaseApiController
             // Validate image count
             $imageCount = is_array($imageFiles) ? count($imageFiles) : 1;
             if ($imageCount > $maxImages) {
-                return $this->respond(['success' => false, 'message' => "Maximum {$maxImages} images allowed per product. You uploaded {$imageCount} images."], 422);
+                return $this->respond(['success' => false, 'message' => getAppMessage('product_max_images_upload', 'Maximum {max} images allowed per product. You uploaded {count} images.', ['max' => $maxImages, 'count' => $imageCount])], 422);
             }
 
             log_message('info', 'Processing product_images array');
@@ -689,14 +682,16 @@ class SellerApi extends BaseApiController
                     $imageSize = $img->getSize();
                     if ($imageSize > $maxImageSizeBytes) {
                         $imageSizeMB = round($imageSize / (1024 * 1024), 2);
-                        return $this->respond(['success' => false, 'message' => "Image size exceeds maximum limit of {$maxImageSizeMB}MB. Your image is {$imageSizeMB}MB."], 422);
+                        return $this->respond(['success' => false, 'message' => getAppMessage('image_size_exceeded_upload', 'Image size exceeds maximum limit of {max}MB. Your image is {size}MB.', ['max' => $maxImageSizeMB, 'size' => $imageSizeMB])], 422);
                     }
 
                     $newName = $img->getRandomName();
                     $img->move($uploadPath, $newName);
+                    // Compress & resize to max 1200×1200 px at quality 75 to reduce file size
+                    compressAndResizeImage($uploadPath . $newName);
                     $db->table('product_images')->insert([
-                        'product_id' => $productId,
-                        'image_path' => 'uploads/products/' . $newName,
+                        'product_id'    => $productId,
+                        'image_path'    => 'uploads/products/' . $newName,
                         'display_order' => $order++,
                     ]);
                     log_message('info', 'Image saved: ' . $newName);
@@ -1472,7 +1467,46 @@ class SellerApi extends BaseApiController
         if ($hasOrders > 0)
             return $this->respond(['success' => false, 'message' => 'Cannot delete product with active orders'], 400);
 
+        // Delete physical image files from disk
+        $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+        foreach ($images as $img) {
+            if (!empty($img['image_path'])) {
+                $fullPath = FCPATH . ltrim($img['image_path'], '/\\');
+                if (file_exists($fullPath) && is_file($fullPath)) {
+                    @unlink($fullPath);
+                }
+            }
+        }
+
+        // Delete physical bill image if present
+        if (!empty($product['bill_image'])) {
+            $billPath = FCPATH . ltrim($product['bill_image'], '/\\');
+            if (file_exists($billPath) && is_file($billPath)) {
+                @unlink($billPath);
+            }
+        }
+
+        // Clean up temp images from pending edit requests (if any)
+        $editRequests = $db->table('product_edit_requests')->where('product_id', $id)->get()->getResultArray();
+        foreach ($editRequests as $req) {
+            if (!empty($req['temp_images'])) {
+                $tempImgs = json_decode($req['temp_images'], true);
+                if (is_array($tempImgs)) {
+                    foreach ($tempImgs as $tImg) {
+                        $tPath = is_array($tImg) ? ($tImg['image_path'] ?? '') : $tImg;
+                        if (!empty($tPath)) {
+                            $fullPath = FCPATH . ltrim($tPath, '/\\');
+                            if (file_exists($fullPath) && is_file($fullPath)) {
+                                @unlink($fullPath);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         $db->table('product_images')->where('product_id', $id)->delete();
+        $db->table('product_edit_requests')->where('product_id', $id)->delete();
         $db->table('offers')->where('product_id', $id)->where('status', 'pending')->update(['status' => 'cancelled']);
         $db->table('products')->where('id', $id)->delete();
 
@@ -1561,14 +1595,7 @@ class SellerApi extends BaseApiController
             }
         }
 
-        if (!empty($sellerBrandId) && !empty($listingTypeId)) {
-            if (!$this->validateBrandListingType($db, 'brands', $sellerBrandId, $listingTypeId)) {
-                return $this->respond([
-                    'success' => false, 
-                    'message' => 'The selected brand is not available for this listing type. Please select a different brand or change the listing type.'
-                ], 422);
-            }
-        }
+      
 
         // Handle new image uploads for edit request
         $tempImages = [];
@@ -1582,6 +1609,8 @@ class SellerApi extends BaseApiController
                 if ($img && $img->isValid() && !$img->hasMoved()) {
                     $newName = $img->getRandomName();
                     $img->move($uploadPath, $newName);
+                    // Compress & resize to max 1200×1200 px at quality 75
+                    compressAndResizeImage($uploadPath . $newName);
                     $tempImages[] = 'uploads/products/temp/' . $newName;
                 }
             }
@@ -1620,20 +1649,21 @@ class SellerApi extends BaseApiController
         }
         $finalBills = array_values(array_unique(array_merge($retainedBills, $billPaths)));
         $requestedHasBill = isset($data['has_bill']) ? (int)$data['has_bill'] : (int)($processedData['has_bill'] ?? 0);
-        if ($requestedHasBill === 1 && empty($finalBills)) {
-            return $this->respond([
-                'success' => false,
-                'message' => 'Please upload a bill image or uncheck "I have a bill".',
-                'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
-            ], 422);
-        }
-        if (!empty($finalBills)) {
+        if ($requestedHasBill === 0) {
+            $processedData['bill_image'] = null;
+            $processedData['has_bill'] = 0;
+            $newBillImagePath = null;
+        } else {
+            if (empty($finalBills)) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => 'Please upload a bill image or uncheck "I have a bill".',
+                    'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
+                ], 422);
+            }
             $newBillImagePath = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
             $processedData['bill_image'] = $newBillImagePath;
             $processedData['has_bill'] = 1;
-        } elseif ($retainedBillImagesRaw !== null || $billFiles !== null) {
-            $processedData['bill_image'] = null;
-            $processedData['has_bill'] = 0;
         }
 
         $deletedIds = $this->request->getPost('deleted_images_ids');
@@ -1665,7 +1695,12 @@ class SellerApi extends BaseApiController
             // Apply processedData directly to the products table
             $directUpdate = $processedData;
             $directUpdate['updated_at'] = date('Y-m-d H:i:s');
-            // Keep status as-is (pending stays pending so admin can still review the listing)
+            // If product was rejected, transition status back to pending so admin/superadmin can re-review the product
+            if ($productStatus === 'rejected') {
+                $directUpdate['status'] = 'pending';
+                $directUpdate['admin_remarks'] = null;
+                $directUpdate['pending_reason'] = 'Resubmitted after edit';
+            }
             $db->table('products')->where('id', $id)->update($directUpdate);
 
             // Handle image deletions directly
@@ -1699,7 +1734,12 @@ class SellerApi extends BaseApiController
             }
 
             // Save new bill image directly to the product
-            if ($newBillImagePath !== null) {
+            if ($requestedHasBill === 0) {
+                $db->table('products')->where('id', $id)->update([
+                    'bill_image' => null,
+                    'has_bill'   => 0,
+                ]);
+            } elseif ($newBillImagePath !== null) {
                 $db->table('products')->where('id', $id)->update([
                     'bill_image' => $newBillImagePath,
                     'has_bill'   => 1,
@@ -1713,7 +1753,10 @@ class SellerApi extends BaseApiController
         // Check if there's already a pending edit request for this product
 
         // Inject new bill image into processedData so it is captured in the edit request
-        if ($newBillImagePath !== null) {
+        if ($requestedHasBill === 0) {
+            $processedData['bill_image'] = null;
+            $processedData['has_bill']   = 0;
+        } elseif ($newBillImagePath !== null) {
             $processedData['bill_image'] = $newBillImagePath;
             $processedData['has_bill']   = 1;
         }
@@ -2014,14 +2057,7 @@ class SellerApi extends BaseApiController
             }
         }
 
-        if (!empty($sellerBrandId) && !empty($listingTypeId)) {
-            if (!$this->validateBrandListingType($db, 'brands', $sellerBrandId, $listingTypeId)) {
-                return $this->respond([
-                    'success' => false, 
-                    'message' => 'The selected brand is not available for this listing type. Please select a different brand or change the listing type.'
-                ], 422);
-            }
-        }
+       
 
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
@@ -2158,19 +2194,19 @@ class SellerApi extends BaseApiController
             }
             $finalBills = array_values(array_unique(array_merge($retainedBills, $billPaths)));
             $requestedHasBill = isset($data['has_bill']) ? (int)$data['has_bill'] : (int)($updateData['has_bill'] ?? 0);
-            if ($requestedHasBill === 1 && empty($finalBills)) {
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Please upload a bill image or uncheck "I have a bill".',
-                    'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
-                ], 422);
-            }
-            if (!empty($finalBills)) {
-                $updateData['bill_image'] = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
-                $updateData['has_bill'] = 1;
-            } elseif ($retainedBillImagesRaw !== null || $billFilesArr !== null) {
+            if ($requestedHasBill === 0) {
                 $updateData['bill_image'] = null;
                 $updateData['has_bill'] = 0;
+            } else {
+                if (empty($finalBills)) {
+                    return $this->respond([
+                        'success' => false,
+                        'message' => 'Please upload a bill image or uncheck "I have a bill".',
+                        'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
+                    ], 422);
+                }
+                $updateData['bill_image'] = count($finalBills) === 1 ? $finalBills[0] : json_encode($finalBills);
+                $updateData['has_bill'] = 1;
             }
 
             $db->table('products')->where('id', $id)->update($updateData);
@@ -2871,6 +2907,23 @@ class SellerApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'This plan requires payment'], 400);
         }
 
+        // Block if user already has an active, non-exhausted SELLER subscription
+        $query = $db->query(
+            "SELECT us.id FROM user_subscriptions us
+             LEFT JOIN subscription_plans sp ON sp.id = us.plan_id
+             WHERE us.user_id = ?
+               AND sp.user_type = 'seller'
+               AND us.is_active = 1
+               AND us.expires_at > NOW()
+               AND (sp.plan_type = 'duration' OR sp.limit_value IS NULL OR sp.limit_value = 0 OR us.usage_count < sp.limit_value)
+             LIMIT 1",
+            [(int) $userId]
+        );
+        $activeSub = ($query && is_object($query)) ? $query->getRowArray() : null;
+        if ($activeSub) {
+            return $this->respond(['success' => false, 'message' => 'You already have an active seller subscription. Please wait until it expires or is exhausted before activating a new plan.'], 409);
+        }
+
         // Activate the subscription
         $now = date('Y-m-d H:i:s');
         $expiryDate = $plan['duration_hours'] > 0
@@ -2988,6 +3041,46 @@ class SellerApi extends BaseApiController
         if (!empty($currentUser['is_blocked'])) {
             return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
         }
+               // Referral discount restriction: Check if user has active referral discount for this plan
+        $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
+        if ($useReferral) {
+            $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            $referralBalance = (float) ($user['referral_balance'] ?? 0);
+            $expiry = $user['referral_expires_at'] ?? null;
+            if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+                $referralBalance = 0.0;
+            }
+
+            if ($referralBalance > 0) {
+                if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                    $settingsRows = $db->table('system_settings')
+                        ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+                        ->get()->getResultArray();
+                    $cfg = [];
+                    foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+
+                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+
+                    $basePrice = (float) $plan['price'];
+                    if ($basePrice >= $minPurchase) {
+                        $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                        $refDiscount = min($rawDiscount, $basePrice);
+
+                        // Only block coupon when referral fully covers the plan price
+                        if ($refDiscount >= $basePrice && $basePrice > 0) {
+                            return $this->respond([
+                                'success' => false,
+                                'message' => 'Coupon code cannot be applied when referral discount covers the full plan price.'
+                            ], 400);
+                        }
+                        // Partial referral: coupon is allowed — both discounts will stack
+                    }
+                }
+            }
+        }
+
+
 
         // 2. Check if seller role is explicitly blocked by superadmin
         if (!empty($currentUser['blocked_seller'])) {
@@ -3042,7 +3135,6 @@ class SellerApi extends BaseApiController
             }
         }
 
-        $finalAmount = ($basePrice + $totalCharges) - $discount;
 
         // Referral discount (only if user chose to apply it)
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
@@ -3070,11 +3162,19 @@ class SellerApi extends BaseApiController
                         // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
                         $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
                         $referralDiscountApplied = min($rawDiscount, $basePrice);
-                        $finalAmount -= $referralDiscountApplied;
                     }
                 }
             }
         }
+
+        // When referral fully covers the plan base price, coupon is not applicable.
+        // When referral is partial, both referral + coupon discounts stack.
+        if ($referralDiscountApplied >= $basePrice && $basePrice > 0) {
+            $discount = 0;
+            $couponId = null;
+        }
+
+        $finalAmount = ($basePrice + $totalCharges) - $discount - $referralDiscountApplied;
 
         $finalAmount = max(1, $finalAmount);
         $amountInPaise = (int) ($finalAmount * 100);
@@ -3332,7 +3432,7 @@ class SellerApi extends BaseApiController
         if ($originalPrice > $maxOriginalPrice) {
             return [
                 'success' => false,
-                'message' => 'Original price cannot exceed ₹' . number_format($maxOriginalPrice, 2) . ' (platform limit).',
+                'message' => getAppMessage('max_original_price_exceeded', 'Original price cannot exceed ₹{price} (platform limit).', ['price' => number_format($maxOriginalPrice, 2)]),
             ];
         }
 

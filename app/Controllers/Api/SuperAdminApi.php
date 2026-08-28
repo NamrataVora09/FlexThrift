@@ -1376,35 +1376,6 @@ class SuperAdminApi extends AdminApi
             ->join('users u', 'u.id = b.seller_id', 'left')
             ->orderBy('b.created_at', 'DESC')
             ->get()->getResultArray();
-
-        // Process brands to include listing type info
-        foreach ($brands as &$b) {
-            $listingTypeNames = [];
-            
-            // Check listing_type_ids (JSON array - primary)
-            if (!empty($b['listing_type_ids'])) {
-                try {
-                    $ltIds = json_decode($b['listing_type_ids'], true);
-                    if (is_array($ltIds)) {
-                        foreach ($ltIds as $ltId) {
-                            $lt = $db->table('listing_types')->where('id', $ltId)->select('type_name')->get()->getRowArray();
-                            if ($lt) $listingTypeNames[] = $lt['type_name'];
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // JSON decode error, skip
-                }
-            }
-            
-            // Fallback to single listing_type_id (for backward compatibility)
-            if (empty($listingTypeNames) && !empty($b['listing_type_id'])) {
-                $lt = $db->table('listing_types')->where('id', $b['listing_type_id'])->get()->getRowArray();
-                if ($lt) $listingTypeNames[] = $lt['type_name'];
-            }
-            
-            $b['listing_type_names'] = $listingTypeNames;
-            $b['listing_type_ids'] = !empty($b['listing_type_ids']) ? json_decode($b['listing_type_ids'], true) : [];
-        }
         
         return $this->respond(['success' => true, 'data' => $brands]);
     }
@@ -1437,28 +1408,6 @@ class SuperAdminApi extends AdminApi
             return $this->respond(['success' => false, 'message' => 'Seller already has a brand. Each seller can have only one brand.'], 400);
         }
 
-        // Handle multiple listing types
-        $ltIds = $this->request->getPost('listing_type_ids');
-        if ($ltIds) {
-            if (is_string($ltIds)) {
-                $ltIds = json_decode($ltIds, true);
-            }
-            if (is_array($ltIds) && !empty($ltIds)) {
-                $ltIds = array_filter(array_map('intval', $ltIds));
-                $data['listing_type_ids'] = json_encode(array_values($ltIds));
-                $data['listing_type_id'] = $ltIds[0] ?? null;
-            }
-        }
-
-        // Fallback: single listing_type_id if listing_type_ids not provided
-        if (empty($data['listing_type_ids'])) {
-            $ltId = $this->request->getPost('listing_type_id');
-            if ($ltId) {
-                $data['listing_type_id'] = $ltId;
-                $data['listing_type_ids'] = json_encode([(int)$ltId]);
-            }
-        }
-
         $db->table('brands')->insert($data);
         return $this->respond(['success' => true, 'message' => 'Seller brand created and assigned.']);
     }
@@ -1477,31 +1426,6 @@ class SuperAdminApi extends AdminApi
         if ($isBlocked !== null) $data['is_blocked'] = $isBlocked;
         $isActive = $this->request->getPost('is_active');
         if ($isActive !== null) $data['is_active'] = $isActive;
-
-        // Handle multiple listing types
-        $ltIds = $this->request->getPost('listing_type_ids');
-        if ($ltIds !== null) {
-            if (is_string($ltIds)) {
-                $ltIds = json_decode($ltIds, true);
-            }
-            if (is_array($ltIds) && !empty($ltIds)) {
-                $ltIds = array_filter(array_map('intval', $ltIds));
-                $data['listing_type_ids'] = json_encode(array_values($ltIds));
-                $data['listing_type_id'] = $ltIds[0] ?? null;
-            } else {
-                $data['listing_type_ids'] = null;
-                $data['listing_type_id'] = null;
-            }
-        } else {
-            // Fallback: single listing_type_id if listing_type_ids not provided
-            $ltId = $this->request->getPost('listing_type_id');
-            if ($ltId !== null) {
-                $data['listing_type_id'] = $ltId ?: null;
-                if ($ltId) {
-                    $data['listing_type_ids'] = json_encode([(int)$ltId]);
-                }
-            }
-        }
 
         if (empty($data)) return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
         $db->table('brands')->where('id', $id)->update($data);
@@ -1824,9 +1748,10 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $product = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, lt.type_name as listing_category_name')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, b.brand_name as seller_brand, lt.type_name as listing_category_name')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->join('brands b', 'b.id = p.brand_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.id', $id)
             ->get()->getRowArray();
@@ -1914,8 +1839,9 @@ class SuperAdminApi extends AdminApi
         if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
 
         $original = $db->table('products p')
-            ->select('p.*, ob.brand_name as orignal_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
+            ->select('p.*, ob.brand_name as orignal_brand, b.brand_name as seller_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->join('brands b', 'b.id = p.brand_id', 'left')
             ->where('p.id', $request['product_id'])
             ->get()->getRowArray();
 
@@ -1942,6 +1868,12 @@ class SuperAdminApi extends AdminApi
             $brand = $db->table('orignal_brands')->where('id', $updatedData['orignal_brand_id'])->get()->getRowArray();
             if ($brand) {
                 $updatedData['orignal_brand'] = $brand['brand_name'];
+            }
+        }
+        if (!empty($updatedData['brand_id'])) {
+            $brand = $db->table('brands')->where('id', $updatedData['brand_id'])->get()->getRowArray();
+            if ($brand) {
+                $updatedData['seller_brand'] = $brand['brand_name'];
             }
         }
         // Resolve listing type name in updated_data if listing_type_category is present
@@ -2544,8 +2476,49 @@ class SuperAdminApi extends AdminApi
         $products = $db->table('products')->where('status', 'rejected')->where('updated_at >=', $from)->where('updated_at <=', $to . ' 23:59:59')->get()->getResultArray();
         $count = count($products);
         foreach ($products as $p) {
-            $db->table('product_images')->where('product_id', $p['id'])->delete();
-            $db->table('products')->where('id', $p['id'])->delete();
+            $id = $p['id'];
+            // Delete physical image files from disk
+            $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+            foreach ($images as $img) {
+                if (!empty($img['image_path'])) {
+                    $fullPath = FCPATH . ltrim($img['image_path'], '/\\');
+                    if (file_exists($fullPath) && is_file($fullPath)) {
+                        @unlink($fullPath);
+                    }
+                }
+            }
+
+            // Delete physical bill image if present
+            if (!empty($p['bill_image'])) {
+                $billPath = FCPATH . ltrim($p['bill_image'], '/\\');
+                if (file_exists($billPath) && is_file($billPath)) {
+                    @unlink($billPath);
+                }
+            }
+
+            // Clean up temp images from pending edit requests (if any)
+            $editRequests = $db->table('product_edit_requests')->where('product_id', $id)->get()->getResultArray();
+            foreach ($editRequests as $req) {
+                if (!empty($req['temp_images'])) {
+                    $tempImgs = json_decode($req['temp_images'], true);
+                    if (is_array($tempImgs)) {
+                        foreach ($tempImgs as $tImg) {
+                            $tPath = is_array($tImg) ? ($tImg['image_path'] ?? '') : $tImg;
+                            if (!empty($tPath)) {
+                                $fullPath = FCPATH . ltrim($tPath, '/\\');
+                                if (file_exists($fullPath) && is_file($fullPath)) {
+                                    @unlink($fullPath);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            $db->table('product_images')->where('product_id', $id)->delete();
+            $db->table('product_edit_requests')->where('product_id', $id)->delete();
+            $db->table('offers')->where('product_id', $id)->where('status', 'pending')->update(['status' => 'cancelled']);
+            $db->table('products')->where('id', $id)->delete();
         }
         return $this->respond(['success' => true, 'message' => "$count rejected products deleted."]);
     }
@@ -2587,6 +2560,13 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $page = $db->table('cms_pages')->where('id', $id)->get()->getRowArray();
         if (!$page) return $this->respond(['success' => false, 'message' => 'Page not found.'], 404);
+        
+        // Remove associated SEO setting if it exists
+        if (!empty($page['slug'])) {
+            $seoModel = new \App\Models\SeoSettingModel();
+            $seoModel->where('page_key', 'cms_' . $page['slug'])->delete();
+        }
+        
         $db->table('cms_pages')->where('id', $id)->delete();
         return $this->respond(['success' => true, 'message' => 'CMS page deleted successfully.']);
     }
@@ -2733,6 +2713,8 @@ class SuperAdminApi extends AdminApi
             $data['ad_type'] = str_contains($file->getMimeType(), 'video') ? 'video' : 'image';
             $data['media_type'] = $file->getMimeType();
             $file->move(FCPATH . 'uploads/advertisements/', $newName);
+            // Compress image ads to max 1920×1080 at quality 80 (videos are skipped automatically)
+            compressAndResizeImage(FCPATH . 'uploads/advertisements/' . $newName, 1920, 1080, 80);
         }
 
         $db->table('advertisements')->insert($data);
@@ -2890,6 +2872,8 @@ class SuperAdminApi extends AdminApi
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
             $file->move(FCPATH . 'uploads/brands/', $newName);
+            // Compress brand logo to max 600×600 px at quality 80
+            compressAndResizeImage(FCPATH . 'uploads/brands/' . $newName, 600, 600, 80);
             $data['brand_image'] = 'uploads/brands/' . $newName;
         }
 
@@ -2939,6 +2923,8 @@ class SuperAdminApi extends AdminApi
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
             $file->move(FCPATH . 'uploads/brands/', $newName);
+            // Compress brand logo to max 600×600 px at quality 80
+            compressAndResizeImage(FCPATH . 'uploads/brands/' . $newName, 600, 600, 80);
             $data['brand_image'] = 'uploads/brands/' . $newName;
         }
 
@@ -2962,10 +2948,11 @@ class SuperAdminApi extends AdminApi
 
         $db = \Config\Database::connect();
         $products = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, lt.type_name as listing_category_name, lt.usage_label, p.listing_type, ob.brand_name as orignal_brand')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, lt.type_name as listing_category_name, lt.usage_label, p.listing_type, ob.brand_name as orignal_brand, b.brand_name as seller_brand')
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
+            ->join('brands b', 'b.id = p.brand_id', 'left')
             ->groupStart()
                 ->where('p.status', 'pending')
                 ->orWhere('p.edit_request', '1')
@@ -3066,7 +3053,28 @@ class SuperAdminApi extends AdminApi
         if ($search) {
             $builder->groupStart()->like('p.title', $search)->orLike('p.description', $search)->orLike('p.category', $search)->groupEnd();
         }
-        if ($status) $builder->where('p.status', $status);
+        if ($status) {
+            if ($status === 'pending') {
+                $builder->groupStart()
+                    ->where('p.status', 'pending')
+                    ->orWhere('p.status', 'changesPending')
+                    ->orWhere('p.status', 'edit_pending')
+                    ->orWhere('p.edit_request', 1)
+                    ->orWhere('p.edit_request', '1')
+                    ->orWhere('p.edit_request', 'pending')
+                ->groupEnd();
+            } elseif ($status === 'rejected') {
+                $builder->groupStart()
+                    ->where('p.status', 'rejected')
+                    ->orWhere('p.status', 'rejected_changes')
+                    ->orWhere('p.status', 'changesRejected')
+                    ->orWhere('p.status', 'edit_rejected')
+                    ->orWhere('p.edit_request', 'rejected')
+                ->groupEnd();
+            } else {
+                $builder->where('p.status', $status);
+            }
+        }
         if ($listingType) {
             if (in_array(strtolower($listingType), ['sell', 'rent'])) {
                 $builder->where('p.listing_type', strtolower($listingType));
@@ -3138,7 +3146,47 @@ class SuperAdminApi extends AdminApi
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
         if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found.'], 404);
 
+        // Delete physical image files from disk
+        $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+        foreach ($images as $img) {
+            if (!empty($img['image_path'])) {
+                $fullPath = FCPATH . ltrim($img['image_path'], '/\\');
+                if (file_exists($fullPath) && is_file($fullPath)) {
+                    @unlink($fullPath);
+                }
+            }
+        }
+
+        // Delete physical bill image if present
+        if (!empty($product['bill_image'])) {
+            $billPath = FCPATH . ltrim($product['bill_image'], '/\\');
+            if (file_exists($billPath) && is_file($billPath)) {
+                @unlink($billPath);
+            }
+        }
+
+        // Clean up temp images from pending edit requests (if any)
+        $editRequests = $db->table('product_edit_requests')->where('product_id', $id)->get()->getResultArray();
+        foreach ($editRequests as $req) {
+            if (!empty($req['temp_images'])) {
+                $tempImgs = json_decode($req['temp_images'], true);
+                if (is_array($tempImgs)) {
+                    foreach ($tempImgs as $tImg) {
+                        $tPath = is_array($tImg) ? ($tImg['image_path'] ?? '') : $tImg;
+                        if (!empty($tPath)) {
+                            $fullPath = FCPATH . ltrim($tPath, '/\\');
+                            if (file_exists($fullPath) && is_file($fullPath)) {
+                                @unlink($fullPath);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         $db->table('product_images')->where('product_id', $id)->delete();
+        $db->table('product_edit_requests')->where('product_id', $id)->delete();
+        $db->table('offers')->where('product_id', $id)->where('status', 'pending')->update(['status' => 'cancelled']);
         $db->table('products')->where('id', $id)->delete();
 
         return $this->respond(['success' => true, 'message' => 'Product deleted.']);
@@ -4016,29 +4064,6 @@ private function processImage($source, $subDir): ?string
                     if ($seller) $sellerId = $seller['id'];
                 }
                 if ($sellerId) $rec['seller_id'] = $sellerId;
-
-                // Listing Type Resolution (multiple types by comma-separated names or JSON array)
-                $ltIds = [];
-                $ltInput = $data['listing_types'] ?? $data['listing_type_ids'] ?? '';
-                if ($ltInput) {
-                    if (strpos($ltInput, '[') === 0) {
-                        $ltIds = json_decode($ltInput, true) ?: [];
-                    } else {
-                        $names = array_map('trim', explode(',', $ltInput));
-                        $lts = $db->table('listing_types')->whereIn('LOWER(type_name)', array_map('strtolower', $names))->get()->getResultArray();
-                        $ltIds = array_column($lts, 'id');
-                    }
-                    
-                    // Validation: If listing type was provided but not found, skip this row
-                    if (empty($ltIds)) {
-                        $skipped++;
-                        $errors[] = "Row {$row}: Listing type '{$ltInput}' not found. Please check the spelling.";
-                        continue;
-                    }
-                }
-                
-                $rec['listing_type_ids'] = json_encode(array_map('intval', $ltIds));
-                if (!empty($ltIds)) $rec['listing_type_id'] = $ltIds[0]; // For backward compatibility
 
                 if (!empty($data['description'])) $rec['description'] = $data['description'];
                 
@@ -4976,63 +5001,30 @@ private function processImage($source, $subDir): ?string
     }
 
     /**
-     * Create a new error message
+     * Create a new error message — DISABLED
+     * Message keys are system-defined and cannot be created by SuperAdmin.
      */
     public function createErrorMessage()
     {
-        $db = \Config\Database::connect();
-        $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
-
-        // Validation
-        if (empty($data['message_key'])) {
-            return $this->respond(['success' => false, 'message' => 'Message key is required'], 400);
-        }
-        if (empty($data['message_value'])) {
-            return $this->respond(['success' => false, 'message' => 'Message value is required'], 400);
-        }
-
-        // Check if key already exists
-        $existing = $db->table('app_messages')
-            ->where('message_key', $data['message_key'])
-            ->get()
-            ->getRowArray();
-
-        if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'Message key already exists'], 400);
-        }
-
-        // Insert new message
-        $insertData = [
-            'message_key' => $data['message_key'],
-            'message_value' => $data['message_value'],
-            'category' => $data['category'] ?? 'general',
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ];
-
-        try {
-            $result = $db->table('app_messages')->insert($insertData);
-            if ($result) {
-                return $this->respond(['success' => true, 'message' => 'Error message created successfully']);
-            }
-        } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => 'Failed to create message: ' . $e->getMessage()], 500);
-        }
-
-        return $this->respond(['success' => false, 'message' => 'Failed to create error message'], 500);
+        return $this->respond([
+            'success' => false,
+            'message' => 'Creating new message keys is not allowed. Message keys are system-defined.',
+        ], 403);
     }
 
     /**
-     * Update an error message by ID
+     * Update an error message by ID.
+     * Only message_value and category can be changed. message_key is immutable.
      */
     public function updateErrorMessage($id)
     {
         $db = \Config\Database::connect();
         $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
 
-        // Validation
-        if (empty($data['message_value'])) {
-            return $this->respond(['success' => false, 'message' => 'Message value is required'], 400);
+        // Reject blank message_value
+        $messageValue = trim($data['message_value'] ?? '');
+        if ($messageValue === '') {
+            return $this->respond(['success' => false, 'message' => 'Message value cannot be blank'], 400);
         }
 
         // Check if message exists
@@ -5045,11 +5037,17 @@ private function processImage($source, $subDir): ?string
             return $this->respond(['success' => false, 'message' => 'Error message not found'], 404);
         }
 
-        // Update message
+        // Validate that all required placeholders in the existing message are retained
+        $placeholderError = $this->validateMessagePlaceholders($message['message_value'], $messageValue);
+        if ($placeholderError !== null) {
+            return $this->respond(['success' => false, 'message' => $placeholderError], 400);
+        }
+
+        // Only update message_value and category — message_key is immutable
         $updateData = [
-            'message_value' => $data['message_value'],
-            'category' => $data['category'] ?? $message['category'],
-            'updated_at' => date('Y-m-d H:i:s'),
+            'message_value' => $messageValue,
+            'category'      => $data['category'] ?? $message['category'],
+            'updated_at'    => date('Y-m-d H:i:s'),
         ];
 
         try {
@@ -5061,28 +5059,15 @@ private function processImage($source, $subDir): ?string
     }
 
     /**
-     * Delete an error message by ID
+     * Delete an error message by ID — DISABLED
+     * Message keys are system-defined and cannot be deleted by SuperAdmin.
      */
     public function deleteErrorMessage($id)
     {
-        $db = \Config\Database::connect();
-
-        // Check if message exists
-        $message = $db->table('app_messages')
-            ->where('id', $id)
-            ->get()
-            ->getRowArray();
-
-        if (!$message) {
-            return $this->respond(['success' => false, 'message' => 'Error message not found'], 404);
-        }
-
-        try {
-            $db->table('app_messages')->where('id', $id)->delete();
-            return $this->respond(['success' => true, 'message' => 'Error message deleted successfully']);
-        } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => 'Failed to delete message: ' . $e->getMessage()], 500);
-        }
+        return $this->respond([
+            'success' => false,
+            'message' => 'Deleting message keys is not allowed. Message keys are system-defined.',
+        ], 403);
     }
 
     /**
@@ -5262,20 +5247,98 @@ private function processImage($source, $subDir): ?string
         
         $seoModel = new \App\Models\SeoSettingModel();
         
-        // Check if cms_pages table exists
-        $cmsPagesTableExists = $db->tableExists('cms_pages');
+        // 1. Auto-register standard system routes if missing
+        $defaultSystemPages = [
+            ['page_key' => 'home', 'page_name' => 'Home', 'route' => '/', 'title' => 'FlexMarket — Rent or Buy Premium Fashion', 'meta_description' => 'FlexMarket is India\'s premier platform for renting and buying premium fashion. Discover luxury clothing, accessories, and more at affordable prices.', 'meta_keywords' => 'flexmarket, rent fashion, buy fashion, luxury clothing, rental platform'],
+            ['page_key' => 'browse', 'page_name' => 'Browse Products', 'route' => '/browse', 'title' => 'Browse Products — FlexMarket', 'meta_description' => 'Browse through our extensive collection of premium fashion items available for rent or purchase.', 'meta_keywords' => 'browse, products, fashion, rental, purchase'],
+            ['page_key' => 'login', 'page_name' => 'User Login', 'route' => '/login', 'title' => 'Login — FlexMarket', 'meta_description' => 'Log in to your FlexMarket account to access your rentals, offers, wishlist, and profile.', 'meta_keywords' => 'login, flexmarket, user signin'],
+            ['page_key' => 'register', 'page_name' => 'User Registration', 'route' => '/register', 'title' => 'Create Account — FlexMarket', 'meta_description' => 'Join FlexMarket today. Register to buy, rent, or sell premium fashion online.', 'meta_keywords' => 'register, signup, flexmarket account'],
+            ['page_key' => 'forgot_password', 'page_name' => 'Forgot Password', 'route' => '/forgot-password', 'title' => 'Reset Password — FlexMarket', 'meta_description' => 'Recover your FlexMarket account password quickly and securely.', 'meta_keywords' => 'forgot password, reset password, flexmarket'],
+            ['page_key' => 'verify_otp', 'page_name' => 'OTP Verification', 'route' => '/verify-otp', 'title' => 'Verify OTP — FlexMarket', 'meta_description' => 'Verify your contact details to activate your account or proceed with verification.', 'meta_keywords' => 'verify otp, mobile verification, flexmarket'],
+            ['page_key' => 'wishlist', 'page_name' => 'Wishlist', 'route' => '/wishlist', 'title' => 'My Wishlist — FlexMarket', 'meta_description' => 'View and manage your saved favorite fashion items on FlexMarket.', 'meta_keywords' => 'wishlist, saved items, favorite fashion, flexmarket'],
+
+            // Buyer Portal Pages
+            ['page_key' => 'buyer_dashboard', 'page_name' => 'Buyer: Dashboard', 'route' => '/buyer', 'title' => 'Buyer Dashboard — FlexMarket', 'meta_description' => 'Overview of your recent orders, active offers, rentals, and account statistics.', 'meta_keywords' => 'buyer dashboard, my account, flexmarket'],
+            ['page_key' => 'buyer_browse', 'page_name' => 'Buyer: Browse Catalog', 'route' => '/buyer/browse', 'title' => 'Browse Fashion Catalog — FlexMarket', 'meta_description' => 'Explore clothing, apparel, and accessories for rent and sale.', 'meta_keywords' => 'buyer browse, clothing catalog, rent dresses'],
+            ['page_key' => 'buyer_cart', 'page_name' => 'Buyer: Cart', 'route' => '/buyer/cart', 'title' => 'Shopping Cart — FlexMarket', 'meta_description' => 'Review items in your cart before checking out.', 'meta_keywords' => 'shopping cart, checkout, flexmarket cart'],
+            ['page_key' => 'buyer_checkout', 'page_name' => 'Buyer: Checkout', 'route' => '/buyer/checkout', 'title' => 'Checkout — FlexMarket', 'meta_description' => 'Complete your order purchase or rental safely with secure payments.', 'meta_keywords' => 'checkout, payment, order completion'],
+            ['page_key' => 'buyer_orders', 'page_name' => 'Buyer: My Orders', 'route' => '/buyer/my-orders', 'title' => 'My Orders & Rentals — FlexMarket', 'meta_description' => 'Track your order history, rental statuses, shipping info, and delivery details.', 'meta_keywords' => 'my orders, tracking, rentals, buyer orders'],
+            ['page_key' => 'buyer_offers', 'page_name' => 'Buyer: My Offers', 'route' => '/buyer/my-offers', 'title' => 'My Price Offers — FlexMarket', 'meta_description' => 'Manage negotiated offers and counter-offers with sellers on FlexMarket.', 'meta_keywords' => 'price offers, bargaining, buyer offers'],
+            ['page_key' => 'buyer_profile', 'page_name' => 'Buyer: My Profile', 'route' => '/buyer/profile', 'title' => 'Account Settings & Profile — FlexMarket', 'meta_description' => 'Update your personal info, security settings, preferences, and shipping addresses.', 'meta_keywords' => 'profile settings, buyer account, flexmarket profile'],
+            ['page_key' => 'buyer_chat', 'page_name' => 'Buyer: Messages & Chat', 'route' => '/buyer/chat', 'title' => 'Buyer Chat — FlexMarket', 'meta_description' => 'Directly chat with sellers to inquire about item condition, sizing, and shipping.', 'meta_keywords' => 'chat, seller messaging, flexmarket chat'],
+            ['page_key' => 'buyer_subscriptions', 'page_name' => 'Buyer: Subscriptions', 'route' => '/buyer/subscriptions', 'title' => 'Buyer Subscriptions — FlexMarket', 'meta_description' => 'View active subscription plans and benefits for buyers.', 'meta_keywords' => 'buyer subscriptions, premium membership'],
+            ['page_key' => 'buyer_transactions', 'page_name' => 'Buyer: Transaction History', 'route' => '/buyer/transactions', 'title' => 'Transaction History — FlexMarket', 'meta_description' => 'View detailed billing logs and transaction history for orders and rentals.', 'meta_keywords' => 'transactions, billing history, payment receipts'],
+            ['page_key' => 'buyer_addresses', 'page_name' => 'Buyer: Address Book', 'route' => '/buyer/contacts', 'title' => 'Address Book — FlexMarket', 'meta_description' => 'Manage saved delivery addresses and contact information.', 'meta_keywords' => 'address book, shipping addresses'],
+
+            // Seller Portal Pages
+            ['page_key' => 'seller_dashboard', 'page_name' => 'Seller: Dashboard', 'route' => '/seller', 'title' => 'Seller Dashboard — FlexMarket', 'meta_description' => 'Track listing performance, active orders, earnings, and inventory stats.', 'meta_keywords' => 'seller dashboard, earnings, store management'],
+            ['page_key' => 'seller_my_products', 'page_name' => 'Seller: Product Listings', 'route' => '/seller/my-products', 'title' => 'My Product Listings — FlexMarket', 'meta_description' => 'Manage your uploaded rental and sale items, availability, and pricing.', 'meta_keywords' => 'seller products, my listings, apparel store'],
+            ['page_key' => 'seller_upload_product', 'page_name' => 'Seller: Upload New Product', 'route' => '/seller/upload-product', 'title' => 'Upload Product — FlexMarket', 'meta_description' => 'List a new fashion item or accessory for rent or sale on FlexMarket.', 'meta_keywords' => 'upload product, sell clothes, rent out dress'],
+            ['page_key' => 'seller_orders', 'page_name' => 'Seller: Sales & Rental Orders', 'route' => '/seller/orders', 'title' => 'Seller Orders — FlexMarket', 'meta_description' => 'Fulfill customer orders, manage return dates, and update shipping details.', 'meta_keywords' => 'seller orders, fulfillment, rental tracking'],
+            ['page_key' => 'seller_offers', 'page_name' => 'Seller: Received Offers', 'route' => '/seller/offers', 'title' => 'Customer Offers — FlexMarket', 'meta_description' => 'Review price negotiation offers from buyers and make counter-offers.', 'meta_keywords' => 'customer offers, negotiations, seller offers'],
+            ['page_key' => 'seller_analytics', 'page_name' => 'Seller: Sales Analytics', 'route' => '/seller/analytics', 'title' => 'Sales Analytics — FlexMarket', 'meta_description' => 'In-depth revenue reports, product view metrics, and sales conversion charts.', 'meta_keywords' => 'seller analytics, revenue reports, store metrics'],
+            ['page_key' => 'seller_transactions', 'page_name' => 'Seller: Payouts & Transactions', 'route' => '/seller/transactions', 'title' => 'Payouts & Earnings — FlexMarket', 'meta_description' => 'Track your store payouts, platform fees, and completed order earnings.', 'meta_keywords' => 'payouts, seller earnings, platform commission'],
+            ['page_key' => 'seller_subscriptions', 'page_name' => 'Seller: Membership Plans', 'route' => '/seller/subscriptions', 'title' => 'Seller Plans — FlexMarket', 'meta_description' => 'Manage seller tier subscriptions and featured listing quotas.', 'meta_keywords' => 'seller subscription, seller plans, flexmarket seller'],
+            ['page_key' => 'seller_profile', 'page_name' => 'Seller: Business Profile', 'route' => '/seller/profile', 'title' => 'Seller Profile — FlexMarket', 'meta_description' => 'Customize your store banner, bio, seller verification, and bank details.', 'meta_keywords' => 'seller profile, store settings, store page'],
+            ['page_key' => 'seller_chat', 'page_name' => 'Seller: Messages & Inquiries', 'route' => '/seller/chat', 'title' => 'Seller Chat — FlexMarket', 'meta_description' => 'Communicate with potential buyers and clarify customer product queries.', 'meta_keywords' => 'seller chat, buyer messages'],
+            ['page_key' => 'seller_referral', 'page_name' => 'Seller: Referral Program', 'route' => '/seller/referral', 'title' => 'Seller Referral — FlexMarket', 'meta_description' => 'Refer fellow sellers to earn bonus listing credits and fee discounts.', 'meta_keywords' => 'seller referral, bonus credits'],
+            ['page_key' => 'seller_help', 'page_name' => 'Seller: Help & Support', 'route' => '/seller/help', 'title' => 'Seller Support — FlexMarket', 'meta_description' => 'Get help with listing rules, payouts, shipping guidelines, and policies.', 'meta_keywords' => 'seller support, seller help, flexmarket FAQ'],
+            ['page_key' => 'seller_notifications', 'page_name' => 'Seller: Notifications', 'route' => '/seller/notifications', 'title' => 'Seller Notifications — FlexMarket', 'meta_description' => 'Real-time alerts for new orders, offer updates, and account messages.', 'meta_keywords' => 'seller notifications, store alerts'],
+
+            // SuperAdmin Portal Pages
+            ['page_key' => 'superadmin_dashboard', 'page_name' => 'SuperAdmin: Dashboard Overview', 'route' => '/superadmin', 'title' => 'SuperAdmin Dashboard — FlexMarket', 'meta_description' => 'Platform-wide analytics, key metrics, user growth, and global system stats.', 'meta_keywords' => 'superadmin dashboard, flexmarket admin'],
+            ['page_key' => 'superadmin_seo', 'page_name' => 'SuperAdmin: SEO Configuration', 'route' => '/superadmin/seo', 'title' => 'SEO Settings Control Panel — FlexMarket', 'meta_description' => 'Configure meta titles, descriptions, keywords, and social share metadata across all site routes.', 'meta_keywords' => 'seo settings, meta tags management, search optimization'],
+            ['page_key' => 'superadmin_product_management', 'page_name' => 'SuperAdmin: Product Management', 'route' => '/superadmin/product-management', 'title' => 'Product Management — FlexMarket Admin', 'meta_description' => 'Inspect, audit, update, or remove product listings across the platform.', 'meta_keywords' => 'product management, catalog admin'],
+            ['page_key' => 'superadmin_pending_products', 'page_name' => 'SuperAdmin: Pending Product Approvals', 'route' => '/superadmin/pending-products', 'title' => 'Pending Product Approvals — FlexMarket Admin', 'meta_description' => 'Review and approve newly submitted seller products before publication.', 'meta_keywords' => 'product approval, moderation queue'],
+            ['page_key' => 'superadmin_users', 'page_name' => 'SuperAdmin: User Management', 'route' => '/superadmin/users', 'title' => 'User Management — FlexMarket Admin', 'meta_description' => 'Manage registered buyer accounts, verification statuses, and permissions.', 'meta_keywords' => 'user management, buyer accounts'],
+            ['page_key' => 'superadmin_admins', 'page_name' => 'SuperAdmin: Admin & Staff Accounts', 'route' => '/superadmin/admins', 'title' => 'Admin User Accounts — FlexMarket Admin', 'meta_description' => 'Manage admin staff roles, moderation permissions, and security accesses.', 'meta_keywords' => 'admin staff, role management'],
+            ['page_key' => 'superadmin_brands', 'page_name' => 'SuperAdmin: Brand Management', 'route' => '/superadmin/brands', 'title' => 'Brand Directory — FlexMarket Admin', 'meta_description' => 'Manage official and user-created brand directories.', 'meta_keywords' => 'brands management, luxury fashion brands'],
+            ['page_key' => 'superadmin_original_brands', 'page_name' => 'SuperAdmin: Verified Brands', 'route' => '/superadmin/original-brands', 'title' => 'Verified Original Brands — FlexMarket Admin', 'meta_description' => 'Curate featured authentic designer brands and trademarks.', 'meta_keywords' => 'verified brands, designer catalog'],
+            ['page_key' => 'superadmin_taxonomy', 'page_name' => 'SuperAdmin: Categories & Taxonomy', 'route' => '/superadmin/taxonomy', 'title' => 'Category Taxonomy — FlexMarket Admin', 'meta_description' => 'Manage main clothing categories, subcategories, and listing dynamic attributes.', 'meta_keywords' => 'taxonomy, categories, apparel tags'],
+            ['page_key' => 'superadmin_reports', 'page_name' => 'SuperAdmin: System Reports', 'route' => '/superadmin/reports', 'title' => 'System Reports — FlexMarket Admin', 'meta_description' => 'Generate and export overall business performance and transaction reports.', 'meta_keywords' => 'reports, analytics export, performance statistics'],
+            ['page_key' => 'superadmin_analytics', 'page_name' => 'SuperAdmin: Advanced Analytics', 'route' => '/superadmin/analytics', 'title' => 'Advanced Analytics — FlexMarket Admin', 'meta_description' => 'Interactive visual charts for revenue trends, category popularity, and user activity.', 'meta_keywords' => 'advanced analytics, business metrics'],
+            ['page_key' => 'superadmin_transactions', 'page_name' => 'SuperAdmin: Global Transactions', 'route' => '/superadmin/transactions', 'title' => 'Global Transactions — FlexMarket Admin', 'meta_description' => 'Audit platform transactions, payment gateway logs, refunds, and payouts.', 'meta_keywords' => 'transactions audit, financial logs'],
+            ['page_key' => 'superadmin_subscription_plans', 'page_name' => 'SuperAdmin: Subscription Plans', 'route' => '/superadmin/subscription-plans', 'title' => 'Subscription Plans — FlexMarket Admin', 'meta_description' => 'Configure buyer and seller subscription tiers, pricing, and feature limits.', 'meta_keywords' => 'subscription plans, membership tiers'],
+            ['page_key' => 'superadmin_fee_management', 'page_name' => 'SuperAdmin: Fee Management', 'route' => '/superadmin/fee-management', 'title' => 'Platform Fee Rules — FlexMarket Admin', 'meta_description' => 'Set store commissions, rental security deposit rules, and service fees.', 'meta_keywords' => 'fee management, commission rules'],
+            ['page_key' => 'superadmin_coupons', 'page_name' => 'SuperAdmin: Coupons & Discounts', 'route' => '/superadmin/coupons', 'title' => 'Promotions & Coupons — FlexMarket Admin', 'meta_description' => 'Create and manage discount codes, promo campaigns, and voucher rules.', 'meta_keywords' => 'promotions, coupon codes, discount vouchers'],
+            ['page_key' => 'superadmin_offers', 'page_name' => 'SuperAdmin: System Offers Audit', 'route' => '/superadmin/offers', 'title' => 'Offers Audit — FlexMarket Admin', 'meta_description' => 'Monitor buyer-seller negotiation offers across the marketplace.', 'meta_keywords' => 'offers audit, negotiation monitoring'],
+            ['page_key' => 'superadmin_advertisements', 'page_name' => 'SuperAdmin: Banners & Ads', 'route' => '/superadmin/advertisements', 'title' => 'Ad Banners & Campaigns — FlexMarket Admin', 'meta_description' => 'Manage homepage sliders, promotional banners, and ad placements.', 'meta_keywords' => 'banner ads, promotional sliders'],
+            ['page_key' => 'superadmin_cms', 'page_name' => 'SuperAdmin: CMS Page Manager', 'route' => '/superadmin/cms', 'title' => 'CMS Pages — FlexMarket Admin', 'meta_description' => 'Create and edit dynamic content pages like Terms, Privacy, FAQ, and Guidelines.', 'meta_keywords' => 'cms manager, page editor'],
+            ['page_key' => 'superadmin_app_messages', 'page_name' => 'SuperAdmin: System Messages', 'route' => '/superadmin/app-messages', 'title' => 'System Response Messages — FlexMarket Admin', 'meta_description' => 'Customize notification text, API responses, and internationalization messages.', 'meta_keywords' => 'system messages, text strings'],
+            ['page_key' => 'superadmin_heatmap', 'page_name' => 'SuperAdmin: User Heatmap & Clicks', 'route' => '/superadmin/heatmap', 'title' => 'User Engagement Heatmap — FlexMarket Admin', 'meta_description' => 'Visualize buyer interaction hotspots, navigation paths, and feature usage.', 'meta_keywords' => 'heatmap, user clicks analytics'],
+            ['page_key' => 'superadmin_moderation_history', 'page_name' => 'SuperAdmin: Moderation Audit Logs', 'route' => '/superadmin/moderation-history', 'title' => 'Moderation Logs — FlexMarket Admin', 'meta_description' => 'Historical log of product approvals, rejections, user bans, and admin actions.', 'meta_keywords' => 'moderation history, audit logs'],
+            ['page_key' => 'superadmin_business_settings', 'page_name' => 'SuperAdmin: Business Settings', 'route' => '/superadmin/business-settings', 'title' => 'Business Settings — FlexMarket Admin', 'meta_description' => 'Global site branding, currency formatting, contact info, and social links.', 'meta_keywords' => 'business settings, site branding'],
+            ['page_key' => 'superadmin_zones', 'page_name' => 'SuperAdmin: Operational Zones', 'route' => '/superadmin/zones', 'title' => 'Regional Delivery Zones — FlexMarket Admin', 'meta_description' => 'Configure shipping regions, delivery coverage areas, and localized settings.', 'meta_keywords' => 'delivery zones, shipping regions']
+        ];
+
+        foreach ($defaultSystemPages as $defPage) {
+            $exists = $seoModel->where('page_key', $defPage['page_key'])->orWhere('route', $defPage['route'])->first();
+            if (!$exists) {
+                $seoModel->insert([
+                    'page_key' => $defPage['page_key'],
+                    'page_name' => $defPage['page_name'],
+                    'route' => $defPage['route'],
+                    'title' => $defPage['title'],
+                    'meta_description' => $defPage['meta_description'],
+                    'meta_keywords' => $defPage['meta_keywords'],
+                    'og_title' => $defPage['title'],
+                    'og_description' => $defPage['meta_description'],
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+            }
+        }
         
+        // 2. Check if cms_pages table exists and sync active CMS pages
+        $cmsPagesTableExists = $db->tableExists('cms_pages');
         if ($cmsPagesTableExists) {
-            // 1. Fetch current CMS pages
             $cmsPages = $db->table('cms_pages')->get()->getResultArray();
             
-            // 2. Register any missing or updated CMS pages in SEO settings
             foreach ($cmsPages as $cms) {
                 $pageKey = 'cms_' . $cms['slug'];
                 $exists = $seoModel->where('page_key', $pageKey)->first();
                 
-                // Clean up html tags from content preview
-                $plainContent = strip_tags($cms['content']);
+                $plainContent = strip_tags($cms['content'] ?? '');
                 $plainContent = preg_replace('/\s+/', ' ', $plainContent);
                 $descPreview = trim(substr($plainContent, 0, 150));
                 
@@ -5283,22 +5346,23 @@ private function processImage($source, $subDir): ?string
                     $seoModel->insert([
                         'page_key' => $pageKey,
                         'page_name' => 'CMS: ' . $cms['title'],
-                        'route' => '/' . $cms['slug'],
+                        'route' => '/' . ltrim($cms['slug'], '/'),
                         'title' => $cms['title'] . ' — FlexMarket',
                         'meta_description' => $descPreview ?: ($cms['title'] . ' page on FlexMarket.'),
                         'meta_keywords' => 'flexmarket, ' . strtolower($cms['title']),
                         'og_title' => $cms['title'],
-                        'og_description' => $descPreview ?: ($cms['title'] . ' page on FlexMarket.')
+                        'og_description' => $descPreview ?: ($cms['title'] . ' page on FlexMarket.'),
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
                     ]);
                 } else {
-                    // Keep the display title in sync with the CMS page
                     if ($exists['page_name'] !== 'CMS: ' . $cms['title']) {
                         $seoModel->update($exists['id'], ['page_name' => 'CMS: ' . $cms['title']]);
                     }
                 }
             }
 
-            // 3. Clean up deleted CMS pages from SEO settings
+            // Clean up deleted CMS pages from SEO settings
             $cmsSeoSettings = $seoModel->like('page_key', 'cms_', 'after')->findAll();
             $cmsSlugs = array_column($cmsPages, 'slug');
             foreach ($cmsSeoSettings as $s) {
@@ -5309,10 +5373,60 @@ private function processImage($source, $subDir): ?string
             }
         }
 
-        // 4. Return all updated settings
+        // 3. Return all updated settings
         $settings = $seoModel->orderBy('page_name', 'ASC')->findAll();
 
         return $this->respond(['success' => true, 'data' => $settings]);
+    }
+
+    /**
+     * POST /api/v1/superadmin/seo-settings
+     * Create a new custom page SEO entry
+     */
+    public function createSeoSetting()
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
+        
+        $pageName = trim($data['page_name'] ?? '');
+        $route = trim($data['route'] ?? '');
+        $pageKey = trim($data['page_key'] ?? '');
+
+        if (empty($pageName) || empty($route)) {
+            return $this->respond(['success' => false, 'message' => 'Page name and route path are required.'], 400);
+        }
+
+        $formattedRoute = '/' . ltrim($route, '/');
+        if (empty($pageKey)) {
+            $pageKey = strtolower(preg_replace('/[^a-zA-Z0-9_]+/', '_', trim($route, '/')));
+        }
+
+        $seoModel = new \App\Models\SeoSettingModel();
+        
+        // Check uniqueness of page_key or route
+        $existing = $seoModel->where('page_key', $pageKey)->orWhere('route', $formattedRoute)->first();
+        if ($existing) {
+            return $this->respond(['success' => false, 'message' => 'SEO setting for this page route already exists.'], 400);
+        }
+
+        $seoModel->insert([
+            'page_key' => $pageKey,
+            'page_name' => $pageName,
+            'route' => $formattedRoute,
+            'title' => $data['title'] ?? ($pageName . ' — FlexMarket'),
+            'meta_description' => $data['meta_description'] ?? ($pageName . ' page on FlexMarket.'),
+            'meta_keywords' => $data['meta_keywords'] ?? 'flexmarket',
+            'og_title' => $data['og_title'] ?? ($data['title'] ?? $pageName),
+            'og_description' => $data['og_description'] ?? ($data['meta_description'] ?? ''),
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+
+        return $this->respond(['success' => true, 'message' => 'New page SEO setting created successfully.']);
     }
 
     /**
@@ -5334,6 +5448,7 @@ private function processImage($source, $subDir): ?string
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
 
         $updateData = [];
+        if (array_key_exists('page_name', $data)) $updateData['page_name'] = $data['page_name'];
         if (array_key_exists('title', $data)) $updateData['title'] = $data['title'];
         if (array_key_exists('meta_description', $data)) $updateData['meta_description'] = $data['meta_description'];
         if (array_key_exists('meta_keywords', $data)) $updateData['meta_keywords'] = $data['meta_keywords'];
@@ -5347,6 +5462,26 @@ private function processImage($source, $subDir): ?string
         $seoModel->update($id, $updateData);
 
         return $this->respond(['success' => true, 'message' => 'SEO setting updated successfully.']);
+    }
+
+    /**
+     * DELETE /api/v1/superadmin/seo-settings/{id}
+     */
+    public function deleteSeoSetting($id)
+    {
+        $jwtUser = $this->request->jwt_user;
+        if ($jwtUser['role'] !== 'super_admin') {
+            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $seoModel = new \App\Models\SeoSettingModel();
+        $setting = $seoModel->find($id);
+        if (!$setting) {
+            return $this->respond(['success' => false, 'message' => 'SEO setting not found'], 404);
+        }
+
+        $seoModel->delete($id);
+        return $this->respond(['success' => true, 'message' => 'SEO setting deleted successfully.']);
     }
 
     /**

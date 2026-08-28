@@ -2356,6 +2356,23 @@ class BuyerApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => 'This plan requires payment'], 400);
         }
 
+        // Block if user already has an active, non-exhausted BUYER subscription
+        $query = $db->query(
+            "SELECT us.id FROM user_subscriptions us
+             LEFT JOIN subscription_plans sp ON sp.id = us.plan_id
+             WHERE us.user_id = ?
+               AND sp.user_type = 'buyer'
+               AND us.is_active = 1
+               AND us.expires_at > NOW()
+               AND (sp.plan_type = 'duration' OR sp.limit_value IS NULL OR sp.limit_value = 0 OR us.usage_count < sp.limit_value)
+             LIMIT 1",
+            [(int) $userId]
+        );
+        $activeSub = ($query && is_object($query)) ? $query->getRowArray() : null;
+        if ($activeSub) {
+            return $this->respond(['success' => false, 'message' => 'You already have an active buyer subscription. Please wait until it expires or is exhausted before activating a new plan.'], 409);
+        }
+
         // Activate the subscription
         $now = date('Y-m-d H:i:s');
         $expiryDate = $plan['duration_hours'] > 0
@@ -2429,6 +2446,45 @@ class BuyerApi extends BaseApiController
         if ((float) $plan['price'] < $cpnMinPurchase) {
             return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
         }
+                // Referral discount restriction: Check if user has active referral discount for this plan
+        $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
+        if ($useReferral) {
+            $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            $referralBalance = (float) ($user['referral_balance'] ?? 0);
+            $expiry = $user['referral_expires_at'] ?? null;
+            if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+                $referralBalance = 0.0;
+            }
+
+            if ($referralBalance > 0) {
+                if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                    $settingsRows = $db->table('system_settings')
+                        ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+                        ->get()->getResultArray();
+                    $cfg = [];
+                    foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+
+                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+
+                    $basePrice = (float) $plan['price'];
+                    if ($basePrice >= $minPurchase) {
+                        $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                        $refDiscount = min($rawDiscount, $basePrice);
+
+                        // Only block coupon when referral fully covers the plan price
+                        if ($refDiscount >= $basePrice && $basePrice > 0) {
+                            return $this->respond([
+                                'success' => false,
+                                'message' => 'Coupon code cannot be applied when referral discount covers the full plan price.'
+                            ], 400);
+                        }
+                        // Partial referral: coupon is allowed — both discounts will stack
+                    }
+                }
+            }
+        }
+
 
         $discountValue = 0;
         if ($coupon['discount_type'] === 'percentage') {
@@ -2539,7 +2595,6 @@ class BuyerApi extends BaseApiController
             }
         }
 
-        $finalAmount = ($basePrice + $totalCharges) - $discount;
 
         // Referral discount (only if user chose to apply it)
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
@@ -2567,12 +2622,18 @@ class BuyerApi extends BaseApiController
                         // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
                         $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
                         $referralDiscountApplied = min($rawDiscount, $basePrice);
-                        $finalAmount -= $referralDiscountApplied;
                     }
                 }
             }
         }
+ // When referral fully covers the plan base price, coupon is not applicable.
+        // When referral is partial, both referral + coupon discounts stack.
+        if ($referralDiscountApplied >= $basePrice && $basePrice > 0) {
+            $discount = 0;
+            $couponId = null;
+        }
 
+        $finalAmount = ($basePrice + $totalCharges) - $discount - $referralDiscountApplied;
         $finalAmount = max(1, $finalAmount);
         $amountInPaise = (int) ($finalAmount * 100);
         $merchantOrderId = 'SUB-' . $userId . '-' . time();

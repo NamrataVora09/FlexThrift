@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import { api } from '@/lib/api';
 
@@ -35,7 +35,10 @@ function MediaLinkWrapper({ targetUrl, children }: { targetUrl?: string; childre
   );
 }
 
-/** Reusable video player with ONLY a mute/unmute button. Default: muted (required for autoplay). */
+/** Reusable video player with ONLY a mute/unmute button. Default: muted (required for autoplay).
+ * PERFORMANCE: preload="none" defers video download until play begins.
+ * IntersectionObserver pauses playback when the player scrolls out of view.
+ */
 export function VideoAdPlayer({
   src,
   className,
@@ -45,18 +48,39 @@ export function VideoAdPlayer({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const [muted, setMuted] = useState(true); // must start muted for browser autoplay to work
+  const [muted, setMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Pause video when it leaves the viewport to stop burning bandwidth
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) {
+          el.pause();
+        } else {
+          el.play().catch(() => {/* autoplay may be blocked — ignore */ });
+        }
+      },
+      { threshold: 0.25 } // play when 25% visible
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
       <video
+        ref={videoRef}
         src={src}
-        className={`${className} object-fill`}
+        className={`${className} object-cover`}
         style={style}
         autoPlay
         muted={muted}
         loop
         playsInline
+        preload="none"  // PERFORMANCE: don't preload video until play starts
       />
       {/* Mute / Unmute toggle — only control shown */}
       <button
@@ -147,21 +171,27 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             <i className="bi bi-x-lg"></i>
           </button>
 
-          <div className="aspect-video bg-gray-100" style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', width: '100%', height: '400px', overflow: 'hidden' }}>
             <MediaLinkWrapper targetUrl={ad.target_url}>
               {ad.ad_type === 'video' ? (
                 <VideoAdPlayer
                   src={mediaUrl}
-                  className="w-full  "
-                  style={{ width: '100%',  maxHeight: '300px'}}
+                  className="w-full h-full object-cover"
+                  style={{ width: '100%', height: '400px', objectFit: 'cover' }}
                 />
               ) : (
-                <img src={mediaUrl} alt={ad.title} className="w-full max-h-75 " />
+                <img
+                  src={mediaUrl}
+                  alt={ad.title}
+                  className="w-full h-full object-cover"
+                  style={{ width: '100%', height: '400px', objectFit: 'cover' }}
+                />
+
               )}
             </MediaLinkWrapper>
           </div>
 
-          <div className="p-6 text-center"> 
+          <div className="p-6 text-center">
             <h3 className="text-xl font-bold text-gray-900 mb-2">{ad.title}</h3>
             {ad.short_description && (
               <div
@@ -183,16 +213,17 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             {ad.ad_type === 'video' ? (
               <VideoAdPlayer
                 src={mediaUrl}
-                className="img-fluid rounded shadow-sm w-100"
-                style={{ maxHeight: '300px' }}
+                className="img-fluid rounded shadow-sm w-100 object-cover"
+                style={{ width: '100%', height: '400px', maxHeight: '400px', objectFit: 'cover' }}
               />
             ) : (
               <img
                 src={mediaUrl}
                 alt={ad.title}
-                className="img-fluid rounded shadow-sm w-100"
-                style={{ maxHeight: '300px' }}
-              />  
+                loading="lazy"
+                className="img-fluid rounded shadow-sm w-100 object-cover"
+                style={{ width: '100%', height: '400px', maxHeight: '400px', objectFit: 'cover' }}
+              />
             )}
           </MediaLinkWrapper>
           {ad.short_description && (
@@ -206,25 +237,33 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
     );
   }
 
+  const bannerHeight = position === 'top_banner' ? '300px' : position === 'footer' ? '400px' : position === 'sidebar' ? '300px' : '400px';
+
   return (
     <div className={`ad-banner-container ${className}`} title={ad.title}>
       <MediaLinkWrapper targetUrl={ad.target_url}>
         {ad.ad_type === 'video' ? (
           <VideoAdPlayer
             src={mediaUrl}
-            className="img-fluid rounded shadow-sm w-100"
+            className="img-fluid rounded shadow-sm w-100 object-cover"
             style={{
-            
-              maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : position === 'sidebar' ? '300px' : 'auto',
+              width: '100%',
+              height: bannerHeight,
+              maxHeight: bannerHeight,
+              objectFit: 'cover',
             }}
           />
         ) : (
           <img
             src={mediaUrl}
             alt={ad.title}
-            className="img-fluid rounded shadow-sm w-100"
+            loading="lazy"
+            className="img-fluid rounded shadow-sm w-100 object-cover"
             style={{
-              maxHeight: position === 'top_banner' || position === 'footer' ? '300px' : position === 'sidebar' ? '300px' : 'auto',
+              width: '100%',
+              height: bannerHeight,
+              maxHeight: bannerHeight,
+              objectFit: 'cover',
             }}
           />
         )}

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface Ad {
@@ -42,6 +42,7 @@ const DISPLAY_PAGES = [
 const emptyForm = { title: '', short_description: '', target_url: '', position: 'top_banner', display_page: 'all', payment_date: '', start_date: '', end_date: '' };
 
 export default function AdvertisementsClient() {
+  const { toastSuccess, toastError } = useToast();
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(emptyForm);
@@ -75,7 +76,7 @@ export default function AdvertisementsClient() {
     
     // Size validation
     if (file.size > 100 * 1024 * 1024) { // 100MB limit
-      toast.error('File too large. Maximum allowed size is 100MB.');
+      toastError('file_too_large', 'File too large. Maximum allowed size is 100MB.');
       if (fileRef.current) fileRef.current.value = '';
       return;
     }
@@ -110,12 +111,12 @@ export default function AdvertisementsClient() {
 
     setSaving(false);
     if (res.success) {
-      toast.success(editId ? 'Advertisement updated!' : 'Advertisement uploaded!');
+      toastSuccess('advertisement_save_success', editId ? 'Advertisement updated!' : 'Advertisement uploaded!');
       resetForm();
       load();
     }
     else {
-      toast.error(res.message || 'Failed');
+      toastError('advertisement_save_failed', res.message || 'Failed to save advertisement');
       setUploadProgress(0);
     }
   };
@@ -151,10 +152,10 @@ export default function AdvertisementsClient() {
     confirmToast('This advertisement will be permanently removed. Are you sure?', async () => {
       const res = await api.post(`/superadmin/delete-advertisement/${id}`);
       if (res.success) {
-        toast.success('Advertisement deleted');
+        toastSuccess('advertisement_delete_success', 'Advertisement deleted');
         load();
       } else {
-        toast.error(res.message || 'Error deleting ad');
+        toastError('advertisement_delete_failed', res.message || 'Error deleting ad');
       }
     }, 'Delete');
   };
@@ -297,9 +298,9 @@ export default function AdvertisementsClient() {
                 {/* Media */}
                 {previewUrl ? (
                   previewType.includes('video') ? (
-                    <video src={previewUrl} controls autoPlay loop muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <video src={previewUrl} controls autoPlay loop muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <img src={previewUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <img src={previewUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   )
                 ) : (
                   <div className="text-center p-5 text-muted">
