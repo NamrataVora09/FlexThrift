@@ -171,16 +171,22 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             <i className="bi bi-x-lg"></i>
           </button>
 
-          <div className="aspect-video bg-gray-100" style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', width: '100%', height: '400px', overflow: 'hidden' }}>
             <MediaLinkWrapper targetUrl={ad.target_url}>
               {ad.ad_type === 'video' ? (
                 <VideoAdPlayer
                   src={mediaUrl}
-                  className="w-full  "
-                  style={{ width: '100%',  maxHeight: '300px'}}
+                  className="w-full h-full object-cover"
+                  style={{ width: '100%', height: '400px', objectFit: 'cover' }}
                 />
               ) : (
-                <img src={mediaUrl} alt={ad.title} className="w-full max-h-75 " />
+                <img
+                  src={mediaUrl}
+                  alt={ad.title}
+                  className="w-full h-full object-cover"
+                  style={{ width: '100%', height: '400px', objectFit: 'cover' }}
+                />
+                
               )}
             </MediaLinkWrapper>
           </div>
@@ -207,16 +213,16 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             {ad.ad_type === 'video' ? (
               <VideoAdPlayer
                 src={mediaUrl}
-                className="img-fluid rounded shadow-sm w-100"
-                style={{ maxHeight: '400px' }}
+                className="img-fluid rounded shadow-sm w-100 object-cover"
+                style={{ width: '100%', height: '400px', maxHeight: '400px', objectFit: 'cover' }}
               />
             ) : (
               <img
                 src={mediaUrl}
                 alt={ad.title}
                 loading="lazy"
-                className="img-fluid rounded shadow-sm w-100"
-                style={{ maxHeight: '400px' }}
+                className="img-fluid rounded shadow-sm w-100 object-cover"
+                style={{ width: '100%', height: '400px', maxHeight: '400px', objectFit: 'cover' }}
               />  
             )}
           </MediaLinkWrapper>
@@ -231,16 +237,20 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
     );
   }
 
+  const bannerHeight = position === 'top_banner' ? '300px' : position === 'footer' ? '400px' : position === 'sidebar' ? '300px' : '400px';
+
   return (
     <div className={`ad-banner-container ${className}`} title={ad.title}>
       <MediaLinkWrapper targetUrl={ad.target_url}>
         {ad.ad_type === 'video' ? (
           <VideoAdPlayer
             src={mediaUrl}
-            className="img-fluid rounded shadow-sm w-100"
+            className="img-fluid rounded shadow-sm w-100 object-cover"
             style={{
-            
-              maxHeight: position === 'top_banner' || position === 'footer' ? '400px' : position === 'sidebar' ? '300px' : 'auto',
+              width: '100%',
+              height: bannerHeight,
+              maxHeight: bannerHeight,
+              objectFit: 'cover',
             }}
           />
         ) : (
@@ -248,9 +258,12 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
             src={mediaUrl}
             alt={ad.title}
             loading="lazy"
-            className="img-fluid rounded shadow-sm w-100"
+            className="img-fluid rounded shadow-sm w-100 object-cover"
             style={{
-              maxHeight: position === 'top_banner' || position === 'footer' ? '400px' : position === 'sidebar' ? '300px' : 'auto',
+              width: '100%',
+              height: bannerHeight,
+              maxHeight: bannerHeight,
+              objectFit: 'cover',
             }}
           />
         )}

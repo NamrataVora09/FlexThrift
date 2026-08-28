@@ -401,7 +401,11 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                               >
                                 <i className="bi bi-eye"></i> View
                               </Link>
-                              {isBlockedSeller ? (
+                              {p.status === 'sold' || p.status === 'rented' ? (
+                                <button className="btn btn-sm" style={{ borderRadius: 8, background: '#e5e7eb', color: '#6b7280', cursor: 'not-allowed', border: 'none' }} disabled title="Sold or rented products cannot be edited">
+                                  <i className="bi bi-lock me-1"></i> Edit
+                                </button>
+                              ) : isBlockedSeller ? (
                                 <button className="btn btn-sm" style={{ borderRadius: 8, background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed', border: 'none' }} disabled title="Your seller role is blocked">
                                   <i className="bi bi-pencil me-1"></i> Edit
                                 </button>

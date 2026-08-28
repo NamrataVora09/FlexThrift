@@ -2476,8 +2476,49 @@ class SuperAdminApi extends AdminApi
         $products = $db->table('products')->where('status', 'rejected')->where('updated_at >=', $from)->where('updated_at <=', $to . ' 23:59:59')->get()->getResultArray();
         $count = count($products);
         foreach ($products as $p) {
-            $db->table('product_images')->where('product_id', $p['id'])->delete();
-            $db->table('products')->where('id', $p['id'])->delete();
+            $id = $p['id'];
+            // Delete physical image files from disk
+            $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+            foreach ($images as $img) {
+                if (!empty($img['image_path'])) {
+                    $fullPath = FCPATH . ltrim($img['image_path'], '/\\');
+                    if (file_exists($fullPath) && is_file($fullPath)) {
+                        @unlink($fullPath);
+                    }
+                }
+            }
+
+            // Delete physical bill image if present
+            if (!empty($p['bill_image'])) {
+                $billPath = FCPATH . ltrim($p['bill_image'], '/\\');
+                if (file_exists($billPath) && is_file($billPath)) {
+                    @unlink($billPath);
+                }
+            }
+
+            // Clean up temp images from pending edit requests (if any)
+            $editRequests = $db->table('product_edit_requests')->where('product_id', $id)->get()->getResultArray();
+            foreach ($editRequests as $req) {
+                if (!empty($req['temp_images'])) {
+                    $tempImgs = json_decode($req['temp_images'], true);
+                    if (is_array($tempImgs)) {
+                        foreach ($tempImgs as $tImg) {
+                            $tPath = is_array($tImg) ? ($tImg['image_path'] ?? '') : $tImg;
+                            if (!empty($tPath)) {
+                                $fullPath = FCPATH . ltrim($tPath, '/\\');
+                                if (file_exists($fullPath) && is_file($fullPath)) {
+                                    @unlink($fullPath);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            $db->table('product_images')->where('product_id', $id)->delete();
+            $db->table('product_edit_requests')->where('product_id', $id)->delete();
+            $db->table('offers')->where('product_id', $id)->where('status', 'pending')->update(['status' => 'cancelled']);
+            $db->table('products')->where('id', $id)->delete();
         }
         return $this->respond(['success' => true, 'message' => "$count rejected products deleted."]);
     }
@@ -3105,7 +3146,47 @@ class SuperAdminApi extends AdminApi
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
         if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found.'], 404);
 
+        // Delete physical image files from disk
+        $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+        foreach ($images as $img) {
+            if (!empty($img['image_path'])) {
+                $fullPath = FCPATH . ltrim($img['image_path'], '/\\');
+                if (file_exists($fullPath) && is_file($fullPath)) {
+                    @unlink($fullPath);
+                }
+            }
+        }
+
+        // Delete physical bill image if present
+        if (!empty($product['bill_image'])) {
+            $billPath = FCPATH . ltrim($product['bill_image'], '/\\');
+            if (file_exists($billPath) && is_file($billPath)) {
+                @unlink($billPath);
+            }
+        }
+
+        // Clean up temp images from pending edit requests (if any)
+        $editRequests = $db->table('product_edit_requests')->where('product_id', $id)->get()->getResultArray();
+        foreach ($editRequests as $req) {
+            if (!empty($req['temp_images'])) {
+                $tempImgs = json_decode($req['temp_images'], true);
+                if (is_array($tempImgs)) {
+                    foreach ($tempImgs as $tImg) {
+                        $tPath = is_array($tImg) ? ($tImg['image_path'] ?? '') : $tImg;
+                        if (!empty($tPath)) {
+                            $fullPath = FCPATH . ltrim($tPath, '/\\');
+                            if (file_exists($fullPath) && is_file($fullPath)) {
+                                @unlink($fullPath);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         $db->table('product_images')->where('product_id', $id)->delete();
+        $db->table('product_edit_requests')->where('product_id', $id)->delete();
+        $db->table('offers')->where('product_id', $id)->where('status', 'pending')->update(['status' => 'cancelled']);
         $db->table('products')->where('id', $id)->delete();
 
         return $this->respond(['success' => true, 'message' => 'Product deleted.']);

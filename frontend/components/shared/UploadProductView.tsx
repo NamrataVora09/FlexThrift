@@ -164,6 +164,11 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       api.get(`${apiBasePath}/product/${editId}`).then((r) => {
         if (r.success && r.data) {
           const product = r.data as any;
+          if (product.status === 'sold' || product.status === 'rented') {
+            toastError('product_cannot_be_edited', 'Sold or rented products cannot be edited.');
+            router.push(redirectPath || '/seller/my-products');
+            return;
+          }
 
           // Resolve IDs from Names (DB stores names, but dropdowns use IDs)
           const ltId = meta.listing_types.find(lt => lt.type_name === product.listing_type_category)?.id || '';

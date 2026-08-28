@@ -298,9 +298,9 @@ export default function AdvertisementsClient() {
                 {/* Media */}
                 {previewUrl ? (
                   previewType.includes('video') ? (
-                    <video src={previewUrl} controls autoPlay loop muted style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <video src={previewUrl} controls autoPlay loop muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <img src={previewUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <img src={previewUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   )
                 ) : (
                   <div className="text-center p-5 text-muted">

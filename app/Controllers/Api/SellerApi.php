@@ -1467,7 +1467,46 @@ class SellerApi extends BaseApiController
         if ($hasOrders > 0)
             return $this->respond(['success' => false, 'message' => 'Cannot delete product with active orders'], 400);
 
+        // Delete physical image files from disk
+        $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
+        foreach ($images as $img) {
+            if (!empty($img['image_path'])) {
+                $fullPath = FCPATH . ltrim($img['image_path'], '/\\');
+                if (file_exists($fullPath) && is_file($fullPath)) {
+                    @unlink($fullPath);
+                }
+            }
+        }
+
+        // Delete physical bill image if present
+        if (!empty($product['bill_image'])) {
+            $billPath = FCPATH . ltrim($product['bill_image'], '/\\');
+            if (file_exists($billPath) && is_file($billPath)) {
+                @unlink($billPath);
+            }
+        }
+
+        // Clean up temp images from pending edit requests (if any)
+        $editRequests = $db->table('product_edit_requests')->where('product_id', $id)->get()->getResultArray();
+        foreach ($editRequests as $req) {
+            if (!empty($req['temp_images'])) {
+                $tempImgs = json_decode($req['temp_images'], true);
+                if (is_array($tempImgs)) {
+                    foreach ($tempImgs as $tImg) {
+                        $tPath = is_array($tImg) ? ($tImg['image_path'] ?? '') : $tImg;
+                        if (!empty($tPath)) {
+                            $fullPath = FCPATH . ltrim($tPath, '/\\');
+                            if (file_exists($fullPath) && is_file($fullPath)) {
+                                @unlink($fullPath);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         $db->table('product_images')->where('product_id', $id)->delete();
+        $db->table('product_edit_requests')->where('product_id', $id)->delete();
         $db->table('offers')->where('product_id', $id)->where('status', 'pending')->update(['status' => 'cancelled']);
         $db->table('products')->where('id', $id)->delete();
 
@@ -1656,7 +1695,12 @@ class SellerApi extends BaseApiController
             // Apply processedData directly to the products table
             $directUpdate = $processedData;
             $directUpdate['updated_at'] = date('Y-m-d H:i:s');
-            // Keep status as-is (pending stays pending so admin can still review the listing)
+            // If product was rejected, transition status back to pending so admin/superadmin can re-review the product
+            if ($productStatus === 'rejected') {
+                $directUpdate['status'] = 'pending';
+                $directUpdate['admin_remarks'] = null;
+                $directUpdate['pending_reason'] = 'Resubmitted after edit';
+            }
             $db->table('products')->where('id', $id)->update($directUpdate);
 
             // Handle image deletions directly
@@ -2997,6 +3041,46 @@ class SellerApi extends BaseApiController
         if (!empty($currentUser['is_blocked'])) {
             return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
         }
+               // Referral discount restriction: Check if user has active referral discount for this plan
+        $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
+        if ($useReferral) {
+            $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            $referralBalance = (float) ($user['referral_balance'] ?? 0);
+            $expiry = $user['referral_expires_at'] ?? null;
+            if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+                $referralBalance = 0.0;
+            }
+
+            if ($referralBalance > 0) {
+                if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                    $settingsRows = $db->table('system_settings')
+                        ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+                        ->get()->getResultArray();
+                    $cfg = [];
+                    foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+
+                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+
+                    $basePrice = (float) $plan['price'];
+                    if ($basePrice >= $minPurchase) {
+                        $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                        $refDiscount = min($rawDiscount, $basePrice);
+
+                        // Only block coupon when referral fully covers the plan price
+                        if ($refDiscount >= $basePrice && $basePrice > 0) {
+                            return $this->respond([
+                                'success' => false,
+                                'message' => 'Coupon code cannot be applied when referral discount covers the full plan price.'
+                            ], 400);
+                        }
+                        // Partial referral: coupon is allowed — both discounts will stack
+                    }
+                }
+            }
+        }
+
+
 
         // 2. Check if seller role is explicitly blocked by superadmin
         if (!empty($currentUser['blocked_seller'])) {
@@ -3051,7 +3135,6 @@ class SellerApi extends BaseApiController
             }
         }
 
-        $finalAmount = ($basePrice + $totalCharges) - $discount;
 
         // Referral discount (only if user chose to apply it)
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
@@ -3079,11 +3162,19 @@ class SellerApi extends BaseApiController
                         // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
                         $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
                         $referralDiscountApplied = min($rawDiscount, $basePrice);
-                        $finalAmount -= $referralDiscountApplied;
                     }
                 }
             }
         }
+
+        // When referral fully covers the plan base price, coupon is not applicable.
+        // When referral is partial, both referral + coupon discounts stack.
+        if ($referralDiscountApplied >= $basePrice && $basePrice > 0) {
+            $discount = 0;
+            $couponId = null;
+        }
+
+        $finalAmount = ($basePrice + $totalCharges) - $discount - $referralDiscountApplied;
 
         $finalAmount = max(1, $finalAmount);
         $amountInPaise = (int) ($finalAmount * 100);
