@@ -11,13 +11,13 @@ async function safeFetch<T = any>(
   revalidateSeconds: number = 60
 ): Promise<T | null> {
   try {
-    // const fetchOptions: RequestInit = revalidateSeconds === 0
-    //   ? { cache: 'no-store' }
-    //   : { next: { revalidate: revalidateSeconds } };
-   //     const res = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-            next: { revalidate: revalidateSeconds },
-    });
+    const fetchOptions: RequestInit = revalidateSeconds === 0
+      ? { cache: 'no-store' }
+      : { next: { revalidate: revalidateSeconds } };
+    const res = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
+    // const res = await fetch(`${API_BASE}${endpoint}`, {
+    //         next: { revalidate: revalidateSeconds },
+    // });
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && json.data !== undefined) return json.data;
@@ -71,8 +71,8 @@ export async function getProductDetail(id: string) {
 }
 
 export async function getLandingContent() {
-  return safeFetch('/landing-content', 60);
-  //   return safeFetch('/landing-content', 0);
+  // return safeFetch('/landing-content', 60);
+  return safeFetch('/landing-content', 0);
 
 }
 
