@@ -66,7 +66,16 @@ export default function SettingsClient() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const res = await api.post('/superadmin/update-settings', settings);
+
+    // Strip undefined, null, and empty-string values.
+    // Empty strings for int-validated fields (e.g. offer_acceptance_limit_days)
+    // will cause a 400 on the backend — don't send keys we have no value for.
+    const payload: Record<string, string> = {};
+    Object.entries(settings).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') payload[k] = String(v);
+    });
+
+    const res = await api.post('/superadmin/update-settings', payload);
     setSaving(false);
     if (res.success) {
       toastSuccess('settings_save_success', 'Settings saved successfully!');
@@ -76,6 +85,7 @@ export default function SettingsClient() {
   };
 
   const handleBulkDelete = () => {
+
     if (!fromDate || !toDate) {
       toastError('settings_date_required', 'Please select both from and to dates');
       return;

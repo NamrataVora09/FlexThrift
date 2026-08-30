@@ -16,14 +16,8 @@ export default function GeolocationBlocker({ children }: { children: React.React
 
   const checkLocationByIP = useCallback(async () => {
     try {
-      // Fetch IP-based lat/lon using ip-api.com (or ipapi.co)
-      const ipLoc = await getIPLocationCoords();
-      let query = '';
-      if (ipLoc?.lat && ipLoc?.lng) {
-        query = `?lat=${ipLoc.lat}&lng=${ipLoc.lng}`;
-      }
-
-      const res = await api.get<any>(`/auth/check-location${query}`);
+      // Trigger IP-based location verification directly on the backend
+      const res = await api.get<any>('/auth/check-location');
       if (res.success && res.data && res.data.restriction_enabled && !res.data.is_allowed) {
         setIsBlocked(true);
         setBlockMessage(res.data.message || 'Access restricted to authorized zones only.');

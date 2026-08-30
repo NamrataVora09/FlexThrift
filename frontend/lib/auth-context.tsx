@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handleFocus = () => {
       const now = Date.now();
       // Only trigger if at least 10 seconds have passed since last refresh to avoid spam
-      if (now - lastRefresh > 10000) {
+      if (now - lastRefresh > 30000) {
         setRefreshKey(prev => prev + 1);
         lastRefresh = now;
       }

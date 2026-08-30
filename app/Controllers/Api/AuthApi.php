@@ -86,39 +86,7 @@ class AuthApi extends BaseApiController
             ], 401);
         }
 
-        // Zone restriction check on login
-        helper(['geolocation', 'utilityClass']);
-        $enableZones = getSystemSetting('enable_zone_restriction', '0');
-        $userRole = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : ($user['user_type'] ?? ''));
-
-        if ($enableZones === '1' && $userRole !== 'super_admin') {
-            $clientLat = $this->request->getJsonVar('user_latitude') ?? $this->request->getJsonVar('latitude');
-            $clientLng = $this->request->getJsonVar('user_longitude') ?? $this->request->getJsonVar('longitude');
-            $ip = getUserIP();
-            $loc = getLocationFromIP($ip);
-
-            // Priority 1: GPS coordinates sent by browser at login time
-            $detectedState = null;
-            if (!empty($clientLat) && !empty($clientLng)) {
-                $geoData = getStateFromCoordinates($clientLat, $clientLng);
-                $detectedState = $geoData['state'] ?? null;
-            }
-
-            // Priority 2: IP-based geolocation via ipapi.co (fallback when GPS was denied/unavailable)
-            // NOTE: stored user state and pin_code are intentionally excluded — only real-time location sources are trusted.
-            if (empty($detectedState) && !empty($loc['state'])) {
-                $detectedState = $loc['state'];
-            }
-
-            if (!empty($detectedState) && !isStateAllowed($detectedState)) {
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Sorry, access is not available in ' . "\"{$detectedState}\"" . '. Login is restricted to authorised zones only.',
-                    'state_detected' => $detectedState,
-                    'is_outside_zone' => true
-                ], 403);
-            }
-        }
+        helper(['utilityClass']);
 
         // Determine effective role — for 'both' users, redirect based on which role is blocked
         $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
@@ -439,16 +407,14 @@ class AuthApi extends BaseApiController
             ], 422);
         }
 
-        // Zone restriction check — state-based
+        // Auto-detect location
         helper(['geolocation', 'utilityClass']);
-        $enableZones = getSystemSetting('enable_zone_restriction', '0');
 
         $ip = getUserIP();
         $loc = getLocationFromIP($ip);
         
         $clientLat = $data['user_latitude'] ?? null;
         $clientLng = $data['user_longitude'] ?? null;
-        // NOTE: Form state/PIN are intentionally NOT used for zone gating — only GPS and IP are trusted sources.
 
         // Priority 1: Reverse-geocode GPS coordinates sent by browser
         $detectedState = null;
@@ -462,47 +428,9 @@ class AuthApi extends BaseApiController
             }
         }
 
-        // Priority 2: IP-based geolocation via ipapi.co (used when GPS was denied or unavailable)
+        // Priority 2: IP-based geolocation (used when GPS was denied or unavailable)
         if (empty($detectedState) && !empty($loc['state'])) {
             $detectedState = $loc['state'];
-        }
-
-        $zoneMatch = false;
-        $detectedZone = null;
-
-        if ($enableZones === '1') {
-            if (!empty($detectedState)) {
-                $detectedZone = isStateAllowed($detectedState);
-                if ($detectedZone) {
-                    $zoneMatch = true;
-                }
-            }
-
-            if (!$zoneMatch) {
-                // Log the blocked attempt
-                logRegistrationAttempt([
-                    'name'       => $data['name'],
-                    'email'      => $data['email'],
-                    'mobile'     => $data['mobile'],
-                    'address'    => $data['address'],
-                    'pin_code'   => $data['pin_code'],
-                    'user_type'  => $data['user_type'],
-                    'ip'         => $ip,
-                    'country'    => $loc['country'] ?? null,
-                    'state'      => $detectedState,
-                    'city'       => $data['city'] ?? ($loc['city'] ?? null),
-                    'latitude'   => $clientLat ?: ($loc['latitude'] ?? null),
-                    'longitude'  => $clientLng ?: ($loc['longitude'] ?? null),
-                    'is_allowed' => 0,
-                ]);
-
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Sorry, our services are not yet available in ' . ($detectedState ? "\"{$detectedState}\"" : 'your area') . '. Registration is restricted to authorised zones only.',
-                    'state_detected' => $detectedState,
-                    'is_outside_zone' => true
-                ], 403);
-            }
         }
 
         // Add detected location to user data for storage if missing
@@ -510,24 +438,6 @@ class AuthApi extends BaseApiController
         $data['city'] = $data['city'] ?? ($loc['city'] ?? null);
         $data['latitude'] = $clientLat ?: ($loc['latitude'] ?? null);
         $data['longitude'] = $clientLng ?: ($loc['longitude'] ?? null);
-
-        // Log successful registration attempt
-        logRegistrationAttempt([
-            'name'       => $data['name'],
-            'email'      => $data['email'],
-            'mobile'     => $data['mobile'],
-            'address'    => $data['address'],
-            'pin_code'   => $data['pin_code'],
-            'user_type'  => $data['user_type'],
-            'ip'         => $ip,
-            'country'    => $loc['country'] ?? null,
-            'state'      => $data['state'],
-            'city'       => $data['city'],
-            'latitude'   => $data['latitude'],
-            'longitude'  => $data['longitude'],
-            'is_allowed' => 1,
-            'zone_id'    => $detectedZone['id'] ?? null,
-        ]);
         // --- Duplicate detection: check email and phone upfront ---
         $existingByEmail  = $this->userModel->getUserByEmail($data['email']);
         $existingByMobile = $this->userModel->where('mobile', $data['mobile'])->first();
@@ -1083,52 +993,110 @@ class AuthApi extends BaseApiController
     }
 
     /**
-     * Check if a location (coordinates or state) is allowed under zone restriction
+     * GET/POST /api/v1/auth/check-location
+     * Verify if the user's location is within allowed service zones
      */
     public function checkLocation()
     {
-        helper(['geolocation', 'utilityClass']);
-        $enableZones = getSystemSetting('enable_zone_restriction', '0');
+        helper(['geolocation']);
 
-        if ($enableZones !== '1') {
+        $db = \Config\Database::connect();
+        
+        // Fetch zone restriction system setting
+        $landingSettings = $db->table('system_settings')
+            ->where('setting_key', 'enable_zone_restriction')
+            ->get()
+            ->getRowArray();
+        
+        $restrictionEnabled = ($landingSettings && $landingSettings['setting_value'] === '1');
+
+        if (!$restrictionEnabled) {
             return $this->respond([
                 'success' => true,
-                'is_allowed' => true,
-                'restriction_enabled' => false,
+                'data'    => [
+                    'restriction_enabled' => false,
+                    'is_allowed'          => true,
+                    'message'             => 'Zone restriction is disabled'
+                ]
             ]);
         }
 
-        $lat   = $this->request->getVar('latitude') ?? $this->request->getVar('lat');
-        $lng   = $this->request->getVar('longitude') ?? $this->request->getVar('lng');
-        $state = $this->request->getVar('state');
+        // Get coordinates from request (e.g. browser GPS)
+        $lat = $this->request->getVar('lat');
+        $lng = $this->request->getVar('lng');
+        
+        $method = 'GPS';
 
-        $detectedState = $state;
-
-        if (empty($detectedState) && !empty($lat) && !empty($lng)) {
-            $geoData = getStateFromCoordinates($lat, $lng);
-            $detectedState = $geoData['state'] ?? null;
-        }
-
-        if (empty($detectedState)) {
+        // Fallback: IP-based location in backend using token-free APIs first, then findip.net
+        if (empty($lat) || empty($lng)) {
             $ip = getUserIP();
             $loc = getLocationFromIP($ip);
-            $detectedState = $loc['state'] ?? null;
+            if (!$loc) {
+                $loc = getLocationFromIPFindIP($ip);
+            }
+            if ($loc && !empty($loc['latitude']) && !empty($loc['longitude'])) {
+                $lat = $loc['latitude'];
+                $lng = $loc['longitude'];
+                $method = 'IP (' . $loc['ip'] . ')';
+            }
         }
 
+        // Cannot verify location without coordinates
+        if (empty($lat) || empty($lng)) {
+            return $this->respond([
+                'success' => true,
+                'data'    => [
+                    'restriction_enabled' => true,
+                    'is_allowed'          => false,
+                    'message'             => 'Unable to detect location. Please allow location access.'
+                ]
+            ]);
+        }
+
+        // Get all active polygon zones
+        $activeZones = $db->table('allowed_zones')
+            ->where('is_active', 1)
+            ->get()
+            ->getResultArray();
+
         $isAllowed = false;
-        if (!empty($detectedState)) {
-            $zone = isStateAllowed($detectedState);
-            if ($zone) {
-                $isAllowed = true;
+        $matchedZoneName = '';
+
+        foreach ($activeZones as $zone) {
+            if (!empty($zone['zone_polygon'])) {
+                if (isPointInPolygon($lat, $lng, $zone['zone_polygon'])) {
+                    $isAllowed = true;
+                    $matchedZoneName = $zone['zone_name'];
+                    break;
+                }
             }
+        }
+
+        if ($isAllowed) {
+            return $this->respond([
+                'success' => true,
+                'data'    => [
+                    'restriction_enabled' => true,
+                    'is_allowed'          => true,
+                    'method'              => $method,
+                    'zone'                => $matchedZoneName,
+                    'lat'                 => $lat,
+                    'lng'                 => $lng,
+                    'message'             => "Access granted. Verified in {$matchedZoneName} zone via {$method}."
+                ]
+            ]);
         }
 
         return $this->respond([
             'success' => true,
-            'is_allowed' => $isAllowed,
-            'state_detected' => $detectedState,
-            'restriction_enabled' => true,
-            'message' => $isAllowed ? 'Location authorized' : ('Sorry, our services are not yet available in ' . ($detectedState ? "\"{$detectedState}\"" : 'your area') . '. Access is restricted to authorised zones only.')
+            'data'    => [
+                'restriction_enabled' => true,
+                'is_allowed'          => false,
+                'method'              => $method,
+                'lat'                 => $lat,
+                'lng'                 => $lng,
+                'message'             => 'Flex Market is not yet available in your area.'
+            ]
         ]);
     }
 }

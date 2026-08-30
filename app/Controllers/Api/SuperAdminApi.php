@@ -2193,161 +2193,6 @@ class SuperAdminApi extends AdminApi
     }
 
 
-    // ── Zones ──────────────────────────────────
-    public function zones()
-    {
-        $db = \Config\Database::connect();
-        $zones = $db->table('allowed_zones')->orderBy('created_at', 'DESC')->get()->getResultArray();
-        return $this->respond(['success' => true, 'data' => $zones]);
-    }
-
-    public function addZone()
-    {
-        $db = \Config\Database::connect();
-        $data = $this->request->getJSON(true) ?: $this->request->getPost();
-        $name    = $data['zone_name'] ?? null;
-        $polygon = $data['zone_polygon'] ?? null;
-        $state   = $data['state'] ?? null;
-        $stateCode = $data['state_code'] ?? null;
-        if (!$name) return $this->respond(['success' => false, 'message' => 'Zone name is required.'], 400);
-        if (!$state) return $this->respond(['success' => false, 'message' => 'State is required for zone restriction.'], 400);
-        $db->table('allowed_zones')->insert([
-            'zone_name'   => $name,
-            'state'       => $state,
-            'state_code'  => $stateCode,
-            'zone_polygon'=> $polygon,
-            'is_active'   => 1,
-            'created_at'  => date('Y-m-d H:i:s'),
-        ]);
-        return $this->respond(['success' => true, 'message' => 'Zone saved successfully.']);
-    }
-
-    public function toggleZone($id)
-    {
-        $db = \Config\Database::connect();
-        $zone = $db->table('allowed_zones')->where('id', $id)->get()->getRowArray();
-        if (!$zone) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
-        $db->table('allowed_zones')->where('id', $id)->update(['is_active' => $zone['is_active'] ? 0 : 1]);
-        return $this->respond(['success' => true, 'message' => 'Zone status toggled.']);
-    }
-
-    public function deleteZone($id)
-    {
-        $db = \Config\Database::connect();
-        $db->table('allowed_zones')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Zone deleted.']);
-    }
-
-    // ── Heatmap ──────────────────────────────────
-    public function registrationAttempts()
-    {
-        $db = \Config\Database::connect();
-        // Try registration_attempts table first, fallback to users table
-        if ($db->tableExists('registration_attempts')) {
-            $data = $db->table('registration_attempts')
-                ->orderBy('created_at', 'DESC')
-                ->limit(200)
-                ->get()->getResultArray();
-        } else {
-            // Fallback: use users table with location data
-            $data = $db->table('users')
-                ->select('id, name, email, mobile, user_type, address, city, state, pin_code, latitude, longitude, is_verified as is_allowed, created_at')
-                ->whereNotIn('role', ['admin', 'super_admin'])
-                ->orderBy('created_at', 'DESC')
-                ->limit(200)
-                ->get()->getResultArray();
-        }
-        return $this->respond(['success' => true, 'data' => $data]);
-    }
-
-    public function userStateHeatmap()
-    {
-        $db = \Config\Database::connect();
-        helper('geolocation');
-
-        // 1. Get detailed stats via SQL
-        $rows = $db->query("
-            SELECT 
-                TRIM(state) as state,
-                user_type,
-                COUNT(*) as total,
-                SUM(CASE WHEN is_verified = 1 THEN 1 ELSE 0 END) as verified,
-                MIN(created_at) as first_reg,
-                MAX(created_at) as last_reg
-            FROM users
-            WHERE role NOT IN ('admin', 'super_admin', 'superadmin')
-              AND state IS NOT NULL AND TRIM(state) != ''
-            GROUP BY TRIM(state), user_type
-            ORDER BY total DESC
-        ")->getResultArray();
-
-        $stateTotals = $db->query("
-            SELECT 
-                TRIM(state) as state,
-                COUNT(*) as total,
-                SUM(CASE WHEN user_type = 'seller' THEN 1 ELSE 0 END) as sellers,
-                SUM(CASE WHEN user_type = 'buyer' THEN 1 ELSE 0 END) as buyers,
-                SUM(CASE WHEN user_type = 'both' THEN 1 ELSE 0 END) as both_users
-            FROM users
-            WHERE role NOT IN ('admin', 'super_admin', 'superadmin')
-              AND state IS NOT NULL AND TRIM(state) != ''
-            GROUP BY TRIM(state)
-            ORDER BY total DESC
-        ")->getResultArray();
-
-        // 2. Fetch all verified users for precise coordinate mapping (Heatmap)
-        $allUsers = $db->table('users')
-            ->select('state, pin_code, latitude, longitude, city')
-            ->where('is_verified', 1)
-            ->where('is_blocked', 0)
-            ->get()
-            ->getResultArray();
-
-        $heatmapPoints = [];
-        $preciseStateCounts = [];
-
-        foreach ($allUsers as $u) {
-            $st = $u['state'];
-            if (empty($st) && !empty($u['pin_code'])) {
-                $st = getStateFromPinCode($u['pin_code']);
-            }
-
-            if ($st) {
-                $preciseStateCounts[$st] = ($preciseStateCounts[$st] ?? 0) + 1;
-            }
-
-            if (!empty($u['latitude']) && !empty($u['longitude']) && (float)$u['latitude'] != 0) {
-                $heatmapPoints[] = [
-                    'lat'   => (float)$u['latitude'],
-                    'lng'   => (float)$u['longitude'],
-                    'state' => $st,
-                    'city'  => $u['city']
-                ];
-            }
-        }
-
-        // Summary stats
-        $summary = [
-            'total_users'   => $db->table('users')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults(),
-            'total_sellers' => $db->table('users')->where('user_type', 'seller')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults(),
-            'total_buyers'  => $db->table('users')->where('user_type', 'buyer')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults(),
-            'total_both'    => $db->table('users')->where('user_type', 'both')->whereNotIn('role', ['admin', 'super_admin', 'superadmin'])->countAllResults(),
-            'total_states'  => count($stateTotals),
-        ];
-
-        return $this->respond([
-            'success' => true,
-            'data' => [
-                'by_state_type' => $rows,
-                'state_totals'  => $stateTotals,
-                'state_counts'  => $preciseStateCounts,
-                'points'        => $heatmapPoints,
-                'summary'       => $summary,
-                'total_users'   => count($allUsers)
-            ]
-        ]);
-    }
-
     // ── Reports ──────────────────────────────────
     public function reports()
     {
@@ -2390,30 +2235,27 @@ class SuperAdminApi extends AdminApi
     public function updateSettings()
     {
         $db = \Config\Database::connect();
-        $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
 
-        $intFields = [
-            'min_rental_days',
-            'offer_acceptance_limit_days',
-            'seller_rating_period_days',
-            'seller_rejection_window_hours',
-            'buyer_rating_period_days'
-        ];
+        // Explicitly check Content-Type so that JSON bodies are always parsed
+        // correctly. CI4's getPost() returns [] (empty array, which is falsy)
+        // for JSON requests, but relying on ?: with [] is fragile across CI4
+        // versions. Reading the header directly is safe and unambiguous.
+        $contentType = $this->request->getHeaderLine('Content-Type');
+        if (str_contains($contentType, 'application/json')) {
+            $data = $this->request->getJSON(true) ?: [];
+        } else {
+            $data = $this->request->getPost() ?: [];
+        }
 
         foreach ($data as $key => $value) {
-            if (in_array($key, $intFields)) {
-                $valInt = filter_var($value, FILTER_VALIDATE_INT);
-                if ($valInt === false || $valInt < 1) {
-                    $fieldName = ucwords(str_replace('_', ' ', $key));
-                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be an integer greater than or equal to 1."], 400);
-                }
-                $value = (string)$valInt;
-            }
+            // Skip keys with no value — don't overwrite DB with blank
+            if ($value === '' || $value === null) continue;
 
             $exists = $db->table('system_settings')->where('setting_key', $key)->countAllResults();
             if ($exists) $db->table('system_settings')->where('setting_key', $key)->update(['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
             else $db->table('system_settings')->insert(['setting_key' => $key, 'setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
         }
+
         return $this->respond(['success' => true, 'message' => 'Settings saved successfully.']);
     }
 

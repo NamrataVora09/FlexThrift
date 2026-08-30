@@ -201,6 +201,14 @@ function register_api_routes($routes)
         $routes->post('upload-kyc', 'Api\SharedApi::uploadKyc');
     });
 
+    // Zones CRUD (protected, JWT filtered)
+    $routes->group('zones', ['filter' => 'jwt'], function ($routes) {
+        $routes->get('/', 'Api\ZonesApi::index');
+        $routes->post('/', 'Api\ZonesApi::create');
+        $routes->put('(:num)', 'Api\ZonesApi::update/$1');
+        $routes->delete('(:num)', 'Api\ZonesApi::delete/$1');
+    });
+
     // Admin API (protected)
     $routes->group('admin', ['filter' => 'jwt'], function ($routes) {
         $routes->get('subscriptions/(:any)', 'Api\SharedApi::subscriptions/$1');

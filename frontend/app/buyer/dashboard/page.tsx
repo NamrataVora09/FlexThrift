@@ -44,6 +44,16 @@ export default function BuyerDashboardPage() {
   const [subtitle, setSubtitle] = useState(BUYER_DEFAULT_SUBTITLE);
   const { refreshKey } = useAuth();
 
+  // Static content — fetched once on mount only
+  useEffect(() => {
+    api.get<Record<string, string>>('/landing-content').then((res) => {
+      if (res.success && res.data?.buyer_dashboard_subtitle) {
+        setSubtitle(res.data.buyer_dashboard_subtitle);
+      }
+    });
+  }, []);
+
+  // User-specific data — re-fetches when refreshKey changes (e.g. window focus)
   useEffect(() => {
     api.get<DashboardData>('/buyer/dashboard').then((res) => {
       if (res.success && res.data) setData(res.data);
@@ -57,11 +67,6 @@ export default function BuyerDashboardPage() {
         } else {
           setSubs([]);
         }
-      }
-    });
-    api.get<Record<string, string>>('/landing-content').then((res) => {
-      if (res.success && res.data?.buyer_dashboard_subtitle) {
-        setSubtitle(res.data.buyer_dashboard_subtitle);
       }
     });
   }, [refreshKey]);
