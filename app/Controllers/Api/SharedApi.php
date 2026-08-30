@@ -1696,7 +1696,12 @@ class SharedApi extends BaseApiController
                 'seller_dashboard_subtitle',
                 'global_system_lock',
                 'site_name',
-                'registration_terms'
+                'registration_terms',
+                'geo_blocked_header',
+                'geo_blocked_description',
+                'geo_blocked_instructions',
+                'geo_blocked_button_text',
+                'geo_blocked_icon'
             ])
             ->get()->getResultArray();
         $content = [];

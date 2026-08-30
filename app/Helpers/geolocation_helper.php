@@ -37,12 +37,12 @@ if (!function_exists('getLocationFromIP')) {
                 $data = json_decode($response, true);
                 if (isset($data['status']) && $data['status'] === 'success') {
                     return [
-                        'country'   => $data['country'] ?? null,
-                        'state'     => $data['regionName'] ?? ($data['region'] ?? null),
-                        'city'      => $data['city'] ?? null,
-                        'latitude'  => $data['lat'] ?? null,
+                        'country' => $data['country'] ?? null,
+                        'state' => $data['regionName'] ?? ($data['region'] ?? null),
+                        'city' => $data['city'] ?? null,
+                        'latitude' => $data['lat'] ?? null,
                         'longitude' => $data['lon'] ?? null,
-                        'ip'        => $ip
+                        'ip' => $ip
                     ];
                 }
             }
@@ -67,12 +67,12 @@ if (!function_exists('getLocationFromIP')) {
                 $data = json_decode($response, true);
                 if (!isset($data['error']) || !$data['error']) {
                     return [
-                        'country'   => $data['country_name'] ?? null,
-                        'state'     => $data['region'] ?? null,
-                        'city'      => $data['city'] ?? null,
-                        'latitude'  => $data['latitude'] ?? null,
+                        'country' => $data['country_name'] ?? null,
+                        'state' => $data['region'] ?? null,
+                        'city' => $data['city'] ?? null,
+                        'latitude' => $data['latitude'] ?? null,
                         'longitude' => $data['longitude'] ?? null,
-                        'ip'        => $ip
+                        'ip' => $ip
                     ];
                 }
             }
@@ -117,13 +117,13 @@ if (!function_exists('getStateFromCoordinates')) {
                 $address = $data['address'] ?? [];
 
                 $state = $address['state'] ?? $address['region'] ?? $address['state_district'] ?? null;
-                $city  = $address['city'] ?? $address['town'] ?? $address['village'] ?? $address['county'] ?? null;
+                $city = $address['city'] ?? $address['town'] ?? $address['village'] ?? $address['county'] ?? null;
                 $country = $address['country'] ?? null;
 
                 if ($state) {
                     return [
-                        'state'   => $state,
-                        'city'    => $city,
+                        'state' => $state,
+                        'city' => $city,
                         'country' => $country,
                     ];
                 }
@@ -183,7 +183,7 @@ if (!function_exists('getLocationFromIPFindIP')) {
     function getLocationFromIPFindIP($ip)
     {
         $token = '42c71af76cefdc0e709a25f272cff674';
-        
+
         // Skip for localhost/private IPs, fallback to a public test IP (Delhi, India) during local development
         if ($ip === '127.0.0.1' || $ip === '::1' || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
             $ip = '103.241.12.115';
@@ -205,12 +205,12 @@ if (!function_exists('getLocationFromIPFindIP')) {
                 $data = json_decode($response, true);
                 if (isset($data['location']['latitude']) && isset($data['location']['longitude'])) {
                     return [
-                        'latitude'  => (float) $data['location']['latitude'],
+                        'latitude' => (float) $data['location']['latitude'],
                         'longitude' => (float) $data['location']['longitude'],
-                        'city'      => $data['city']['names']['en'] ?? null,
-                        'state'     => $data['subdivisions'][0]['names']['en'] ?? null,
-                        'country'   => $data['country']['names']['en'] ?? null,
-                        'ip'        => $ip
+                        'city' => $data['city']['names']['en'] ?? null,
+                        'state' => $data['subdivisions'][0]['names']['en'] ?? null,
+                        'country' => $data['country']['names']['en'] ?? null,
+                        'ip' => $ip
                     ];
                 }
             }
@@ -261,7 +261,7 @@ if (!function_exists('isPointInPolygon')) {
 
         $inside = false;
         $numVertices = count($polygon);
-        
+
         // Ray-casting algorithm
         for ($i = 0, $j = $numVertices - 1; $i < $numVertices; $j = $i++) {
             $xi = $polygon[$i][0]; // longitude

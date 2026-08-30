@@ -212,6 +212,67 @@ export default function SettingsClient() {
             </div>
           </Section>
 
+          {/* ── Geolocation Blocker Customization ── */}
+          <Section title="Geolocation Blocker Customization" icon="bi-geo-alt">
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Blocker Header / Title</label>
+                <input
+                  className="form-control"
+                  style={inputStyle}
+                  value={settings.geo_blocked_header || ''}
+                  onChange={(e) => update('geo_blocked_header', e.target.value)}
+                  placeholder="e.g. Location Access Required"
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Blocker Icon Class</label>
+                <input
+                  className="form-control"
+                  style={inputStyle}
+                  value={settings.geo_blocked_icon || ''}
+                  onChange={(e) => update('geo_blocked_icon', e.target.value)}
+                  placeholder="e.g. bi-geo-alt-fill"
+                />
+                <small className="text-muted">Bootstrap icon class name</small>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Reload Button Text</label>
+                <input
+                  className="form-control"
+                  style={inputStyle}
+                  value={settings.geo_blocked_button_text || ''}
+                  onChange={(e) => update('geo_blocked_button_text', e.target.value)}
+                  placeholder="e.g. Try Again / Refresh"
+                />
+              </div>
+              <div className="col-12">
+                <label className="form-label fw-semibold">Blocker Description</label>
+                <textarea
+                  className="form-control"
+                  style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
+                  value={settings.geo_blocked_description || ''}
+                  onChange={(e) => update('geo_blocked_description', e.target.value)}
+                  placeholder="Explain why location is required or why they are blocked..."
+                />
+              </div>
+              <div className="col-12">
+                <label className="form-label fw-semibold">Instructions / How to Fix (One step per line)</label>
+                <textarea
+                  className="form-control"
+                  style={{ ...inputStyle, minHeight: '120px', resize: 'vertical', fontFamily: 'monospace' }}
+                  value={settings.geo_blocked_instructions || ''}
+                  onChange={(e) => update('geo_blocked_instructions', e.target.value)}
+                  placeholder="e.g.
+Click the lock icon (or info icon) in your browser's address bar.
+Find Location and set it to Allow.
+Refresh this page or click the button below."
+                />
+                <small className="text-muted">Enter each instruction step on a new line. Words like <strong>lock icon</strong>, <strong>Location</strong>, and <strong>Allow</strong> will automatically be bolded in the list UI.</small>
+              </div>
+            </div>
+          </Section>
+
           {/* ── Offer & Rating Rules ── */}
           {/* <Section title="Offer & Rating Rules" icon="bi-handshake">
             <div className="row g-3">

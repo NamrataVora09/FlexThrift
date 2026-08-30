@@ -13,6 +13,7 @@ export default function GeolocationBlocker({ children }: { children: React.React
   const [errorType, setErrorType] = useState<'denied' | 'unavailable' | 'timeout' | null>(null);
 
   const [blockMessage, setBlockMessage] = useState<string>('');
+  const [geoConfig, setGeoConfig] = useState<any>(null);
 
   const checkLocationByIP = useCallback(async () => {
     try {
@@ -76,9 +77,14 @@ export default function GeolocationBlocker({ children }: { children: React.React
     const checkRestriction = async () => {
       try {
         const res = await api.get<any>('/landing-content');
-        if (res.success && res.data && res.data.enable_zone_restriction === '1') {
-          setRestrictionEnabled(true);
-          checkLocation();
+        if (res.success && res.data) {
+          setGeoConfig(res.data);
+          if (res.data.enable_zone_restriction === '1') {
+            setRestrictionEnabled(true);
+            checkLocation();
+          } else {
+            setLoading(false);
+          }
         } else {
           setLoading(false);
         }
@@ -141,6 +147,22 @@ export default function GeolocationBlocker({ children }: { children: React.React
   }
 
   if (restrictionEnabled && isBlocked) {
+    const isServiceUnavailable = blockMessage.includes('not yet available') || blockMessage.includes('restricted');
+    const headerText = geoConfig?.geo_blocked_header || (isServiceUnavailable ? 'Service Unavailable in Your Zone' : 'Location Access Required');
+    const descriptionText = geoConfig?.geo_blocked_description || blockMessage || 'To ensure we comply with local regulations and provide services only in authorized zones, we require your GPS location.';
+    const buttonText = geoConfig?.geo_blocked_button_text || 'Try Again / Refresh';
+    const iconClass = geoConfig?.geo_blocked_icon || 'bi-geo-alt-fill';
+
+    const renderBoldableLine = (text: string) => {
+      const parts = text.split(/(lock icon|Location|Allow)/g);
+      return parts.map((part, idx) => {
+        if (['lock icon', 'Location', 'Allow'].includes(part)) {
+          return <strong key={idx}>{part}</strong>;
+        }
+        return part;
+      });
+    };
+
     return (
       <div className="geolocation-blocker" style={{
         position: 'fixed', inset: 0, background: '#fff', zIndex: 99999,
@@ -151,15 +173,15 @@ export default function GeolocationBlocker({ children }: { children: React.React
           width: '80px', height: '80px', background: '#fee2e2', borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem'
         }}>
-           <i className="bi bi-geo-alt-fill" style={{ fontSize: '2.5rem', color: '#dc3545' }}></i>
+           <i className={`bi ${iconClass}`} style={{ fontSize: '2.5rem', color: '#dc3545' }}></i>
         </div>
         
         <h1 style={{ fontWeight: 800, fontSize: '2rem', marginBottom: '1rem', color: '#000' }}>
-          {blockMessage.includes('not yet available') || blockMessage.includes('restricted') ? 'Service Unavailable in Your Zone' : 'Location Access Required'}
+          {headerText}
         </h1>
         
         <p style={{ maxWidth: '500px', color: '#666', lineHeight: 1.6, marginBottom: '2rem' }}>
-          {blockMessage || 'To ensure we comply with local regulations and provide services only in authorized zones, we require your GPS location.'}
+          {descriptionText}
         </p>
 
         <div style={{
@@ -168,9 +190,17 @@ export default function GeolocationBlocker({ children }: { children: React.React
         }}>
           <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>How to fix this:</h2>
           <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.9rem', color: '#444' }}>
-            <li style={{ marginBottom: '0.5rem' }}>Click the <strong>lock icon</strong> (or info icon) in your browser's address bar.</li>
-            <li style={{ marginBottom: '0.5rem' }}>Find <strong>Location</strong> and set it to <strong>Allow</strong>.</li>
-            <li>Refresh this page or click the button below.</li>
+            {geoConfig?.geo_blocked_instructions ? (
+              geoConfig.geo_blocked_instructions.split('\n').filter((l: string) => l.trim() !== '').map((line: string, i: number) => (
+                <li key={i} style={{ marginBottom: '0.5rem' }}>{renderBoldableLine(line)}</li>
+              ))
+            ) : (
+              <>
+                <li style={{ marginBottom: '0.5rem' }}>Click the <strong>lock icon</strong> (or info icon) in your browser's address bar.</li>
+                <li style={{ marginBottom: '0.5rem' }}>Find <strong>Location</strong> and set it to <strong>Allow</strong>.</li>
+                <li>Refresh this page or click the button below.</li>
+              </>
+            )}
           </ul>
         </div>
 
@@ -184,7 +214,7 @@ export default function GeolocationBlocker({ children }: { children: React.React
           onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
           onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
-          Try Again / Refresh
+          {buttonText}
         </button>
       </div>
     );
