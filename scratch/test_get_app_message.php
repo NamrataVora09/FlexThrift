@@ -1,14 +1,9 @@
 <?php
 // Mock CodeIgniter environment for CLI testing
-define('FCPATH', __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR);
-chdir(FCPATH);
+define('FCPATH', __DIR__ . '/../public/');
 
-require FCPATH . '../app/Config/Paths.php';
-$paths = new Config\Paths();
-
-require $paths->systemDirectory . '/Boot.php';
-// Boot the framework but don't run the web app fully, just initialize environment:
-\CodeIgniter\Boot::bootWeb($paths);
+// Bootstrap CodeIgniter framework fully
+require_once __DIR__ . '/../vendor/codeigniter4/framework/system/bootstrap.php';
 
 echo "Testing getAppMessage global function...\n";
 
