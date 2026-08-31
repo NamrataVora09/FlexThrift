@@ -15,7 +15,7 @@ interface SellerData {
   total_revenue: number;
   active_orders: number;
   active_offers: number;
-  offer_stats: { accepted: number; rejected: number };
+  offer_stats: { accepted: number; rejected: number; missed?: number };
 }
 
 interface Subscription {
@@ -87,13 +87,15 @@ export default function SellerDashboardClient() {
     : '0';
 
 
+  const rejectedOffersTotal = (data?.offer_stats?.rejected ?? 0) + (data?.offer_stats?.missed ?? 0);
+
   const statCards = [
     {
       icon: 'fa-solid fa-rectangle-list',
       label: 'Approved / Rejected Offers',
       split: true,
       approved: data?.offer_stats?.accepted ?? 0,
-      rejected: data?.offer_stats?.rejected ?? 0,
+      rejected: rejectedOffersTotal,
     },
     { icon: 'fa-solid fa-clock', label: 'Pending Review', value: String(data?.stats.pending ?? 0) },
     { icon: 'fa-solid fa-tags stat-icon', label: 'Product Upload Left', value: uploadsLeft },
@@ -363,7 +365,7 @@ export default function SellerDashboardClient() {
                   <i className="fa-solid fa-layer-group me-2" style={{ color: '#ffc63a', fontSize: '1.5rem' }} />
                   Recent Products
                 </span>
-                <Link href="/seller/my-products" className="view-all underline!" style={{ fontSize: 14, color: 'blue' }}>View All Offers</Link>
+                <Link href="/seller/my-products" className="view-all underline!" style={{ fontSize: 14, color: 'blue' }}>View All Products</Link>
               </div>
 
               <div className="table-responsive">
@@ -461,7 +463,7 @@ export default function SellerDashboardClient() {
               </div>
             </div>
 
-          
+
           </>
         )}
       </div>

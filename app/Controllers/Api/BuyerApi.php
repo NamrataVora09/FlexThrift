@@ -17,10 +17,27 @@ class BuyerApi extends BaseApiController
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
 
         // Product stats
+        $limitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
         $ttlProducts = $db->table('offers')->where('buyer_id', $userId)->countAllResults();
-        $pendingOffers = $db->table('offers')->where('buyer_id', $userId)->where('status', 'pending')->countAllResults();
+        $pendingOffers = $db->table('offers')
+            ->where('buyer_id', $userId)
+            ->where('status', 'pending')
+            ->where('created_at >=', $cutoff)
+            ->countAllResults();
         $acceptedOffers = $db->table('offers')->where('buyer_id', $userId)->where('status', 'accepted')->countAllResults();
-        $rejectedOffers = $db->table('offers')->where('buyer_id', $userId)->whereIn('status', ['rejected', 'cancelled', 'missed'])->countAllResults();
+        $rejectedOffers = $db->table('offers')->where('buyer_id', $userId)->whereIn('status', ['rejected', 'cancelled'])->countAllResults();
+        $missedOffers = $db->table('offers')
+            ->where('buyer_id', $userId)
+            ->groupStart()
+            ->where('status', 'missed')
+            ->orGroupStart()
+            ->where('status', 'pending')
+            ->where('created_at <', $cutoff)
+            ->groupEnd()
+            ->groupEnd()
+            ->countAllResults();
         $totalOrders = $db->table('orders')->where('buyer_id', $userId)->countAllResults();
 
         // Recent offers
@@ -70,6 +87,7 @@ class BuyerApi extends BaseApiController
                     'pending' => $pendingOffers,
                     'accepted' => $acceptedOffers,
                     'rejected' => $rejectedOffers,
+                    'missed' => $missedOffers,
                     'total_orders' => $totalOrders,
                 ],
                 'recent_offers' => $recentOffers,
@@ -510,8 +528,15 @@ class BuyerApi extends BaseApiController
             ->orderBy('o.created_at', 'DESC')
             ->get()->getResultArray();
 
+        $limitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
         $historyModel = new \App\Models\OfferHistoryModel();
         foreach ($offers as &$o) {
+            if ($o['status'] === 'pending' && !empty($o['created_at']) && $o['created_at'] < $cutoff) {
+                $o['status'] = 'missed';
+            }
+
             $o['history'] = $historyModel->getHistoryByOffer($o['id']);
 
             // Check for conflicts
@@ -605,18 +630,18 @@ class BuyerApi extends BaseApiController
 
         foreach ($freeSubRows as $fs) {
             $transactions[] = [
-                'id'               => 'free-' . $fs['id'],
-                'order_id'         => null,
-                'user_id'          => $fs['user_id'],
-                'user_name'        => $user['name'] ?? '',
+                'id' => 'free-' . $fs['id'],
+                'order_id' => null,
+                'user_id' => $fs['user_id'],
+                'user_name' => $user['name'] ?? '',
                 'transaction_type' => 'debit',
-                'amount'           => 0,
-                'description'      => 'Free Plan: ' . ($fs['plan_name'] ?? 'Unknown'),
-                'payment_method'   => 'free',
-                'transaction_id'   => null,
-                'type'             => 'subscription',
-                'payment_status'   => 'paid',
-                'created_at'       => $fs['created_at'],
+                'amount' => 0,
+                'description' => 'Free Plan: ' . ($fs['plan_name'] ?? 'Unknown'),
+                'payment_method' => 'free',
+                'transaction_id' => null,
+                'type' => 'subscription',
+                'payment_status' => 'paid',
+                'created_at' => $fs['created_at'],
             ];
         }
 
@@ -828,7 +853,7 @@ class BuyerApi extends BaseApiController
 
             $hasActiveSub = false;
             foreach ($activeSubs as $sub) {
-                if (strtolower($sub['plan_type']) === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
+                if (strtolower($sub['plan_type']) === 'duration' || (int) $sub['usage_count'] < (int) $sub['limit_value']) {
                     $hasActiveSub = true;
                     break;
                 }
@@ -921,7 +946,7 @@ class BuyerApi extends BaseApiController
 
             $activeSub = null;
             foreach ($activeSubs as $sub) {
-                if (strtolower($sub['plan_type']) === 'duration' || (int)$sub['usage_count'] < (int)$sub['limit_value']) {
+                if (strtolower($sub['plan_type']) === 'duration' || (int) $sub['usage_count'] < (int) $sub['limit_value']) {
                     $activeSub = $sub;
                     break;
                 }
@@ -1180,7 +1205,7 @@ class BuyerApi extends BaseApiController
         ]);
 
         // Create order from the now-finalised dates
-        
+
         // Mark product as sold only for sell-type offers; rental products stay active/approved so they remain listed
         $finalOfferType = $offer['offer_type'] ?? $product['listing_type'];
         if ($finalOfferType !== 'rent') {
@@ -1194,7 +1219,7 @@ class BuyerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $offer['seller_id'],
             'title' => 'Offer Finalized',
-            'message' => getAppMessage('offer_finalized' ,null , ["product_name"=>$product['title']]),
+            'message' => getAppMessage('offer_finalized', null, ["product_name" => $product['title']]),
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -1227,8 +1252,8 @@ class BuyerApi extends BaseApiController
             ]);
 
             $notifMsg = ($finalOfferType === 'rent')
-                ? getAppMessage('another_buyer_offer_accepted_for_rent_product',null,["product_name"=>$product['title'] ])
-                : getAppMessage('another_buyer_offer_accepted_for_sell_product',null,["product_name"=>$product['title'] ]);
+                ? getAppMessage('another_buyer_offer_accepted_for_rent_product', null, ["product_name" => $product['title']])
+                : getAppMessage('another_buyer_offer_accepted_for_sell_product', null, ["product_name" => $product['title']]);
 
             $db->table('notifications')->insert([
                 'user_id' => $other['buyer_id'],
@@ -2057,19 +2082,19 @@ class BuyerApi extends BaseApiController
             : '2099-12-31 23:59:59';
 
         $inserted = $db->table('user_subscriptions')->insert([
-            'user_id'          => $userId,
-            'plan_id'          => $plan['id'],
-            'coupon_id'        => null,
-            'starts_at'        => $now,
-            'expires_at'       => $expiryDate,
-            'usage_count'      => 0,
-            'is_active'        => 1,
-            'payment_status'   => 'paid',
-            'amount_paid'      => 0,
+            'user_id' => $userId,
+            'plan_id' => $plan['id'],
+            'coupon_id' => null,
+            'starts_at' => $now,
+            'expires_at' => $expiryDate,
+            'usage_count' => 0,
+            'is_active' => 1,
+            'payment_status' => 'paid',
+            'amount_paid' => 0,
             'referral_discount_applied' => 0,
-            'merchant_transaction_id'   => null,
-            'created_at'       => $now,
-            'updated_at'       => $now,
+            'merchant_transaction_id' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
         if (!$inserted) {
             return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
@@ -2108,22 +2133,22 @@ class BuyerApi extends BaseApiController
         }
 
         // Per-user usage limit: check how many times THIS user has used this coupon
-        if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
+        if ($coupon['usage_limit'] !== null && (int) $coupon['usage_limit'] > 0) {
             $buyerUserId = $jwtUser['user_id'];
             $userUsedCount = $db->table('coupon_usage')
                 ->where('coupon_id', $coupon['id'])
                 ->where('user_id', $buyerUserId)
                 ->countAllResults();
-            if ($userUsedCount >= (int)$coupon['usage_limit']) {
+            if ($userUsedCount >= (int) $coupon['usage_limit']) {
                 return $this->respond(['success' => false, 'message' => 'You have already used this coupon the maximum number of times.']);
             }
         }
 
-        $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+        $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
         if ((float) $plan['price'] < $cpnMinPurchase) {
             return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
         }
-                // Referral discount restriction: Check if user has active referral discount for this plan
+        // Referral discount restriction: Check if user has active referral discount for this plan
         $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
         if ($useReferral) {
             $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
@@ -2139,7 +2164,8 @@ class BuyerApi extends BaseApiController
                         ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
                         ->get()->getResultArray();
                     $cfg = [];
-                    foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+                    foreach ($settingsRows as $s)
+                        $cfg[$s['setting_key']] = $s['setting_value'];
 
                     $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
                     $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
@@ -2244,12 +2270,12 @@ class BuyerApi extends BaseApiController
         $couponId = null;
         if ($couponCode) {
             $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
-            $cpnMinPurchase = (float)($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+            $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
             $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
 
             // Per-user usage limit check
             $cpnUserUsed = 0;
-            if ($coupon && $coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
+            if ($coupon && $coupon['usage_limit'] !== null && (int) $coupon['usage_limit'] > 0) {
                 $cpnUserUsed = $db->table('coupon_usage')
                     ->where('coupon_id', $coupon['id'])
                     ->where('user_id', $userId)
@@ -2259,7 +2285,7 @@ class BuyerApi extends BaseApiController
             if (
                 $coupon && $basePrice >= $cpnMinPurchase
                 && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())
-                && ($coupon['usage_limit'] === null || (int)$coupon['usage_limit'] <= 0 || $cpnUserUsed < (int)$coupon['usage_limit'])
+                && ($coupon['usage_limit'] === null || (int) $coupon['usage_limit'] <= 0 || $cpnUserUsed < (int) $coupon['usage_limit'])
             ) {
                 if ($coupon['discount_type'] === 'percentage') {
                     $discount = ($basePrice * $coupon['discount_value']) / 100;
@@ -2303,7 +2329,7 @@ class BuyerApi extends BaseApiController
                 }
             }
         }
- // When referral fully covers the plan base price, coupon is not applicable.
+        // When referral fully covers the plan base price, coupon is not applicable.
         // When referral is partial, both referral + coupon discounts stack.
         if ($referralDiscountApplied >= $basePrice && $basePrice > 0) {
             $discount = 0;
@@ -2456,12 +2482,12 @@ class BuyerApi extends BaseApiController
                 ]);
 
                 if (!empty($dbSub['coupon_id'])) {
-                    $cId = (int)$dbSub['coupon_id'];
+                    $cId = (int) $dbSub['coupon_id'];
 
                     $db->table('coupon_usage')->insert([
                         'coupon_id' => $cId,
-                            'user_id'   => $dbSub['user_id'],
-                            'used_at'   => date('Y-m-d H:i:s')
+                        'user_id' => $dbSub['user_id'],
+                        'used_at' => date('Y-m-d H:i:s')
                     ]);
 
                     $db->query("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?", [$cId]);

@@ -346,6 +346,9 @@ class SuperAdminApi extends AdminApi
     public function allOffers()
     {
         $db = \Config\Database::connect();
+        $limitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
         $offers = $db->query("
             SELECT o.*,
                 p.title as product_title, p.listing_type, p.original_price, p.product_number,
@@ -375,6 +378,26 @@ class SuperAdminApi extends AdminApi
             LEFT JOIN users us ON us.id = o.seller_id
             ORDER BY o.created_at DESC
         ")->getResultArray();
+
+        foreach ($offers as &$o) {
+            if (($o['status'] === 'pending' && !empty($o['created_at']) && $o['created_at'] < $cutoff) || $o['status'] === 'missed') {
+                $o['status'] = 'missed';
+                $deadline = !empty($o['created_at'])
+                    ? date('d M Y', strtotime($o['created_at']) + (int) ($limitDays * 86400))
+                    : '—';
+                $missedMsg = getAppMessage(
+                    'offer_missed_message',
+                    'This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: {deadline}). You can browse the marketplace to find similar items and make a new offer.',
+                    ['deadline' => $deadline]
+                );
+                $o['missed_message'] = $missedMsg;
+                if (empty($o['seller_remarks'])) {
+                    $o['seller_remarks'] = $missedMsg;
+                }
+            }
+        }
+        unset($o);
+
         return $this->respond(['success' => true, 'data' => $offers]);
     }
 
@@ -443,14 +466,35 @@ class SuperAdminApi extends AdminApi
                 ->get()->getResultArray();
         }
 
+        $limitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
         $all = array_merge($received, $sent);
+        foreach ($all as &$o) {
+            if (($o['status'] === 'pending' && !empty($o['created_at']) && $o['created_at'] < $cutoff) || $o['status'] === 'missed') {
+                $o['status'] = 'missed';
+                $deadline = !empty($o['created_at'])
+                    ? date('d M Y', strtotime($o['created_at']) + (int) ($limitDays * 86400))
+                    : '—';
+                $missedMsg = getAppMessage(
+                    'offer_missed_message',
+                    'This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: {deadline}). You can browse the marketplace to find similar items and make a new offer.',
+                    ['deadline' => $deadline]
+                );
+                $o['missed_message'] = $missedMsg;
+                if (empty($o['seller_remarks'])) {
+                    $o['seller_remarks'] = $missedMsg;
+                }
+            }
+        }
+        unset($o);
         usort($all, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
         return $this->respond([
             'success'              => true,
             'data'                 => $all,
             'bookedDates'          => $bookedDates,
-            'acceptanceLimitDays'  => (float) getSystemSetting('offer_acceptance_limit_days', 7),
+            'acceptanceLimitDays'  => $limitDays,
             'ratingPeriod'         => (float) getSystemSetting('seller_rating_period_days', 7),
             'rejectionWindowHours' => (float) getSystemSetting('seller_rejection_window_hours', 24),
             'minRentalDays'        => (float) getSystemSetting('min_rental_days', 3),
@@ -464,6 +508,9 @@ class SuperAdminApi extends AdminApi
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
 
+        $limitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
         $stats = [
             'total_users' => $db->table('users')->countAllResults(),
             'buyers' => $db->table('users')->where('user_type', 'buyer')->whereNotIn('role', ['admin', 'super_admin'])->countAllResults(),
@@ -475,8 +522,17 @@ class SuperAdminApi extends AdminApi
             'pending_products' => $db->table('products')->groupStart()->where('status', 'pending')->orWhere('edit_request', '1')->orWhere('edit_request', 'pending')->groupEnd()->countAllResults(),
             'approved_products' => $db->table('products')->where('status', 'approved')->countAllResults(),
             'total_offers' => $db->table('offers')->countAllResults(),
-            'pending_offers' => $db->table('offers')->where('status', 'pending')->countAllResults(),
+            'pending_offers' => $db->table('offers')->where('status', 'pending')->where('created_at >=', $cutoff)->countAllResults(),
             'accepted_offers' => $db->table('offers')->where('status', 'accepted')->countAllResults(),
+            'missed_offers' => $db->table('offers')
+                ->groupStart()
+                    ->where('status', 'missed')
+                    ->orGroupStart()
+                        ->where('status', 'pending')
+                        ->where('created_at <', $cutoff)
+                    ->groupEnd()
+                ->groupEnd()
+                ->countAllResults(),
         ];
 
         // Registration chart (last 30 days)

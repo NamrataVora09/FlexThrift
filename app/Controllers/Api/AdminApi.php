@@ -27,6 +27,22 @@ class AdminApi extends BaseApiController
             $pendingEditsQuery->join('users u', 'u.id = p.seller_id', 'left')->where('u.role !=', 'admin');
         }
 
+        $adminId = (int) $jwtUser['user_id'];
+        $limitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
+        // Offer stats scoped to this admin's own offers (as buyer or seller)
+        $myOfferBase = $db->table('offers')
+            ->groupStart()
+                ->where('buyer_id', $adminId)
+                ->orWhere('seller_id', $adminId)
+            ->groupEnd();
+
+        $myOfferTotal  = clone $myOfferBase;
+        $myOfferPending = clone $myOfferBase;
+        $myOfferMissed  = clone $myOfferBase;
+        $myOfferDeals   = clone $myOfferBase;
+
         $stats = [
             'total_users' => $db->table('users')->countAllResults(),
             'total_sellers' => $db->table('users')->whereIn('user_type', ['seller', 'both'])->countAllResults(),
@@ -35,8 +51,18 @@ class AdminApi extends BaseApiController
             'pending_products' => $pendingProductsQuery->countAllResults(),
             'pending_edits' => $pendingEditsQuery->countAllResults(),
             'total_orders' => $db->table('orders')->countAllResults(),
-            'total_offers' => $db->table('offers')->countAllResults(),
-            'successful_deals' => $db->table('offers')->where('status', 'accepted')->countAllResults(),
+            'total_offers' => $myOfferTotal->countAllResults(),
+            'pending_offers' => $myOfferPending->where('status', 'pending')->where('created_at >=', $cutoff)->countAllResults(),
+            'missed_offers' => $myOfferMissed
+                ->groupStart()
+                    ->where('status', 'missed')
+                    ->orGroupStart()
+                        ->where('status', 'pending')
+                        ->where('created_at <', $cutoff)
+                    ->groupEnd()
+                ->groupEnd()
+                ->countAllResults(),
+            'successful_deals' => $myOfferDeals->where('status', 'accepted')->countAllResults(),
             'active_subscriptions' => $db->table('user_subscriptions')->where('is_active', 1)->where('expires_at >', date('Y-m-d H:i:s'))->countAllResults(),
         ];
 
@@ -45,9 +71,20 @@ class AdminApi extends BaseApiController
             ->join('products p', 'p.id = o.product_id', 'left')
             ->join('users b', 'b.id = o.buyer_id', 'left')
             ->join('users s', 's.id = p.seller_id', 'left')
+            ->groupStart()
+                ->where('o.seller_id', $adminId)
+                ->orWhere('o.buyer_id', $adminId)
+            ->groupEnd()
             ->orderBy('o.created_at', 'DESC')
             ->limit(5)
             ->get()->getResultArray();
+
+        foreach ($recentOffers as &$o) {
+            if (($o['status'] === 'pending' && !empty($o['created_at']) && $o['created_at'] < $cutoff) || $o['status'] === 'missed') {
+                $o['status'] = 'missed';
+            }
+        }
+        unset($o);
 
         return $this->respond([
             'success' => true,
@@ -804,6 +841,9 @@ class AdminApi extends BaseApiController
     public function allOffers()
     {
         $db = \Config\Database::connect();
+        $limitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
         $offers = $db->table('offers o')
             ->select('o.*, p.title as product_title, p.listing_type, p.original_price, ub.name as buyer_name, us.name as seller_name')
             ->join('products p', 'p.id = o.product_id', 'left')
@@ -811,6 +851,26 @@ class AdminApi extends BaseApiController
             ->join('users us', 'us.id = o.seller_id', 'left')
             ->orderBy('o.created_at', 'DESC')
             ->get()->getResultArray();
+
+        foreach ($offers as &$o) {
+            if (($o['status'] === 'pending' && !empty($o['created_at']) && $o['created_at'] < $cutoff) || $o['status'] === 'missed') {
+                $o['status'] = 'missed';
+                $deadline = !empty($o['created_at'])
+                    ? date('d M Y', strtotime($o['created_at']) + (int) ($limitDays * 86400))
+                    : '—';
+                $missedMsg = getAppMessage(
+                    'offer_missed_message',
+                    'This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: {deadline}). You can browse the marketplace to find similar items and make a new offer.',
+                    ['deadline' => $deadline]
+                );
+                $o['missed_message'] = $missedMsg;
+                if (empty($o['seller_remarks'])) {
+                    $o['seller_remarks'] = $missedMsg;
+                }
+            }
+        }
+        unset($o);
+
         return $this->respond(['success' => true, 'data' => $offers]);
     }
 
@@ -858,6 +918,9 @@ class AdminApi extends BaseApiController
             ->orderBy('o.created_at', 'DESC')
             ->get()->getResultArray();
 
+        $limitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
         // Attach offer history
         $historyModel = new \App\Models\OfferHistoryModel();
         foreach ($received as &$o) {
@@ -883,13 +946,31 @@ class AdminApi extends BaseApiController
         }
 
         $all = array_merge($received, $sent);
+        foreach ($all as &$o) {
+            if (($o['status'] === 'pending' && !empty($o['created_at']) && $o['created_at'] < $cutoff) || $o['status'] === 'missed') {
+                $o['status'] = 'missed';
+                $deadline = !empty($o['created_at'])
+                    ? date('d M Y', strtotime($o['created_at']) + (int) ($limitDays * 86400))
+                    : '—';
+                $missedMsg = getAppMessage(
+                    'offer_missed_message',
+                    'This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: {deadline}). You can browse the marketplace to find similar items and make a new offer.',
+                    ['deadline' => $deadline]
+                );
+                $o['missed_message'] = $missedMsg;
+                if (empty($o['seller_remarks'])) {
+                    $o['seller_remarks'] = $missedMsg;
+                }
+            }
+        }
+        unset($o);
         usort($all, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
         return $this->respond([
             'success' => true,
             'data' => $all,
             'bookedDates' => $bookedDates,
-            'acceptanceLimitDays' => (float) getSystemSetting('offer_acceptance_limit_days', 7),
+            'acceptanceLimitDays' => $limitDays,
             'ratingPeriod' => (float) getSystemSetting('seller_rating_period_days', 7),
             'rejectionWindowHours' => (float) getSystemSetting('seller_rejection_window_hours', 24),
             'minRentalDays' => (float) getSystemSetting('min_rental_days', 3),

@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 
 interface DashboardData {
   user: { id: number; name: string; email: string; role: string; user_type: string; reliability_score: number; referral_code: string };
-  stats: { ttl_products: number; pending: number; accepted: number; rejected: number; total_orders: number };
+  stats: { ttl_products: number; pending: number; accepted: number; rejected: number; missed?: number; total_orders: number };
   recent_offers: Array<Record<string, string>>;
   notifications: Array<Record<string, string>>;
 }
@@ -89,13 +89,15 @@ export default function BuyerDashboardPage() {
     ? String(Math.max(0, Math.round((new Date(activeSub.expires_at).getTime() - Date.now()) / 3_600_000)))
     : '0';
 
+  const rejectedOffersTotal = (data?.stats.rejected ?? 0) + (data?.stats.missed ?? 0);
+
   const statCards = [
     {
       icon: 'fa-solid fa-rectangle-list',
       label: 'Approved / Rejected Offers',
       split: true,
       approved: data?.stats.accepted ?? 0,
-      rejected: data?.stats.rejected ?? 0,
+      rejected: rejectedOffersTotal,
     },
     { icon: 'fa-solid fa-clock', label: 'Pending Offers', value: String(data?.stats.pending ?? 0) },
     { icon: 'fa-solid fa-tags', label: 'Contacts Left', value: contactsLeft },
@@ -448,7 +450,11 @@ export default function BuyerDashboardPage() {
                                   ? { background: '#dcfce7', color: '#15803d' }
                                   : o.status === 'rejected'
                                     ? { background: '#fee2e2', color: '#dc2626' }
-                                    : { background: '#f3f4f6', color: '#6b7280' }
+                                    : o.status === 'missed'
+                                      ? { background: '#fef3c7', color: '#b45309' }
+                                      : o.status === 'negotiating'
+                                        ? { background: '#dbeafe', color: '#1d4ed8' }
+                                        : { background: '#f3f4f6', color: '#6b7280' }
                               }
                             >
                               {o.status?.toUpperCase() ?? '—'}

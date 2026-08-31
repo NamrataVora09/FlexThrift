@@ -39,14 +39,34 @@ class SellerApi extends BaseApiController
             ->whereNotIn('status', ['cancelled', 'returned', 'completed'])
             ->countAllResults();
 
+        $limitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
         $activeOffers = $db->table('offers')
             ->where('seller_id', $userId)
-            ->whereIn('status', ['pending', 'negotiating'])
+            ->groupStart()
+                ->where('status', 'negotiating')
+                ->orGroupStart()
+                    ->where('status', 'pending')
+                    ->where('created_at >=', $cutoff)
+                ->groupEnd()
+            ->groupEnd()
             ->countAllResults();
 
         $rejectedOffersCount = $db->table('offers')
             ->where('seller_id', $userId)
-            ->whereIn('status', ['rejected', 'cancelled', 'missed'])
+            ->whereIn('status', ['rejected', 'cancelled'])
+            ->countAllResults();
+
+        $missedOffersCount = $db->table('offers')
+            ->where('seller_id', $userId)
+            ->groupStart()
+                ->where('status', 'missed')
+                ->orGroupStart()
+                    ->where('status', 'pending')
+                    ->where('created_at <', $cutoff)
+                ->groupEnd()
+            ->groupEnd()
             ->countAllResults();
 
         $orderRevenue = $db->table('orders')->where('seller_id', $userId)->selectSum('final_price')->get()->getRowArray()['final_price'] ?? 0;
@@ -85,6 +105,7 @@ class SellerApi extends BaseApiController
                 'offer_stats' => [
                     'accepted' => $totalDeals,
                     'rejected' => $rejectedOffersCount,
+                    'missed' => $missedOffersCount,
                 ],
             ],
         ]);
@@ -158,10 +179,28 @@ class SellerApi extends BaseApiController
             ->orderBy('o.created_at', 'DESC')
             ->get()->getResultArray();
 
+        $acceptanceLimitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($acceptanceLimitDays * 86400));
+
         // Attach offer history for each offer
         // Also backfill accepted_at from updated_at for legacy rows that predate the accepted_at column
         $historyModel = new \App\Models\OfferHistoryModel();
         foreach ($offers as &$o) {
+            if (($o['status'] === 'pending' && !empty($o['created_at']) && $o['created_at'] < $cutoff) || $o['status'] === 'missed') {
+                $o['status'] = 'missed';
+                $deadline = !empty($o['created_at'])
+                    ? date('d M Y', strtotime($o['created_at']) + (int) ($acceptanceLimitDays * 86400))
+                    : '—';
+                $missedMsg = getAppMessage(
+                    'offer_missed_message',
+                    'This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: {deadline}). You can browse the marketplace to find similar items and make a new offer.',
+                    ['deadline' => $deadline]
+                );
+                $o['missed_message'] = $missedMsg;
+                if (empty($o['seller_remarks'])) {
+                    $o['seller_remarks'] = $missedMsg;
+                }
+            }
             $o['history'] = $historyModel->getHistoryByOffer($o['id']);
             if ($o['status'] === 'accepted' && empty($o['accepted_at'])) {
                 $o['accepted_at'] = $o['updated_at'];
