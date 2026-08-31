@@ -1,0 +1,24 @@
+only_superadmin_can_access - You are not authorized to perform this action.
+admin_block_user_managenent - Your access to user management is restricted.
+report_not_found - Report is Not found
+user_report_not_found - Reported user is Not found
+report_handled_successfully - Report handled successfully
+not_found_product-Product Not found
+edit_request_not_found-Edit request not found
+edit_request_invalid-Invalid edit request
+failed_to_update_product-Failed to update product
+edit_request_approved -Edit request approved and merged.
+user_blocked - User blocked successfully.
+user_unblocked - User unblocked successfully.
+user_suspended-User suspended successfully.
+user_not_found -User not found
+
+user_activated-User activated successfully.
+
+plan_not_found-Plan not found
+--------------------------------------
+user_seller_role_blocked- Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.
+user_buyer_role_blocked- Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.
+server_error - Server error
+edit_request_rejected -Edit request rejected.
+user_account_blocked - Your account is blocked. Please contact support.

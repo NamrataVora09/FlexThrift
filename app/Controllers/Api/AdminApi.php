@@ -71,7 +71,7 @@ class AdminApi extends BaseApiController
                 return $this->respond(['success' => true, 'data' => [], 'message' => 'You are blocked from approvals.']);
             }
         } elseif ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $productsQuery = $db->table('products p')
@@ -107,7 +107,7 @@ class AdminApi extends BaseApiController
         if ($jwtUser['role'] === 'admin') {
             $adminUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
             if ($adminUser && ($adminUser['blocked_from_user_management'] ?? 0)) {
-                return $this->respond(['success' => false, 'message' => 'Your access to user management is restricted.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('admin_block_user_managenent')], 403);
             }
         }
 
@@ -199,7 +199,7 @@ class AdminApi extends BaseApiController
             ->get()->getRowArray();
 
         if (!$report) {
-            return $this->respond(['success' => false, 'message' => 'Report not found or not assigned to you'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('report_not_found')], 404);
         }
 
         $input = $this->request->getPost() ?: ($this->request->getJSON(true) ?: []);
@@ -208,7 +208,7 @@ class AdminApi extends BaseApiController
 
         $reported = $db->table('users')->where('id', $report['reported_id'])->get()->getRowArray();
         if (!$reported) {
-            return $this->respond(['success' => false, 'message' => 'Reported user not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_report_not_found')], 404);
         }
 
         $actionTaken = 'dismissed';
@@ -244,7 +244,7 @@ class AdminApi extends BaseApiController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Report handled successfully', 'action' => $actionTaken]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('report_handled_successfully'), 'action' => $actionTaken]);
     }
 
     /**
@@ -405,7 +405,7 @@ class AdminApi extends BaseApiController
         $db = \Config\Database::connect();
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
         if (!$request)
-            return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found_product')], 404);
 
         $original = $db->table('products p')
             ->select('p.*, ob.brand_name as orignal_brand, b.brand_name as seller_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
@@ -498,17 +498,17 @@ class AdminApi extends BaseApiController
             $db = \Config\Database::connect();
             $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
             if (!$request)
-                return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
+                return $this->respond(['success' => false, 'message' => getAppMessage('edit_request_not_found')], 404);
 
             $editData = json_decode($request['updated_data'], true) ?: [];
             if (empty($editData)) {
-                return $this->respond(['success' => false, 'message' => 'Invalid update data'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('edit_request_invalid')], 400);
             }
 
             // Get current product data to preserve fields that weren't updated
             $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
             if (!$currentProduct) {
-                return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+                return $this->respond(['success' => false, 'message' => getAppMessage('not_found_product')], 404);
             }
 
             // Merge edit data with current product data (edit data takes precedence for changed fields)
@@ -536,7 +536,7 @@ class AdminApi extends BaseApiController
             $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($productUpdateData);
             if (!$productUpdate) {
                 log_message('error', "Failed to update product ID: {$request['product_id']} for edit request ID: {$id}");
-                return $this->respond(['success' => false, 'message' => 'Failed to update product'], 500);
+                return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_update_product')], 500);
             }
 
             // Handle new temp images - move from temp to permanent location
@@ -636,10 +636,9 @@ class AdminApi extends BaseApiController
                 ]);
             }
 
-            return $this->respond(['success' => true, 'message' => 'Edit request approved and merged.']);
+            return $this->respond(['success' => true, 'message' => getAppMessage('edit_request_approved')]);
         } catch (\Exception $e) {
-            log_message('error', "Error in approveEditRequest for ID {$id}: " . $e->getMessage());
-            return $this->respond(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('server_error') . $e->getMessage()], 500);
         }
     }
 
@@ -654,7 +653,7 @@ class AdminApi extends BaseApiController
 
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
         if (!$request) {
-            return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('edit_request_not_found')], 404);
         }
 
         // Mark the edit request as rejected and store the admin's remarks so the
@@ -694,7 +693,7 @@ class AdminApi extends BaseApiController
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('edit_request_rejected')]);
     }
 
     /**
@@ -708,7 +707,7 @@ class AdminApi extends BaseApiController
 
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
         if (!$product || !in_array($product['pending_reason'] ?? '', ['admin_edit', 'seller_edit', 'both_edit'])) {
-            return $this->respond(['success' => false, 'message' => 'Product pending edit not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('edit_request_not_found')], 404);
         }
 
         // Restore product from previous_data snapshot
@@ -793,7 +792,7 @@ class AdminApi extends BaseApiController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Product edit rejected and restored.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('edit_request_rejected')]);
     }
 
 
@@ -904,21 +903,21 @@ class AdminApi extends BaseApiController
         if ($jwtUser['role'] === 'admin') {
             $adminUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
             if ($adminUser && ($adminUser['blocked_from_user_management'] ?? 0)) {
-                return $this->respond(['success' => false, 'message' => 'Your access to user management is restricted.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('admin_block_user_managenent')], 403);
             }
         }
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         if (!$user)
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
 
         $isActive = !$user['is_blocked'] && $user['is_verified'];
         if ($isActive) {
             $db->table('users')->where('id', $userId)->update(['is_blocked' => 1]);
-            $msg = 'User suspended successfully.';
+            $msg = getAppMessage('user_suspended');
         } else {
             $db->table('users')->where('id', $userId)->update(['is_blocked' => 0, 'is_verified' => 1]);
-            $msg = 'User activated successfully.';
+            $msg = getAppMessage('user_activated');
         }
 
         return $this->respond(['success' => true, 'message' => $msg]);
@@ -932,13 +931,13 @@ class AdminApi extends BaseApiController
         if ($jwtUser['role'] === 'admin') {
             $adminUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
             if ($adminUser && ($adminUser['blocked_from_user_management'] ?? 0)) {
-                return $this->respond(['success' => false, 'message' => 'Your access to user management is restricted.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('admin_block_user_managenent')], 403);
             }
         }
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         if (!$user)
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
 
         $col = $role === 'seller' ? 'blocked_seller' : 'blocked_buyer';
         $current = $user[$col] ?? 0;
@@ -958,7 +957,7 @@ class AdminApi extends BaseApiController
         }
 
         $action = $current ? 'unblocked' : 'blocked';
-        return $this->respond(['success' => true, 'message' => ucfirst($role) . " role {$action} successfully."]);
+        return $this->respond(['success' => true, 'message' => getAppMessage($action == 'blocked' ? 'user_blocked' : 'user_unblocked')]);
     }
 
     public function planCheckoutDetails(int $planId)
@@ -969,21 +968,21 @@ class AdminApi extends BaseApiController
 
         $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $planUserType = $plan['user_type'] ?? '';
 
         // 1. Account global block check
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_account_blocked')], 403);
         }
 
         // 2. Role-specific block check (applies to ALL users including admins if superadmin blocked their role)
         if ($planUserType === 'seller' && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
         }
         if ($planUserType === 'buyer' && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
         }
 
         // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
@@ -994,11 +993,11 @@ class AdminApi extends BaseApiController
         if (!$isGlobalAdmin) {
             if ($planUserType === 'seller') {
                 if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
-                    return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
                 }
             } elseif ($planUserType === 'buyer') {
                 if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-                    return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
                 }
             }
         }
@@ -1053,8 +1052,8 @@ class AdminApi extends BaseApiController
     }
 
     public function applyCoupon()
-{
-            $jwtUser = $this->request->jwt_user;
+    {
+        $jwtUser = $this->request->jwt_user;
 
         $data = $this->request->getJSON(true);
         $code = strtoupper(trim($data['code'] ?? ''));
@@ -1066,16 +1065,16 @@ class AdminApi extends BaseApiController
 
         $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
         if (!$coupon)
-            return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_coupon_code')]);
 
         // ── Expiry check ──────────────────────────────────────────────────────
         $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
         if ($cpnExpiresAt && strtotime($cpnExpiresAt) < time())
-            return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_coupon_code')]);
 
         // ── Per-user usage limit ──────────────────────────────────────────────
         if ($coupon['usage_limit'] !== null && (int) $coupon['usage_limit'] > 0) {
@@ -1085,14 +1084,14 @@ class AdminApi extends BaseApiController
                 ->where('user_id', $adminUserId)
                 ->countAllResults();
             if ($userUsedCount >= (int) $coupon['usage_limit'])
-                return $this->respond(['success' => false, 'message' => 'You have already used this coupon the maximum number of times.']);
+                return $this->respond(['success' => false, 'message' => getAppMessage('coupon_usage_limit_reached')]);
         }
 
         // ── Minimum purchase check ────────────────────────────────────────────
         $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
         if ((float) $plan['price'] < $cpnMinPurchase)
-            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
-  // Referral discount restriction: Check if user has active referral discount for this plan
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_min_purchase', null, ['amount' => $cpnMinPurchase])]);
+        // Referral discount restriction: Check if user has active referral discount for this plan
         $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
         if ($useReferral) {
             $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
@@ -1108,7 +1107,8 @@ class AdminApi extends BaseApiController
                         ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
                         ->get()->getResultArray();
                     $cfg = [];
-                    foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+                    foreach ($settingsRows as $s)
+                        $cfg[$s['setting_key']] = $s['setting_value'];
 
                     $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
                     $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
@@ -1122,7 +1122,7 @@ class AdminApi extends BaseApiController
                         if ($refDiscount >= $basePrice && $basePrice > 0) {
                             return $this->respond([
                                 'success' => false,
-                                'message' => 'Coupon code cannot be applied when referral discount covers the full plan price.'
+                                'message' => getAppMessage('coupon_cannot_be_applied_when_referral_discount_covers_the_full_plan_price')
                             ], 400);
                         }
                         // Partial referral: coupon is allowed — both discounts will stack
@@ -1138,7 +1138,7 @@ class AdminApi extends BaseApiController
         if ($coupon['max_discount'] && $discount > $coupon['max_discount'])
             $discount = $coupon['max_discount'];
 
-        return $this->respond(['success' => true, 'message' => 'Coupon applied!', 'data' => ['discount' => round($discount, 2)]]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_applied_successfully'), 'data' => ['discount' => round($discount, 2)]]);
     }
 
     public function initiatePayment()
@@ -1155,25 +1155,25 @@ class AdminApi extends BaseApiController
 
         $plan = $db->table('subscription_plans')->where(['id' => $planId, 'is_active' => 1])->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
         $planUserType = $plan['user_type'] ?? '';
 
         // 1. Account global block check
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_account_blocked')], 403);
         }
 
         // 2. Role-specific block check (applies to ALL users including admins if superadmin blocked their role)
         if ($planUserType === 'seller' && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
         }
         if ($planUserType === 'buyer' && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
         }
 
-        // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
+        // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction) 
         $userRole = $user['role'] ?? '';
         $userType = $user['user_type'] ?? '';
         $isGlobalAdmin = in_array($userRole, ['admin', 'super_admin', 'superadmin']) || in_array($userType, ['admin', 'super_admin', 'superadmin']);
@@ -1181,11 +1181,11 @@ class AdminApi extends BaseApiController
         if (!$isGlobalAdmin) {
             if ($planUserType === 'seller') {
                 if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
-                    return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
                 }
             } elseif ($planUserType === 'buyer') {
                 if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-                    return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
                 }
             }
         }
@@ -1235,14 +1235,14 @@ class AdminApi extends BaseApiController
         if ($useReferral && $referralBalance > 0) {
             if (!$exp || $exp === '' || $exp === '0000-00-00 00:00:00' || strtotime($exp) > time()) {
                 $settingsRows = $db->table('system_settings')
-               ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+                    ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
                     ->get()->getResultArray();
                 $cfg = [];
                 foreach ($settingsRows as $s)
                     $cfg[$s['setting_key']] = $s['setting_value'];
                 $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
 
-                          $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+                $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
 
                 if ($basePrice >= $minPurchase) {
                     $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
@@ -1257,8 +1257,8 @@ class AdminApi extends BaseApiController
             $discount = 0;
             $couponId = null;
         }
-            
-        
+
+
 
         $final = max(1, ($basePrice + $totalCharges) - $discount - $referralDiscount);
         $merchantOrderId = 'SUB-ADM-' . $userId . '-' . time();
@@ -1293,7 +1293,7 @@ class AdminApi extends BaseApiController
         if (isset($res['redirectUrl'])) {
             return $this->respond(['success' => true, 'data' => ['redirect_url' => $res['redirectUrl'], 'merchant_order_id' => $merchantOrderId]]);
         }
-        return $this->respond(['success' => false, 'message' => 'Payment initiation failed.']);
+        return $this->respond(['success' => false, 'message' => getAppMessage('Payment_initiation_failed')]);
     }
 
     public function verifyPayment()
@@ -1302,9 +1302,9 @@ class AdminApi extends BaseApiController
         $db = \Config\Database::connect();
         $dbSub = $db->table('user_subscriptions')->where('merchant_transaction_id', $id)->get()->getRowArray();
         if (!$dbSub)
-            return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
+            return $this->respond(['status' => 'error', 'message' => getAppMessage('Transaction_not_found')], 404);
         if ($dbSub['is_active'] == 1)
-            return $this->respond(['status' => 'success', 'message' => 'Already active']);
+            return $this->respond(['status' => 'success', 'message' => getAppMessage('plan_aldready_active')]);
 
         $phonepe = new \App\Libraries\PhonePe();
         $status = $phonepe->getOrderStatus($id);
@@ -1379,7 +1379,7 @@ class AdminApi extends BaseApiController
                 'transaction_id' => $id,
                 'created_at' => date('Y-m-d H:i:s')
             ]);
-            return $this->respond(['status' => 'success', 'message' => 'Payment verified and plans stacked!']);
+            return $this->respond(['status' => 'success', 'message' => getAppMessage('payment_successfully_verified')]);
         }
 
         if ($state === 'FAILED' || $state === 'CANCELLED') {
@@ -1387,10 +1387,10 @@ class AdminApi extends BaseApiController
                 'payment_status' => 'failed',
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
-            return $this->respond(['status' => 'failed', 'message' => 'Payment failed or was cancelled.']);
+            return $this->respond(['status' => 'failed', 'message' => getAppMessage('payment_failed')]);
         }
 
-        return $this->respond(['status' => 'pending', 'message' => 'Payment is being processed…', 'state' => $state]);
+        return $this->respond(['status' => 'pending', 'message' => getAppMessage('payment_processing'), 'state' => $state]);
     }
 
     public function userAuditLogs($userId)
@@ -1401,7 +1401,7 @@ class AdminApi extends BaseApiController
         if ($jwtUser['role'] === 'admin') {
             $adminUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
             if ($adminUser && ($adminUser['blocked_from_user_management'] ?? 0)) {
-                return $this->respond(['success' => false, 'message' => 'Your access to user management is restricted.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('admin_block_user_managenent')], 403);
             }
         }
 
@@ -1428,7 +1428,7 @@ class AdminApi extends BaseApiController
             ->where(['id' => $planId, 'is_active' => 1])
             ->get()->getRowArray();
         if (!$plan) {
-            return $this->respond(['success' => false, 'message' => 'Plan not found or inactive'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
         }
 
         // Verify plan is actually free
@@ -1444,7 +1444,7 @@ class AdminApi extends BaseApiController
 
         $total = max(0, (float) $plan['price'] + $totalCharges);
         if ($total > 0) {
-            return $this->respond(['success' => false, 'message' => 'This plan requires payment'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_reuires_payment')], 400);
         }
 
         // Activate the subscription
@@ -1469,11 +1469,11 @@ class AdminApi extends BaseApiController
             'updated_at' => $now,
         ]);
         if (!$inserted) {
-            return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_activate_subscription')], 500);
         }
 
         // $this->recalibrateUserSubscriptions($userId, $plan['user_type']);
 
-        return $this->respond(['success' => true, 'message' => 'Plan activated successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_activated_successfully')]);
     }
 }

@@ -28,7 +28,7 @@ class AuthApi extends BaseApiController
         if (!$email || !$password) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Email and password are required',
+                'message' => getAppMessage('email_passwod_required'),
             ], 400);
         }
 
@@ -37,28 +37,28 @@ class AuthApi extends BaseApiController
         if (!$user) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Invalid email or password',
+                'message' => getAppMessage('invalid_email_password'),
             ], 401);
         }
 
         if (!empty($user['is_blocked'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your account has been blocked by admin',
+                'message' => getAppMessage('user_blocked'),
             ], 403);
         }
 
         if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your buyer role has been blocked by admin',
+                'message' => getAppMessage('user_buyer_role_blocked'),
             ], 403);
         }
 
         if ($user['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your seller role has been blocked by admin',
+                'message' => getAppMessage('user_seller_role_blocked'),
             ], 403);
         }
 
@@ -66,7 +66,7 @@ class AuthApi extends BaseApiController
         if ($user['user_type'] === 'both' && !empty($user['blocked_seller']) && !empty($user['blocked_buyer'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your account roles have been blocked by admin',
+                'message' => getAppMessage('user_blocked'),
             ], 403);
         }
 
@@ -74,7 +74,7 @@ class AuthApi extends BaseApiController
         if (empty($user['is_verified']) || $user['is_verified'] == '0') {
             return $this->respond([
                 'success' => false,
-                'message' => 'Please verify your account before logging in. Check your email for verification instructions.',
+                'message' => getAppMessage('user_not_verified'),
             ], 403);
         }
 
@@ -82,7 +82,7 @@ class AuthApi extends BaseApiController
             log_message('warning', 'Failed login attempt for: ' . $email);
             return $this->respond([
                 'success' => false,
-                'message' => 'Invalid email or password',
+                'message' => getAppMessage('invalid_email_password'),
             ], 401);
         }
 
@@ -98,7 +98,6 @@ class AuthApi extends BaseApiController
             }
         }
 
-        log_message('info', 'API Login successful for: ' . $email . ', Role: ' . $role);
 
         $token = JWT::encode([
             'user_id' => $user['id'],
@@ -109,7 +108,7 @@ class AuthApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'Login successful',
+            'message' => getAppMessage('login_success'),
             'data'    => [
                 'user'  => $this->sanitizeUser($user, $role),
                 'token' => $token,
@@ -125,30 +124,30 @@ class AuthApi extends BaseApiController
         $email = $this->request->getJsonVar('email');
 
         if (!$email) {
-            return $this->respond(['success' => false, 'message' => 'Email is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_required')], 400);
         }
 
         $user = $this->userModel->getUserByEmail($email);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'No account found with this email'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_account_found')], 404);
         }
 
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer role has been blocked by admin'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
         }
 
         if ($user['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role has been blocked by admin'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
         }
 
         // If 'both' user has BOTH roles blocked, deny OTP entirely
         if ($user['user_type'] === 'both' && !empty($user['blocked_seller']) && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account roles have been blocked by admin'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         $otp = $this->userModel->generateOTP($user['id']);
@@ -159,7 +158,7 @@ class AuthApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'OTP sent to your email',
+            'message' => getAppMessage('otp_sent'),
         ]);
     }
 
@@ -172,30 +171,30 @@ class AuthApi extends BaseApiController
         $otp   = $this->request->getJsonVar('otp');
 
         if (!$email || !$otp) {
-            return $this->respond(['success' => false, 'message' => 'Email and OTP are required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_otp_required')], 400);
         }
 
         $user = $this->userModel->verifyOTP($email, $otp);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'Invalid or expired OTP'], 401);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_otp')], 401);
         }
 
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your buyer role has been blocked by admin',
+                'message' => getAppMessage('user_buyer_role_blocked'),
             ], 403);
         }
 
         if ($user['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your seller role has been blocked by admin',
+                'message' => getAppMessage('user_seller_role_blocked'),
             ], 403);
         }
 
@@ -203,7 +202,7 @@ class AuthApi extends BaseApiController
         if ($user['user_type'] === 'both' && !empty($user['blocked_seller']) && !empty($user['blocked_buyer'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your account roles have been blocked by admin',
+                'message' => getAppMessage('user_blocked'),
             ], 403);
         }
 
@@ -211,7 +210,7 @@ class AuthApi extends BaseApiController
         if (empty($user['is_verified']) || $user['is_verified'] == '0') {
             return $this->respond([
                 'success' => false,
-                'message' => 'Please verify your account before logging in. Check your email for verification instructions.',
+                'message' => getAppMessage('user_not_verified'),
             ], 403);
         }
 
@@ -233,7 +232,7 @@ class AuthApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'OTP verified successfully',
+            'message' => getAppMessage('otp_verified'),
             'data'    => [
                 'user'  => $this->sanitizeUser($user, $role),
                 'token' => $token,
@@ -249,28 +248,34 @@ class AuthApi extends BaseApiController
         $email = $this->request->getJsonVar('email');
 
         if (!$email) {
-            return $this->respond(['success' => false, 'message' => 'Email is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_required')], 400);
         }
 
         $user = $this->userModel->getUserByEmail($email);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'No account found with this email'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_account_found')], 404);
         }
 
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
+        
         $otp = $this->userModel->generateOTP($user['id']);
 
         if ($otp) {
-            $this->sendPasswordResetEmail($email, $user['name'], $otp);
+            if (!$this->sendPasswordResetEmail($email, $user['name'], $otp)) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => getAppMessage('password_reset_email_failed'),
+                ], 500);
+            }
         }
 
         return $this->respond([
             'success' => true,
-            'message' => 'Password reset OTP sent to your email',
+            'message' => getAppMessage('password_reset_otp_sent'),
         ]);
     }
 
@@ -286,25 +291,25 @@ class AuthApi extends BaseApiController
         if (!$email || !$otp || !$password) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Email, OTP, and new password are required'
+                'message' => getAppMessage('email_otp_password_required'),
             ], 400);
         }
 
         if (strlen($password) < 6) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Password must be at least 6 characters long'
+                'message' => getAppMessage('password_length'),
             ], 400);
         }
 
         $user = $this->userModel->getUserByEmail($email);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'No account found with this email'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_account_found')], 404);
         }
 
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         // Verify OTP matches and is not expired
@@ -320,20 +325,20 @@ class AuthApi extends BaseApiController
             if ($updateSuccess) {
                 return $this->respond([
                     'success' => true,
-                    'message' => 'Password reset successfully. You can now login with your new password.',
+                    'message' => getAppMessage('password_reset_success'),
                 ]);
             }
 
-            return $this->respond(['success' => false, 'message' => 'Failed to update password. Please try again.'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('password_reset_failure')], 500);
         }
 
-        return $this->respond(['success' => false, 'message' => 'Invalid or expired OTP'], 401);
+        return $this->respond(['success' => false, 'message' => getAppMessage('invalid_otp')], 401);
     }
 
     /**
      * Send password reset email
      */
-    private function sendPasswordResetEmail(string $to, string $name, string $otp): void
+    private function sendPasswordResetEmail(string $to, string $name, string $otp): bool
     {
         $db = \Config\Database::connect();
         $rows = $db->table('system_settings')->get()->getResultArray();
@@ -375,9 +380,10 @@ class AuthApi extends BaseApiController
         ");
 
         if (!$email->send(false)) {
-            log_message('error', 'Password reset email failed to send to: ' . $to);
-            log_message('error', 'Email Debugger: ' . $email->printDebugger(['headers', 'subject', 'body']));
+            return false;
         }
+
+        return true;
     }
 
     /**
@@ -402,7 +408,7 @@ class AuthApi extends BaseApiController
         if (!$this->validateData($data, $rules)) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => getAppMessage('validation_failed_for_register'),
                 'errors'  => $this->validator->getErrors(),
             ], 422);
         }
@@ -447,7 +453,7 @@ class AuthApi extends BaseApiController
         if ($existingByEmail && $existingByMobile && $existingByEmail['id'] === $existingByMobile['id']) {
             return $this->respond([
                 'success' => false,
-                'message' => 'An account with this email and mobile number already exists.',
+                'message' => getAppMessage('account_already_exists'),
             ], 409);
         }
 
@@ -455,7 +461,7 @@ class AuthApi extends BaseApiController
         if ($existingByEmail && $existingByMobile && $existingByEmail['id'] !== $existingByMobile['id']) {
             return $this->respond([
                 'success' => false,
-                'message' => 'This email address and mobile number are each associated with different existing accounts. Please use credentials that belong to a single account.',
+                'message' => getAppMessage('account_already_exists_with_different_credentials'),
             ], 409);
         }
 
@@ -463,7 +469,7 @@ class AuthApi extends BaseApiController
         if ($existingByEmail && !$existingByMobile) {
             return $this->respond([
                 'success' => false,
-                'message' => 'This email address is already registered.',
+                'message' => getAppMessage('email_already_exists'),
             ], 409);
         }
 
@@ -471,7 +477,7 @@ class AuthApi extends BaseApiController
         if (!$existingByEmail && $existingByMobile) {
             return $this->respond([
                 'success' => false,
-                'message' => 'This mobile number is already registered.',
+                'message' => getAppMessage('mobile_already_exists'),
             ], 409);
         }
 
@@ -496,7 +502,7 @@ class AuthApi extends BaseApiController
         $userId = $this->userModel->insert($userData);
 
         if (!$userId) {
-            return $this->respond(['success' => false, 'message' => 'Registration failed'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('registration_failed_for_register')], 500);
         }
 
         // Process referral code
@@ -512,7 +518,7 @@ class AuthApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'Registration successful. OTP sent to your email.',
+            'message' => getAppMessage('registration_successful_otp_sent'),
         ], 201);
     }
 
@@ -524,26 +530,26 @@ class AuthApi extends BaseApiController
         $jwtUser = $this->request->jwt_user ?? null;
 
         if (!$jwtUser) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 401);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized_for_switch_role')], 401);
         }
 
         if (!in_array($newRole, ['seller', 'buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Invalid role'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_role_for_switch_role')], 400);
         }
 
         $user = $this->userModel->find($jwtUser['user_id']);
 
         if (!$user || $user['user_type'] !== 'both') {
-            return $this->respond(['success' => false, 'message' => 'Role switching not allowed'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_allowed_to_switch_role')], 403);
         }
 
         // Check if the target role is blocked before allowing switch
         if ($newRole === 'buyer' && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer privileges have been restricted by the administrator.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
         }
 
         if ($newRole === 'seller' && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller privileges have been restricted by the administrator.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
         }
 
         $this->userModel->update($user['id'], ['role' => $newRole]);
@@ -576,12 +582,12 @@ class AuthApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user ?? null;
         if (!$jwtUser) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 401);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized_for_referral_stats')], 401);
         }
 
         $user = $this->userModel->find($jwtUser['user_id']);
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
         }
 
         // Generate referral code if missing (for legacy users)
@@ -680,13 +686,13 @@ class AuthApi extends BaseApiController
         $jwtUser = $this->request->jwt_user ?? null;
 
         if (!$jwtUser) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 401);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized_for_me')], 401);
         }
 
         $user = $this->userModel->find($jwtUser['user_id']);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
         }
 
         // Compute effective role from live DB block flags (not stale JWT)
@@ -707,96 +713,6 @@ class AuthApi extends BaseApiController
 
     // ── Helpers ──────────────────────────────────────
 
-    public function googleLogin()
-    {
-        $data = $this->request->getJSON(true);
-        $googleToken = $data['credential'] ?? '';
-        if (!$googleToken) {
-            return $this->respond(['success' => false, 'message' => 'Google credential is required'], 400);
-        }
-
-        // Decode Google JWT (id_token) without verification for now
-        $parts = explode('.', $googleToken);
-        if (count($parts) !== 3) {
-            return $this->respond(['success' => false, 'message' => 'Invalid Google token'], 400);
-        }
-        $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-        if (!$payload || empty($payload['email'])) {
-            return $this->respond(['success' => false, 'message' => 'Failed to parse Google token'], 400);
-        }
-
-        $email = $payload['email'];
-        $name = $payload['name'] ?? $payload['given_name'] ?? 'User';
-
-        $user = $this->userModel->getUserByEmail($email);
-
-        if ($user) {
-            // Existing user — login
-            if (!empty($user['is_blocked'])) {
-                return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
-            }
-            if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Your buyer role has been blocked by admin',
-                ], 403);
-            }
-            if ($user['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Your seller role has been blocked by admin',
-                ], 403);
-            }
-            if ($user['user_type'] === 'both' && !empty($user['blocked_seller']) && !empty($user['blocked_buyer'])) {
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Your account roles have been blocked by admin',
-                ], 403);
-            }
-            $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
-            if ($user['user_type'] === 'both') {
-                if ((int)($user['blocked_buyer'] ?? 0) === 1) {
-                    $role = 'seller';
-                } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
-                    $role = 'buyer';
-                }
-            }
-        } else {
-            // New user — auto-register as buyer
-            $db = \Config\Database::connect();
-            $referralCode = strtoupper(substr(md5(uniqid()), 0, 8));
-            $db->table('users')->insert([
-                'name' => $name,
-                'email' => $email,
-                'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
-                'user_type' => 'buyer',
-                'role' => 'buyer',
-                'referral_code' => $referralCode,
-                'is_verified' => 1,
-                'reliability_score' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
-            $user = $this->userModel->getUserByEmail($email);
-            $role = 'buyer';
-        }
-
-        $token = JWT::encode([
-            'user_id' => $user['id'],
-            'email'   => $user['email'],
-            'role'    => $role,
-            'blocked_from_approvals' => $user['blocked_from_approvals'] ?? 0,
-        ]);
-
-        return $this->respond([
-            'success' => true,
-            'message' => 'Login successful',
-            'data'    => [
-                'user'  => $this->sanitizeUser($user, $role),
-                'token' => $token,
-            ],
-        ]);
-    }
 
     private function applyReferral($userId, $referredBy)
     {
@@ -977,7 +893,7 @@ class AuthApi extends BaseApiController
         $lng = $this->request->getVar('longitude') ?? $this->request->getVar('lng');
 
         if (empty($lat) || empty($lng)) {
-            return $this->respond(['success' => false, 'message' => 'Latitude and longitude are required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('latitude_longitude_required')], 400);
         }
 
         $geo = getStateFromCoordinates($lat, $lng);
@@ -989,7 +905,7 @@ class AuthApi extends BaseApiController
             ]);
         }
 
-        return $this->respond(['success' => false, 'message' => 'Unable to resolve state from coordinates.'], 404);
+        return $this->respond(['success' => false, 'message' => getAppMessage('unable_to_resolve_state')], 404);
     }
 
     /**
@@ -1016,7 +932,7 @@ class AuthApi extends BaseApiController
                 'data'    => [
                     'restriction_enabled' => false,
                     'is_allowed'          => true,
-                    'message'             => 'Zone restriction is disabled'
+                    'message'             => getAppMessage('zone_restriction_disabled')
                 ]
             ]);
         }
@@ -1048,7 +964,7 @@ class AuthApi extends BaseApiController
                 'data'    => [
                     'restriction_enabled' => true,
                     'is_allowed'          => false,
-                    'message'             => 'Unable to detect location. Please allow location access.'
+                    'message'             => getAppMessage('location_detection_failed')
                 ]
             ]);
         }
@@ -1082,7 +998,7 @@ class AuthApi extends BaseApiController
                     'zone'                => $matchedZoneName,
                     'lat'                 => $lat,
                     'lng'                 => $lng,
-                    'message'             => "Access granted. Verified in {$matchedZoneName} zone via {$method}."
+                    'message'             => getAppMessage('access_granted_in_your_zone')
                 ]
             ]);
         }
@@ -1095,7 +1011,7 @@ class AuthApi extends BaseApiController
                 'method'              => $method,
                 'lat'                 => $lat,
                 'lng'                 => $lng,
-                'message'             => 'Flex Market is not yet available in your area.'
+                'message'             => getAppMessage('not_available_in_your_area')
             ]
         ]);
     }
