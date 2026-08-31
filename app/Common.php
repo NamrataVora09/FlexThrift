@@ -18,10 +18,6 @@ if (!function_exists('getAppMessage')) {
     /**
      * Retrieve a dynamic message from the database.
      *
-     * PERFORMANCE: Bulk-preloads the entire app_messages table on first call
-     * (one SELECT query), then serves all subsequent calls from a static
-     * in-memory array — eliminating N+1 DB queries per request.
-     *
      * @param string $key The message key
      * @param string|null $default Default message if key not found
      * @param array $params Key => Value pairs for placeholder substitution (e.g. ['min' => 3])
@@ -29,39 +25,26 @@ if (!function_exists('getAppMessage')) {
      */
     function getAppMessage(string $key, ?string $default = null, array $params = []): string
     {
-        // $loaded tracks whether we have already fetched all rows from DB.
-        // $cache maps message_key => message_value for the whole table.
-        static $loaded = false;
-        static $cache  = [];
+        try {
+            $db = \Config\Database::connect();
+            $row = $db->table('app_messages')
+                ->where('message_key', $key)
+                ->get()
+                ->getRowArray();
 
-        if (!$loaded) {
-            $loaded = true; // mark before query so a recursive call won't loop
-            try {
-                $db   = \Config\Database::connect();
-                $rows = $db->table('app_messages')
-                    ->select('message_key, message_value')
-                    ->get()
-                    ->getResultArray();
-                foreach ($rows as $row) {
-                    $cache[$row['message_key']] = $row['message_value'];
+            $message = $row ? $row['message_value'] : ($default ?? $key);
+
+            if (!empty($params)) {
+                foreach ($params as $k => $v) {
+                    // Support both {param} and {{param}} placeholder formats
+                    $message = str_replace('{' . $k . '}', (string)$v, $message);
+                    $message = str_replace('{{' . $k . '}}', (string)$v, $message);
                 }
-            } catch (\Exception $e) {
-                // DB unavailable — $cache stays empty; fall back to defaults
             }
+            return $message;
+        } catch (\Exception $e) {
+            return $default ?? $key;
         }
-
-        $output = $cache[$key] ?? ($default ?? $key);
-
-        if (!empty($params)) {
-            $pairs = [];
-            foreach ($params as $k => $v) {
-                $pairs["{{$k}}"] = $v;
-                $pairs["{$k}"] = $v;
-            }
-            $output = strtr($output, $pairs);
-        }
-
-        return $output;
     }
 }
 
