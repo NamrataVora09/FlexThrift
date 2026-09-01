@@ -515,14 +515,14 @@ class SellerApi extends BaseApiController
         ];
 
         if (!$this->validate($rules, $mappedData)) {
-            return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => $this->validator->getErrors()], 422);
+            return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => $this->validator->getErrors()], 422);
         }
 
         // Validate product images
         $allFiles = $this->request->getFiles();
         $imageFiles = $allFiles['product_images'] ?? $allFiles['images'] ?? null;
         if (!$imageFiles || (is_array($imageFiles) && count($imageFiles) === 0)) {
-            return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['product_images' => 'At least one product image is required']], 422);
+            return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => ['product_images' => 'At least one product image is required']], 422);
         }
 
         // Debug: Log received files
@@ -580,7 +580,7 @@ class SellerApi extends BaseApiController
 
         if (!empty($requiredAttributes)) {
             if (!is_array($specArray) || empty($specArray)) {
-                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
+                return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
             }
 
             $missingAttributes = [];
@@ -591,7 +591,7 @@ class SellerApi extends BaseApiController
             }
 
             if (!empty($missingAttributes)) {
-                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
+                return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
             }
         }
 
@@ -600,7 +600,7 @@ class SellerApi extends BaseApiController
             if (!$this->validateBrandListingType($db, 'orignal_brands', $data['orignal_brand_id'], $data['listing_type_category'] ?? null)) {
                 return $this->respond([
                     'success' => false, 
-                    'message' => 'The selected original brand is not available for this listing type. Please select a different brand or change the listing type.'
+                    'message' => getAppMessage('the_selected_original_brand_is_not_available_for_this_listin', 'The selected original brand is not available for this listing type. Please select a different brand or change the listing type.')
                 ], 422);
             }
         }
@@ -660,7 +660,7 @@ class SellerApi extends BaseApiController
         $productId = $db->insertID();
 
         if (!$productId) {
-            return $this->respond(['success' => false, 'message' => 'Failed to create product'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_create_product', 'Failed to create product')], 500);
         }
 
         // Deduct from quantity-based seller subscription (only on product creation, not editing)
@@ -804,7 +804,7 @@ class SellerApi extends BaseApiController
         // Check if seller is blocked
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if ($currentUser && !empty($currentUser['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_has_been_restricted_by_the_administrator', 'Your seller role has been restricted by the administrator.')], 403);
         }
 
         $data = $this->request->getJSON(true) ?? [];
@@ -817,7 +817,7 @@ class SellerApi extends BaseApiController
         $offer = $query->get()->getRowArray();
 
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_not_found_or_permission_denied', 'Offer not found or permission denied')], 404);
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $offerType = $offer['offer_type'] ?? $product['listing_type'];
 
@@ -825,7 +825,7 @@ class SellerApi extends BaseApiController
         $acceptanceLimitDays = (float) getSystemSetting('offer_acceptance_limit_days', 7);
         $createdTs = strtotime($offer['created_at']);
         if (time() > $createdTs + ($acceptanceLimitDays * 86400)) {
-            return $this->respond(['success' => false, 'message' => 'This offer has expired.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('this_offer_has_expired', 'This offer has expired.')], 400);
         }
 
         // Prevent acceptance if the product is already sold (for sale) or booked (for rent) during overlapping dates
@@ -877,7 +877,7 @@ class SellerApi extends BaseApiController
         $orderId = $db->insertID();
 
         if (!$orderId) {
-            return $this->respond(['success' => false, 'message' => 'Failed to create order'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_create_order', 'Failed to create order')], 500);
         }
 
         $db->table('order_status_history')->insert([
@@ -892,7 +892,7 @@ class SellerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $offer['buyer_id'],
             'title' => 'Offer Accepted!',
-            'message' => 'Your offer of ₹' . $offer['offer_price'] . ' on "' . ($product['title'] ?? '') . '" has been accepted.',
+            'message' => getAppMessage('your_offer_of', 'Your offer of ₹') . $offer['offer_price'] . ' on "' . ($product['title'] ?? '') . '" has been accepted.',
             'type' => 'offer',
             'related_id' => $id,
             'is_read' => 0,
@@ -945,7 +945,7 @@ class SellerApi extends BaseApiController
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Offer accepted, order created', 'data' => ['order_id' => $orderId]]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('offer_accepted_order_created', 'Offer accepted, order created'), 'data' => ['order_id' => $orderId]]);
     }
 
     /**
@@ -961,7 +961,7 @@ class SellerApi extends BaseApiController
         // Check if seller is blocked
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if ($currentUser && !empty($currentUser['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_has_been_restricted_by_the_administrator', 'Your seller role has been restricted by the administrator.')], 403);
         }
 
         $data = $this->request->getJSON(true) ?? [];
@@ -974,17 +974,17 @@ class SellerApi extends BaseApiController
         $offer = $query->get()->getRowArray();
 
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_not_found_or_permission_denied', 'Offer not found or permission denied')], 404);
         // Allow date suggestions on pending and negotiating offers
         if (!in_array($offer['status'], ['pending', 'negotiating']))
-            return $this->respond(['success' => false, 'message' => 'Date suggestions are only allowed on pending or negotiating offers'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('date_suggestions_are_only_allowed_on_pending_or_negotiating', 'Date suggestions are only allowed on pending or negotiating offers')], 400);
 
         $newStart = $data['rental_start_date'] ?? null;
         $newEnd = $data['rental_end_date'] ?? null;
         $remarks = $data['remarks'] ?? '';
 
         if (!$newStart || !$newEnd) {
-            return $this->respond(['success' => false, 'message' => 'Both start and end dates are required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('both_start_and_end_dates_are_required', 'Both start and end dates are required')], 400);
         }
 
         // Enforce minimum rental days from system settings
@@ -1005,7 +1005,7 @@ class SellerApi extends BaseApiController
             ->countAllResults();
 
         if ($overlapping > 0) {
-            return $this->respond(['success' => false, 'message' => 'The suggested dates conflict with an existing booking'], 409);
+            return $this->respond(['success' => false, 'message' => getAppMessage('the_suggested_dates_conflict_with_an_existing_booking', 'The suggested dates conflict with an existing booking')], 409);
         }
 
         // Recalculate price based on suggested nights × rental cost
@@ -1045,14 +1045,14 @@ class SellerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $offer['buyer_id'],
             'title' => 'Seller Suggested New Dates',
-            'message' => 'The seller has suggested new rental dates for "' . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ' (Price: ₹' . number_format($newPrice, 2) . '). Please review and accept or decline.',
+            'message' => getAppMessage('the_seller_has_suggested_new_rental_dates_for', 'The seller has suggested new rental dates for "') . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ' (Price: ₹' . number_format($newPrice, 2) . '). Please review and accept or decline.',
             'type' => 'offer',
             'related_id' => $id,
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Date suggestion sent to buyer']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('date_suggestion_sent_to_buyer', 'Date suggestion sent to buyer')]);
     }
 
     /**
@@ -1065,7 +1065,7 @@ class SellerApi extends BaseApiController
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if ($jwtUser['role'] !== 'super_admin' && (int) ($user['blocked_seller'] ?? 0) === 1) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role is currently blocked. Access restricted.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_is_currently_blocked_access_restricted', 'Your seller role is currently blocked. Access restricted.')], 403);
         }
 
         $data = $this->request->getJSON(true) ?? [];
@@ -1078,7 +1078,7 @@ class SellerApi extends BaseApiController
         $offer = $query->get()->getRowArray();
 
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found or permission denied'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_not_found_or_permission_denied', 'Offer not found or permission denied')], 404);
 
         if ($offer['status'] === 'accepted') {
             // Seller retraction: only allowed within the rejection window
@@ -1086,11 +1086,11 @@ class SellerApi extends BaseApiController
             // Fall back to updated_at for legacy offers accepted before accepted_at column was populated
             $acceptedAt = !empty($offer['accepted_at']) ? $offer['accepted_at'] : ($offer['updated_at'] ?? null);
             if (!$acceptedAt) {
-                return $this->respond(['success' => false, 'message' => 'Rejection window unavailable for this offer'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('rejection_window_unavailable_for_this_offer', 'Rejection window unavailable for this offer')], 400);
             }
             $windowExpiry = strtotime($acceptedAt) + ($rejectionWindowHours * 3600);
             if (time() > $windowExpiry) {
-                return $this->respond(['success' => false, 'message' => 'Rejection window has expired. You can no longer retract this accepted offer.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('rejection_window_has_expired_you_can_no_longer_retract_this', 'Rejection window has expired. You can no longer retract this accepted offer.')], 400);
             }
 
             // Cancel the linked order (if any) that is still in pending/unpaid state
@@ -1170,7 +1170,7 @@ class SellerApi extends BaseApiController
                     $db->table('notifications')->insert([
                         'user_id'    => $rv['buyer_id'],
                         'title'      => 'Offer Reopened',
-                        'message'    => 'Good news! The seller has retracted their acceptance on "' . ($product['title'] ?? '') . '". Your offer is now active again.',
+                        'message'    => getAppMessage('good_news_the_seller_has_retracted_their_acceptance_on', 'Good news! The seller has retracted their acceptance on "') . ($product['title'] ?? '') . '". Your offer is now active again.',
                         'type'       => 'offer',
                         'related_id' => $rv['id'],
                         'is_read'    => 0,
@@ -1188,18 +1188,18 @@ class SellerApi extends BaseApiController
             $db->table('notifications')->insert([
                 'user_id' => $offer['buyer_id'],
                 'title' => 'Offer Retracted',
-                'message' => 'The seller has retracted their acceptance of your offer on "' . ($product['title'] ?? '') . '".' . ($data['remarks'] ? ' Reason: ' . $data['remarks'] : ''),
+                'message' => getAppMessage('the_seller_has_retracted_their_acceptance_of_your_offer_on', 'The seller has retracted their acceptance of your offer on "') . ($product['title'] ?? '') . '".' . ($data['remarks'] ? ' Reason: ' . $data['remarks'] : ''),
                 'type' => 'offer',
                 'related_id' => $id,
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
 
-            return $this->respond(['success' => true, 'message' => 'Acceptance retracted. Offer has been rejected.']);
+            return $this->respond(['success' => true, 'message' => getAppMessage('acceptance_retracted_offer_has_been_rejected', 'Acceptance retracted. Offer has been rejected.')]);
         }
 
         if ($offer['status'] !== 'pending') {
-            return $this->respond(['success' => false, 'message' => 'Only pending or accepted (within window) offers can be rejected'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_pending_or_accepted_within_window_offers_can_be_rejecte', 'Only pending or accepted (within window) offers can be rejected')], 400);
         }
 
         $db->table('offers')->where('id', $id)->update([
@@ -1214,14 +1214,14 @@ class SellerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $offer['buyer_id'],
             'title' => 'Offer Rejected',
-            'message' => 'Your offer on "' . ($product['title'] ?? '') . '" was rejected.' . ($data['remarks'] ? ' Reason: ' . $data['remarks'] : ''),
+            'message' => getAppMessage('your_offer_on', 'Your offer on "') . ($product['title'] ?? '') . '" was rejected.' . ($data['remarks'] ? ' Reason: ' . $data['remarks'] : ''),
             'type' => 'offer',
             'related_id' => $id,
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Offer rejected']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('offer_rejected', 'Offer rejected')]);
     }
 
     /**
@@ -1275,7 +1275,7 @@ class SellerApi extends BaseApiController
 
         $offer = $db->table('offers')->where('id', $offerId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_not_found', 'Offer not found')], 404);
 
         $messages = $db->table('offer_messages om')
             ->select('om.*, u.name as sender_name')
@@ -1300,20 +1300,20 @@ class SellerApi extends BaseApiController
 
         $offer = $db->table('offers')->where('id', $offerId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_not_found', 'Offer not found')], 404);
 
         $file = $this->request->getFile('file');
         if (!$file || !$file->isValid()) {
-            return $this->respond(['success' => false, 'message' => 'No valid file uploaded'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_valid_file_uploaded', 'No valid file uploaded')], 400);
         }
 
         $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'mov'];
         if (!in_array(strtolower($file->getClientExtension()), $allowed)) {
-            return $this->respond(['success' => false, 'message' => 'File type not allowed'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('file_type_not_allowed', 'File type not allowed')], 400);
         }
 
         if ($file->getSize() > 10 * 1024 * 1024) {
-            return $this->respond(['success' => false, 'message' => 'File too large. Max 10 MB.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('file_too_large_max_10_mb', 'File too large. Max 10 MB.')], 400);
         }
 
         $uploadPath = FCPATH . 'uploads/chat/';
@@ -1340,7 +1340,7 @@ class SellerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $offer['buyer_id'],
             'title' => 'Seller sent a file',
-            'message' => 'Seller shared media on your offer for "' . ($product['title'] ?? '') . '".',
+            'message' => getAppMessage('seller_shared_media_on_your_offer_for', 'Seller shared media on your offer for "') . ($product['title'] ?? '') . '".',
             'type' => 'offer',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
@@ -1360,18 +1360,18 @@ class SellerApi extends BaseApiController
         // Check if seller is blocked
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if ($currentUser && !empty($currentUser['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_has_been_restricted_by_the_administrator', 'Your seller role has been restricted by the administrator.')], 403);
         }
 
         $body = $this->request->getJSON(true) ?? [];
 
         $offer = $db->table('offers')->where('id', $offerId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_not_found', 'Offer not found')], 404);
 
         $message = trim($body['message'] ?? '');
         if ($message === '')
-            return $this->respond(['success' => false, 'message' => 'Message cannot be empty'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('message_cannot_be_empty', 'Message cannot be empty')], 400);
 
         $db->table('offer_messages')->insert([
             'offer_id' => $offerId,
@@ -1386,13 +1386,13 @@ class SellerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $offer['buyer_id'],
             'title' => 'New message from seller',
-            'message' => 'Seller sent a message on your offer for "' . ($product['title'] ?? '') . '".',
+            'message' => getAppMessage('seller_sent_a_message_on_your_offer_for', 'Seller sent a message on your offer for "') . ($product['title'] ?? '') . '".',
             'type' => 'offer',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Message sent']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('message_sent', 'Message sent')]);
     }
 
     /**
@@ -1405,9 +1405,9 @@ class SellerApi extends BaseApiController
 
         $order = $db->table('orders')->where('id', $orderId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$order)
-            return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('order_not_found', 'Order not found')], 404);
         if ($order['status'] !== 'confirmed')
-            return $this->respond(['success' => false, 'message' => 'Order can only be dispatched after payment is received'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('order_can_only_be_dispatched_after_payment_is_received', 'Order can only be dispatched after payment is received')], 400);
 
         $db->table('orders')->where('id', $orderId)->update(['status' => 'dispatched', 'dispatched_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s')]);
 
@@ -1422,13 +1422,13 @@ class SellerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $order['buyer_id'],
             'title' => 'Order Dispatched',
-            'message' => 'Your order #' . $orderId . ' has been dispatched!',
+            'message' => getAppMessage('your_order', 'Your order #') . $orderId . ' has been dispatched!',
             'type' => 'order',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Order marked as dispatched']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('order_marked_as_dispatched', 'Order marked as dispatched')]);
     }
 
     /**
@@ -1442,13 +1442,13 @@ class SellerApi extends BaseApiController
 
         $order = $db->table('orders')->where('id', $orderId)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$order)
-            return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('order_not_found', 'Order not found')], 404);
         if ($order['status'] !== 'dispatched')
-            return $this->respond(['success' => false, 'message' => 'Order can only be confirmed after dispatching'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('order_can_only_be_confirmed_after_dispatching', 'Order can only be confirmed after dispatching')], 400);
 
         $photo = $this->request->getFile('delivery_photo');
         if (!$photo || !$photo->isValid()) {
-            return $this->respond(['success' => false, 'message' => 'A delivery photograph is required to confirm delivery'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('a_delivery_photograph_is_required_to_confirm_delivery', 'A delivery photograph is required to confirm delivery')], 400);
         }
 
         $uploadPath = FCPATH . 'uploads/delivery/';
@@ -1475,13 +1475,13 @@ class SellerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $order['buyer_id'],
             'title' => 'Order Delivered',
-            'message' => 'Your order #' . $orderId . ' has been delivered! You can now leave a review.',
+            'message' => getAppMessage('your_order', 'Your order #') . $orderId . ' has been delivered! You can now leave a review.',
             'type' => 'order',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Delivery confirmed successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('delivery_confirmed_successfully', 'Delivery confirmed successfully')]);
     }
 
     /**
@@ -1495,16 +1495,16 @@ class SellerApi extends BaseApiController
         // Check if seller is blocked
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if ($currentUser && !empty($currentUser['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_has_been_restricted_by_the_administrator', 'Your seller role has been restricted by the administrator.')], 403);
         }
 
         $product = $db->table('products')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$product)
-            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found')], 404);
 
         $hasOrders = $db->table('orders')->where('product_id', $id)->whereNotIn('status', ['cancelled', 'completed'])->countAllResults();
         if ($hasOrders > 0)
-            return $this->respond(['success' => false, 'message' => 'Cannot delete product with active orders'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('cannot_delete_product_with_active_orders', 'Cannot delete product with active orders')], 400);
 
         // Delete physical image files from disk
         $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
@@ -1549,7 +1549,7 @@ class SellerApi extends BaseApiController
         $db->table('offers')->where('product_id', $id)->where('status', 'pending')->update(['status' => 'cancelled']);
         $db->table('products')->where('id', $id)->delete();
 
-        return $this->respond(['success' => true, 'message' => 'Product deleted']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('product_deleted', 'Product deleted')]);
     }
 
     /**
@@ -1565,7 +1565,7 @@ class SellerApi extends BaseApiController
         // Check if seller is blocked (only for regular sellers)
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $currentUser && !empty($currentUser['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role has been restricted by the administrator.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_has_been_restricted_by_the_administrator', 'Your seller role has been restricted by the administrator.')], 403);
         }
 
         // Admins/superadmins can edit any product, sellers can only edit their own
@@ -1575,7 +1575,7 @@ class SellerApi extends BaseApiController
             $product = $db->table('products')->where('id', $id)->where('seller_id', $jwtUser['user_id'])->get()->getRowArray();
         }
         if (!$product)
-            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found')], 404);
 
         // If the product has never been approved (still pending) or was rejected,
         // apply changes directly for ALL users — no edit request needed.
@@ -1605,7 +1605,7 @@ class SellerApi extends BaseApiController
 
         if (!empty($requiredAttributes)) {
             if (!is_array($specArray) || empty($specArray)) {
-                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
+                return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
             }
 
             $missingAttributes = [];
@@ -1616,7 +1616,7 @@ class SellerApi extends BaseApiController
             }
 
             if (!empty($missingAttributes)) {
-                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
+                return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
             }
         }
 
@@ -1629,7 +1629,7 @@ class SellerApi extends BaseApiController
             if (!$this->validateBrandListingType($db, 'orignal_brands', $orignalBrandId, $listingTypeId)) {
                 return $this->respond([
                     'success' => false, 
-                    'message' => 'The selected original brand is not available for this listing type. Please select a different brand or change the listing type.'
+                    'message' => getAppMessage('the_selected_original_brand_is_not_available_for_this_listin', 'The selected original brand is not available for this listing type. Please select a different brand or change the listing type.')
                 ], 422);
             }
         }
@@ -1696,7 +1696,7 @@ class SellerApi extends BaseApiController
             if (empty($finalBills)) {
                 return $this->respond([
                     'success' => false,
-                    'message' => 'Please upload a bill image or uncheck "I have a bill".',
+                    'message' => getAppMessage('please_upload_a_bill_image_or_uncheck_i_have_a_bill', 'Please upload a bill image or uncheck "I have a bill".'),
                     'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
                 ], 422);
             }
@@ -1785,7 +1785,7 @@ class SellerApi extends BaseApiController
                 ]);
             }
 
-            return $this->respond(['success' => true, 'message' => 'Product updated successfully']);
+            return $this->respond(['success' => true, 'message' => getAppMessage('product_updated_successfully', 'Product updated successfully')]);
         }
 
         // ── EDIT REQUEST PATH (approved products) ────────────────────────────────
@@ -1937,7 +1937,7 @@ class SellerApi extends BaseApiController
             $db->table('notifications')->insert([
                 'user_id' => $admin['id'],
                 'title' => 'Product Edit Request',
-                'message' => 'A seller has submitted an edit request for product "' . ($product['title'] ?? 'ID:' . $id) . '" and it is pending your review.',
+                'message' => getAppMessage('a_seller_has_submitted_an_edit_request_for_product', 'A seller has submitted an edit request for product "') . ($product['title'] ?? 'ID:' . $id) . '" and it is pending your review.',
                 'type' => 'product_edit',
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
@@ -1962,11 +1962,11 @@ class SellerApi extends BaseApiController
 
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
         if (!$product)
-            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found')], 404);
 
         // Check permissions: super_admin/admin can update any product, regular sellers can only update their own
         if (!in_array($jwtUser['role'], ['super_admin', 'admin', 'superadmin']) && $product['seller_id'] != $jwtUser['user_id']) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         // Sellers can freely update pending/rejected products (no approval gate needed).
@@ -2007,7 +2007,7 @@ class SellerApi extends BaseApiController
         ];
 
         if (!$this->validate($rules, $mappedData)) {
-            return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => $this->validator->getErrors()], 422);
+            return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => $this->validator->getErrors()], 422);
         }
 
         // Validate product images for update (ensure at least one image remains)
@@ -2024,7 +2024,7 @@ class SellerApi extends BaseApiController
         }
 
         if ($existingImages - $deletedCount + $newImageCount === 0) {
-            return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['product_images' => 'At least one product image is required']], 422);
+            return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => ['product_images' => 'At least one product image is required']], 422);
         }
 
         $updateData = $this->cleanProductData($data, $db);
@@ -2067,7 +2067,7 @@ class SellerApi extends BaseApiController
 
         if (!empty($requiredAttributes)) {
             if (!is_array($specArray) || empty($specArray)) {
-                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
+                return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $requiredAttributes)]], 422);
             }
 
             $missingAttributes = [];
@@ -2078,7 +2078,7 @@ class SellerApi extends BaseApiController
             }
 
             if (!empty($missingAttributes)) {
-                return $this->respond(['success' => false, 'message' => 'Validation failed', 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
+                return $this->respond(['success' => false, 'message' => getAppMessage('validation_failed', 'Validation failed'), 'errors' => ['specifications' => 'Required attributes are missing: ' . implode(', ', $missingAttributes)]], 422);
             }
         }
 
@@ -2091,7 +2091,7 @@ class SellerApi extends BaseApiController
             if (!$this->validateBrandListingType($db, 'orignal_brands', $orignalBrandId, $listingTypeId)) {
                 return $this->respond([
                     'success' => false, 
-                    'message' => 'The selected original brand is not available for this listing type. Please select a different brand or change the listing type.'
+                    'message' => getAppMessage('the_selected_original_brand_is_not_available_for_this_listin', 'The selected original brand is not available for this listing type. Please select a different brand or change the listing type.')
                 ], 422);
             }
         }
@@ -2240,7 +2240,7 @@ class SellerApi extends BaseApiController
                 if (empty($finalBills)) {
                     return $this->respond([
                         'success' => false,
-                        'message' => 'Please upload a bill image or uncheck "I have a bill".',
+                        'message' => getAppMessage('please_upload_a_bill_image_or_uncheck_i_have_a_bill', 'Please upload a bill image or uncheck "I have a bill".'),
                         'errors' => ['has_bill' => 'Please upload a bill image or uncheck "I have a bill".']
                     ], 422);
                 }
@@ -2249,7 +2249,7 @@ class SellerApi extends BaseApiController
             }
 
             $db->table('products')->where('id', $id)->update($updateData);
-            return $this->respond(['success' => true, 'message' => 'Product updated successfully']);
+            return $this->respond(['success' => true, 'message' => getAppMessage('product_updated_successfully', 'Product updated successfully')]);
         }
 
         // Status logic for APPROVED products only:
@@ -2395,7 +2395,7 @@ class SellerApi extends BaseApiController
                 $db->table('notifications')->insert([
                     'user_id' => $admin['id'],
                     'title' => 'Product Edit Request',
-                    'message' => 'An admin has submitted an edit request for product "' . ($product['title'] ?? 'ID:' . $id) . '" and it is pending your review.',
+                    'message' => getAppMessage('an_admin_has_submitted_an_edit_request_for_product', 'An admin has submitted an edit request for product "') . ($product['title'] ?? 'ID:' . $id) . '" and it is pending your review.',
                     'type' => 'product_edit',
                     'is_read' => 0,
                     'created_at' => date('Y-m-d H:i:s'),
@@ -2405,7 +2405,7 @@ class SellerApi extends BaseApiController
             // Update product with edit_request = pending
             $db->table('products')->where('id', $id)->update($updateData);
 
-            return $this->respond(['success' => true, 'message' => 'Edit request submitted for approval']);
+            return $this->respond(['success' => true, 'message' => getAppMessage('edit_request_submitted_for_approval', 'Edit request submitted for approval')]);
         } elseif ($reviewRequired) {
             $updateData['status'] = 'pending';
             $roleReason = ($jwtUser['role'] === 'both') ? 'both_edit' : 'seller_edit';
@@ -2478,7 +2478,7 @@ class SellerApi extends BaseApiController
                 $db->table('notifications')->insert([
                     'user_id' => $admin['id'],
                     'title' => 'Product Edit Request',
-                    'message' => 'A user has submitted an edit request for product "' . ($product['title'] ?? 'ID:' . $id) . '" and it is pending your review.',
+                    'message' => getAppMessage('a_user_has_submitted_an_edit_request_for_product', 'A user has submitted an edit request for product "') . ($product['title'] ?? 'ID:' . $id) . '" and it is pending your review.',
                     'type' => 'product_edit',
                     'is_read' => 0,
                     'created_at' => date('Y-m-d H:i:s'),
@@ -2513,7 +2513,7 @@ class SellerApi extends BaseApiController
 
         $product = $builder->get()->getRowArray();
         if (!$product)
-            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found')], 404);
 
         $images = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
 
@@ -2578,20 +2578,20 @@ class SellerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         if ($reporter === $reportedId) {
-            return $this->respond(['success' => false, 'message' => 'You cannot report yourself'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('you_cannot_report_yourself', 'You cannot report yourself')], 400);
         }
 
         $reported = $db->table('users')->where('id', $reportedId)->get()->getRowArray();
         if (!$reported) {
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
         }
         if (in_array($reported['role'] ?? '', ['admin', 'super_admin'])) {
-            return $this->respond(['success' => false, 'message' => 'Cannot report an admin'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('cannot_report_an_admin', 'Cannot report an admin')], 400);
         }
 
         $reason = trim($this->request->getPost('reason') ?? '');
         if (empty($reason)) {
-            return $this->respond(['success' => false, 'message' => 'A reason is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('a_reason_is_required', 'A reason is required')], 400);
         }
 
         // Prevent duplicate report within 7 days
@@ -2601,7 +2601,7 @@ class SellerApi extends BaseApiController
             ->where('created_at >=', date('Y-m-d H:i:s', strtotime('-7 days')))
             ->countAllResults();
         if ($alreadyReported > 0) {
-            return $this->respond(['success' => false, 'message' => 'You have already reported this user in the past 7 days'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('you_have_already_reported_this_user_in_the_past_7_days', 'You have already reported this user in the past 7 days')], 400);
         }
 
         // Assign to a random admin or superadmin
@@ -2641,7 +2641,7 @@ class SellerApi extends BaseApiController
                 $db->table('notifications')->insert([
                     'user_id' => $admin['id'],
                     'title' => 'User Auto-Suspended',
-                    'message' => 'User "' . $reported['name'] . '" has been auto-suspended after receiving ' . $weeklyReports . ' reports in 7 days.',
+                    'message' => getAppMessage('user', 'User "') . $reported['name'] . '" has been auto-suspended after receiving ' . $weeklyReports . ' reports in 7 days.',
                     'type' => 'user_suspended',
                     'is_read' => 0,
                     'created_at' => date('Y-m-d H:i:s'),
@@ -2652,14 +2652,14 @@ class SellerApi extends BaseApiController
             $db->table('notifications')->insert([
                 'user_id' => $assignedAdminId,
                 'title' => 'New User Report',
-                'message' => 'A seller reported user "' . $reported['name'] . '". Reason: ' . substr($reason, 0, 100),
+                'message' => getAppMessage('a_seller_reported_user', 'A seller reported user "') . $reported['name'] . '". Reason: ' . substr($reason, 0, 100),
                 'type' => 'user_report',
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Report submitted successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('report_submitted_successfully', 'Report submitted successfully')]);
     }
 
     /**
@@ -2674,7 +2674,7 @@ class SellerApi extends BaseApiController
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if ($jwtUser['role'] !== 'super_admin' && (int) ($user['blocked_seller'] ?? 0) === 1) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role is currently blocked. Access restricted.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_is_currently_blocked_access_restricted', 'Your seller role is currently blocked. Access restricted.')], 403);
         }
 
         $data = $this->request->getPost() ?: $this->request->getJSON(true);
@@ -2682,18 +2682,18 @@ class SellerApi extends BaseApiController
         $rating = (float) ($data['rating'] ?? 5.0);
 
         if ($rating < 1 || $rating > 5) {
-            return $this->respond(['success' => false, 'message' => 'Rating must be between 1 and 5'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('rating_must_be_between_1_and_5', 'Rating must be between 1 and 5')], 400);
         }
 
         $offer = $db->table('offers')->where('id', $offerId)->get()->getRowArray();
         if (!$offer || $offer['seller_id'] != $userId) {
-            return $this->respond(['success' => false, 'message' => 'Invalid offer'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_offer', 'Invalid offer')], 404);
         }
         if ($offer['status'] !== 'accepted') {
-            return $this->respond(['success' => false, 'message' => 'Offer must be accepted before rating'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_must_be_accepted_before_rating', 'Offer must be accepted before rating')], 400);
         }
         if (isset($offer['seller_rated_buyer']) && $offer['seller_rated_buyer']) {
-            return $this->respond(['success' => false, 'message' => 'You have already rated this buyer'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('you_have_already_rated_this_buyer', 'You have already rated this buyer')], 400);
         }
 
         $limitSetting = $db->table('system_settings')->where('setting_key', 'seller_rating_period_days')->get()->getRowArray();
@@ -2701,7 +2701,7 @@ class SellerApi extends BaseApiController
 
         if (!empty($offer['accepted_at'])) {
             if (time() > strtotime($offer['accepted_at']) + ($ratingPeriod * 86400)) {
-                return $this->respond(['success' => false, 'message' => 'Rating window has expired'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('rating_window_has_expired', 'Rating window has expired')], 400);
             }
         }
 
@@ -2731,10 +2731,10 @@ class SellerApi extends BaseApiController
         $db->transComplete();
 
         if ($db->transStatus() === false) {
-            return $this->respond(['success' => false, 'message' => 'Failed to save rating'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_save_rating', 'Failed to save rating')], 500);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Buyer rated successfully!']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('buyer_rated_successfully', 'Buyer rated successfully!')]);
     }
     /**
      * Helper to clean and map product data from request to database fields
@@ -2806,18 +2806,18 @@ class SellerApi extends BaseApiController
             ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'seller'])
             ->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Plan not found or inactive'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found_or_inactive', 'Plan not found or inactive')], 404);
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
 
         // 1. Account global block check
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_account_is_blocked_please_contact_support', 'Your account is blocked. Please contact support.')], 403);
         }
 
         // 2. Check if seller role is explicitly blocked by superadmin
         if (!empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_is_blocked_by_superadmin_you_cannot_purchas', 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.')], 403);
         }
 
         // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
@@ -2827,7 +2827,7 @@ class SellerApi extends BaseApiController
 
         if (!$isGlobalAdmin) {
             if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
-                return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('seller_subscription_plan_requires_seller_role_please_enable', 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.')], 403);
             }
         }
 
@@ -2927,7 +2927,7 @@ class SellerApi extends BaseApiController
             ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'seller'])
             ->get()->getRowArray();
         if (!$plan) {
-            return $this->respond(['success' => false, 'message' => 'Plan not found or inactive'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found_or_inactive', 'Plan not found or inactive')], 404);
         }
 
         // Verify plan is actually free
@@ -2943,7 +2943,7 @@ class SellerApi extends BaseApiController
 
         $total = max(0, (float) $plan['price'] + $totalCharges);
         if ($total > 0) {
-            return $this->respond(['success' => false, 'message' => 'This plan requires payment'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('this_plan_requires_payment', 'This plan requires payment')], 400);
         }
 
         // Block if user already has an active, non-exhausted SELLER subscription
@@ -2960,7 +2960,7 @@ class SellerApi extends BaseApiController
         );
         $activeSub = ($query && is_object($query)) ? $query->getRowArray() : null;
         if ($activeSub) {
-            return $this->respond(['success' => false, 'message' => 'You already have an active seller subscription. Please wait until it expires or is exhausted before activating a new plan.'], 409);
+            return $this->respond(['success' => false, 'message' => getAppMessage('you_already_have_an_active_seller_subscription_please_wait_u', 'You already have an active seller subscription. Please wait until it expires or is exhausted before activating a new plan.')], 409);
         }
 
         // Activate the subscription
@@ -2985,10 +2985,10 @@ class SellerApi extends BaseApiController
             'updated_at'       => $now,
         ]);
         if (!$inserted) {
-            return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_activate_subscription', 'Failed to activate subscription')], 500);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Plan activated successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_activated_successfully', 'Plan activated successfully')]);
     }
 
     /**
@@ -3004,19 +3004,19 @@ class SellerApi extends BaseApiController
         $planId = (int) ($data['plan_id'] ?? 0);
 
         if (!$code)
-            return $this->respond(['success' => false, 'message' => 'Coupon code is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_is_required', 'Coupon code is required')], 400);
 
         $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found', 'Plan not found')], 404);
 
         $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
         if (!$coupon)
-            return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_or_expired_coupon_code', 'Invalid or expired coupon code.')]);
 
         $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
         if ($cpnExpiresAt && strtotime($cpnExpiresAt) < time())
-            return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_has_expired', 'Coupon has expired.')]);
 
         // Per-user usage limit: check how many times THIS user has used this coupon
         if ($coupon['usage_limit'] !== null && (int)$coupon['usage_limit'] > 0) {
@@ -3026,12 +3026,12 @@ class SellerApi extends BaseApiController
                 ->where('user_id', $userId)
                 ->countAllResults();
             if ($userUsedCount >= (int)$coupon['usage_limit'])
-                return $this->respond(['success' => false, 'message' => 'You have already used this coupon the maximum number of times.']);
+                return $this->respond(['success' => false, 'message' => getAppMessage('you_have_already_used_this_coupon_the_maximum_number_of_time', 'You have already used this coupon the maximum number of times.')]);
         }
 
         $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
         if ((float) $plan['price'] < $cpnMinPurchase)
-            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
+            return $this->respond(['success' => false, 'message' => getAppMessage('minimum_purchase_for_this_coupon_is', 'Minimum purchase for this coupon is ₹') . $cpnMinPurchase]);
 
         $discountValue = 0;
         if ($coupon['discount_type'] === 'percentage') {
@@ -3044,7 +3044,7 @@ class SellerApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'Coupon applied successfully!',
+            'message' => getAppMessage('coupon_applied_successfully', 'Coupon applied successfully!'),
             'data' => ['discount' => round($discountValue, 2)],
         ]);
     }
@@ -3068,7 +3068,7 @@ class SellerApi extends BaseApiController
             ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'seller'])
             ->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_or_inactive_plan', 'Invalid or inactive plan.')], 404);
 
         // Role validation: check if user can purchase this plan based on their role
         $currentUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
@@ -3078,7 +3078,7 @@ class SellerApi extends BaseApiController
 
         // 1. Account global block check
         if (!empty($currentUser['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_account_is_blocked_please_contact_support', 'Your account is blocked. Please contact support.')], 403);
         }
                // Referral discount restriction: Check if user has active referral discount for this plan
         $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
@@ -3110,7 +3110,7 @@ class SellerApi extends BaseApiController
                         if ($refDiscount >= $basePrice && $basePrice > 0) {
                             return $this->respond([
                                 'success' => false,
-                                'message' => 'Coupon code cannot be applied when referral discount covers the full plan price.'
+                                'message' => getAppMessage('coupon_code_cannot_be_applied_when_referral_discount_covers', 'Coupon code cannot be applied when referral discount covers the full plan price.')
                             ], 400);
                         }
                         // Partial referral: coupon is allowed — both discounts will stack
@@ -3123,13 +3123,13 @@ class SellerApi extends BaseApiController
 
         // 2. Check if seller role is explicitly blocked by superadmin
         if (!empty($currentUser['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_is_blocked_by_superadmin_you_cannot_purchas', 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.')], 403);
         }
 
         // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
         if (!$isGlobalAdmin) {
             if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
-                return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('seller_subscription_plan_requires_seller_role_please_enable', 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.')], 403);
             }
         }
 
@@ -3280,7 +3280,7 @@ class SellerApi extends BaseApiController
             ]);
         }
 
-        return $this->respond(['success' => false, 'message' => 'Failed to initiate payment. Please try again.']);
+        return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_initiate_payment_please_try_again', 'Failed to initiate payment. Please try again.')]);
     }
 
     /**
@@ -3295,7 +3295,7 @@ class SellerApi extends BaseApiController
         log_message('error', 'verifyPayment called with merchantOrderId: ' . $merchantOrderId);
 
         if (!$merchantOrderId)
-            return $this->respond(['status' => 'error', 'message' => 'No transaction ID provided'], 400);
+            return $this->respond(['status' => 'error', 'message' => getAppMessage('no_transaction_id_provided', 'No transaction ID provided')], 400);
 
         $dbSub = $db->table('user_subscriptions')
             ->where('merchant_transaction_id', $merchantOrderId)
@@ -3303,14 +3303,14 @@ class SellerApi extends BaseApiController
 
         if (!$dbSub) {
             log_message('error', 'Transaction not found for merchantOrderId: ' . $merchantOrderId);
-            return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
+            return $this->respond(['status' => 'error', 'message' => getAppMessage('transaction_not_found', 'Transaction not found')], 404);
         }
 
         log_message('error', 'Found subscription record: ' . json_encode($dbSub));
 
         if ($dbSub['is_active'] == 1 && $dbSub['payment_status'] === 'paid') {
             log_message('error', 'Subscription already active for merchantOrderId: ' . $merchantOrderId);
-            return $this->respond(['status' => 'success', 'message' => 'Subscription is already active']);
+            return $this->respond(['status' => 'success', 'message' => getAppMessage('subscription_is_already_active', 'Subscription is already active')]);
         }
 
         $phonepe = new \App\Libraries\PhonePe();
@@ -3438,7 +3438,7 @@ class SellerApi extends BaseApiController
                     }
                 }
             }
-            return $this->respond(['status' => 'success', 'message' => 'Payment successful! Subscription activated.']);
+            return $this->respond(['status' => 'success', 'message' => getAppMessage('payment_successful_subscription_activated', 'Payment successful! Subscription activated.')]);
         }
 
         if ($state === 'FAILED' || $state === 'CANCELLED') {
@@ -3446,10 +3446,10 @@ class SellerApi extends BaseApiController
                 'payment_status' => 'failed',
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
-            return $this->respond(['status' => 'failed', 'message' => 'Payment failed or was cancelled.']);
+            return $this->respond(['status' => 'failed', 'message' => getAppMessage('payment_failed_or_was_cancelled', 'Payment failed or was cancelled.')]);
         }
 
-        return $this->respond(['status' => 'pending', 'message' => 'Payment is being processed…']);
+        return $this->respond(['status' => 'pending', 'message' => getAppMessage('payment_is_being_processed', 'Payment is being processed…')]);
     }
 
     /**
@@ -3478,17 +3478,17 @@ class SellerApi extends BaseApiController
         if ($data['listing_type'] === 'sell') {
             $price = (float) ($data['price'] ?? 0);
             if (!validateSalePriceWithRules($originalPrice, $price, $usedTimes, $ltId, $cId, $scId)) {
-                return ['success' => false, 'message' => 'Selling price exceeds the maximum allowed threshold.'];
+                return ['success' => false, 'message' => getAppMessage('selling_price_exceeds_the_maximum_allowed_threshold', 'Selling price exceeds the maximum allowed threshold.')];
             }
         } elseif ($data['listing_type'] === 'rent') {
             $deposit = (float) ($data['rental_deposit'] ?? 0);
             $rentalCost = (float) ($data['rental_cost'] ?? 0);
 
             if (!validateDepositWithRules($originalPrice, $deposit, $usedTimes, $ltId, $cId, $scId)) {
-                return ['success' => false, 'message' => 'Rental deposit exceeds the maximum allowed threshold.'];
+                return ['success' => false, 'message' => getAppMessage('rental_deposit_exceeds_the_maximum_allowed_threshold', 'Rental deposit exceeds the maximum allowed threshold.')];
             }
             // if (!validateRentalCostWithRules($deposit, $rentalCost, $usedTimes, $ltId, $cId, $scId)) {
-            //     return ['success' => false, 'message' => 'Daily rental cost exceeds the maximum allowed daily cap.'];
+            //     return ['success' => false, 'message' => getAppMessage('daily_rental_cost_exceeds_the_maximum_allowed_daily_cap', 'Daily rental cost exceeds the maximum allowed daily cap.')];
             // }
         }
 

@@ -20,7 +20,7 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
-        if (empty($data['charge_name'])) return $this->respond(['success' => false, 'message' => 'Charge name is required.'], 400);
+        if (empty($data['charge_name'])) return $this->respond(['success' => false, 'message' => getAppMessage('charge_name_is_required', 'Charge name is required.')], 400);
         $db->table('platform_charges')->insert([
             'charge_name' => $data['charge_name'],
             'charge_type' => $data['charge_type'] ?? 'percentage',
@@ -28,7 +28,7 @@ class SuperAdminApi extends AdminApi
             'is_active' => 1,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
-        return $this->respond(['success' => true, 'message' => 'Charge created.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('charge_created', 'Charge created.')]);
     }
 
     public function updateCharge($id)
@@ -42,14 +42,14 @@ class SuperAdminApi extends AdminApi
         if (isset($data['is_active'])) $update['is_active'] = $data['is_active'];
         $update['updated_at'] = date('Y-m-d H:i:s');
         $db->table('platform_charges')->where('id', $id)->update($update);
-        return $this->respond(['success' => true, 'message' => 'Charge updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('charge_updated', 'Charge updated.')]);
     }
 
     public function deleteCharge($id)
     {
         $db = \Config\Database::connect();
         $db->table('platform_charges')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Charge deleted.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('charge_deleted', 'Charge deleted.')]);
     }
 
     // ── Pricing Rules ─────────────────────────────────
@@ -93,7 +93,7 @@ class SuperAdminApi extends AdminApi
         
         // Validation: filter_value is mandatory when filter_type is selected
         if (!empty($filterType) && empty($filterValue)) {
-            return $this->respond(['success' => false, 'message' => 'Filter value is required when filter type is selected'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('filter_value_is_required_when_filter_type_is_selected', 'Filter value is required when filter type is selected')], 400);
         }
         
         $filterLabel = $this->resolveFilterLabel($filterType, $filterValue);
@@ -122,7 +122,7 @@ class SuperAdminApi extends AdminApi
                ->where('filter_value', $filterValue)
                ->update(['deduction_threshold' => $row['deduction_threshold']]);
 
-            return $this->respond(['success' => true, 'message' => 'Pricing rule updated', 'id' => $id]);
+            return $this->respond(['success' => true, 'message' => getAppMessage('pricing_rule_updated', 'Pricing rule updated'), 'id' => $id]);
         } else {
             $existing = $this->checkOverlappingRules('pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max']);
             if ($existing) {
@@ -137,7 +137,7 @@ class SuperAdminApi extends AdminApi
 
             $db->table('pricing_rules')->insert($row);
             $row['id'] = $db->insertID();
-            return $this->respond(['success' => true, 'message' => 'Pricing rule created', 'id' => $row['id'], 'data' => $row]);
+            return $this->respond(['success' => true, 'message' => getAppMessage('pricing_rule_created', 'Pricing rule created'), 'id' => $row['id'], 'data' => $row]);
         }
     }
 
@@ -175,17 +175,17 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $db->table('pricing_rules')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Pricing rule deleted']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('pricing_rule_deleted', 'Pricing rule deleted')]);
     }
 
     public function togglePricingRule($id)
     {
         $model = new \App\Models\PricingRuleModel();
         $rule = $model->find((int) $id);
-        if (!$rule) return $this->respond(['success' => false, 'message' => 'Rule not found'], 404);
+        if (!$rule) return $this->respond(['success' => false, 'message' => getAppMessage('rule_not_found', 'Rule not found')], 404);
         $newStatus = $rule['is_active'] ? 0 : 1;
         $model->update((int) $id, ['is_active' => $newStatus]);
-        return $this->respond(['success' => true, 'message' => 'Rule toggled', 'is_active' => $newStatus]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('rule_toggled', 'Rule toggled'), 'is_active' => $newStatus]);
     }
 
     public function saveRentalPricingRule()
@@ -198,7 +198,7 @@ class SuperAdminApi extends AdminApi
         
         // Validation: filter_value is mandatory when filter_type is selected
         if (!empty($filterType) && empty($filterValue)) {
-            return $this->respond(['success' => false, 'message' => 'Filter value is required when filter type is selected'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('filter_value_is_required_when_filter_type_is_selected', 'Filter value is required when filter type is selected')], 400);
         }
         
         $filterLabel = $this->resolveFilterLabel($filterType, $filterValue);
@@ -229,7 +229,7 @@ class SuperAdminApi extends AdminApi
                ->where('filter_value', $filterValue)
                ->update(['deposit_deduction_threshold' => $row['deposit_deduction_threshold']]);
 
-            return $this->respond(['success' => true, 'message' => 'Rental rule updated', 'id' => $id]);
+            return $this->respond(['success' => true, 'message' => getAppMessage('rental_rule_updated', 'Rental rule updated'), 'id' => $id]);
         } else {
             $existing = $this->checkOverlappingRules('rental_pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max']);
             if ($existing) {
@@ -244,7 +244,7 @@ class SuperAdminApi extends AdminApi
                ->where('filter_value', $filterValue)
                ->update(['deposit_deduction_threshold' => $row['deposit_deduction_threshold']]);
 
-            return $this->respond(['success' => true, 'message' => 'Rental rule created', 'id' => $row['id'], 'data' => $row]);
+            return $this->respond(['success' => true, 'message' => getAppMessage('rental_rule_created', 'Rental rule created'), 'id' => $row['id'], 'data' => $row]);
         }
     }
 
@@ -252,17 +252,17 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $db->table('rental_pricing_rules')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Rental rule deleted']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('rental_rule_deleted', 'Rental rule deleted')]);
     }
 
     public function toggleRentalPricingRule($id)
     {
         $model = new \App\Models\RentalPricingRuleModel();
         $rule = $model->find((int) $id);
-        if (!$rule) return $this->respond(['success' => false, 'message' => 'Rule not found'], 404);
+        if (!$rule) return $this->respond(['success' => false, 'message' => getAppMessage('rule_not_found', 'Rule not found')], 404);
         $newStatus = $rule['is_active'] ? 0 : 1;
         $model->update((int) $id, ['is_active' => $newStatus]);
-        return $this->respond(['success' => true, 'message' => 'Rental rule toggled', 'is_active' => $newStatus]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('rental_rule_toggled', 'Rental rule toggled'), 'is_active' => $newStatus]);
     }
 
     public function bulkDeletePricingRules()
@@ -274,7 +274,7 @@ class SuperAdminApi extends AdminApi
 
         $db->query("DELETE FROM `{$table}`");
 
-        return $this->respond(['success' => true, 'message' => 'All ' . $type . ' rules deleted']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('all', 'All ') . $type . ' rules deleted']);
     }
 
     public function bulkTogglePricingRules()
@@ -288,7 +288,7 @@ class SuperAdminApi extends AdminApi
 
         $db->query("UPDATE `{$table}` SET `is_active` = {$newStatus}");
 
-        return $this->respond(['success' => true, 'message' => 'All ' . $type . ' rules ' . ($newStatus ? 'activated' : 'deactivated')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('all', 'All ') . $type . ' rules ' . ($newStatus ? 'activated' : 'deactivated')]);
     }
 
     // ── Rejection Templates ───────────────────────────
@@ -310,14 +310,14 @@ class SuperAdminApi extends AdminApi
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
         $text = trim($data['template_text'] ?? '');
         $type = $data['type'] ?? 'Products';
-        if (empty($text)) return $this->respond(['success' => false, 'message' => 'Template text is required'], 400);
+        if (empty($text)) return $this->respond(['success' => false, 'message' => getAppMessage('template_text_is_required', 'Template text is required')], 400);
         $db->table('rejection_templates')->insert([
             'template_text' => $text,
             'type'          => $type,
             'created_at'    => date('Y-m-d H:i:s'),
             'updated_at'    => date('Y-m-d H:i:s'),
         ]);
-        return $this->respond(['success' => true, 'message' => 'Template added', 'id' => $db->insertID()]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('template_added', 'Template added'), 'id' => $db->insertID()]);
     }
 
     public function updateRejectionTemplate($id)
@@ -326,20 +326,20 @@ class SuperAdminApi extends AdminApi
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
         $text = trim($data['template_text'] ?? '');
         $type = $data['type'] ?? 'Products';
-        if (empty($text)) return $this->respond(['success' => false, 'message' => 'Template text is required'], 400);
+        if (empty($text)) return $this->respond(['success' => false, 'message' => getAppMessage('template_text_is_required', 'Template text is required')], 400);
         $db->table('rejection_templates')->where('id', (int)$id)->update([
             'template_text' => $text,
             'type'          => $type,
             'updated_at'    => date('Y-m-d H:i:s'),
         ]);
-        return $this->respond(['success' => true, 'message' => 'Template updated']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('template_updated', 'Template updated')]);
     }
 
     public function deleteRejectionTemplate($id)
     {
         $db = \Config\Database::connect();
         $db->table('rejection_templates')->where('id', (int)$id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Template deleted']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('template_deleted', 'Template deleted')]);
     }
 
     // ── Offers ────────────────────────────────────────
@@ -682,24 +682,24 @@ class SuperAdminApi extends AdminApi
         $password = $json['password'] ?? $this->request->getPost('password');
 
         if (!$name || !$email || !$password) {
-            return $this->respond(['success' => false, 'message' => 'Name, email and password are required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('name_email_and_password_are_required', 'Name, email and password are required.')], 400);
         }
 
         $exists = $db->table('users')->where('email', $email)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Email already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_already_exists', 'Email already exists.')], 400);
         }
 
         if ($mobile) {
             // Check mobile doesn't already exist as primary mobile
             $mobileExists = $db->table('users')->where('mobile', $mobile)->countAllResults();
             if ($mobileExists) {
-                return $this->respond(['success' => false, 'message' => 'Mobile number already exists.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('mobile_number_already_exists', 'Mobile number already exists.')], 400);
             }
             // Check mobile doesn't already exist as alternate mobile of another user
             $altMobileExists = $db->table('users')->where('alternate_mobile', $mobile)->countAllResults();
             if ($altMobileExists) {
-                return $this->respond(['success' => false, 'message' => 'Mobile number is already used as an alternate mobile by another user.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('mobile_number_is_already_used_as_an_alternate_mobile_by_anot', 'Mobile number is already used as an alternate mobile by another user.')], 400);
             }
         }
 
@@ -716,7 +716,7 @@ class SuperAdminApi extends AdminApi
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Admin created successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('admin_created_successfully', 'Admin created successfully.')]);
     }
 
     public function updateAdmin($id)
@@ -731,18 +731,18 @@ class SuperAdminApi extends AdminApi
         $password = $json['password'] ?? $this->request->getPost('password');
 
         if (!$name || !$email) {
-            return $this->respond(['success' => false, 'message' => 'Name and email are required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('name_and_email_are_required', 'Name and email are required.')], 400);
         }
 
         $admin = $db->table('users')->where('id', $id)->where('role', 'admin')->get()->getRowArray();
         if (!$admin) {
-            return $this->respond(['success' => false, 'message' => 'Admin not found.'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
         }
 
         // Check if email already exists for another admin
         $emailExists = $db->table('users')->where('email', $email)->where('id !=', $id)->countAllResults();
         if ($emailExists) {
-            return $this->respond(['success' => false, 'message' => 'Email already exists for another user.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_already_exists_for_another_user', 'Email already exists for another user.')], 400);
         }
 
         // Check if mobile already exists for another user
@@ -750,17 +750,17 @@ class SuperAdminApi extends AdminApi
             // Check mobile doesn't already exist as primary mobile of another user
             $mobileExists = $db->table('users')->where('mobile', $mobile)->where('id !=', $id)->countAllResults();
             if ($mobileExists) {
-                return $this->respond(['success' => false, 'message' => 'Mobile number already exists for another user.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('mobile_number_already_exists_for_another_user', 'Mobile number already exists for another user.')], 400);
             }
             // Check mobile doesn't already exist as alternate mobile of another user
             $altMobileExists = $db->table('users')->where('alternate_mobile', $mobile)->where('id !=', $id)->countAllResults();
             if ($altMobileExists) {
-                return $this->respond(['success' => false, 'message' => 'Mobile number is already used as an alternate mobile by another user.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('mobile_number_is_already_used_as_an_alternate_mobile_by_anot', 'Mobile number is already used as an alternate mobile by another user.')], 400);
             }
             // Check mobile is not the same as the admin's own alternate_mobile
             $admin = $db->table('users')->where('id', $id)->get()->getRowArray();
             if ($admin && !empty($admin['alternate_mobile']) && $admin['alternate_mobile'] === $mobile) {
-                return $this->respond(['success' => false, 'message' => 'Mobile number cannot be the same as the alternate mobile number.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('mobile_number_cannot_be_the_same_as_the_alternate_mobile_num', 'Mobile number cannot be the same as the alternate mobile number.')], 400);
             }
         }
 
@@ -778,14 +778,14 @@ class SuperAdminApi extends AdminApi
 
         $db->table('users')->where('id', $id)->update($updateData);
 
-        return $this->respond(['success' => true, 'message' => 'Admin updated successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('admin_updated_successfully', 'Admin updated successfully.')]);
     }
 
     public function toggleAdminStatus($id)
     {
         $db = \Config\Database::connect();
         $admin = $db->table('users')->where('id', $id)->where('role', 'admin')->get()->getRowArray();
-        if (!$admin) return $this->respond(['success' => false, 'message' => 'Admin not found.'], 404);
+        if (!$admin) return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
 
         $newBlocked = $admin['is_blocked'] ? 0 : 1;
         $db->table('users')->where('id', $id)->update(['is_blocked' => $newBlocked]);
@@ -797,10 +797,10 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $admin = $db->table('users')->where('id', $id)->where('role', 'admin')->get()->getRowArray();
-        if (!$admin) return $this->respond(['success' => false, 'message' => 'Admin not found.'], 404);
+        if (!$admin) return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
 
         $db->table('users')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Admin deleted successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('admin_deleted_successfully', 'Admin deleted successfully.')]);
     }
 
     public function toggleAdminRights($id, $type)
@@ -816,16 +816,16 @@ class SuperAdminApi extends AdminApi
         ];
         
         $col = $columnMap[$type] ?? null;
-        if (!$col) return $this->respond(['success' => false, 'message' => 'Invalid type.'], 400);
+        if (!$col) return $this->respond(['success' => false, 'message' => getAppMessage('invalid_type', 'Invalid type.')], 400);
         
         $admin = $db->table('users')->where('id', $id)->get()->getRowArray();
-        if (!$admin) return $this->respond(['success' => false, 'message' => 'Admin not found.'], 404);
+        if (!$admin) return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
 
         $current = $admin[$col] ?? 0;
         $newValue = $current ? 0 : 1;
         $db->table('users')->where('id', $id)->update([$col => $newValue]);
 
-        return $this->respond(['success' => true, 'message' => 'Rights updated successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('rights_updated_successfully', 'Rights updated successfully.')]);
     }
 
     public function bulkToggleAdminRights()
@@ -850,12 +850,12 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         $gender = $this->request->getPost('gender_config') ?? 'optional';
-        if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
         
         // Check for duplicate
         $exists = $db->table('listing_types')->where('type_name', $name)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Listing type with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('listing_type_with_this_name_already_exists', 'Listing type with this name already exists.')], 400);
         }
         
         $data = [
@@ -877,23 +877,23 @@ class SuperAdminApi extends AdminApi
             $data['image'] = 'uploads/listing-types/' . $newName;
         }
         $db->table('listing_types')->insert($data);
-        return $this->respond(['success' => true, 'message' => 'Listing type added.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('listing_type_added', 'Listing type added.')]);
     }
 
     public function addGender()
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
-        if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
         
         // Check for duplicate
         $exists = $db->table('genders')->where('name', $name)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Gender with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('gender_with_this_name_already_exists', 'Gender with this name already exists.')], 400);
         }
         
         $db->table('genders')->insert(['name' => $name, 'created_at' => date('Y-m-d H:i:s')]);
-        return $this->respond(['success' => true, 'message' => 'Gender added.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('gender_added', 'Gender added.')]);
     }
 
     public function addProductType()
@@ -901,22 +901,22 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         $ltId = $this->request->getPost('listing_type_id');
-        if (!$name || !$ltId) return $this->respond(['success' => false, 'message' => 'Name and listing type are required.'], 400);
+        if (!$name || !$ltId) return $this->respond(['success' => false, 'message' => getAppMessage('name_and_listing_type_are_required', 'Name and listing type are required.')], 400);
 
         // Validate that listing_type_id exists in database
         $existingLt = $db->table('listing_types')->where('id', $ltId)->select('id')->get()->getRowArray();
         if (!$existingLt) {
-            return $this->respond(['success' => false, 'message' => 'Invalid listing type ID: ' . $ltId . '. This listing type does not exist in the database.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_listing_type_id', 'Invalid listing type ID: ') . $ltId . '. This listing type does not exist in the database.'], 400);
         }
 
         // Check for duplicate globally by name only (case-insensitive)
         $exists = $db->table('product_types')->where('LOWER(name)', strtolower($name))->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Product type with this name already exists. Product type names must be unique across all listing types.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_type_with_this_name_already_exists_product_type_name', 'Product type with this name already exists. Product type names must be unique across all listing types.')], 400);
         }
 
         $db->table('product_types')->insert(['name' => $name, 'listing_type_id' => $ltId, 'created_at' => date('Y-m-d H:i:s')]);
-        return $this->respond(['success' => true, 'message' => 'Product type added.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('product_type_added', 'Product type added.')]);
     }
 
     public function addCategory()
@@ -925,11 +925,11 @@ class SuperAdminApi extends AdminApi
         $name = $this->request->getPost('category_name');
         $ptIds = $this->request->getPost('product_type_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
-        if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
         
         // Validate product_type_ids is not empty
         if (empty($ptIds)) {
-            return $this->respond(['success' => false, 'message' => 'At least one product type is required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_product_type_is_required', 'At least one product type is required.')], 400);
         }
         
         // Validate that product_type_ids exist in database
@@ -938,7 +938,7 @@ class SuperAdminApi extends AdminApi
         $invalidPtIds = array_diff($ptIds, $validPtIds);
         
         if (!empty($invalidPtIds)) {
-            return $this->respond(['success' => false, 'message' => 'Invalid product type IDs: ' . implode(', ', $invalidPtIds) . '. These product types do not exist in the database.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_product_type_ids', 'Invalid product type IDs: ') . implode(', ', $invalidPtIds) . '. These product types do not exist in the database.'], 400);
         }
         
         // Check if gender is required based on listing type's gender_config
@@ -956,7 +956,7 @@ class SuperAdminApi extends AdminApi
         // Check for duplicate
         $exists = $db->table('categories')->where('category_name', $name)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Category with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('category_with_this_name_already_exists', 'Category with this name already exists.')], 400);
         }
         
         $db->table('categories')->insert([
@@ -965,7 +965,7 @@ class SuperAdminApi extends AdminApi
             'applies_to' => json_encode($appliesTo),
             'created_at' => date('Y-m-d H:i:s'),
         ]);
-        return $this->respond(['success' => true, 'message' => 'Category added.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('category_added', 'Category added.')]);
     }
 
     public function addSubCategory()
@@ -974,8 +974,8 @@ class SuperAdminApi extends AdminApi
         $name = $this->request->getPost('name');
         $catIds = $this->request->getPost('category_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
-        if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
-        if (empty($catIds)) return $this->respond(['success' => false, 'message' => 'At least one Category is required.'], 400);
+        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
+        if (empty($catIds)) return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_category_is_required', 'At least one Category is required.')], 400);
         
         // Validate that category_ids exist in database
         $existingCatIds = $db->table('categories')->whereIn('id', $catIds)->select('id')->get()->getResultArray();
@@ -983,7 +983,7 @@ class SuperAdminApi extends AdminApi
         $invalidCatIds = array_diff($catIds, $validCatIds);
         
         if (!empty($invalidCatIds)) {
-            return $this->respond(['success' => false, 'message' => 'Invalid category IDs: ' . implode(', ', $invalidCatIds) . '. These categories do not exist in the database.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_category_ids', 'Invalid category IDs: ') . implode(', ', $invalidCatIds) . '. These categories do not exist in the database.'], 400);
         }
         
         // Check if gender is required based on parent categories' listing types' gender_config
@@ -1007,7 +1007,7 @@ class SuperAdminApi extends AdminApi
             // Only make gender mandatory if categories are selected AND none of them have genders
             if (!empty($categories) && $categoriesWithGenders === 0) {
                 // All selected categories have no genders - sub-category must have genders
-                return $this->respond(['success' => false, 'message' => 'Since the selected parent category has no genders, you must select at least one gender for this sub-category.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('since_the_selected_parent_category_has_no_genders_you_must_s', 'Since the selected parent category has no genders, you must select at least one gender for this sub-category.')], 400);
             }
         }
         // If gender is not required (listing type has gender hidden), gender is optional
@@ -1015,7 +1015,7 @@ class SuperAdminApi extends AdminApi
         // Check for duplicate
         $exists = $db->table('sub_categories')->where('name', $name)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Sub-category with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('subcategory_with_this_name_already_exists', 'Sub-category with this name already exists.')], 400);
         }
         
         $db->table('sub_categories')->insert([
@@ -1024,7 +1024,7 @@ class SuperAdminApi extends AdminApi
             'applies_to' => json_encode($appliesTo),
             'created_at' => date('Y-m-d H:i:s'),
         ]);
-        return $this->respond(['success' => true, 'message' => 'Sub-category added.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('subcategory_added', 'Sub-category added.')]);
     }
 
     public function addColor()
@@ -1032,23 +1032,23 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         $hex = $this->request->getPost('hex_code');
-        if (!$name) return $this->respond(['success' => false, 'message' => 'Name is required.'], 400);
+        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
         
         // Check for duplicate by name
         $nameExists = $db->table('colors')->where('LOWER(name)', strtolower($name))->countAllResults();
         if ($nameExists) {
-            return $this->respond(['success' => false, 'message' => 'Color with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('color_with_this_name_already_exists', 'Color with this name already exists.')], 400);
         }
         
         // Check for duplicate by hex code
         $hexCode = $hex ?? '#000000';
         $hexExists = $db->table('colors')->where('hex_code', $hexCode)->countAllResults();
         if ($hexExists) {
-            return $this->respond(['success' => false, 'message' => 'Color with this hex code already exists. Hex codes must be unique.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('color_with_this_hex_code_already_exists_hex_codes_must_be_un', 'Color with this hex code already exists. Hex codes must be unique.')], 400);
         }
         
         $db->table('colors')->insert(['name' => $name, 'hex_code' => $hexCode, 'created_at' => date('Y-m-d H:i:s')]);
-        return $this->respond(['success' => true, 'message' => 'Color added.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('color_added', 'Color added.')]);
     }
 
     public function updateListingType($id)
@@ -1058,7 +1058,7 @@ class SuperAdminApi extends AdminApi
         
         // Validate name is not empty
         if (empty($name)) {
-            return $this->respond(['success' => false, 'message' => 'Listing type name cannot be empty.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('listing_type_name_cannot_be_empty', 'Listing type name cannot be empty.')], 400);
         }
         
         $gender = strtolower(trim($this->request->getPost('gender_config') ?? 'optional'));
@@ -1066,7 +1066,7 @@ class SuperAdminApi extends AdminApi
         // Validate gender_config value
         $allowedGenderConfigs = ['optional', 'hidden', 'mandatory'];
         if (!in_array($gender, $allowedGenderConfigs)) {
-            return $this->respond(['success' => false, 'message' => 'Invalid gender_config value. Must be one of: ' . implode(', ', $allowedGenderConfigs)], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_gender_config_value_must_be_one_of', 'Invalid gender_config value. Must be one of: ') . implode(', ', $allowedGenderConfigs)], 400);
         }
         
         $attrs = $this->request->getPost('attributes');
@@ -1076,7 +1076,7 @@ class SuperAdminApi extends AdminApi
         // Check for duplicate (excluding current record, case-insensitive)
         $exists = $db->table('listing_types')->where('LOWER(type_name)', strtolower($name))->where('id !=', $id)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Listing type with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('listing_type_with_this_name_already_exists', 'Listing type with this name already exists.')], 400);
         }
         
         $data = ['type_name' => $name, 'field_config' => json_encode($config)];
@@ -1094,7 +1094,7 @@ class SuperAdminApi extends AdminApi
             $data['image'] = 'uploads/listing-types/' . $newName;
         }
         $db->table('listing_types')->where('id', $id)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Listing type updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('listing_type_updated', 'Listing type updated.')]);
     }
 
     public function updateGender($id)
@@ -1105,11 +1105,11 @@ class SuperAdminApi extends AdminApi
         // Check for duplicate (excluding current record)
         $exists = $db->table('genders')->where('name', $name)->where('id !=', $id)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Gender with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('gender_with_this_name_already_exists', 'Gender with this name already exists.')], 400);
         }
         
         $db->table('genders')->where('id', $id)->update(['name' => $name]);
-        return $this->respond(['success' => true, 'message' => 'Gender updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('gender_updated', 'Gender updated.')]);
     }
 
     public function updateProductType($id)
@@ -1122,21 +1122,21 @@ class SuperAdminApi extends AdminApi
         if ($ltId) {
             $existingLt = $db->table('listing_types')->where('id', $ltId)->select('id')->get()->getRowArray();
             if (!$existingLt) {
-                return $this->respond(['success' => false, 'message' => 'Invalid listing type ID: ' . $ltId . '. This listing type does not exist in the database.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('invalid_listing_type_id', 'Invalid listing type ID: ') . $ltId . '. This listing type does not exist in the database.'], 400);
             }
         }
         
         // Check for duplicate (same name within same listing type, excluding current record)
         $exists = $db->table('product_types')->where('name', $name)->where('listing_type_id', $ltId)->where('id !=', $id)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Product type with this name already exists in this listing type.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_type_with_this_name_already_exists_in_this_listing_t', 'Product type with this name already exists in this listing type.')], 400);
         }
         
         $db->table('product_types')->where('id', $id)->update([
             'name' => $name,
             'listing_type_id' => $ltId,
         ]);
-        return $this->respond(['success' => true, 'message' => 'Product type updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('product_type_updated', 'Product type updated.')]);
     }
 
     public function updateCategory($id)
@@ -1146,7 +1146,7 @@ class SuperAdminApi extends AdminApi
         
         // Validate name is not empty
         if (empty($name)) {
-            return $this->respond(['success' => false, 'message' => 'Category name cannot be empty.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('category_name_cannot_be_empty', 'Category name cannot be empty.')], 400);
         }
         
         $ptIds = $this->request->getPost('product_type_ids');
@@ -1174,7 +1174,7 @@ class SuperAdminApi extends AdminApi
         
         // Validate product_type_ids is not empty
         if (empty($ptIds)) {
-            return $this->respond(['success' => false, 'message' => 'At least one product type is required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_product_type_is_required', 'At least one product type is required.')], 400);
         }
         
         // Validate that product_type_ids exist in database
@@ -1187,13 +1187,13 @@ class SuperAdminApi extends AdminApi
         $ptIdsInt = array_intersect($ptIdsInt, $validPtIds);
         
         if (empty($ptIdsInt)) {
-            return $this->respond(['success' => false, 'message' => 'None of the provided product type IDs exist in the database.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('none_of_the_provided_product_type_ids_exist_in_the_database', 'None of the provided product type IDs exist in the database.')], 400);
         }
         
         // Check for duplicate (excluding current record)
         $exists = $db->table('categories')->where('category_name', $name)->where('id !=', $id)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Category with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('category_with_this_name_already_exists', 'Category with this name already exists.')], 400);
         }
         
         // Check if removing genders would affect sub-categories without genders
@@ -1212,7 +1212,7 @@ class SuperAdminApi extends AdminApi
                         $scAppliesTo = json_decode($sc['applies_to'] ?? '[]', true);
                         if (empty($scAppliesTo)) {
                             // Both category AND this sub-category have no genders — block
-                            return $this->respond(['success' => false, 'message' => 'Cannot remove genders from "' . $name . '": the sub-category "' . $sc['name'] . '" also has no genders assigned. At least one level (category or sub-category) must have genders. Please add genders to the sub-category first.'], 400);
+                            return $this->respond(['success' => false, 'message' => getAppMessage('cannot_remove_genders_from', 'Cannot remove genders from "') . $name . '": the sub-category "' . $sc['name'] . '" also has no genders assigned. At least one level (category or sub-category) must have genders. Please add genders to the sub-category first.'], 400);
                         }
                     }
                 }
@@ -1225,7 +1225,7 @@ class SuperAdminApi extends AdminApi
         
         // Check if we have any valid product type IDs left after filtering
         if (empty($finalPtIds) || !is_array($finalPtIds)) {
-            return $this->respond(['success' => false, 'message' => 'None of the provided product type IDs are valid.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('none_of_the_provided_product_type_ids_are_valid', 'None of the provided product type IDs are valid.')], 400);
         }
         
         // Re-index array to ensure numeric keys
@@ -1241,7 +1241,7 @@ class SuperAdminApi extends AdminApi
             $data['field_config'] = json_encode(['attributes' => json_decode($attrs, true) ?: []]);
         }
         $db->table('categories')->where('id', $id)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Category updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('category_updated', 'Category updated.')]);
     }
 
     public function updateSubCategory($id)
@@ -1251,7 +1251,7 @@ class SuperAdminApi extends AdminApi
         
         // Validate name is not empty
         if (empty($name)) {
-            return $this->respond(['success' => false, 'message' => 'Sub-category name cannot be empty.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('subcategory_name_cannot_be_empty', 'Sub-category name cannot be empty.')], 400);
         }
         
         $catIds = $this->request->getPost('category_ids');
@@ -1278,7 +1278,7 @@ class SuperAdminApi extends AdminApi
         
         $attrs = $this->request->getPost('attributes');
         
-        if (empty($catIds)) return $this->respond(['success' => false, 'message' => 'At least one Category is required.'], 400);
+        if (empty($catIds)) return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_category_is_required', 'At least one Category is required.')], 400);
         
         // Validate that category_ids exist in database
         // Convert all IDs to integers for consistent comparison
@@ -1291,7 +1291,7 @@ class SuperAdminApi extends AdminApi
         $catIdsInt = array_intersect($catIdsInt, $validCatIds);
         
         if (empty($catIdsInt)) {
-            return $this->respond(['success' => false, 'message' => 'None of the provided category IDs exist in the database.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('none_of_the_provided_category_ids_exist_in_the_database', 'None of the provided category IDs exist in the database.')], 400);
         }
         
         // Check if gender is required based on parent categories' listing types' gender_config
@@ -1315,7 +1315,7 @@ class SuperAdminApi extends AdminApi
             // Only make gender mandatory if categories are selected AND none of them have genders
             if (!empty($categories) && $categoriesWithGenders === 0) {
                 // All selected categories have no genders - sub-category must have genders
-                return $this->respond(['success' => false, 'message' => 'Since the selected parent category has no genders, you must select at least one gender for this sub-category.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('since_the_selected_parent_category_has_no_genders_you_must_s', 'Since the selected parent category has no genders, you must select at least one gender for this sub-category.')], 400);
             }
         }
         // If gender is not required (listing type has gender hidden), gender is optional
@@ -1323,7 +1323,7 @@ class SuperAdminApi extends AdminApi
         // Check for duplicate (excluding current record)
         $exists = $db->table('sub_categories')->where('name', $name)->where('id !=', $id)->countAllResults();
         if ($exists) {
-            return $this->respond(['success' => false, 'message' => 'Sub-category with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('subcategory_with_this_name_already_exists', 'Sub-category with this name already exists.')], 400);
         }
         
         // Use the filtered valid category_ids directly
@@ -1331,7 +1331,7 @@ class SuperAdminApi extends AdminApi
         
         // Check if we have any valid category IDs left after filtering
         if (empty($finalCatIds) || !is_array($finalCatIds)) {
-            return $this->respond(['success' => false, 'message' => 'None of the provided category IDs are valid.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('none_of_the_provided_category_ids_are_valid', 'None of the provided category IDs are valid.')], 400);
         }
         
         // Re-index array to ensure numeric keys
@@ -1347,7 +1347,7 @@ class SuperAdminApi extends AdminApi
             $data['field_config'] = json_encode(['attributes' => json_decode($attrs, true) ?: []]);
         }
         $db->table('sub_categories')->where('id', $id)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Sub-category updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('subcategory_updated', 'Sub-category updated.')]);
     }
 
     public function updateColor($id)
@@ -1359,26 +1359,26 @@ class SuperAdminApi extends AdminApi
         // Check for duplicate by name (excluding current record)
         $nameExists = $db->table('colors')->where('LOWER(name)', strtolower($name))->where('id !=', $id)->countAllResults();
         if ($nameExists) {
-            return $this->respond(['success' => false, 'message' => 'Color with this name already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('color_with_this_name_already_exists', 'Color with this name already exists.')], 400);
         }
         
         // Check for duplicate by hex code (excluding current record)
         $hexExists = $db->table('colors')->where('hex_code', $hex)->where('id !=', $id)->countAllResults();
         if ($hexExists) {
-            return $this->respond(['success' => false, 'message' => 'Color with this hex code already exists. Hex codes must be unique.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('color_with_this_hex_code_already_exists_hex_codes_must_be_un', 'Color with this hex code already exists. Hex codes must be unique.')], 400);
         }
         
         $db->table('colors')->where('id', $id)->update([
             'name' => $name,
             'hex_code' => $hex,
         ]);
-        return $this->respond(['success' => true, 'message' => 'Color updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('color_updated', 'Color updated.')]);
     }
 
     public function removeTaxonomy($table, $id)
     {
         $allowed = ['listing_types', 'genders', 'product_types', 'categories', 'sub_categories', 'colors', 'attributes'];
-        if (!in_array($table, $allowed)) return $this->respond(['success' => false, 'message' => 'Invalid table.'], 400);
+        if (!in_array($table, $allowed)) return $this->respond(['success' => false, 'message' => getAppMessage('invalid_table', 'Invalid table.')], 400);
         $db = \Config\Database::connect();
         
         // Special handling for attributes - delete related assignments first
@@ -1387,7 +1387,7 @@ class SuperAdminApi extends AdminApi
         }
         
         $db->table($table)->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Item deleted.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('item_deleted', 'Item deleted.')]);
     }
 
     // ── Original Brands (Industry Giants) ─────────────────────────
@@ -1449,23 +1449,23 @@ class SuperAdminApi extends AdminApi
             'created_at' => date('Y-m-d H:i:s'),
         ];
         if (!$data['brand_name'] || !$data['seller_id']) {
-            return $this->respond(['success' => false, 'message' => 'Brand name and Seller are required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('brand_name_and_seller_are_required', 'Brand name and Seller are required.')], 400);
         }
 
         // Check if brand name already exists (unique validation)
         $existingBrand = $db->table('brands')->where('LOWER(brand_name)', strtolower($brandName))->get()->getRowArray();
         if ($existingBrand) {
-            return $this->respond(['success' => false, 'message' => 'Brand name already exists. Brand names must be unique.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('brand_name_already_exists_brand_names_must_be_unique', 'Brand name already exists. Brand names must be unique.')], 400);
         }
 
         // Check if seller already has a brand (one-brand-per-seller validation)
         $existingSellerBrand = $db->table('brands')->where('seller_id', $sellerId)->get()->getRowArray();
         if ($existingSellerBrand) {
-            return $this->respond(['success' => false, 'message' => 'Seller already has a brand. Each seller can have only one brand.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seller_already_has_a_brand_each_seller_can_have_only_one_bra', 'Seller already has a brand. Each seller can have only one brand.')], 400);
         }
 
         $db->table('brands')->insert($data);
-        return $this->respond(['success' => true, 'message' => 'Seller brand created and assigned.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seller_brand_created_and_assigned', 'Seller brand created and assigned.')]);
     }
 
     public function updateSellerBrand($id)
@@ -1483,9 +1483,9 @@ class SuperAdminApi extends AdminApi
         $isActive = $this->request->getPost('is_active');
         if ($isActive !== null) $data['is_active'] = $isActive;
 
-        if (empty($data)) return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
+        if (empty($data)) return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update.')], 400);
         $db->table('brands')->where('id', $id)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Seller brand updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seller_brand_updated', 'Seller brand updated.')]);
     }
 
     public function deleteSellerBrand($id)
@@ -1493,7 +1493,7 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $db->table('products')->where('brand_id', $id)->update(['brand_id' => null]);
         $db->table('brands')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Seller brand deleted.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seller_brand_deleted', 'Seller brand deleted.')]);
     }
 
     public function createBrand()
@@ -1508,7 +1508,7 @@ class SuperAdminApi extends AdminApi
         $ltId = $this->request->getPost('listing_type_id');
         if ($ltId) $data['listing_type_id'] = $ltId;
         $db->table('orignal_brands')->insert($data);
-        return $this->respond(['success' => true, 'message' => 'Brand created successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('brand_created_successfully', 'Brand created successfully.')]);
     }
 
     public function updateBrand($id)
@@ -1523,9 +1523,9 @@ class SuperAdminApi extends AdminApi
         if ($ltId !== null) $data['listing_type_id'] = $ltId ?: null;
         $desc = $this->request->getPost('description');
         if ($desc !== null) $data['description'] = $desc;
-        if (empty($data)) return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
+        if (empty($data)) return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update.')], 400);
         $db->table('orignal_brands')->where('id', $id)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Brand updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('brand_updated', 'Brand updated.')]);
     }
 
     public function deleteOriginalBrandLegacy($id)
@@ -1533,7 +1533,7 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $db->table('products')->where('orignal_brand_id', $id)->update(['orignal_brand_id' => null]);
         $db->table('orignal_brands')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Original brand deleted.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('original_brand_deleted', 'Original brand deleted.')]);
     }
 
     public function deactivateOriginalBrand($id)
@@ -1544,14 +1544,14 @@ class SuperAdminApi extends AdminApi
         // will silently disappear from all UI without touching products.
         $db->table('orignal_brands')->where('id', $id)->update(['is_active' => 0]);
 
-        return $this->respond(['success' => true, 'message' => 'Original brand deactivated. Brand name hidden from all products (products are NOT detagged).']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('original_brand_deactivated_brand_name_hidden_from_all_produc', 'Original brand deactivated. Brand name hidden from all products (products are NOT detagged).')]);
     }
 
     public function activateOriginalBrand($id)
     {
         $db = \Config\Database::connect();
         $db->table('orignal_brands')->where('id', $id)->update(['is_active' => 1]);
-        return $this->respond(['success' => true, 'message' => 'Original brand activated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('original_brand_activated', 'Original brand activated.')]);
     }
 
     public function blockOriginalBrand($id)
@@ -1580,7 +1580,7 @@ class SuperAdminApi extends AdminApi
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Original brand blocked and products rejected.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('original_brand_blocked_and_products_rejected', 'Original brand blocked and products rejected.')]);
     }
 
     public function unblockOriginalBrand($id)
@@ -1606,7 +1606,7 @@ class SuperAdminApi extends AdminApi
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Original brand unblocked. Products restored to their original statuses.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('original_brand_unblocked_products_restored_to_their_original', 'Original brand unblocked. Products restored to their original statuses.')]);
     }
 
     // ── Seller Brand Actions ─────────────────────────────
@@ -1619,14 +1619,14 @@ class SuperAdminApi extends AdminApi
         // will silently disappear from all UI without touching products.
         $db->table('brands')->where('id', $id)->update(['is_active' => 0]);
 
-        return $this->respond(['success' => true, 'message' => 'Seller brand deactivated. Brand name hidden from all products (products are NOT detagged).']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seller_brand_deactivated_brand_name_hidden_from_all_products', 'Seller brand deactivated. Brand name hidden from all products (products are NOT detagged).')]);
     }
 
     public function activateSellerBrand($id)
     {
         $db = \Config\Database::connect();
         $db->table('brands')->where('id', $id)->update(['is_active' => 1]);
-        return $this->respond(['success' => true, 'message' => 'Seller brand activated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seller_brand_activated', 'Seller brand activated.')]);
     }
 
     public function blockSellerBrand($id)
@@ -1654,7 +1654,7 @@ class SuperAdminApi extends AdminApi
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Seller brand blocked and products rejected.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seller_brand_blocked_and_products_rejected', 'Seller brand blocked and products rejected.')]);
     }
 
     public function unblockSellerBrand($id)
@@ -1680,7 +1680,7 @@ class SuperAdminApi extends AdminApi
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Seller brand unblocked. Products restored to their original statuses.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seller_brand_unblocked_products_restored_to_their_original_s', 'Seller brand unblocked. Products restored to their original statuses.')]);
     }
 
     public function sellersList()
@@ -1722,7 +1722,7 @@ class SuperAdminApi extends AdminApi
         
         $column = $isOriginal ? 'orignal_brand_id' : 'brand_id';
         
-        if (!$brandId) return $this->respond(['success' => false, 'message' => 'No brand selected.'], 400);
+        if (!$brandId) return $this->respond(['success' => false, 'message' => getAppMessage('no_brand_selected', 'No brand selected.')], 400);
         // Tag selected products
         foreach ($productIds as $pid) {
             $db->table('products')->where('id', (int)$pid)->update([$column => $brandId]);
@@ -1755,10 +1755,10 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $userId = $this->request->getPost('user_id') ?? $this->request->getJSON(true)['user_id'] ?? null;
         $planId = $this->request->getPost('plan_id') ?? $this->request->getJSON(true)['plan_id'] ?? null;
-        if (!$userId || !$planId) return $this->respond(['success' => false, 'message' => 'User and plan are required.'], 400);
+        if (!$userId || !$planId) return $this->respond(['success' => false, 'message' => getAppMessage('user_and_plan_are_required', 'User and plan are required.')], 400);
 
         $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => 'Plan not found.'], 404);
+        if (!$plan) return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found', 'Plan not found.')], 404);
 
         // Stacking Logic: Find the latest expiry among active plans for the same user type
         $latestActive = $db->table('user_subscriptions us')
@@ -1789,7 +1789,7 @@ class SuperAdminApi extends AdminApi
 
         $this->recalibrateUserSubscriptions($userId, $plan['user_type']);
 
-        return $this->respond(['success' => true, 'message' => 'Plan assigned successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_assigned_successfully', 'Plan assigned successfully.')]);
     }
 
     // ── Product Inspection & Edit Requests ──────────────────
@@ -1811,7 +1811,7 @@ class SuperAdminApi extends AdminApi
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.id', $id)
             ->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        if (!$product) return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
 
         $images = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
 
@@ -1892,7 +1892,7 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-        if (!$request) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        if (!$request) return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
 
         $original = $db->table('products p')
             ->select('p.*, ob.brand_name as orignal_brand, b.brand_name as seller_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
@@ -1961,17 +1961,17 @@ class SuperAdminApi extends AdminApi
         try {
             $db = \Config\Database::connect();
             $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-            if (!$request) return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
+            if (!$request) return $this->respond(['success' => false, 'message' => getAppMessage('edit_request_not_found', 'Edit request not found')], 404);
 
             $updatedData = json_decode($request['updated_data'], true) ?: [];
             if (empty($updatedData)) {
-                return $this->respond(['success' => false, 'message' => 'Invalid update data'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('invalid_update_data', 'Invalid update data')], 400);
             }
             
             // Get current product data to preserve fields that weren't updated
             $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
             if (!$currentProduct) {
-                return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+                return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found')], 404);
             }
             
             // Merge updated data with current product data, preserving fields that weren't in the update
@@ -2003,7 +2003,7 @@ class SuperAdminApi extends AdminApi
             $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($productUpdateData);
             if (!$productUpdate) {
                 log_message('error', "Failed to update product ID: {$request['product_id']} for edit request ID: {$id}");
-                return $this->respond(['success' => false, 'message' => 'Failed to update product'], 500);
+                return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_update_product', 'Failed to update product')], 500);
             }
 
             // Handle new temp images - move from temp to permanent location
@@ -2096,17 +2096,17 @@ class SuperAdminApi extends AdminApi
                 $db->table('notifications')->insert([
                     'user_id' => $request['seller_id'],
                     'title' => 'Edit Request Approved',
-                    'message' => 'Your edit request for "' . ($currentProduct['title'] ?? 'your product') . '" has been approved and applied.',
+                    'message' => getAppMessage('your_edit_request_for', 'Your edit request for "') . ($currentProduct['title'] ?? 'your product') . '" has been approved and applied.',
                     'type' => 'product_edit',
                     'is_read' => 0,
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
             }
 
-            return $this->respond(['success' => true, 'message' => 'Edit request approved and merged.']);
+            return $this->respond(['success' => true, 'message' => getAppMessage('edit_request_approved_and_merged', 'Edit request approved and merged.')]);
         } catch (\Exception $e) {
             log_message('error', "Error in approveEditRequest for ID {$id}: " . $e->getMessage());
-            return $this->respond(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('server_error', 'Server error: ') . $e->getMessage()], 500);
         }
     }
 
@@ -2121,7 +2121,7 @@ class SuperAdminApi extends AdminApi
 
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
         if (!$request) {
-            return $this->respond(['success' => false, 'message' => 'Edit request not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('edit_request_not_found', 'Edit request not found')], 404);
         }
 
         // Mark the edit request as rejected and store the admin's remarks so the
@@ -2154,14 +2154,14 @@ class SuperAdminApi extends AdminApi
             $db->table('notifications')->insert([
                 'user_id' => $request['seller_id'],
                 'title' => 'Edit Request Rejected',
-                'message' => 'Your edit request for "' . ($product['title'] ?? 'your product') . '" was rejected by Super Admin. Reason: ' . ($remarks ?: 'No reason provided'),
+                'message' => getAppMessage('your_edit_request_for', 'Your edit request for "') . ($product['title'] ?? 'your product') . '" was rejected by Super Admin. Reason: ' . ($remarks ?: 'No reason provided'),
                 'type' => 'product_edit',
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Edit request rejected.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('edit_request_rejected', 'Edit request rejected.')]);
     }
 
     /**
@@ -2175,7 +2175,7 @@ class SuperAdminApi extends AdminApi
 
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
         if (!$product || !in_array($product['pending_reason'] ?? '', ['admin_edit', 'seller_edit', 'both_edit'])) {
-            return $this->respond(['success' => false, 'message' => 'Product pending edit not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_pending_edit_not_found', 'Product pending edit not found')], 404);
         }
 
         // Restore product from previous_data snapshot
@@ -2239,13 +2239,13 @@ class SuperAdminApi extends AdminApi
         $db->table('notifications')->insert([
             'user_id' => $product['seller_id'],
             'title' => 'Product Edit Rejected',
-            'message' => 'Your edit request for "' . ($product['title'] ?? 'ID:' . $id) . '" was rejected by Super Admin. Reason: ' . ($remarks ?: 'No reason provided'),
+            'message' => getAppMessage('your_edit_request_for', 'Your edit request for "') . ($product['title'] ?? 'ID:' . $id) . '" was rejected by Super Admin. Reason: ' . ($remarks ?: 'No reason provided'),
             'type' => 'product_edit',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Product edit rejected and restored.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('product_edit_rejected_and_restored', 'Product edit rejected and restored.')]);
     }
 
 
@@ -2312,7 +2312,7 @@ class SuperAdminApi extends AdminApi
             else $db->table('system_settings')->insert(['setting_key' => $key, 'setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Settings saved successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('settings_saved_successfully', 'Settings saved successfully.')]);
     }
 
     /* Mark all expired-pending offers as 'missed' in the DB */
@@ -2369,7 +2369,7 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $from = $this->request->getPost('from_date');
         $to = $this->request->getPost('to_date');
-        if (!$from || !$to) return $this->respond(['success' => false, 'message' => 'Both dates required.'], 400);
+        if (!$from || !$to) return $this->respond(['success' => false, 'message' => getAppMessage('both_dates_required', 'Both dates required.')], 400);
 
         $products = $db->table('products')->where('status', 'rejected')->where('updated_at >=', $from)->where('updated_at <=', $to . ' 23:59:59')->get()->getResultArray();
         $count = count($products);
@@ -2436,10 +2436,10 @@ class SuperAdminApi extends AdminApi
         $title = $this->request->getPost('title') ?? $this->request->getJSON(true)['title'] ?? '';
         $content = $this->request->getPost('content') ?? $this->request->getJSON(true)['content'] ?? '';
 
-        if (!$slug || !$title) return $this->respond(['success' => false, 'message' => 'Slug and title are required.'], 400);
+        if (!$slug || !$title) return $this->respond(['success' => false, 'message' => getAppMessage('slug_and_title_are_required', 'Slug and title are required.')], 400);
 
         $exists = $db->table('cms_pages')->where('slug', $slug)->countAllResults();
-        if ($exists) return $this->respond(['success' => false, 'message' => 'A page with this slug already exists.'], 400);
+        if ($exists) return $this->respond(['success' => false, 'message' => getAppMessage('a_page_with_this_slug_already_exists', 'A page with this slug already exists.')], 400);
 
         $db->table('cms_pages')->insert([
             'slug' => strtolower(preg_replace('/[^a-z0-9\-]/', '', str_replace(' ', '-', strtolower($slug)))),
@@ -2450,14 +2450,14 @@ class SuperAdminApi extends AdminApi
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'CMS page created successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('cms_page_created_successfully', 'CMS page created successfully.')]);
     }
 
     public function deleteCmsPage($id)
     {
         $db = \Config\Database::connect();
         $page = $db->table('cms_pages')->where('id', $id)->get()->getRowArray();
-        if (!$page) return $this->respond(['success' => false, 'message' => 'Page not found.'], 404);
+        if (!$page) return $this->respond(['success' => false, 'message' => getAppMessage('page_not_found', 'Page not found.')], 404);
         
         // Remove associated SEO setting if it exists
         if (!empty($page['slug'])) {
@@ -2466,14 +2466,14 @@ class SuperAdminApi extends AdminApi
         }
         
         $db->table('cms_pages')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'CMS page deleted successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('cms_page_deleted_successfully', 'CMS page deleted successfully.')]);
     }
 
     public function cmsPage($slug)
     {
         $db = \Config\Database::connect();
         $page = $db->table('cms_pages')->where('slug', $slug)->get()->getRowArray();
-        if (!$page) return $this->respond(['success' => false, 'message' => 'Page not found.'], 404);
+        if (!$page) return $this->respond(['success' => false, 'message' => getAppMessage('page_not_found', 'Page not found.')], 404);
         return $this->respond(['success' => true, 'data' => $page]);
     }
 
@@ -2487,7 +2487,7 @@ class SuperAdminApi extends AdminApi
         if ($title) $data['title'] = $title;
         if ($status) $data['status'] = $status;
         $db->table('cms_pages')->where('slug', $slug)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Page updated successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('page_updated_successfully', 'Page updated successfully.')]);
     }
 
     // ── Financial Reports ──────────────────────────────────
@@ -2584,7 +2584,7 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $ad = $db->table('advertisements')->where('id', $id)->get()->getRowArray();
-        if (!$ad) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        if (!$ad) return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
         return $this->respond(['success' => true, 'data' => $ad]);
     }
 
@@ -2616,7 +2616,7 @@ class SuperAdminApi extends AdminApi
         }
 
         $db->table('advertisements')->insert($data);
-        return $this->respond(['success' => true, 'message' => 'Advertisement uploaded successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('advertisement_uploaded_successfully', 'Advertisement uploaded successfully.')]);
     }
 
     public function updateAdvertisement()
@@ -2633,7 +2633,7 @@ class SuperAdminApi extends AdminApi
                     'message' => "Payload ({$payloadMB}MB) exceeds PHP post_max_size ({$postMax}). Loaded ini: {$iniFile}",
                 ], 400);
             }
-            return $this->respond(['success' => false, 'message' => 'Missing ad ID'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('missing_ad_id', 'Missing ad ID')], 400);
         }
 
         $data = [
@@ -2666,23 +2666,23 @@ class SuperAdminApi extends AdminApi
         }
 
         $db->table('advertisements')->where('id', $id)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Advertisement updated successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('advertisement_updated_successfully', 'Advertisement updated successfully.')]);
     }
 
     public function toggleAdvertisement($id)
     {
         $db = \Config\Database::connect();
         $ad = $db->table('advertisements')->where('id', $id)->get()->getRowArray();
-        if (!$ad) return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+        if (!$ad) return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
         $db->table('advertisements')->where('id', $id)->update(['is_active' => $ad['is_active'] ? 0 : 1]);
-        return $this->respond(['success' => true, 'message' => 'Status toggled.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('status_toggled', 'Status toggled.')]);
     }
 
     public function deleteAdvertisement($id)
     {
         $db = \Config\Database::connect();
         $db->table('advertisements')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Advertisement deleted.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('advertisement_deleted', 'Advertisement deleted.')]);
     }
 
     // ── Original Brands ──────────────────────────────────
@@ -2731,12 +2731,12 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('brand_name');
         $desc = $this->request->getPost('description') ?? '';
-        if (!$name) return $this->respond(['success' => false, 'message' => 'Brand name is required.'], 400);
+        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('brand_name_is_required', 'Brand name is required.')], 400);
 
         // Check if brand name already exists (unique validation)
         $existingBrand = $db->table('orignal_brands')->where('LOWER(brand_name)', strtolower($name))->get()->getRowArray();
         if ($existingBrand) {
-            return $this->respond(['success' => false, 'message' => 'Brand name already exists. Brand names must be unique.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('brand_name_already_exists_brand_names_must_be_unique', 'Brand name already exists. Brand names must be unique.')], 400);
         }
 
         $data = ['brand_name' => $name, 'description' => $desc, 'is_active' => 1, 'created_at' => date('Y-m-d H:i:s')];
@@ -2776,7 +2776,7 @@ class SuperAdminApi extends AdminApi
         }
 
         $db->table('orignal_brands')->insert($data);
-        return $this->respond(['success' => true, 'message' => 'Original brand added.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('original_brand_added', 'Original brand added.')]);
     }
 
     public function updateOriginalBrand($id)
@@ -2827,21 +2827,21 @@ class SuperAdminApi extends AdminApi
         }
 
         $db->table('orignal_brands')->where('id', $id)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Original brand updated.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('original_brand_updated', 'Original brand updated.')]);
     }
 
     public function deleteOriginalBrand($id)
     {
         $db = \Config\Database::connect();
         $db->table('orignal_brands')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Original brand deleted.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('original_brand_deleted', 'Original brand deleted.')]);
     }
 
     public function pendingProducts()
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -2875,7 +2875,7 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
-        if (!$user) return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+        if (!$user) return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
 
         $isActive = !$user['is_blocked'] && $user['is_verified'];
         if ($isActive) {
@@ -2893,7 +2893,7 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
-        if (!$user) return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+        if (!$user) return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
 
         $col = $role === 'seller' ? 'blocked_seller' : 'blocked_buyer';
         $current = $user[$col] ?? 0;
@@ -2921,7 +2921,7 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $product = $db->table('products')->where('id', $productId)->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found.'], 404);
+        if (!$product) return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found.')], 404);
 
         $newVal = $product['is_featured'] ? 0 : 1;
         $db->table('products')->where('id', $productId)->update(['is_featured' => $newVal, 'updated_at' => date('Y-m-d H:i:s')]);
@@ -2998,12 +2998,12 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found.'], 404);
+        if (!$product) return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found.')], 404);
 
         $newStatus = $this->request->getJsonVar('status');
         $remarks = $this->request->getJsonVar('remarks') ?? '';
         if (!in_array($newStatus, ['pending', 'approved', 'rejected', 'inactive'])) {
-            return $this->respond(['success' => false, 'message' => 'Invalid status.'], 422);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_status', 'Invalid status.')], 422);
         }
 
         $updateFields = [
@@ -3042,7 +3042,7 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => 'Product not found.'], 404);
+        if (!$product) return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found.')], 404);
 
         // Delete physical image files from disk
         $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
@@ -3087,7 +3087,7 @@ class SuperAdminApi extends AdminApi
         $db->table('offers')->where('product_id', $id)->where('status', 'pending')->update(['status' => 'cancelled']);
         $db->table('products')->where('id', $id)->delete();
 
-        return $this->respond(['success' => true, 'message' => 'Product deleted.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('product_deleted', 'Product deleted.')]);
     }
 
 
@@ -3098,12 +3098,12 @@ class SuperAdminApi extends AdminApi
         $file = $this->request->getFile('csv_file');
 
         if (!$file || !$file->isValid() || $file->getExtension() !== 'csv') {
-            return $this->respond(['success' => false, 'message' => 'Please upload a valid CSV file.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('please_upload_a_valid_csv_file', 'Please upload a valid CSV file.')], 400);
         }
 
         $allowedTypes = ['listing_types', 'genders', 'product_types', 'categories', 'sub_categories', 'colors', 'attributes'];
         if (!in_array($type, $allowedTypes)) {
-            return $this->respond(['success' => false, 'message' => 'Invalid catalogue type.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_catalogue_type', 'Invalid catalogue type.')], 400);
         }
 
         // Define expected headers for each type
@@ -3119,13 +3119,13 @@ class SuperAdminApi extends AdminApi
 
         $handle = fopen($file->getTempName(), 'r');
         if (!$handle) {
-            return $this->respond(['success' => false, 'message' => 'Failed to read CSV file.'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_read_csv_file', 'Failed to read CSV file.')], 500);
         }
 
         $header = fgetcsv($handle);
         if (!$header) {
             fclose($handle);
-            return $this->respond(['success' => false, 'message' => 'CSV file is empty.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('csv_file_is_empty', 'CSV file is empty.')], 400);
         }
         $header = array_map('trim', array_map('strtolower', $header));
 
@@ -4162,22 +4162,22 @@ private function processImage($source, $subDir): ?string
         $placeholder = $this->request->getPost('placeholder');
 
         if (!$name) {
-            return $this->respond(['success' => false, 'message' => 'Attribute name is required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('attribute_name_is_required', 'Attribute name is required.')], 400);
         }
 
         if (!$type) {
-            return $this->respond(['success' => false, 'message' => 'Attribute type is required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('attribute_type_is_required', 'Attribute type is required.')], 400);
         }
 
         // Validate type value
         $allowedTypes = ['text', 'number', 'picklist'];
         if (!in_array($type, $allowedTypes)) {
-            return $this->respond(['success' => false, 'message' => 'Invalid type. Must be one of: ' . implode(', ', $allowedTypes)], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_type_must_be_one_of', 'Invalid type. Must be one of: ') . implode(', ', $allowedTypes)], 400);
         }
 
         // For picklist type, allowed_values is required
         if ($type === 'picklist' && empty($allowedValues)) {
-            return $this->respond(['success' => false, 'message' => 'Allowed values are required for picklist type.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('allowed_values_are_required_for_picklist_type', 'Allowed values are required for picklist type.')], 400);
         }
 
         $data = [
@@ -4228,7 +4228,7 @@ private function processImage($source, $subDir): ?string
             }
         }
         
-        return $this->respond(['success' => true, 'message' => 'Attribute added successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('attribute_added_successfully', 'Attribute added successfully.')]);
     }
 
     public function updateAttribute($id)
@@ -4244,7 +4244,7 @@ private function processImage($source, $subDir): ?string
             // Validate type value
             $allowedTypes = ['text', 'number', 'picklist'];
             if (!in_array($type, $allowedTypes)) {
-                return $this->respond(['success' => false, 'message' => 'Invalid type. Must be one of: ' . implode(', ', $allowedTypes)], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('invalid_type_must_be_one_of', 'Invalid type. Must be one of: ') . implode(', ', $allowedTypes)], 400);
             }
             $data['type'] = $type;
         }
@@ -4259,7 +4259,7 @@ private function processImage($source, $subDir): ?string
         if ($allowedValues !== null) {
             // If type is picklist, allowed_values is required
             if (isset($data['type']) && $data['type'] === 'picklist' && empty($allowedValues)) {
-                return $this->respond(['success' => false, 'message' => 'Allowed values are required for picklist type.'], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('allowed_values_are_required_for_picklist_type', 'Allowed values are required for picklist type.')], 400);
             }
             if (strpos($allowedValues, '[') === 0) {
                 $data['allowed_values'] = $allowedValues;
@@ -4300,12 +4300,12 @@ private function processImage($source, $subDir): ?string
         }
 
         if (empty($data)) {
-            return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update.')], 400);
         }
 
         $data['updated_at'] = date('Y-m-d H:i:s');
         $db->table('attributes')->where('id', $id)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Attribute updated successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('attribute_updated_successfully', 'Attribute updated successfully.')]);
     }
 
     public function deleteAttribute($id)
@@ -4313,7 +4313,7 @@ private function processImage($source, $subDir): ?string
         $db = \Config\Database::connect();
         $db->table('attribute_assignments')->where('attribute_id', $id)->delete();
         $db->table('attributes')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Attribute deleted successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('attribute_deleted_successfully', 'Attribute deleted successfully.')]);
     }
 
     // ── Attribute Assignments ─────────────────────────────
@@ -4351,7 +4351,7 @@ private function processImage($source, $subDir): ?string
         $sortOrder = $this->request->getPost('sort_order') ?? 0;
 
         if (!$attributeId || !$entityType || !$entityId) {
-            return $this->respond(['success' => false, 'message' => 'Attribute ID, entity type, and entity ID are required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('attribute_id_entity_type_and_entity_id_are_required', 'Attribute ID, entity type, and entity ID are required.')], 400);
         }
 
         // Check if assignment already exists
@@ -4362,7 +4362,7 @@ private function processImage($source, $subDir): ?string
             ->get()->getRowArray();
 
         if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'Attribute is already assigned to this entity.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('attribute_is_already_assigned_to_this_entity', 'Attribute is already assigned to this entity.')], 400);
         }
 
         $data = [
@@ -4375,7 +4375,7 @@ private function processImage($source, $subDir): ?string
         ];
 
         $db->table('attribute_assignments')->insert($data);
-        return $this->respond(['success' => true, 'message' => 'Attribute assigned successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('attribute_assigned_successfully', 'Attribute assigned successfully.')]);
     }
 
     public function updateAttributeAssignment($id)
@@ -4390,18 +4390,18 @@ private function processImage($source, $subDir): ?string
         if ($sortOrder !== null) $data['sort_order'] = $sortOrder;
 
         if (empty($data)) {
-            return $this->respond(['success' => false, 'message' => 'No data to update.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update.')], 400);
         }
 
         $db->table('attribute_assignments')->where('id', $id)->update($data);
-        return $this->respond(['success' => true, 'message' => 'Assignment updated successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('assignment_updated_successfully', 'Assignment updated successfully.')]);
     }
 
     public function removeAttributeAssignment($id)
     {
         $db = \Config\Database::connect();
         $db->table('attribute_assignments')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Assignment removed successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('assignment_removed_successfully', 'Assignment removed successfully.')]);
     }
 
     public function bulkUploadProducts()
@@ -4825,7 +4825,7 @@ private function processImage($source, $subDir): ?string
 
         $report = $db->table('user_reports')->where('id', $reportId)->get()->getRowArray();
         if (!$report) {
-            return $this->respond(['success' => false, 'message' => 'Report not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('report_not_found', 'Report not found')], 404);
         }
 
         $input      = $this->request->getPost() ?: ($this->request->getJSON(true) ?: []);
@@ -4834,7 +4834,7 @@ private function processImage($source, $subDir): ?string
 
         $reported = $db->table('users')->where('id', $report['reported_id'])->get()->getRowArray();
         if (!$reported) {
-            return $this->respond(['success' => false, 'message' => 'Reported user not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('reported_user_not_found', 'Reported user not found')], 404);
         }
 
         $actionTaken = 'dismissed';
@@ -4867,9 +4867,9 @@ private function processImage($source, $subDir): ?string
                     'assigned_admin_id' => $assignTo,
                     'updated_at'        => date('Y-m-d H:i:s'),
                 ]);
-                return $this->respond(['success' => true, 'message' => 'Report reassigned']);
+                return $this->respond(['success' => true, 'message' => getAppMessage('report_reassigned', 'Report reassigned')]);
             }
-            return $this->respond(['success' => false, 'message' => 'assign_to admin id is required for reassign'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('assign_to_admin_id_is_required_for_reassign', 'assign_to admin id is required for reassign')], 400);
         }
 
         $db->table('user_reports')->where('id', $reportId)->update([
@@ -4880,7 +4880,7 @@ private function processImage($source, $subDir): ?string
             'updated_at'   => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Report handled successfully', 'action' => $actionTaken]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('report_handled_successfully', 'Report handled successfully'), 'action' => $actionTaken]);
     }
 
     // ── Error Messages Management ─────────────────────
@@ -4906,7 +4906,7 @@ private function processImage($source, $subDir): ?string
     {
         return $this->respond([
             'success' => false,
-            'message' => 'Creating new message keys is not allowed. Message keys are system-defined.',
+            'message' => getAppMessage('creating_new_message_keys_is_not_allowed_message_keys_are_sy', 'Creating new message keys is not allowed. Message keys are system-defined.'),
         ], 403);
     }
 
@@ -4922,7 +4922,7 @@ private function processImage($source, $subDir): ?string
         // Reject blank message_value
         $messageValue = trim($data['message_value'] ?? '');
         if ($messageValue === '') {
-            return $this->respond(['success' => false, 'message' => 'Message value cannot be blank'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('message_value_cannot_be_blank', 'Message value cannot be blank')], 400);
         }
 
         // Check if message exists
@@ -4932,7 +4932,7 @@ private function processImage($source, $subDir): ?string
             ->getRowArray();
 
         if (!$message) {
-            return $this->respond(['success' => false, 'message' => 'Error message not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('error_message_not_found', 'Error message not found')], 404);
         }
 
         // Validate that all required placeholders in the existing message are retained
@@ -4950,9 +4950,9 @@ private function processImage($source, $subDir): ?string
 
         try {
             $db->table('app_messages')->where('id', $id)->update($updateData);
-            return $this->respond(['success' => true, 'message' => 'Error message updated successfully']);
+            return $this->respond(['success' => true, 'message' => getAppMessage('error_message_updated_successfully', 'Error message updated successfully')]);
         } catch (\Exception $e) {
-            return $this->respond(['success' => false, 'message' => 'Failed to update message: ' . $e->getMessage()], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_update_message', 'Failed to update message: ') . $e->getMessage()], 500);
         }
     }
 
@@ -4964,7 +4964,7 @@ private function processImage($source, $subDir): ?string
     {
         return $this->respond([
             'success' => false,
-            'message' => 'Deleting message keys is not allowed. Message keys are system-defined.',
+            'message' => getAppMessage('deleting_message_keys_is_not_allowed_message_keys_are_system', 'Deleting message keys is not allowed. Message keys are system-defined.'),
         ], 403);
     }
 
@@ -4991,7 +4991,7 @@ private function processImage($source, $subDir): ?string
         $query = $this->request->getGet('q') ?? '';
 
         if (empty($query)) {
-            return $this->respond(['success' => false, 'message' => 'Search query is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('search_query_is_required', 'Search query is required')], 400);
         }
 
         $messages = $db->table('app_messages')
@@ -5016,13 +5016,13 @@ private function processImage($source, $subDir): ?string
         if (isset($tokenData['access_token'])) {
             return $this->respond([
                 'success' => true,
-                'message' => 'Successfully connected to PhonePe! Auth token received.',
+                'message' => getAppMessage('successfully_connected_to_phonepe_auth_token_received', 'Successfully connected to PhonePe! Auth token received.'),
             ]);
         }
 
         return $this->respond([
             'success' => false,
-            'message' => 'Failed to connect to PhonePe. Check your credentials.',
+            'message' => getAppMessage('failed_to_connect_to_phonepe_check_your_credentials', 'Failed to connect to PhonePe. Check your credentials.'),
             'debug'   => $tokenData,
         ]);
     }
@@ -5038,7 +5038,7 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $db   = \Config\Database::connect();
@@ -5086,33 +5086,33 @@ private function processImage($source, $subDir): ?string
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
             log_message('error', 'Unauthorized upload attempt by user: ' . ($jwtUser['email'] ?? 'unknown'));
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $file = $this->request->getFile('image');
         if (!$file || !$file->isValid()) {
             $err = $file ? $file->getErrorString() : 'No file provided';
             log_message('error', 'Invalid image upload: ' . $err);
-            return $this->respond(['success' => false, 'message' => 'Invalid image: ' . $err], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_image', 'Invalid image: ') . $err], 400);
         }
 
         if ($file->hasMoved()) {
             log_message('error', 'File already moved');
-            return $this->respond(['success' => false, 'message' => 'File already processed.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('file_already_processed', 'File already processed.')], 400);
         }
 
         $uploadPath = FCPATH . 'uploads/landing-cards/';
         if (!is_dir($uploadPath)) {
             if (!mkdir($uploadPath, 0777, true)) {
                 log_message('error', 'Failed to create upload directory: ' . $uploadPath);
-                return $this->respond(['success' => false, 'message' => 'Failed to create upload directory on server.'], 500);
+                return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_create_upload_directory_on_server', 'Failed to create upload directory on server.')], 500);
             }
         }
 
         $newName = $file->getRandomName();
         if (!$file->move($uploadPath, $newName)) {
             log_message('error', 'Failed to move file to: ' . $uploadPath);
-            return $this->respond(['success' => false, 'message' => 'Failed to save file on server.'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_save_file_on_server', 'Failed to save file on server.')], 500);
         }
 
         $publicPath = 'uploads/landing-cards/' . $newName;
@@ -5120,7 +5120,7 @@ private function processImage($source, $subDir): ?string
 
         return $this->respond([
             'success' => true,
-            'message' => 'Image uploaded.',
+            'message' => getAppMessage('image_uploaded', 'Image uploaded.'),
             'path'    => $publicPath,
             'url'     => base_url($publicPath),
         ]);
@@ -5133,7 +5133,7 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -5285,7 +5285,7 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
@@ -5295,7 +5295,7 @@ private function processImage($source, $subDir): ?string
         $pageKey = trim($data['page_key'] ?? '');
 
         if (empty($pageName) || empty($route)) {
-            return $this->respond(['success' => false, 'message' => 'Page name and route path are required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('page_name_and_route_path_are_required', 'Page name and route path are required.')], 400);
         }
 
         $formattedRoute = '/' . ltrim($route, '/');
@@ -5308,7 +5308,7 @@ private function processImage($source, $subDir): ?string
         // Check uniqueness of page_key or route
         $existing = $seoModel->where('page_key', $pageKey)->orWhere('route', $formattedRoute)->first();
         if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'SEO setting for this page route already exists.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seo_setting_for_this_page_route_already_exists', 'SEO setting for this page route already exists.')], 400);
         }
 
         $seoModel->insert([
@@ -5324,7 +5324,7 @@ private function processImage($source, $subDir): ?string
             'updated_at' => date('Y-m-d H:i:s')
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'New page SEO setting created successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('new_page_seo_setting_created_successfully', 'New page SEO setting created successfully.')]);
     }
 
     /**
@@ -5334,13 +5334,13 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $seoModel = new \App\Models\SeoSettingModel();
         $setting = $seoModel->find($id);
         if (!$setting) {
-            return $this->respond(['success' => false, 'message' => 'SEO setting not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seo_setting_not_found', 'SEO setting not found')], 404);
         }
 
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
@@ -5354,12 +5354,12 @@ private function processImage($source, $subDir): ?string
         if (array_key_exists('og_description', $data)) $updateData['og_description'] = $data['og_description'];
 
         if (empty($updateData)) {
-            return $this->respond(['success' => false, 'message' => 'No data to update'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update')], 400);
         }
 
         $seoModel->update($id, $updateData);
 
-        return $this->respond(['success' => true, 'message' => 'SEO setting updated successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seo_setting_updated_successfully', 'SEO setting updated successfully.')]);
     }
 
     /**
@@ -5369,17 +5369,17 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $seoModel = new \App\Models\SeoSettingModel();
         $setting = $seoModel->find($id);
         if (!$setting) {
-            return $this->respond(['success' => false, 'message' => 'SEO setting not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seo_setting_not_found', 'SEO setting not found')], 404);
         }
 
         $seoModel->delete($id);
-        return $this->respond(['success' => true, 'message' => 'SEO setting deleted successfully.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seo_setting_deleted_successfully', 'SEO setting deleted successfully.')]);
     }
 
     /**
@@ -5390,7 +5390,7 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -5407,13 +5407,13 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
 
         if (empty($data['field_name']) || empty($data['field_label'])) {
-            return $this->respond(['success' => false, 'message' => 'Field name and label are required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('field_name_and_label_are_required', 'Field name and label are required')], 400);
         }
 
         $db = \Config\Database::connect();
@@ -5421,7 +5421,7 @@ private function processImage($source, $subDir): ?string
         // Check if field_name already exists
         $existing = $db->table('validation_rules')->where('field_name', $data['field_name'])->get()->getRowArray();
         if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'Validation rule for this field already exists'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('validation_rule_for_this_field_already_exists', 'Validation rule for this field already exists')], 400);
         }
 
         $insertData = [
@@ -5441,7 +5441,7 @@ private function processImage($source, $subDir): ?string
 
         $db->table('validation_rules')->insert($insertData);
 
-        return $this->respond(['success' => true, 'message' => 'Validation rule created successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('validation_rule_created_successfully', 'Validation rule created successfully')]);
     }
 
     /**
@@ -5452,7 +5452,7 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
@@ -5460,7 +5460,7 @@ private function processImage($source, $subDir): ?string
         $db = \Config\Database::connect();
         $rule = $db->table('validation_rules')->where('id', $id)->get()->getRowArray();
         if (!$rule) {
-            return $this->respond(['success' => false, 'message' => 'Validation rule not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('validation_rule_not_found', 'Validation rule not found')], 404);
         }
 
         $updateData = [];
@@ -5476,12 +5476,12 @@ private function processImage($source, $subDir): ?string
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         if (empty($updateData)) {
-            return $this->respond(['success' => false, 'message' => 'No data to update'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update')], 400);
         }
 
         $db->table('validation_rules')->where('id', $id)->update($updateData);
 
-        return $this->respond(['success' => true, 'message' => 'Validation rule updated successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('validation_rule_updated_successfully', 'Validation rule updated successfully')]);
     }
 
     /**
@@ -5492,18 +5492,18 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $db = \Config\Database::connect();
         $rule = $db->table('validation_rules')->where('id', $id)->get()->getRowArray();
         if (!$rule) {
-            return $this->respond(['success' => false, 'message' => 'Validation rule not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('validation_rule_not_found', 'Validation rule not found')], 404);
         }
 
         $db->table('validation_rules')->where('id', $id)->delete();
 
-        return $this->respond(['success' => true, 'message' => 'Validation rule deleted successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('validation_rule_deleted_successfully', 'Validation rule deleted successfully')]);
     }
 
 }

@@ -990,7 +990,7 @@ class BuyerApi extends BaseApiController
         $db->table('notifications')->insert([
             'user_id' => $product['seller_id'],
             'title' => 'New Offer Received',
-            'message' => 'You received a new offer of ₹' . $data['offer_price'] . ' on "' . $product['title'] . '"',
+            'message' => getAppMessage('received_new_offer_amount_notify', 'You received a new offer of ₹') . $data['offer_price'] . ' on "' . $product['title'] . '"',
             'type' => 'offer',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
@@ -1265,7 +1265,7 @@ class BuyerApi extends BaseApiController
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Dates accepted! The deal is now finalized and an order has been created.']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('dates_accepted_deal_finalized', 'Dates accepted! The deal is now finalized and an order has been created.')]);
     }
 
     /**
@@ -1338,77 +1338,6 @@ class BuyerApi extends BaseApiController
         return $this->respond(['success' => true, 'message' => getAppMessage('seller_rated_successfully')]);
     }
 
-    /**
-     * POST /api/v1/buyer/rate-self-delivery-seller
-     */
-    public function rateSelfDeliverySeller()
-    {
-        $jwtUser = $this->request->jwt_user;
-        $buyerId = $jwtUser['user_id'];
-        $db = \Config\Database::connect();
-
-        $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($jwtUser['role'] !== 'super_admin' && (int) ($user['blocked_buyer'] ?? 0) === 1) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer role is currently blocked. Access restricted.'], 403);
-        }
-
-        $sellerId = $this->request->getPost('seller_id');
-        $productId = $this->request->getPost('product_id');
-        if (!$sellerId || !$productId) {
-            return $this->respond(['success' => false, 'message' => 'seller_id and product_id are required'], 400);
-        }
-
-        $view = $db->table('contact_views')
-            ->where('user_id', $buyerId)->where('seller_id', $sellerId)->where('product_id', $productId)
-            ->get()->getRowArray();
-        if (!$view) {
-            return $this->respond(['success' => false, 'message' => 'Contact details not viewed.'], 400);
-        }
-        if (time() > strtotime($view['viewed_at']) + (20 * 24 * 60 * 60)) {
-            return $this->respond(['success' => false, 'message' => '20-day rating window has expired.'], 400);
-        }
-        if (!$view['return_confirmed']) {
-            return $this->respond(['success' => false, 'message' => 'You can only rate the seller after they confirm the safe return of the product.'], 400);
-        }
-
-        $existing = $db->table('reviews')
-            ->where('reviewer_id', $buyerId)->where('reviewed_id', $sellerId)
-            ->where('review_type', 'self_delivery')->where('product_id', $productId)
-            ->get()->getRowArray();
-        if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'You have already rated this seller for self-delivery.'], 400);
-        }
-
-        $totalContacts = $db->table('contact_views')->where('user_id', $buyerId)->countAllResults();
-        $totalRatings = $db->table('reviews')->where('reviewer_id', $buyerId)->where('review_type', 'self_delivery')->countAllResults();
-        if ($totalRatings >= floor($totalContacts / 3)) {
-            return $this->respond(['success' => false, 'message' => 'Your rating limit has been reached. You get 1 rating opportunity for every 3 unique sellers you contact.'], 400);
-        }
-
-        $db->table('reviews')->insert([
-            'reviewer_id' => $buyerId,
-            'reviewed_id' => $sellerId,
-            'product_id' => $productId,
-            'reviewer_type' => 'buyer',
-            'rating' => 1,
-            'comment' => $this->request->getPost('comment') ?: 'Self-delivery completed successfully',
-            'review_type' => 'self_delivery',
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
-        $seller = $db->table('users')->where('id', $sellerId)->get()->getRowArray();
-        $newScore = ($seller['seller_reliability_score'] ?? 0) + 1;
-        $db->table('users')->where('id', $sellerId)->update(['seller_reliability_score' => $newScore]);
-        $db->table('notifications')->insert([
-            'user_id' => $sellerId,
-            'title' => 'Self-Delivery Rating Received',
-            'message' => 'You received a reliability point for safe self-delivery!',
-            'type' => 'rating_received',
-            'related_id' => $productId,
-            'created_at' => date('Y-m-d H:i:s'),
-        ]);
-
-        return $this->respond(['success' => true, 'message' => 'Reliability point awarded successfully!']);
-    }
 
     /**
      * POST /api/v1/buyer/mark-notifications-read
@@ -1419,7 +1348,7 @@ class BuyerApi extends BaseApiController
         $userId = $jwtUser['user_id'];
         $db = \Config\Database::connect();
         $db->table('notifications')->where('user_id', $userId)->update(['is_read' => 1]);
-        return $this->respond(['success' => true, 'message' => 'All notifications marked as read']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('notifications_marked_as_read')]);
     }
 
     /**
@@ -1432,7 +1361,7 @@ class BuyerApi extends BaseApiController
 
         $offer = $db->table('offers')->where('id', $offerId)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_not_found')], 404);
 
         $messages = $db->table('offer_messages om')
             ->select('om.*, u.name as sender_name')
@@ -1457,20 +1386,20 @@ class BuyerApi extends BaseApiController
 
         $offer = $db->table('offers')->where('id', $offerId)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_not_found')], 404);
 
         $file = $this->request->getFile('file');
         if (!$file || !$file->isValid()) {
-            return $this->respond(['success' => false, 'message' => 'No valid file uploaded'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('file_not_uploaded')], 400);
         }
 
         $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'mov'];
         if (!in_array(strtolower($file->getClientExtension()), $allowed)) {
-            return $this->respond(['success' => false, 'message' => 'File type not allowed'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('file_type_not_allowed')], 400);
         }
 
         if ($file->getSize() > 10 * 1024 * 1024) {
-            return $this->respond(['success' => false, 'message' => 'File too large. Max 10 MB.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('file_too_large')], 400);
         }
 
         $uploadPath = FCPATH . 'uploads/chat/';
@@ -1496,8 +1425,8 @@ class BuyerApi extends BaseApiController
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $db->table('notifications')->insert([
             'user_id' => $offer['seller_id'],
-            'title' => 'Buyer sent a file',
-            'message' => 'Buyer shared media on offer for "' . ($product['title'] ?? '') . '".',
+            'title' => getAppMessage('buyer_sent_a_file'),
+            'message' => getAppMessage('buyer_shared_media_on_offer_for') . '"' . ($product['title'] ?? '') . '"',
             'type' => 'offer',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
@@ -1517,18 +1446,22 @@ class BuyerApi extends BaseApiController
         // Check if buyer is blocked
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if ($currentUser && !empty($currentUser['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer role has been restricted by the administrator.'], 403);
+            return $this->respond([
+                'success' => false,
+                'message' => getAppMessage('user_buyer_role_blocked- Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.
+')
+            ], 403);
         }
 
         $body = $this->request->getJSON(true) ?? [];
 
         $offer = $db->table('offers')->where('id', $offerId)->where('buyer_id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$offer)
-            return $this->respond(['success' => false, 'message' => 'Offer not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('offer_not_found')], 404);
 
         $message = trim($body['message'] ?? '');
         if ($message === '')
-            return $this->respond(['success' => false, 'message' => 'Message cannot be empty'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('message_cannot_be_empty')], 400);
 
         $db->table('offer_messages')->insert([
             'offer_id' => $offerId,
@@ -1542,40 +1475,17 @@ class BuyerApi extends BaseApiController
         $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
         $db->table('notifications')->insert([
             'user_id' => $offer['seller_id'],
-            'title' => 'New message from buyer',
-            'message' => 'Buyer sent a message on offer for "' . ($product['title'] ?? '') . '".',
+            'title' => getAppMessage('new_message_from_buyer'),
+            'message' => getAppMessage('buyer_sent_a_message_on_offer_for') . '"' . ($product['title'] ?? '') . '"',
             'type' => 'offer',
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Message sent']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('message_sent', 'Message sent')]);
     }
 
-    /**
-     * GET /api/v1/buyer/order/{orderId}
-     */
-    public function orderDetail(int $orderId)
-    {
-        $jwtUser = $this->request->jwt_user;
-        $db = \Config\Database::connect();
 
-        $order = $db->table('orders o')
-            ->select('o.*, p.title as product_title, p.listing_type as product_listing_type, p.description as product_description, u.name as seller_name, u.mobile as seller_mobile, (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.display_order ASC LIMIT 1) as primary_image, (SELECT COUNT(*) FROM offers WHERE product_id = o.product_id AND status = "accepted" AND listing_type = "rent" AND rental_start_date <= o.rental_end_date AND rental_end_date >= o.rental_start_date AND p.listing_type = "rent") as is_rental_blocked')
-            ->join('products p', 'p.id = o.product_id', 'left')
-            ->join('users u', 'u.id = o.seller_id', 'left')
-            ->where('o.id', $orderId)
-            ->where('o.buyer_id', $jwtUser['user_id'])
-            ->get()->getRowArray();
-
-        if (!$order)
-            return $this->respond(['success' => false, 'message' => 'Order not found'], 404);
-
-        $statusHistory = $db->table('order_status_history')->where('order_id', $orderId)->orderBy('created_at', 'ASC')->get()->getResultArray();
-        $review = $db->table('reviews')->where('order_id', $orderId)->where('reviewer_id', $jwtUser['user_id'])->get()->getRowArray();
-
-        return $this->respond(['success' => true, 'data' => ['order' => $order, 'status_history' => $statusHistory, 'review' => $review]]);
-    }
 
     /**
      * POST /api/v1/buyer/report-user/:id
@@ -1588,20 +1498,20 @@ class BuyerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         if ($reporter === $reportedId) {
-            return $this->respond(['success' => false, 'message' => 'You cannot report yourself'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('report_our_self')], 400);
         }
 
         $reported = $db->table('users')->where('id', $reportedId)->get()->getRowArray();
         if (!$reported) {
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
         }
         if (in_array($reported['role'] ?? '', ['admin', 'super_admin'])) {
-            return $this->respond(['success' => false, 'message' => 'Cannot report an admin'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('cannot_report_admin')], 400);
         }
 
         $reason = trim($this->request->getPost('reason') ?? '');
         if (empty($reason)) {
-            return $this->respond(['success' => false, 'message' => 'A reason is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('reason_required')], 400);
         }
 
         // Prevent duplicate report within 7 days
@@ -1611,7 +1521,7 @@ class BuyerApi extends BaseApiController
             ->where('created_at >=', date('Y-m-d H:i:s', strtotime('-7 days')))
             ->countAllResults();
         if ($alreadyReported > 0) {
-            return $this->respond(['success' => false, 'message' => 'You have already reported this user in the past 7 days'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('already_reported')], 400);
         }
 
         // Assign to a random admin or superadmin
@@ -1650,8 +1560,8 @@ class BuyerApi extends BaseApiController
             foreach ($admins as $admin) {
                 $db->table('notifications')->insert([
                     'user_id' => $admin['id'],
-                    'title' => 'User Auto-Suspended',
-                    'message' => 'User "' . $reported['name'] . '" has been auto-suspended after receiving ' . $weeklyReports . ' reports in 7 days.',
+                    'title' => getAppMessage('user_auto_suspended'),
+                    'message' => getAppMessage('user_suspended_after_reports') . ' "' . $reported['name'] . '" ' . getAppMessage('user_suspended_after_reports_2') . $weeklyReports . ' ' . getAppMessage('user_suspended_after_reports_3'),
                     'type' => 'user_suspended',
                     'is_read' => 0,
                     'created_at' => date('Y-m-d H:i:s'),
@@ -1661,15 +1571,15 @@ class BuyerApi extends BaseApiController
             // Notify the assigned admin
             $db->table('notifications')->insert([
                 'user_id' => $assignedAdminId,
-                'title' => 'New User Report',
-                'message' => 'A buyer reported user "' . $reported['name'] . '". Reason: ' . substr($reason, 0, 100),
+                'title' => getAppMessage('new_user_report'),
+                'message' => getAppMessage('new_user_report_2') . ' "' . $reported['name'] . '". Reason: ' . substr($reason, 0, 100),
                 'type' => 'user_report',
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Report submitted successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('report_submitted')]);
     }
 
     /**
@@ -1683,13 +1593,13 @@ class BuyerApi extends BaseApiController
 
         $product = $db->table('products')->where('id', $productId)->get()->getRowArray();
         if (!$product) {
-            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found')], 404);
         }
 
         $sellerId = (int) $product['seller_id'];
 
         if ($sellerId === $buyerId) {
-            return $this->respond(['success' => false, 'message' => 'You cannot view your own contact'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('you_cannot_view_your_own_contact')], 400);
         }
 
         // Check if this buyer has already viewed this seller's contact (any product)
@@ -1739,10 +1649,10 @@ class BuyerApi extends BaseApiController
                         if ($expiredSub) {
                             return $this->respond([
                                 'success' => false,
-                                'message' => 'Your buyer subscription expired on ' . date('d M Y', strtotime($expiredSub['expires_at'])) . '. Please renew your plan to view contact details.'
+                                'message' => getAppMessage('your_buyer_subscription_expired_on') . date('d M Y', strtotime($expiredSub['expires_at'])) . '. Please renew your plan to view contact details.'
                             ], 403);
                         }
-                        return $this->respond(['success' => false, 'message' => 'No active subscription found. Please subscribe to view contact details.'], 403);
+                        return $this->respond(['success' => false, 'message' => getAppMessage('no_active_subscription_found_please_subscribe_to_view_contact_details')], 403);
                     }
 
                     foreach ($activeSubs as $sub) {
@@ -1756,7 +1666,7 @@ class BuyerApi extends BaseApiController
                     }
 
                     if (!$activeSub) {
-                        return $this->respond(['success' => false, 'message' => 'Your contact limit has been reached. Please upgrade or renew your plan.'], 403);
+                        return $this->respond(['success' => false, 'message' => getAppMessage('your_contact_limit_reached')], 403);
                     }
                 }
             }
@@ -1830,12 +1740,12 @@ class BuyerApi extends BaseApiController
         $data = $this->request->getJSON(true) ?? [];
 
         if ($buyerId === $sellerId) {
-            return $this->respond(['success' => false, 'message' => 'You cannot block yourself'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('you_cannot_block_yourself')], 400);
         }
 
         $seller = $db->table('users')->where('id', $sellerId)->get()->getRowArray();
         if (!$seller) {
-            return $this->respond(['success' => false, 'message' => 'Seller not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seller_not_found')], 404);
         }
 
         // Check if already blocked
@@ -1845,7 +1755,7 @@ class BuyerApi extends BaseApiController
             ->countAllResults();
 
         if ($alreadyBlocked > 0) {
-            return $this->respond(['success' => false, 'message' => 'You have already blocked this seller'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seller_already_blocked')], 400);
         }
 
         $db->table('buyer_blocked_sellers')->insert([
@@ -1856,7 +1766,7 @@ class BuyerApi extends BaseApiController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Seller blocked successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seller_blocked')]);
     }
 
     /**
@@ -1875,10 +1785,10 @@ class BuyerApi extends BaseApiController
             ->delete();
 
         if (!$blocked) {
-            return $this->respond(['success' => false, 'message' => 'This seller is not blocked'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seller_not_blocked')], 400);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Seller unblocked successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('seller_unblocked')]);
     }
 
     /**
@@ -1915,19 +1825,19 @@ class BuyerApi extends BaseApiController
             ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'buyer'])
             ->get()->getRowArray();
         if (!$plan) {
-            return $this->respond(['success' => false, 'message' => 'Plan not found or inactive'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
         }
 
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
 
         // 1. Account global block check
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('account_blocked')], 403);
         }
 
         // 2. Check if buyer role is explicitly blocked by superadmin
         if (!empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('buyer_role_blocked')], 403);
         }
 
         // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
@@ -1937,7 +1847,7 @@ class BuyerApi extends BaseApiController
 
         if (!$isGlobalAdmin) {
             if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-                return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
             }
         }
 
@@ -2039,7 +1949,7 @@ class BuyerApi extends BaseApiController
             ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'buyer'])
             ->get()->getRowArray();
         if (!$plan) {
-            return $this->respond(['success' => false, 'message' => 'Plan not found or inactive'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
         }
 
         // Verify plan is actually free
@@ -2055,7 +1965,7 @@ class BuyerApi extends BaseApiController
 
         $total = max(0, (float) $plan['price'] + $totalCharges);
         if ($total > 0) {
-            return $this->respond(['success' => false, 'message' => 'This plan requires payment'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_requires_payment')], 400);
         }
 
         // Block if user already has an active, non-exhausted BUYER subscription
@@ -2072,7 +1982,7 @@ class BuyerApi extends BaseApiController
         );
         $activeSub = ($query && is_object($query)) ? $query->getRowArray() : null;
         if ($activeSub) {
-            return $this->respond(['success' => false, 'message' => 'You already have an active buyer subscription. Please wait until it expires or is exhausted before activating a new plan.'], 409);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_already_have_active_buyer_subscription')], 409);
         }
 
         // Activate the subscription
@@ -2097,10 +2007,10 @@ class BuyerApi extends BaseApiController
             'updated_at' => $now,
         ]);
         if (!$inserted) {
-            return $this->respond(['success' => false, 'message' => 'Failed to activate subscription'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('failed_to_activate_subscription')], 500);
         }
 
-        return $this->respond(['success' => true, 'message' => 'Plan activated successfully']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_activated_successfully')]);
     }
 
     /**
@@ -2117,19 +2027,19 @@ class BuyerApi extends BaseApiController
         $planId = (int) ($data['plan_id'] ?? 0);
 
         if (!$code)
-            return $this->respond(['success' => false, 'message' => 'Coupon code is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_is_required')], 400);
 
         $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
         if (!$coupon)
-            return $this->respond(['success' => false, 'message' => 'Invalid or expired coupon code.']);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_has_expired')]);
 
         $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
         if ($cpnExpiresAt && strtotime($cpnExpiresAt) < time()) {
-            return $this->respond(['success' => false, 'message' => 'Coupon has expired.']);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_has_expired')]);
         }
 
         // Per-user usage limit: check how many times THIS user has used this coupon
@@ -2140,13 +2050,13 @@ class BuyerApi extends BaseApiController
                 ->where('user_id', $buyerUserId)
                 ->countAllResults();
             if ($userUsedCount >= (int) $coupon['usage_limit']) {
-                return $this->respond(['success' => false, 'message' => 'You have already used this coupon the maximum number of times.']);
+                return $this->respond(['success' => false, 'message' => getAppMessage('coupon_limit_reached')]);
             }
         }
 
         $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
         if ((float) $plan['price'] < $cpnMinPurchase) {
-            return $this->respond(['success' => false, 'message' => 'Minimum purchase for this coupon is ₹' . $cpnMinPurchase]);
+            return $this->respond(['success' => false, 'message' => getAppMessage('minimum_purchase_coupon') . $cpnMinPurchase]);
         }
         // Referral discount restriction: Check if user has active referral discount for this plan
         $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
@@ -2179,7 +2089,7 @@ class BuyerApi extends BaseApiController
                         if ($refDiscount >= $basePrice && $basePrice > 0) {
                             return $this->respond([
                                 'success' => false,
-                                'message' => 'Coupon code cannot be applied when referral discount covers the full plan price.'
+                                'message' => getAppMessage('coupon_cannot_be_applied_full_plan_price')
                             ], 400);
                         }
                         // Partial referral: coupon is allowed — both discounts will stack
@@ -2201,7 +2111,7 @@ class BuyerApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'Coupon applied successfully!',
+            'message' => getAppMessage('coupon_applied_successfully'),
             'data' => ['discount' => round($discountValue, 2)],
         ]);
     }
@@ -2227,7 +2137,7 @@ class BuyerApi extends BaseApiController
             ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'buyer'])
             ->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Invalid or inactive plan.'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_inactive_plan', 'Invalid or inactive plan.')], 404);
 
         // Role validation: check if user can purchase this plan based on their role
         $currentUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
@@ -2237,18 +2147,18 @@ class BuyerApi extends BaseApiController
 
         // 1. Account global block check
         if (!empty($currentUser['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('account_blocked_support', 'Your account is blocked. Please contact support.')], 403);
         }
 
         // 2. Check if buyer role is explicitly blocked by superadmin
         if (!empty($currentUser['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('buyer_role_blocked_purchase', 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.')], 403);
         }
 
         // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
         if (!$isGlobalAdmin) {
             if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-                return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+                return $this->respond(['success' => false, 'message' => getAppMessage('buyer_subscription_requires_buyer_role', 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.')], 403);
             }
         }
 
@@ -2404,7 +2314,7 @@ class BuyerApi extends BaseApiController
 
         return $this->respond([
             'success' => false,
-            'message' => 'Failed to initiate payment. Please try again.',
+            'message' => getAppMessage('payment_initiation_failed', 'Failed to initiate payment. Please try again.'),
             'debug' => $response,
         ]);
     }
@@ -2425,7 +2335,7 @@ class BuyerApi extends BaseApiController
         $db = \Config\Database::connect();
 
         if (!$merchantOrderId) {
-            return $this->respond(['status' => 'error', 'message' => 'No transaction ID provided'], 400);
+            return $this->respond(['status' => 'error', 'message' => getAppMessage('no_transaction_id', 'No transaction ID provided')], 400);
         }
 
         $dbSub = $db->table('user_subscriptions')
@@ -2433,15 +2343,15 @@ class BuyerApi extends BaseApiController
             ->get()->getRowArray();
 
         if (!$dbSub)
-            return $this->respond(['status' => 'error', 'message' => 'Transaction not found'], 404);
+            return $this->respond(['status' => 'error', 'message' => getAppMessage('transaction_not_found', 'Transaction not found')], 404);
         $userId = $dbSub['user_id'];
         if (false) { // Skip check for debug
-            return $this->respond(['status' => 'error', 'message' => 'Unauthorized'], 403);
+            return $this->respond(['status' => 'error', 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         // Already activated — return success immediately
         if ($dbSub['is_active'] == 1 && $dbSub['payment_status'] === 'paid') {
-            return $this->respond(['status' => 'success', 'message' => 'Subscription is already active']);
+            return $this->respond(['status' => 'success', 'message' => getAppMessage('subscription_already_active_status', 'Subscription is already active')]);
         }
 
         $phonepe = new \App\Libraries\PhonePe();
@@ -2570,7 +2480,7 @@ class BuyerApi extends BaseApiController
                     }
                 }
             }
-            return $this->respond(['status' => 'success', 'message' => 'Payment successful! Subscription activated.']);
+            return $this->respond(['status' => 'success', 'message' => getAppMessage('payment_success_subscription_activated', 'Payment successful! Subscription activated.')]);
         }
 
         if ($state === 'FAILED' || $state === 'CANCELLED') {
@@ -2584,7 +2494,7 @@ class BuyerApi extends BaseApiController
 
         return $this->respond([
             'status' => 'pending',
-            'message' => 'Payment is still processing',
+            'message' => getAppMessage('payment_still_processing', 'Payment is still processing'),
             'debug' => [
                 'state' => $state,
                 'phonepe_response' => $status
