@@ -91,9 +91,9 @@ class AuthApi extends BaseApiController
         // Determine effective role — for 'both' users, redirect based on which role is blocked
         $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
         if ($user['user_type'] === 'both') {
-            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+            if ((int) ($user['blocked_buyer'] ?? 0) === 1) {
                 $role = 'seller';
-            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+            } elseif ((int) ($user['blocked_seller'] ?? 0) === 1) {
                 $role = 'buyer';
             }
         }
@@ -101,16 +101,16 @@ class AuthApi extends BaseApiController
 
         $token = JWT::encode([
             'user_id' => $user['id'],
-            'email'   => $user['email'],
-            'role'    => $role,
+            'email' => $user['email'],
+            'role' => $role,
             'blocked_from_approvals' => $user['blocked_from_approvals'] ?? 0,
         ]);
 
         return $this->respond([
             'success' => true,
             'message' => getAppMessage('login_success'),
-            'data'    => [
-                'user'  => $this->sanitizeUser($user, $role),
+            'data' => [
+                'user' => $this->sanitizeUser($user, $role),
                 'token' => $token,
             ],
         ]);
@@ -168,7 +168,7 @@ class AuthApi extends BaseApiController
     public function verifyOtp()
     {
         $email = $this->request->getJsonVar('email');
-        $otp   = $this->request->getJsonVar('otp');
+        $otp = $this->request->getJsonVar('otp');
 
         if (!$email || !$otp) {
             return $this->respond(['success' => false, 'message' => getAppMessage('email_otp_required')], 400);
@@ -217,24 +217,24 @@ class AuthApi extends BaseApiController
         // Determine effective role — for 'both' users, redirect based on which role is blocked
         $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
         if ($user['user_type'] === 'both') {
-            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+            if ((int) ($user['blocked_buyer'] ?? 0) === 1) {
                 $role = 'seller';
-            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+            } elseif ((int) ($user['blocked_seller'] ?? 0) === 1) {
                 $role = 'buyer';
             }
         }
 
         $token = JWT::encode([
             'user_id' => $user['id'],
-            'email'   => $user['email'],
-            'role'    => $role,
+            'email' => $user['email'],
+            'role' => $role,
         ]);
 
         return $this->respond([
             'success' => true,
             'message' => getAppMessage('otp_verified'),
-            'data'    => [
-                'user'  => $this->sanitizeUser($user, $role),
+            'data' => [
+                'user' => $this->sanitizeUser($user, $role),
                 'token' => $token,
             ],
         ]);
@@ -261,7 +261,7 @@ class AuthApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
-        
+
         $otp = $this->userModel->generateOTP($user['id']);
 
         if ($otp) {
@@ -284,14 +284,14 @@ class AuthApi extends BaseApiController
      */
     public function resetPassword()
     {
-        $email    = $this->request->getJsonVar('email');
-        $otp      = $this->request->getJsonVar('otp');
+        $email = $this->request->getJsonVar('email');
+        $otp = $this->request->getJsonVar('otp');
         $password = $this->request->getJsonVar('password');
 
         if (!$email || !$otp || !$password) {
             return $this->respond([
                 'success' => false,
-                'message' => getAppMessage('email_otp_password_required'),
+                'message' => getAppMessage('otp_required'),
             ], 400);
         }
 
@@ -316,10 +316,10 @@ class AuthApi extends BaseApiController
         if ($user['otp'] == $otp && strtotime($user['otp_expires_at']) > time()) {
             // Update password, clear OTP, and mark user as verified
             $updateSuccess = $this->userModel->update($user['id'], [
-                'password'       => password_hash($password, PASSWORD_DEFAULT),
-                'otp'            => null,
+                'password' => password_hash($password, PASSWORD_DEFAULT),
+                'otp' => null,
                 'otp_expires_at' => null,
-                'is_verified'    => 1
+                'is_verified' => 1
             ]);
 
             if ($updateSuccess) {
@@ -348,16 +348,16 @@ class AuthApi extends BaseApiController
         }
 
         $emailConfig = [
-            'protocol'    => 'smtp',
-            'SMTPHost'    => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
-            'SMTPPort'    => !empty($cfg['smtp_port']) ? (int)$cfg['smtp_port'] : 587,
-            'SMTPUser'    => $cfg['smtp_username'] ?? '',
-            'SMTPPass'    => $cfg['smtp_password'] ?? '',
-            'SMTPCrypto'  => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
-            'mailType'    => 'html',
-            'charset'     => 'utf-8',
-            'newline'     => "\r\n",
-            'CRLF'        => "\r\n",
+            'protocol' => 'smtp',
+            'SMTPHost' => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
+            'SMTPPort' => !empty($cfg['smtp_port']) ? (int) $cfg['smtp_port'] : 587,
+            'SMTPUser' => $cfg['smtp_username'] ?? '',
+            'SMTPPass' => $cfg['smtp_password'] ?? '',
+            'SMTPCrypto' => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
+            'mailType' => 'html',
+            'charset' => 'utf-8',
+            'newline' => "\r\n",
+            'CRLF' => "\r\n",
             'SMTPTimeout' => 30,
         ];
 
@@ -394,14 +394,14 @@ class AuthApi extends BaseApiController
         $data = $this->request->getJSON(true);
 
         $rules = [
-            'name'      => 'required|min_length[2]|max_length[100]',
-            'email'     => 'required|valid_email',
-            'mobile'    => 'required|min_length[10]|max_length[15]',
-            'password'  => 'required|min_length[6]',
-            'address'   => 'required',
-            'pin_code'  => 'required',
-            'state'     => 'required',
-            'city'      => 'required',
+            'name' => 'required|min_length[2]|max_length[100]',
+            'email' => 'required|valid_email',
+            'mobile' => 'required|min_length[10]|max_length[15]',
+            'password' => 'required|min_length[6]',
+            'address' => 'required',
+            'pin_code' => 'required',
+            'state' => 'required',
+            'city' => 'required',
             'user_type' => 'required|in_list[seller,buyer,both]',
         ];
 
@@ -409,7 +409,7 @@ class AuthApi extends BaseApiController
             return $this->respond([
                 'success' => false,
                 'message' => getAppMessage('validation_failed_for_register'),
-                'errors'  => $this->validator->getErrors(),
+                'errors' => $this->validator->getErrors(),
             ], 422);
         }
 
@@ -418,7 +418,7 @@ class AuthApi extends BaseApiController
 
         $ip = getUserIP();
         $loc = getLocationFromIP($ip);
-        
+
         $clientLat = $data['user_latitude'] ?? null;
         $clientLng = $data['user_longitude'] ?? null;
 
@@ -445,15 +445,15 @@ class AuthApi extends BaseApiController
         $data['latitude'] = $clientLat ?: ($loc['latitude'] ?? null);
         $data['longitude'] = $clientLng ?: ($loc['longitude'] ?? null);
         // --- Duplicate detection: check email and phone upfront ---
-        $existingByEmail  = $this->userModel->getUserByEmail($data['email']);
+        $existingByEmail = $this->userModel->getUserByEmail($data['email']);
         $existingByMobile = $this->userModel->where('mobile', $data['mobile'])->first();
-        $requestedType    = $data['user_type'] ?? 'buyer';
+        $requestedType = $data['user_type'] ?? 'buyer';
 
         // Case A: Both email AND phone belong to the SAME existing account → conflict
         if ($existingByEmail && $existingByMobile && $existingByEmail['id'] === $existingByMobile['id']) {
             return $this->respond([
                 'success' => false,
-                'message' => getAppMessage('account_already_exists'),
+                'message' => getAppMessage('email_already_exists'),
             ], 409);
         }
 
@@ -461,7 +461,7 @@ class AuthApi extends BaseApiController
         if ($existingByEmail && $existingByMobile && $existingByEmail['id'] !== $existingByMobile['id']) {
             return $this->respond([
                 'success' => false,
-                'message' => getAppMessage('account_already_exists_with_different_credentials'),
+                'message' => getAppMessage('mobile_already_exists'),
             ], 409);
         }
 
@@ -484,19 +484,19 @@ class AuthApi extends BaseApiController
         $referralCode = strtoupper(substr(md5(uniqid()), 0, 8));
 
         $userData = [
-            'name'             => $data['name'],
-            'email'            => $data['email'],
-            'mobile'           => $data['mobile'],
-            'password'         => password_hash($data['password'], PASSWORD_DEFAULT),
-            'address'          => $data['address'],
-            'pin_code'         => $data['pin_code'],
-            'state'            => $data['state'],
-            'city'             => $data['city'],
-            'user_type'        => $data['user_type'],
-            'role'             => ($data['user_type'] === 'both') ? 'buyer' : $data['user_type'],
-            'referral_code'    => $referralCode,
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'mobile' => $data['mobile'],
+            'password' => password_hash($data['password'], PASSWORD_DEFAULT),
+            'address' => $data['address'],
+            'pin_code' => $data['pin_code'],
+            'state' => $data['state'],
+            'city' => $data['city'],
+            'user_type' => $data['user_type'],
+            'role' => ($data['user_type'] === 'both') ? 'buyer' : $data['user_type'],
+            'referral_code' => $referralCode,
             'reliability_score' => 0,
-            'is_verified'      => 0,
+            'is_verified' => 0,
         ];
 
         $userId = $this->userModel->insert($userData);
@@ -518,7 +518,7 @@ class AuthApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => getAppMessage('registration_successful_otp_sent'),
+            'message' => getAppMessage('user_created_successfully'),
         ], 201);
     }
 
@@ -559,17 +559,17 @@ class AuthApi extends BaseApiController
 
         $token = JWT::encode([
             'user_id' => $user['id'],
-            'email'   => $user['email'],
-            'role'    => $newRole,
+            'email' => $user['email'],
+            'role' => $newRole,
         ]);
 
         $updatedUser['role'] = $newRole;
 
         return $this->respond([
             'success' => true,
-            'message' => "Switched to $newRole",
-            'data'    => [
-                'user'  => $this->sanitizeUser($updatedUser, $newRole),
+            'message' => getAppMessage('role_switched_successfully', null,['role'=>$newRole]),
+            'data' => [
+                'user' => $this->sanitizeUser($updatedUser, $newRole),
                 'token' => $token,
             ],
         ]);
@@ -582,7 +582,7 @@ class AuthApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user ?? null;
         if (!$jwtUser) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized_for_referral_stats')], 401);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized_for_referral')], 401);
         }
 
         $user = $this->userModel->find($jwtUser['user_id']);
@@ -592,7 +592,7 @@ class AuthApi extends BaseApiController
 
         // Generate referral code if missing (for legacy users)
         if (empty($user['referral_code'])) {
-            $user['referral_code'] = strtoupper(substr(md5(uniqid((string)$user['id'], true)), 0, 8));
+            $user['referral_code'] = strtoupper(substr(md5(uniqid((string) $user['id'], true)), 0, 8));
             $this->userModel->update($user['id'], ['referral_code' => $user['referral_code']]);
         }
 
@@ -611,8 +611,8 @@ class AuthApi extends BaseApiController
         }
 
         $rewardAmount = (float) (
-            (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '') 
-            ? $cfg['referral_referrer_reward'] 
+            (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '')
+            ? $cfg['referral_referrer_reward']
             : (isset($cfg['referral_reward_amount']) && $cfg['referral_reward_amount'] !== '' ? $cfg['referral_reward_amount'] : 50)
         );
         $referralEnabled = ($cfg['referral_enabled'] ?? '1') === '1';
@@ -632,11 +632,11 @@ class AuthApi extends BaseApiController
                 $nameParts = explode(' ', trim($r['name']));
                 $initials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
                 $referredUsers[] = [
-                    'initials'        => $initials,
-                    'name'            => substr($r['name'], 0, 3) . str_repeat('*', max(0, strlen($r['name']) - 3)),
-                    'joined_at'       => $r['created_at'],
-                    'reward_used'     => (int) $r['has_used_referral'],
-                    'reward_earned'   => (int) $r['has_used_referral'] ? $rewardAmount : 0,
+                    'initials' => $initials,
+                    'name' => substr($r['name'], 0, 3) . str_repeat('*', max(0, strlen($r['name']) - 3)),
+                    'joined_at' => $r['created_at'],
+                    'reward_used' => (int) $r['has_used_referral'],
+                    'reward_earned' => (int) $r['has_used_referral'] ? $rewardAmount : 0,
                 ];
             }
         }
@@ -661,19 +661,19 @@ class AuthApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'data'    => [
-                'referral_code'     => $user['referral_code'] ?? '',
-                'referral_balance'  => $referralBalance,
+            'data' => [
+                'referral_code' => $user['referral_code'] ?? '',
+                'referral_balance' => $referralBalance,
                 'has_used_referral' => (int) ($user['has_used_referral'] ?? 0),
                 'referral_expires_at' => $user['referral_expires_at'] ?? null,
-                'referred_by'       => $user['referred_by'] ?? null,
-                'total_referrals'   => count($referredUsers),
-                'total_earned'      => $totalEarned,
-                'reward_amount'     => $rewardAmount,
-                'referral_enabled'  => $referralEnabled,
-                'how_it_works'      => $howItWorks,
-                'terms'             => $terms,
-                'referred_users'    => $referredUsers,
+                'referred_by' => $user['referred_by'] ?? null,
+                'total_referrals' => count($referredUsers),
+                'total_earned' => $totalEarned,
+                'reward_amount' => $rewardAmount,
+                'referral_enabled' => $referralEnabled,
+                'how_it_works' => $howItWorks,
+                'terms' => $terms,
+                'referred_users' => $referredUsers,
             ],
         ]);
     }
@@ -698,16 +698,16 @@ class AuthApi extends BaseApiController
         // Compute effective role from live DB block flags (not stale JWT)
         $effectiveRole = $jwtUser['role'];
         if ($user['user_type'] === 'both') {
-            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+            if ((int) ($user['blocked_buyer'] ?? 0) === 1) {
                 $effectiveRole = 'seller';
-            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+            } elseif ((int) ($user['blocked_seller'] ?? 0) === 1) {
                 $effectiveRole = 'buyer';
             }
         }
 
         return $this->respond([
             'success' => true,
-            'data'    => $this->sanitizeUser($user, $effectiveRole),
+            'data' => $this->sanitizeUser($user, $effectiveRole),
         ]);
     }
 
@@ -717,28 +717,30 @@ class AuthApi extends BaseApiController
     private function applyReferral($userId, $referredBy)
     {
         $referredBy = strtoupper(trim($referredBy));
-        if (!$referredBy) return;
+        if (!$referredBy)
+            return;
 
         $db = \Config\Database::connect();
         $referrer = $db->table('users')->where('referral_code', $referredBy)->get()->getRowArray();
 
-        if ($referrer && (int)$referrer['id'] !== (int)$userId) {
+        if ($referrer && (int) $referrer['id'] !== (int) $userId) {
             $settingsRows = $db->table('system_settings')
                 ->whereIn('setting_key', ['referral_enabled', 'referral_receiver_reward', 'referral_expiry_days'])
                 ->get()->getResultArray();
             $cfg = [];
-            foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+            foreach ($settingsRows as $s)
+                $cfg[$s['setting_key']] = $s['setting_value'];
 
             if (($cfg['referral_enabled'] ?? '1') === '1') {
                 $receiverReward = (float) ((isset($cfg['referral_receiver_reward']) && $cfg['referral_receiver_reward'] !== '') ? $cfg['referral_receiver_reward'] : 50);
-                $expiryDays     = (float) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
-                $expiresAt      = date('Y-m-d H:i:s', time() + (int)($expiryDays * 86400));
+                $expiryDays = (float) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
+                $expiresAt = date('Y-m-d H:i:s', time() + (int) ($expiryDays * 86400));
 
                 // Check if user already has an expired referral balance and reset it in database
                 $existingUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
                 $currentBalance = (float) ($existingUser['referral_balance'] ?? 0);
                 $currentExpiry = $existingUser['referral_expires_at'] ?? null;
-                
+
                 // If existing referral is expired, reset balance to 0 in database
                 if ($currentExpiry && $currentExpiry !== '0000-00-00 00:00:00' && strtotime($currentExpiry) <= time()) {
                     $currentBalance = 0.0;
@@ -750,13 +752,13 @@ class AuthApi extends BaseApiController
 
                 // Credit the receiver immediately (add to existing balance if not expired, or set to new reward)
                 $newBalance = $currentBalance + $receiverReward;
-                
+
                 $db->table('users')->where('id', $userId)->update([
-                    'referred_by'         => $referredBy,
-                    'referral_balance'    => $newBalance,
+                    'referred_by' => $referredBy,
+                    'referral_balance' => $newBalance,
                     'referral_expires_at' => $expiresAt,
-                    'has_used_referral'   => 0, 
-                    'updated_at'          => date('Y-m-d H:i:s'),
+                    'has_used_referral' => 0,
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
             }
         }
@@ -770,18 +772,18 @@ class AuthApi extends BaseApiController
     {
         try {
             $db = \Config\Database::connect();
-            
+
             // Find all users with referral balance and check expiry in PHP to avoid MySQL strict mode issues
             $usersWithBalance = $db->table('users')
                 ->select('id, referral_expires_at')
                 ->where('referral_balance >', 0)
                 ->where('referral_expires_at IS NOT NULL')
                 ->get();
-            
+
             if ($usersWithBalance) {
                 $expiredUserIds = [];
                 $currentTime = time();
-                
+
                 foreach ($usersWithBalance->getResultArray() as $user) {
                     $expiry = $user['referral_expires_at'];
                     // Skip invalid dates
@@ -793,7 +795,7 @@ class AuthApi extends BaseApiController
                         $expiredUserIds[] = $user['id'];
                     }
                 }
-                
+
                 if (!empty($expiredUserIds)) {
                     $db->table('users')
                         ->whereIn('id', $expiredUserIds)
@@ -801,7 +803,7 @@ class AuthApi extends BaseApiController
                             'referral_balance' => 0,
                             'updated_at' => date('Y-m-d H:i:s'),
                         ]);
-                    
+
                     log_message('info', 'Cleared expired referral balances for ' . count($expiredUserIds) . ' users');
                 }
             }
@@ -813,32 +815,32 @@ class AuthApi extends BaseApiController
     private function sanitizeUser(array $user, string $role): array
     {
         return [
-            'id'                => (int) $user['id'],
-            'name'              => $user['name'],
-            'email'             => $user['email'],
-            'mobile'            => $user['mobile'] ?? '',
-            'alternate_mobile'  => $user['alternate_mobile'] ?? '',
-            'gender'            => $user['gender'] ?? '',
-            'address'           => $user['address'] ?? '',
-            'pin_code'          => $user['pin_code'] ?? '',
-            'city'              => $user['city'] ?? '',
-            'state'             => $user['state'] ?? '',
-            'profile_image'     => $user['profile_image'] ?? '',
-            'user_type'         => $user['user_type'],
-            'role'              => $role,
-            'reliability_score'          => (int) ($user['reliability_score'] ?? 100),
-            'seller_reliability_score'   => (int) ($user['seller_reliability_score'] ?? 0),
-            'buyer_rating_avg'           => (float) ($user['buyer_rating_avg'] ?? 0),
-            'buyer_rating_count'         => (int) ($user['buyer_rating_count'] ?? 0),
-            'seller_rating_avg'          => (float) ($user['seller_rating_avg'] ?? 0),
-            'seller_rating_count'        => (int) ($user['seller_rating_count'] ?? 0),
-            'products_uploaded_count'    => (int) ($user['products_uploaded_count'] ?? 0),
-            'referral_code'              => $user['referral_code'] ?? '',
-            'is_verified'                => (int) ($user['is_verified'] ?? 0),
-            'bgv_cleared'                => (int) ($user['bgv_cleared'] ?? 0),
-            'blocked_buyer'              => (int) ($user['blocked_buyer'] ?? 0),
-            'blocked_seller'             => (int) ($user['blocked_seller'] ?? 0),
-            'created_at'                 => $user['created_at'] ?? '',
+            'id' => (int) $user['id'],
+            'name' => $user['name'],
+            'email' => $user['email'],
+            'mobile' => $user['mobile'] ?? '',
+            'alternate_mobile' => $user['alternate_mobile'] ?? '',
+            'gender' => $user['gender'] ?? '',
+            'address' => $user['address'] ?? '',
+            'pin_code' => $user['pin_code'] ?? '',
+            'city' => $user['city'] ?? '',
+            'state' => $user['state'] ?? '',
+            'profile_image' => $user['profile_image'] ?? '',
+            'user_type' => $user['user_type'],
+            'role' => $role,
+            'reliability_score' => (int) ($user['reliability_score'] ?? 100),
+            'seller_reliability_score' => (int) ($user['seller_reliability_score'] ?? 0),
+            'buyer_rating_avg' => (float) ($user['buyer_rating_avg'] ?? 0),
+            'buyer_rating_count' => (int) ($user['buyer_rating_count'] ?? 0),
+            'seller_rating_avg' => (float) ($user['seller_rating_avg'] ?? 0),
+            'seller_rating_count' => (int) ($user['seller_rating_count'] ?? 0),
+            'products_uploaded_count' => (int) ($user['products_uploaded_count'] ?? 0),
+            'referral_code' => $user['referral_code'] ?? '',
+            'is_verified' => (int) ($user['is_verified'] ?? 0),
+            'bgv_cleared' => (int) ($user['bgv_cleared'] ?? 0),
+            'blocked_buyer' => (int) ($user['blocked_buyer'] ?? 0),
+            'blocked_seller' => (int) ($user['blocked_seller'] ?? 0),
+            'created_at' => $user['created_at'] ?? '',
         ];
     }
 
@@ -852,16 +854,16 @@ class AuthApi extends BaseApiController
         }
 
         $emailConfig = [
-            'protocol'    => 'smtp',
-            'SMTPHost'    => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
-            'SMTPPort'    => !empty($cfg['smtp_port']) ? (int)$cfg['smtp_port'] : 587,
-            'SMTPUser'    => $cfg['smtp_username'] ?? '',
-            'SMTPPass'    => $cfg['smtp_password'] ?? '',
-            'SMTPCrypto'  => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
-            'mailType'    => 'html',
-            'charset'     => 'utf-8',
-            'newline'     => "\r\n",
-            'CRLF'        => "\r\n",
+            'protocol' => 'smtp',
+            'SMTPHost' => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
+            'SMTPPort' => !empty($cfg['smtp_port']) ? (int) $cfg['smtp_port'] : 587,
+            'SMTPUser' => $cfg['smtp_username'] ?? '',
+            'SMTPPass' => $cfg['smtp_password'] ?? '',
+            'SMTPCrypto' => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
+            'mailType' => 'html',
+            'charset' => 'utf-8',
+            'newline' => "\r\n",
+            'CRLF' => "\r\n",
             'SMTPTimeout' => 30,
         ];
 
@@ -901,7 +903,7 @@ class AuthApi extends BaseApiController
         if ($geo && !empty($geo['state'])) {
             return $this->respond([
                 'success' => true,
-                'data'    => $geo
+                'data' => $geo
             ]);
         }
 
@@ -917,22 +919,22 @@ class AuthApi extends BaseApiController
         helper(['geolocation']);
 
         $db = \Config\Database::connect();
-        
+
         // Fetch zone restriction system setting
         $landingSettings = $db->table('system_settings')
             ->where('setting_key', 'enable_zone_restriction')
             ->get()
             ->getRowArray();
-        
+
         $restrictionEnabled = ($landingSettings && $landingSettings['setting_value'] === '1');
 
         if (!$restrictionEnabled) {
             return $this->respond([
                 'success' => true,
-                'data'    => [
+                'data' => [
                     'restriction_enabled' => false,
-                    'is_allowed'          => true,
-                    'message'             => getAppMessage('zone_restriction_disabled')
+                    'is_allowed' => true,
+                    'message' => getAppMessage('zone_restriction_disabled')
                 ]
             ]);
         }
@@ -940,7 +942,7 @@ class AuthApi extends BaseApiController
         // Get coordinates from request (e.g. browser GPS)
         $lat = $this->request->getVar('lat');
         $lng = $this->request->getVar('lng');
-        
+
         $method = 'GPS';
 
         // Fallback: IP-based location in backend using token-free APIs first, then findip.net
@@ -961,10 +963,10 @@ class AuthApi extends BaseApiController
         if (empty($lat) || empty($lng)) {
             return $this->respond([
                 'success' => true,
-                'data'    => [
+                'data' => [
                     'restriction_enabled' => true,
-                    'is_allowed'          => false,
-                    'message'             => getAppMessage('location_detection_failed')
+                    'is_allowed' => false,
+                    'message' => getAppMessage('location_detection_failed')
                 ]
             ]);
         }
@@ -991,27 +993,27 @@ class AuthApi extends BaseApiController
         if ($isAllowed) {
             return $this->respond([
                 'success' => true,
-                'data'    => [
+                'data' => [
                     'restriction_enabled' => true,
-                    'is_allowed'          => true,
-                    'method'              => $method,
-                    'zone'                => $matchedZoneName,
-                    'lat'                 => $lat,
-                    'lng'                 => $lng,
-                    'message'             => getAppMessage('access_granted_in_your_zone')
+                    'is_allowed' => true,
+                    'method' => $method,
+                    'zone' => $matchedZoneName,
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'message' => getAppMessage('access_granted_in_your_zone')
                 ]
             ]);
         }
 
         return $this->respond([
             'success' => true,
-            'data'    => [
+            'data' => [
                 'restriction_enabled' => true,
-                'is_allowed'          => false,
-                'method'              => $method,
-                'lat'                 => $lat,
-                'lng'                 => $lng,
-                'message'             => getAppMessage('not_available_in_your_area')
+                'is_allowed' => false,
+                'method' => $method,
+                'lat' => $lat,
+                'lng' => $lng,
+                'message' => getAppMessage('not_available_in_your_area')
             ]
         ]);
     }

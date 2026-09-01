@@ -36,10 +36,39 @@ payment_processing
 failed_to_activate_subscription
 plan_activated_successfully
 
+auth Api
 
-
-
-
+email_passwod_required
+invalid_email_password
+user_not_verified
+login_success
+email_required
+no_account_found
+otp_sent
+invalid_otp
+otp_verified
+password_reset_email_failed
+email_otp_required
+otp_required
+password_length
+password_reset_success
+password_reset_failure
+validation_failed_for_register
+email_already_exists
+mobile_already_exists
+user_created_successfully
+unauthorized_for_switch_role
+invalid_role_for_switch_role
+user_not_allowed_to_switch_role
+role_switched_successfully
+unauthorized_for_referral
+unauthorized_for_noraml_user
+latitude_longitude_required
+unable_to_resolve_state
+zone_restriction_disabled
+location_detection_failed
+access_granted_in_your_zone
+not_available_in_your_area
 
 
 
