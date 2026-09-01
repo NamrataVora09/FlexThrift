@@ -168,9 +168,9 @@ seo_settings_not_found
 
 
 ZonesApi.php
-unauthorized - You are not authorized to perform this action.
 zone_name_required - Zone name is required.
 zone_saved_successfully - Zone saved successfully.
 zone_id_required - Zone ID is required.
 zone_not_found - Zone not found.
 zone_status_toggled - Zone status toggled.
+zone_deleted_successfully
