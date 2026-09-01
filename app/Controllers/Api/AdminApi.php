@@ -1142,7 +1142,7 @@ class AdminApi extends BaseApiController
         $db = \Config\Database::connect();
 
         if (!$code)
-            return $this->respond(['success' => false, 'message' => 'Coupon code is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_required')], 400);
 
         $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
         if (!$plan)

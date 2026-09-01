@@ -1,24 +1,113 @@
-only_superadmin_can_access - You are not authorized to perform this action.
-admin_block_user_managenent - Your access to user management is restricted.
-report_not_found - Report is Not found
-user_report_not_found - Reported user is Not found
-report_handled_successfully - Report handled successfully
-not_found_product-Product Not found
-edit_request_not_found-Edit request not found
-edit_request_invalid-Invalid edit request
-failed_to_update_product-Failed to update product
-edit_request_approved -Edit request approved and merged.
-user_blocked - User blocked successfully.
-user_unblocked - User unblocked successfully.
-user_suspended-User suspended successfully.
-user_not_found -User not found
+AdminApi.php
 
-user_activated-User activated successfully.
+1) only_superadmin_can_access - You are not authorized to perform this action.
 
-plan_not_found-Plan not found
---------------------------------------
-user_seller_role_blocked- Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.
-user_buyer_role_blocked- Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.
-server_error - Server error
-edit_request_rejected -Edit request rejected.
-user_account_blocked - Your account is blocked. Please contact support.
+2) admin_block_user_managenent - Your access to user management is restricted.
+
+3) report_not_found - Report not found
+4) user_report_not_found - Reported user not found
+5) report_handled_successfully - Report handled successfully
+6) not_found_product - Product not found
+7) edit_request_not_found - Edit request not found
+8) edit_request_invalid - Invalid edit request
+9) server_error - Server error
+10)failed_to_update_product
+11) edit_request_rejected
+12) offer_missed_message
+user_not_found
+user_blocked
+user_unblocked
+plan_not_found
+user_account_blocked
+user_seller_role_blocked
+user_buyer_role_blocked
+coupon_code_required
+invalid_coupon_code
+coupon_usage_limit_reached
+coupon_min_purchase
+coupon_cannot_be_applied_when_referral_discount_covers_the_full_plan_price
+coupon_applied_successfully
+Payment_initiation_failed
+Transaction_not_found
+plan_aldready_active
+payment_successfully_verified
+payment_failed
+payment_processing
+failed_to_activate_subscription
+plan_activated_successfully
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ZonesApi.php
+unauthorized - You are not authorized to perform this action.
+zone_name_required - Zone name is required.
+zone_saved_successfully - Zone saved successfully.
+zone_id_required - Zone ID is required.
+zone_not_found - Zone not found.
+zone_status_toggled - Zone status toggled.

@@ -27,14 +27,14 @@ class ZonesApi extends BaseApiController
         // Require admin/superadmin roles
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'] ?? '', [ 'super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $db = \Config\Database::connect();
         $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
 
         if (empty($data['zone_name'])) {
-            return $this->respond(['success' => false, 'message' => 'Zone name is required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('zone_name_required', 'Zone name is required.')], 400);
         }
 
         $insertData = [
@@ -52,20 +52,20 @@ class ZonesApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'Zone saved successfully.'
+            'message' => getAppMessage('zone_saved_successfully', 'Zone saved successfully.')
         ]);
     }
 
     public function update($id = null)
     {
         if ($id === null) {
-            return $this->respond(['success' => false, 'message' => 'Zone ID is required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('zone_id_required', 'Zone ID is required.')], 400);
         }
 
         // Require admin/superadmin roles
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'] ?? '', [ 'super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -73,7 +73,7 @@ class ZonesApi extends BaseApiController
 
         $zone = $db->table('allowed_zones')->where('id', $id)->get()->getRowArray();
         if (!$zone) {
-            return $this->respond(['success' => false, 'message' => 'Zone not found.'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('zone_not_found', 'Zone not found.')], 404);
         }
 
         $updateData = [];
@@ -100,7 +100,7 @@ class ZonesApi extends BaseApiController
 
         $db->table('allowed_zones')->where('id', $id)->update($updateData);
 
-        $message = (isset($data['is_active']) && count($data) === 1) ? 'Zone status toggled.' : 'Zone saved successfully.';
+        $message = (isset($data['is_active']) && count($data) === 1) ? getAppMessage('zone_status_toggled', 'Zone status toggled.') : getAppMessage('zone_saved_successfully', 'Zone saved successfully.');
 
         return $this->respond([
             'success' => true,
@@ -111,26 +111,26 @@ class ZonesApi extends BaseApiController
     public function delete($id = null)
     {
         if ($id === null) {
-            return $this->respond(['success' => false, 'message' => 'Zone ID is required.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('zone_id_required', 'Zone ID is required.')], 400);
         }
 
         // Require admin/superadmin roles
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'] ?? '', ['admin', 'super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
         $db = \Config\Database::connect();
         $zone = $db->table('allowed_zones')->where('id', $id)->get()->getRowArray();
         if (!$zone) {
-            return $this->respond(['success' => false, 'message' => 'Zone not found.'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('zone_not_found', 'Zone not found.')], 404);
         }
 
         $db->table('allowed_zones')->where('id', $id)->delete();
 
         return $this->respond([
             'success' => true,
-            'message' => 'Zone deleted successfully.'
+            'message' => getAppMessage('zone_deleted_successfully', 'Zone deleted successfully.')
         ]);
     }
 }
