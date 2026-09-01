@@ -70,12 +70,46 @@ location_detection_failed
 access_granted_in_your_zone
 not_available_in_your_area
 
-
-
-
-
-
-
+Shared Api 
+admin_block_product_upload_approval
+product_approved
+product_rejected
+message_value_required
+error_message_not_found
+message_updated
+decimal_value_not_alowed
+value_greater_than_zero
+settings_saved
+faq_created
+faq_updated
+faq_deleted
+plan_created
+plan_activated
+plan_deactivated
+mark_as_most_selected
+remove_as_most_selected
+plan_marked_as_premium
+plan_premium_removed
+plan_updated
+plan_deleted
+brand_created
+coupon_code_already_exists
+coupon_not_found
+coupon_created
+coupon_updated
+coupon_deleted
+coupon_toggled
+page_not_found
+page_saved
+subscription_activated
+filed_required
+invalid_email
+valid_mobile
+valid_alternate_mobile
+valid_pindcode
+already_extis_alternate_mobile
+no_page_key_or_route_provided
+seo_settings_not_found
 
 
 

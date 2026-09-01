@@ -51,7 +51,7 @@ class SharedApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -61,18 +61,18 @@ class SharedApi extends BaseApiController
             ->where('p.id', $id)
             ->get()->getRowArray();
         if (!$product) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found_product')], 404);
         }
 
         // Check approval permissions based on seller role
         $sellerRole = $product['seller_role'];
         if (($sellerRole === 'admin' || $sellerRole === 'super_admin' || $sellerRole === 'superadmin') && !in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('only_super_admin_can_approve_systemuser_uploaded_products', 'Only super admin can approve system-user uploaded products')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         // For normal seller products, check if admin is blocked
         if ($sellerRole !== 'admin' && $jwtUser['role'] === 'admin' && isset($jwtUser['blocked_from_approvals']) && $jwtUser['blocked_from_approvals']) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('you_are_blocked_from_approving_products', 'You are blocked from approving products')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('admin_block_product_upload_approval', )], 403);
         }
 
         $remarks = $this->request->getJsonVar('remarks') ?? '';
@@ -102,14 +102,14 @@ class SharedApi extends BaseApiController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => getAppMessage('product_approved', 'Product approved')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('product_approved')]);
     }
 
     public function rejectProduct(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -119,18 +119,18 @@ class SharedApi extends BaseApiController
             ->where('p.id', $id)
             ->get()->getRowArray();
         if (!$product) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found_product')], 404);
         }
 
         // Check rejection permissions based on seller role
         $sellerRole = $product['seller_role'];
         if (($sellerRole === 'admin' || $sellerRole === 'super_admin' || $sellerRole === 'superadmin') && !in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('only_super_admin_can_reject_systemuser_uploaded_products', 'Only super admin can reject system-user uploaded products')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         // For normal seller products, check if admin is blocked
         if ($sellerRole !== 'admin' && $jwtUser['role'] === 'admin' && isset($jwtUser['blocked_from_approvals']) && $jwtUser['blocked_from_approvals']) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('you_are_blocked_from_approving_products', 'You are blocked from approving products')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('admin_block_product_upload_approval')], 403);
         }
 
         $remarks = $this->request->getJsonVar('remarks') ?? '';
@@ -142,27 +142,27 @@ class SharedApi extends BaseApiController
             'admin_remarks' => $remarks,
         ]);
 
-        return $this->respond(['success' => true, 'message' => getAppMessage('product_rejected', 'Product rejected')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('product_rejected')]);
     }
 
     public function toggleUserStatus(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['admin', 'super_admin'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
         $user = $db->table('users')->where('id', $id)->get()->getRowArray();
         if (!$user)
-            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
 
         $newStatus = $user['is_blocked'] ? 0 : 1;
         $db->table('users')->where('id', $id)->update(['is_blocked' => $newStatus]);
 
         return $this->respond([
             'success' => true,
-            'message' => $newStatus ? 'User blocked' : 'User unblocked',
+            'message' => $newStatus ? getAppMessage('user_blocked') : getAppMessage('user_unblocked'),
             'data' => ['is_blocked' => $newStatus],
         ]);
     }
@@ -243,7 +243,8 @@ class SharedApi extends BaseApiController
         ];
         $rows = $db->table('system_settings')->whereIn('setting_key', $keys)->get()->getResultArray();
         $unlockCard = [];
-        foreach ($rows as $r) $unlockCard[$r['setting_key']] = $r['setting_value'];
+        foreach ($rows as $r)
+            $unlockCard[$r['setting_key']] = $r['setting_value'];
 
         return $this->respond([
             'success' => true,
@@ -321,7 +322,10 @@ class SharedApi extends BaseApiController
                 $month = date('n');
                 $quarter = ceil($month / 3) - 1;
                 $year = date('Y');
-                if ($quarter == 0) { $quarter = 4; $year--; }
+                if ($quarter == 0) {
+                    $quarter = 4;
+                    $year--;
+                }
                 $startMonth = ($quarter - 1) * 3 + 1;
                 $endMonth = $startMonth + 2;
                 $start = "$year-" . str_pad($startMonth, 2, '0', STR_PAD_LEFT) . "-01 00:00:00";
@@ -336,14 +340,20 @@ class SharedApi extends BaseApiController
                 // End: last day of last quarter
                 $lastQ = $currQ - 1;
                 $lastQYear = date('Y');
-                if ($lastQ == 0) { $lastQ = 4; $lastQYear--; }
+                if ($lastQ == 0) {
+                    $lastQ = 4;
+                    $lastQYear--;
+                }
                 $endMonth = $lastQ * 3;
                 $end = date('Y-m-t 23:59:59', strtotime("$lastQYear-" . str_pad($endMonth, 2, '0', STR_PAD_LEFT) . "-01"));
 
                 // Start: first day of 2nd quarter back
                 $startQ = $currQ - 2;
                 $startQYear = date('Y');
-                if ($startQ <= 0) { $startQ += 4; $startQYear--; }
+                if ($startQ <= 0) {
+                    $startQ += 4;
+                    $startQYear--;
+                }
                 $startMonth = ($startQ - 1) * 3 + 1;
                 $start = "$startQYear-" . str_pad($startMonth, 2, '0', STR_PAD_LEFT) . "-01 00:00:00";
 
@@ -356,29 +366,30 @@ class SharedApi extends BaseApiController
                 $trendWhere = "AND o.created_at >= '$start'";
                 break;
             case 'last_year':
-                $year = (int)date('Y') - 1;
+                $year = (int) date('Y') - 1;
                 $start = "$year-01-01 00:00:00";
                 $end = "$year-12-31 23:59:59";
                 $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
             case 'last_2_years':
-                $currYear = (int)date('Y');
+                $currYear = (int) date('Y');
                 $start = ($currYear - 2) . "-01-01 00:00:00";
                 $end = ($currYear - 1) . "-12-31 23:59:59";
                 $dateFilter = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 $trendWhere = "AND o.created_at >= '$start' AND o.created_at <= '$end'";
                 break;
-            case 'all_time': default: 
+            case 'all_time':
+            default:
                 $dateFilter = "";
                 $trendWhere = "AND o.created_at >= DATE_SUB(NOW(), INTERVAL 10 YEAR)";
                 break;
         }
 
         // Force all roles to see only their personal 'Received' (Seller) perspective
-        $whereSeller = "seller_id = " . (int)$userId;
-        $whereOffers = "o.seller_id = " . (int)$userId;
-        $whereProducts = "p.seller_id = " . (int)$userId;
+        $whereSeller = "seller_id = " . (int) $userId;
+        $whereOffers = "o.seller_id = " . (int) $userId;
+        $whereProducts = "p.seller_id = " . (int) $userId;
 
         // Product stats by status
         $statusStats = $db->query("SELECT p.status, COUNT(*) as count FROM products p WHERE $whereProducts GROUP BY p.status")->getResultArray();
@@ -427,7 +438,7 @@ class SharedApi extends BaseApiController
         $totalOffers = $totalOffersQuery->countAllResults();
 
         $user = $db->table('users')->select('seller_rating_count')->where('id', $userId)->get()->getRowArray();
-        $scorePoints = (int)($user['seller_rating_count'] ?? 0);
+        $scorePoints = (int) ($user['seller_rating_count'] ?? 0);
 
         // Top 10 products by offers (with date filter)
         $topProductsQuery = $db->table('products p')
@@ -471,7 +482,7 @@ class SharedApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['super_admin'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -506,7 +517,7 @@ class SharedApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -514,12 +525,12 @@ class SharedApi extends BaseApiController
         $value = trim($data['message_value'] ?? '');
 
         if ($value === '') {
-            return $this->respond(['success' => false, 'message' => getAppMessage('message_value_cannot_be_blank', 'Message value cannot be blank')], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('message_value_required')], 400);
         }
 
         $existing = $db->table('app_messages')->where('id', $id)->get()->getRowArray();
         if (!$existing) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('error_message_not_found', 'Error message not found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('error_message_not_found')], 404);
         }
 
         $placeholderError = $this->validateMessagePlaceholders($existing['message_value'], $value);
@@ -528,32 +539,19 @@ class SharedApi extends BaseApiController
         }
 
         $db->table('app_messages')->where('id', $id)->update(['message_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
-        return $this->respond(['success' => true, 'message' => getAppMessage('message_updated', 'Message updated')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('message_updated')]);
     }
 
     /**
      * POST /api/v1/shared/add-app-message — DISABLED
      * Message keys are system-defined and cannot be created via the API.
      */
-    public function addAppMessage()
-    {
-        return $this->respond([
-            'success' => false,
-            'message' => getAppMessage('creating_new_message_keys_is_not_allowed_message_keys_are_sy', 'Creating new message keys is not allowed. Message keys are system-defined.'),
-        ], 403);
-    }
+
 
     /**
      * POST /api/v1/shared/delete-app-message/{id} — DISABLED
      * Message keys are system-defined and cannot be deleted via the API.
      */
-    public function deleteAppMessage($id)
-    {
-        return $this->respond([
-            'success' => false,
-            'message' => getAppMessage('deleting_message_keys_is_not_allowed_message_keys_are_system', 'Deleting message keys is not allowed. Message keys are system-defined.'),
-        ], 403);
-    }
 
     /**
      * POST /api/v1/shared/business-settings
@@ -562,7 +560,7 @@ class SharedApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -596,20 +594,20 @@ class SharedApi extends BaseApiController
             if (in_array($key, $intFields)) {
                 $valInt = filter_var($value, FILTER_VALIDATE_INT);
                 // Also ensure there is no decimal point in input string to block 25.0
-                if ($valInt === false || $valInt < 0 || strpos((string)$value, '.') !== false) {
+                if ($valInt === false || $valInt < 0 || strpos((string) $value, '.') !== false) {
                     $fieldName = str_replace('_', ' ', $key);
                     $fieldName = ucwords($fieldName);
-                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be a whole number (no decimals allowed)."], 400);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('decimal_value_not_alowed', '', ['Flied' => $fieldName])], 400);
                 }
-                $value = (string)$valInt;
+                $value = (string) $valInt;
             } elseif (in_array($key, $floatFields)) {
                 $valFloat = filter_var($value, FILTER_VALIDATE_FLOAT);
                 if ($valFloat === false || $valFloat <= 0) {
                     $fieldName = str_replace('_', ' ', $key);
                     $fieldName = ucwords($fieldName);
-                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be a number greater than 0."], 400);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('value_greater_than_zero', '', ['Flied' => $fieldName])], 400);
                 }
-                $value = (string)$valFloat;
+                $value = (string) $valFloat;
             }
 
             $existing = $db->table('system_settings')->where('setting_key', $key)->get()->getRowArray();
@@ -620,7 +618,7 @@ class SharedApi extends BaseApiController
             }
         }
 
-        return $this->respond(['success' => true, 'message' => getAppMessage('settings_saved', 'Settings saved')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('settings_saved')]);
     }
 
     /**
@@ -629,9 +627,7 @@ class SharedApi extends BaseApiController
     public function adminSubscriptionPlans()
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
-        }
+
 
         $db = \Config\Database::connect();
         $plans = $db->table('subscription_plans')->orderBy('user_type', 'ASC')->orderBy('price', 'ASC')->get()->getResultArray();
@@ -658,7 +654,8 @@ class SharedApi extends BaseApiController
         $keys = ['support_email', 'support_phone', 'support_hours'];
         $rows = $db->table('system_settings')->whereIn('setting_key', $keys)->get()->getResultArray();
         $data = [];
-        foreach ($rows as $r) $data[$r['setting_key']] = $r['setting_value'];
+        foreach ($rows as $r)
+            $data[$r['setting_key']] = $r['setting_value'];
         return $this->respond(['success' => true, 'data' => $data]);
     }
 
@@ -667,17 +664,18 @@ class SharedApi extends BaseApiController
      */
     public function createFaq()
     {
-        if ($this->request->jwt_user['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+        if ($this->request->jwt_user['role'] !== 'super_admin')
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
         $db->table('faqs')->insert([
             'question' => $data['question'],
             'answer' => $data['answer'],
-            'display_order' => (int)($data['display_order'] ?? 0),
+            'display_order' => (int) ($data['display_order'] ?? 0),
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
-        return $this->respond(['success' => true, 'message' => getAppMessage('faq_created', 'FAQ created')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('faq_created')]);
     }
 
     /**
@@ -685,16 +683,17 @@ class SharedApi extends BaseApiController
      */
     public function updateFaq($id)
     {
-        if ($this->request->jwt_user['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+        if ($this->request->jwt_user['role'] !== 'super_admin')
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
         $db->table('faqs')->where('id', $id)->update([
             'question' => $data['question'],
             'answer' => $data['answer'],
-            'display_order' => (int)($data['display_order'] ?? 0),
+            'display_order' => (int) ($data['display_order'] ?? 0),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
-        return $this->respond(['success' => true, 'message' => getAppMessage('faq_updated', 'FAQ updated')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('faq_updated')]);
     }
 
     /**
@@ -702,10 +701,11 @@ class SharedApi extends BaseApiController
      */
     public function deleteFaq($id)
     {
-        if ($this->request->jwt_user['role'] !== 'super_admin') return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+        if ($this->request->jwt_user['role'] !== 'super_admin')
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         $db = \Config\Database::connect();
         $db->table('faqs')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => getAppMessage('faq_deleted', 'FAQ deleted')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('faq_deleted')]);
     }
 
     /**
@@ -714,8 +714,8 @@ class SharedApi extends BaseApiController
     public function createSubscriptionPlan()
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+        if (!in_array($jwtUser['role'], ['super_admin'])) {
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $data = $this->request->getJSON(true);
@@ -744,7 +744,7 @@ class SharedApi extends BaseApiController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => getAppMessage('plan_created', 'Plan created')], 201);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_created')], 201);
     }
 
     /**
@@ -753,48 +753,50 @@ class SharedApi extends BaseApiController
     public function togglePlanStatus(int $id)
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+        if (!in_array($jwtUser['role'], ['super_admin'])) {
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_or_admin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found', 'Plan not found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $newStatus = $plan['is_active'] ? 0 : 1;
         $db->table('subscription_plans')->where('id', $id)->update(['is_active' => $newStatus]);
 
-        return $this->respond(['success' => true, 'message' => $newStatus ? 'Plan activated' : 'Plan deactivated']);
+        return $this->respond(['success' => true, 'message' => $newStatus ? getAppMessage('plan_activated') : getAppMessage('plan_deactivated')]);
     }
 
     public function toggleMostSelected(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found', 'Plan not found')], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $newVal = (int) ($plan['is_most_selected'] ?? 0) ? 0 : 1;
         $db->table('subscription_plans')->where('id', $id)->update(['is_most_selected' => $newVal, 'updated_at' => date('Y-m-d H:i:s')]);
 
-        return $this->respond(['success' => true, 'message' => $newVal ? 'Marked as Most Selected' : 'Removed Most Selected', 'is_most_selected' => $newVal]);
+        return $this->respond(['success' => true, 'message' => $newVal ? getAppMessage('mark_as_most_selected') : getAppMessage('remove_as_most_selected'), 'is_most_selected' => $newVal]);
     }
 
     public function togglePlanFeatured(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found', 'Plan not found')], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $newFeatured = (int) ($plan['is_featured'] ?? 0) ? 0 : 1;
 
@@ -804,14 +806,14 @@ class SharedApi extends BaseApiController
 
         $db->table('subscription_plans')->where('id', $id)->update(['is_featured' => $newFeatured, 'updated_at' => date('Y-m-d H:i:s')]);
 
-        return $this->respond(['success' => true, 'message' => $newFeatured ? 'Plan marked as premium' : 'Premium removed', 'is_featured' => $newFeatured]);
+        return $this->respond(['success' => true, 'message' => $newFeatured ? getAppMessage('plan_marked_as_premium') : getAppMessage('plan_premium_removed'), 'is_featured' => $newFeatured]);
     }
 
     public function updateSubscriptionPlan(int $id)
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin']))
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+        if (!in_array($jwtUser['role'], ['super_admin']))
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
 
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
@@ -834,23 +836,25 @@ class SharedApi extends BaseApiController
             'features' => $data['features'] ?? null,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
-        if ($isFeatured !== null) $updateData['is_featured'] = $isFeatured;
-        if (isset($data['is_most_selected'])) $updateData['is_most_selected'] = (int) $data['is_most_selected'];
+        if ($isFeatured !== null)
+            $updateData['is_featured'] = $isFeatured;
+        if (isset($data['is_most_selected']))
+            $updateData['is_most_selected'] = (int) $data['is_most_selected'];
 
         $db->table('subscription_plans')->where('id', $id)->update($updateData);
 
-        return $this->respond(['success' => true, 'message' => getAppMessage('plan_updated', 'Plan updated')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_updated')]);
     }
 
     public function deleteSubscriptionPlan(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['super_admin', 'admin']))
-            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
 
         $db = \Config\Database::connect();
         $db->table('subscription_plans')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => getAppMessage('plan_deleted', 'Plan deleted')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_deleted')]);
     }
 
     public function moderationHistory()
@@ -878,7 +882,7 @@ class SharedApi extends BaseApiController
         $data = $this->request->getJSON(true);
         $db = \Config\Database::connect();
         $db->table('brands')->insert(['brand_name' => $data['brand_name'] ?? $data['name'] ?? '', 'seller_id' => $this->request->jwt_user['user_id'], 'created_at' => date('Y-m-d H:i:s')]);
-        return $this->respond(['success' => true, 'message' => getAppMessage('brand_created', 'Brand created')], 201);
+        return $this->respond(['success' => true, 'message' => getAppMessage('brand_created')], 201);
     }
 
     public function originalBrands()
@@ -911,14 +915,14 @@ class SharedApi extends BaseApiController
             $validUntil = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
 
             $usedInTable = $db->table('coupon_usage')->where('coupon_id', $coupon['id'])->countAllResults();
-            $usedInSubs  = $db->table('user_subscriptions')->where('coupon_id', $coupon['id'])->where('payment_status', 'paid')->countAllResults();
-            $usedCount   = max((int)($coupon['used_count'] ?? 0), $usedInTable, $usedInSubs);
+            $usedInSubs = $db->table('user_subscriptions')->where('coupon_id', $coupon['id'])->where('payment_status', 'paid')->countAllResults();
+            $usedCount = max((int) ($coupon['used_count'] ?? 0), $usedInTable, $usedInSubs);
 
             $coupon['min_order_amount'] = $minAmount;
-            $coupon['min_purchase']     = $minAmount;
-            $coupon['valid_until']      = $validUntil;
-            $coupon['expires_at']       = $validUntil;
-            $coupon['used_count']       = (string)$usedCount;
+            $coupon['min_purchase'] = $minAmount;
+            $coupon['valid_until'] = $validUntil;
+            $coupon['expires_at'] = $validUntil;
+            $coupon['used_count'] = (string) $usedCount;
         }
         return $this->respond(['success' => true, 'data' => $coupons]);
     }
@@ -933,7 +937,7 @@ class SharedApi extends BaseApiController
         // Prevent duplicate coupon codes
         $existing = $db->table('coupons')->where('code', $code)->get()->getRowArray();
         if ($existing) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_already_exists_use_a_different_code', 'Coupon code already exists. Use a different code.')], 409);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_already_exists')], 409);
         }
 
         // Handle expiry date - if only date is provided, set it to end of that day
@@ -948,31 +952,36 @@ class SharedApi extends BaseApiController
         }
 
         $fields = $db->getFieldNames('coupons');
-        $minAmt = (float)($data['min_order_amount'] ?? $data['min_purchase'] ?? 0);
+        $minAmt = (float) ($data['min_order_amount'] ?? $data['min_purchase'] ?? 0);
 
         // usage_limit: 0 or empty means unlimited — store NULL so per-user check is skipped
         $rawLimit = $data['usage_limit'] ?? null;
-        $usageLimit = ($rawLimit !== null && $rawLimit !== '' && (int)$rawLimit > 0)
-            ? (int)$rawLimit
+        $usageLimit = ($rawLimit !== null && $rawLimit !== '' && (int) $rawLimit > 0)
+            ? (int) $rawLimit
             : null;
 
         $insertData = [
-            'code'          => $code,
+            'code' => $code,
             'discount_type' => $data['discount_type'] ?? 'percentage',
-            'discount_value'=> $data['discount_value'] ?? 0,
-            'max_discount'  => ($data['max_discount'] ?? null) ?: null,
-            'usage_limit'   => $usageLimit,
-            'is_active'     => 1,
+            'discount_value' => $data['discount_value'] ?? 0,
+            'max_discount' => ($data['max_discount'] ?? null) ?: null,
+            'usage_limit' => $usageLimit,
+            'is_active' => 1,
         ];
 
-        if (in_array('min_order_amount', $fields)) $insertData['min_order_amount'] = $minAmt;
-        if (in_array('min_purchase', $fields))     $insertData['min_purchase']     = $minAmt;
-        if (in_array('valid_until', $fields))      $insertData['valid_until']      = $expiresAt;
-        if (in_array('expires_at', $fields))       $insertData['expires_at']       = $expiresAt;
-        if (in_array('created_at', $fields))       $insertData['created_at']       = date('Y-m-d H:i:s');
+        if (in_array('min_order_amount', $fields))
+            $insertData['min_order_amount'] = $minAmt;
+        if (in_array('min_purchase', $fields))
+            $insertData['min_purchase'] = $minAmt;
+        if (in_array('valid_until', $fields))
+            $insertData['valid_until'] = $expiresAt;
+        if (in_array('expires_at', $fields))
+            $insertData['expires_at'] = $expiresAt;
+        if (in_array('created_at', $fields))
+            $insertData['created_at'] = date('Y-m-d H:i:s');
 
         $db->table('coupons')->insert($insertData);
-        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_created', 'Coupon created')], 201);
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_created')], 201);
     }
 
     public function updateCoupon(int $id)
@@ -983,7 +992,7 @@ class SharedApi extends BaseApiController
         // Ensure the coupon being edited actually exists
         $existing = $db->table('coupons')->where('id', $id)->get()->getRowArray();
         if (!$existing) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_not_found', 'Coupon not found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_not_found')], 404);
         }
 
         $code = strtoupper(trim($data['code'] ?? ''));
@@ -995,7 +1004,7 @@ class SharedApi extends BaseApiController
                 ->where('id !=', $id)
                 ->get()->getRowArray();
             if ($duplicate) {
-                return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_already_exists_use_a_different_code', 'Coupon code already exists. Use a different code.')], 409);
+                return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_already_exists')], 409);
             }
         }
 
@@ -1011,27 +1020,32 @@ class SharedApi extends BaseApiController
         }
 
         $fields = $db->getFieldNames('coupons');
-        $minAmt = (float)($data['min_order_amount'] ?? $data['min_purchase'] ?? 0);
+        $minAmt = (float) ($data['min_order_amount'] ?? $data['min_purchase'] ?? 0);
 
         // usage_limit: 0 or empty means unlimited — store NULL so per-user check is skipped
         $rawLimit = $data['usage_limit'] ?? null;
-        $usageLimit = ($rawLimit !== null && $rawLimit !== '' && (int)$rawLimit > 0)
-            ? (int)$rawLimit
+        $usageLimit = ($rawLimit !== null && $rawLimit !== '' && (int) $rawLimit > 0)
+            ? (int) $rawLimit
             : null;
 
         $updateData = [
-            'code'          => $code,
+            'code' => $code,
             'discount_type' => $data['discount_type'] ?? 'percentage',
-            'discount_value'=> $data['discount_value'] ?? 0,
-            'max_discount'  => ($data['max_discount'] ?? null) ?: null,
-            'usage_limit'   => $usageLimit,
+            'discount_value' => $data['discount_value'] ?? 0,
+            'max_discount' => ($data['max_discount'] ?? null) ?: null,
+            'usage_limit' => $usageLimit,
         ];
 
-        if (in_array('min_order_amount', $fields)) $updateData['min_order_amount'] = $minAmt;
-        if (in_array('min_purchase', $fields))     $updateData['min_purchase']     = $minAmt;
-        if (in_array('valid_until', $fields))      $updateData['valid_until']      = $expiresAt;
-        if (in_array('expires_at', $fields))       $updateData['expires_at']       = $expiresAt;
-        if (in_array('updated_at', $fields))       $updateData['updated_at']       = date('Y-m-d H:i:s');
+        if (in_array('min_order_amount', $fields))
+            $updateData['min_order_amount'] = $minAmt;
+        if (in_array('min_purchase', $fields))
+            $updateData['min_purchase'] = $minAmt;
+        if (in_array('valid_until', $fields))
+            $updateData['valid_until'] = $expiresAt;
+        if (in_array('expires_at', $fields))
+            $updateData['expires_at'] = $expiresAt;
+        if (in_array('updated_at', $fields))
+            $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         $db->table('coupons')->where('id', $id)->update($updateData);
 
@@ -1040,11 +1054,11 @@ class SharedApi extends BaseApiController
             // Re-fetch to confirm the row still matches what we sent
             $after = $db->table('coupons')->where('id', $id)->get()->getRowArray();
             if (!$after) {
-                return $this->respond(['success' => false, 'message' => getAppMessage('update_failed_coupon_not_found_after_update', 'Update failed: coupon not found after update.')], 500);
+                return $this->respond(['success' => false, 'message' => getAppMessage('coupon_not_found')], 500);
             }
         }
 
-        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_updated', 'Coupon updated')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_updated')]);
     }
 
     public function toggleCoupon(int $id)
@@ -1054,14 +1068,14 @@ class SharedApi extends BaseApiController
         if (!$coupon)
             return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
         $db->table('coupons')->where('id', $id)->update(['is_active' => $coupon['is_active'] ? 0 : 1]);
-        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_toggled', 'Coupon toggled')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_toggled')]);
     }
 
     public function deleteCoupon(int $id)
     {
         $db = \Config\Database::connect();
         $db->table('coupons')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_deleted', 'Coupon deleted')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_deleted')]);
     }
 
     public function financialReports()
@@ -1174,7 +1188,8 @@ class SharedApi extends BaseApiController
     {
         $db = \Config\Database::connect();
         $page = $db->table('cms_pages')->where('slug', $slug)->where('status', 'active')->get()->getRowArray();
-        if (!$page) return $this->respond(['success' => false, 'message' => getAppMessage('page_not_found', 'Page not found.')], 404);
+        if (!$page)
+            return $this->respond(['success' => false, 'message' => getAppMessage('page_not_found')], 404);
         return $this->respond(['success' => true, 'data' => $page]);
     }
 
@@ -1187,7 +1202,7 @@ class SharedApi extends BaseApiController
         } else {
             $db->table('cms_pages')->insert(['slug' => $data['slug'], 'title' => $data['title'], 'content' => $data['content'], 'status' => 'active', 'created_at' => date('Y-m-d H:i:s')]);
         }
-        return $this->respond(['success' => true, 'message' => getAppMessage('page_saved', 'Page saved')]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('page_saved')]);
     }
 
     public function taxonomy()
@@ -1213,7 +1228,7 @@ class SharedApi extends BaseApiController
         foreach ($categories as &$cat) {
             $catAppliesTo = json_decode($cat['applies_to'] ?? '[]', true);
             if (is_array($catAppliesTo)) {
-                $catAppliesTo = array_filter($catAppliesTo, function($gender) use ($validGenderNames) {
+                $catAppliesTo = array_filter($catAppliesTo, function ($gender) use ($validGenderNames) {
                     return in_array(strtolower($gender), $validGenderNames);
                 });
                 $cat['applies_to'] = json_encode(array_values($catAppliesTo));
@@ -1224,7 +1239,7 @@ class SharedApi extends BaseApiController
         foreach ($subCategories as &$subCat) {
             $subCatAppliesTo = json_decode($subCat['applies_to'] ?? '[]', true);
             if (is_array($subCatAppliesTo)) {
-                $subCatAppliesTo = array_filter($subCatAppliesTo, function($gender) use ($validGenderNames) {
+                $subCatAppliesTo = array_filter($subCatAppliesTo, function ($gender) use ($validGenderNames) {
                     return in_array(strtolower($gender), $validGenderNames);
                 });
                 $subCat['applies_to'] = json_encode(array_values($subCatAppliesTo));
@@ -1354,25 +1369,25 @@ class SharedApi extends BaseApiController
 
         $plan = $db->table('subscription_plans')->where('id', $data['plan_id'])->where('is_active', 1)->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found', 'Plan not found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         // Role & Block validation
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
         }
 
         // 1. Account global block check
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('your_account_is_blocked_please_contact_support', 'Your account is blocked. Please contact support.')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         // 2. Role-specific block check (applies to ALL users including admins if superadmin blocked their role)
         if ($plan['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('your_seller_role_is_blocked_by_superadmin_you_cannot_purchas', 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
         }
         if ($plan['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('your_buyer_role_is_blocked_by_superadmin_you_cannot_purchase', 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
         }
 
         // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
@@ -1383,11 +1398,11 @@ class SharedApi extends BaseApiController
         if (!$isGlobalAdmin) {
             if ($plan['user_type'] === 'seller') {
                 if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
-                    return $this->respond(['success' => false, 'message' => getAppMessage('seller_subscription_plan_requires_seller_role_please_enable', 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.')], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
                 }
             } elseif ($plan['user_type'] === 'buyer') {
                 if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-                    return $this->respond(['success' => false, 'message' => getAppMessage('buyer_subscription_plan_requires_buyer_role_please_enable_bu', 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.')], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
                 }
             }
         }
@@ -1402,7 +1417,7 @@ class SharedApi extends BaseApiController
             ->orderBy('us.expires_at', 'DESC')
             ->get()->getRowArray();
 
-        $durationHours = (float)($plan['duration_hours'] ?: 720);
+        $durationHours = (float) ($plan['duration_hours'] ?: 720);
         $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
         $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
         $expiresAt = date('Y-m-d H:i:s', $baseTime + ($durationHours * 3600));
@@ -1432,7 +1447,7 @@ class SharedApi extends BaseApiController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => getAppMessage('subscription_activated', 'Subscription activated'), 'data' => ['subscription_id' => $subId]]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('subscription_activated'), 'data' => ['subscription_id' => $subId]]);
     }
 
     /**
@@ -1446,56 +1461,56 @@ class SharedApi extends BaseApiController
 
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$currentUser) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
         }
 
         $requiredFields = [
-            'name'             => 'Name',
-            'mobile'           => 'Mobile number',
+            'name' => 'Name',
+            'mobile' => 'Mobile number',
             'alternate_mobile' => 'Alternate mobile number',
-            'email'            => 'Email',
-            'gender'           => 'Gender',
-            'address'          => 'Address',
-            'pin_code'         => 'Pin code',
-            'city'             => 'City',
-            'state'            => 'State',
+            'email' => 'Email',
+            'gender' => 'Gender',
+            'address' => 'Address',
+            'pin_code' => 'Pin code',
+            'city' => 'City',
+            'state' => 'State',
         ];
 
         foreach ($requiredFields as $field => $label) {
-            if (!isset($data[$field]) || trim((string)$data[$field]) === '') {
-                return $this->respond(['success' => false, 'message' => "{$label} is mandatory and cannot be empty."], 400);
+            if (!isset($data[$field]) || trim((string) $data[$field]) === '') {
+                return $this->respond(['success' => false, 'message' => getAppMessage('filed_required',null,['label' => $label])], 400);
             }
         }
 
-        $name            = trim((string)$data['name']);
-        $mobile          = trim((string)$data['mobile']);
-        $alternateMobile = trim((string)$data['alternate_mobile']);
-        $email           = strtolower(trim((string)$data['email']));
-        $gender          = trim((string)$data['gender']);
-        $address         = trim((string)$data['address']);
-        $pinCode         = trim((string)$data['pin_code']);
-        $city            = trim((string)$data['city']);
-        $state           = trim((string)$data['state']);
+        $name = trim((string) $data['name']);
+        $mobile = trim((string) $data['mobile']);
+        $alternateMobile = trim((string) $data['alternate_mobile']);
+        $email = strtolower(trim((string) $data['email']));
+        $gender = trim((string) $data['gender']);
+        $address = trim((string) $data['address']);
+        $pinCode = trim((string) $data['pin_code']);
+        $city = trim((string) $data['city']);
+        $state = trim((string) $data['state']);
 
         // 1. Email format check — must contain @, a domain, and a valid TLD (e.g. .com, .in, .org)
         $emailRegex = '/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,6}$/';
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match($emailRegex, $email)) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_email_address_please_enter_a_valid_email_eg_exampleg', 'Invalid email address. Please enter a valid email (e.g. example@gmail.com).')], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_email')], 400);
         }
 
         // 1a. Mobile number format check (must be exactly 10 digits)
         if (!preg_match('/^[6-9]\d{9}$/', $mobile)) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('mobile_number_must_be_a_valid_10digit_number_starting_with_6', 'Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9.')], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('valid_mobile')], 400);
         }
 
         // 1b. Alternate mobile number format check (must be exactly 10 digits)
         if (!preg_match('/^[6-9]\d{9}$/', $alternateMobile)) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('alternate_mobile_number_must_be_a_valid_10digit_number_start', 'Alternate mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9.')], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('valid_alternate_mobile')], 400);
         }
 
         // 1c. Pin code format check (must be exactly 6 digits)
         if (!preg_match('/^\d{6}$/', $pinCode)) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('pin_code_must_be_a_valid_6digit_number', 'Pin code must be a valid 6-digit number.')], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('valid_pindcode')], 400);
         }
 
         // 2. Primary mobile vs Alternate mobile check
@@ -1526,7 +1541,7 @@ class SharedApi extends BaseApiController
             ->where('id !=', $jwtUser['user_id'])
             ->countAllResults();
         if ($altAsPrimary > 0 || $altAsAlternate > 0) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('alternate_mobile_number_is_already_registered_by_another_use', 'Alternate mobile number is already registered by another user.')], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('already_extis_alternate_mobile')], 400);
         }
 
         // 5. Email uniqueness check for all users
@@ -1535,20 +1550,20 @@ class SharedApi extends BaseApiController
             ->where('id !=', $jwtUser['user_id'])
             ->countAllResults();
         if ($emailExists > 0) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('email_is_already_registered_by_another_user', 'Email is already registered by another user.')], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_already_exists')], 400);
         }
 
         $updateData = [
-            'name'             => $name,
-            'mobile'           => $mobile,
+            'name' => $name,
+            'mobile' => $mobile,
             'alternate_mobile' => $alternateMobile,
-            'email'            => $email,
-            'gender'           => $gender,
-            'address'          => $address,
-            'pin_code'         => $pinCode,
-            'city'             => $city,
-            'state'            => $state,
-            'updated_at'       => date('Y-m-d H:i:s'),
+            'email' => $email,
+            'gender' => $gender,
+            'address' => $address,
+            'pin_code' => $pinCode,
+            'city' => $city,
+            'state' => $state,
+            'updated_at' => date('Y-m-d H:i:s'),
         ];
 
         $db->table('users')->where('id', $jwtUser['user_id'])->update($updateData);
@@ -1576,13 +1591,15 @@ class SharedApi extends BaseApiController
         }
 
         $uploadPath = FCPATH . 'uploads/profiles/';
-        if (!is_dir($uploadPath)) mkdir($uploadPath, 0777, true);
+        if (!is_dir($uploadPath))
+            mkdir($uploadPath, 0777, true);
 
         // Delete old profile image if exists
         $existing = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if (!empty($existing['profile_image'])) {
             $oldPath = FCPATH . $existing['profile_image'];
-            if (file_exists($oldPath)) @unlink($oldPath);
+            if (file_exists($oldPath))
+                @unlink($oldPath);
         }
 
         $newName = $file->getRandomName();
@@ -1593,7 +1610,7 @@ class SharedApi extends BaseApiController
 
         $db->table('users')->where('id', $jwtUser['user_id'])->update([
             'profile_image' => $imagePath,
-            'updated_at'    => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond([
@@ -1603,69 +1620,7 @@ class SharedApi extends BaseApiController
         ]);
     }
 
-    /**
-     * POST /api/v1/shared/upload-kyc
-     */
-    public function uploadKyc()
-    {
-        $jwtUser = $this->request->jwt_user;
-        $db = \Config\Database::connect();
 
-        $uploadPath = FCPATH . 'uploads/kyc/';
-        if (!is_dir($uploadPath))
-            mkdir($uploadPath, 0777, true);
-
-        $updateData = ['updated_at' => date('Y-m-d H:i:s')];
-
-        $panFile = $this->request->getFile('pan_image');
-        if ($panFile && $panFile->isValid()) {
-            $panName = $panFile->getRandomName();
-            $panFile->move($uploadPath, $panName);
-            $updateData['pan_image'] = 'uploads/kyc/' . $panName;
-        }
-
-        $aadharFile = $this->request->getFile('aadhar_image');
-        if ($aadharFile && $aadharFile->isValid()) {
-            $aadharName = $aadharFile->getRandomName();
-            $aadharFile->move($uploadPath, $aadharName);
-            $updateData['aadhar_image'] = 'uploads/kyc/' . $aadharName;
-        }
-
-        $panNumber = $this->request->getPost('pan_number');
-        $aadharNumber = $this->request->getPost('aadhar_number');
-        if ($panNumber)
-            $updateData['pan_number'] = $panNumber;
-        if ($aadharNumber)
-            $updateData['aadhar_number'] = $aadharNumber;
-
-        // For delivery person, update delivery_persons table
-        $deliveryPerson = $db->table('delivery_persons')->where('user_id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($deliveryPerson) {
-            $dpUpdate = ['updated_at' => date('Y-m-d H:i:s')];
-            if (isset($updateData['pan_image']))
-                $dpUpdate['pan_image'] = $updateData['pan_image'];
-            if (isset($updateData['aadhar_image']))
-                $dpUpdate['aadhar_image'] = $updateData['aadhar_image'];
-            if ($panNumber)
-                $dpUpdate['pan_number'] = $panNumber;
-            if ($aadharNumber)
-                $dpUpdate['aadhar_number'] = $aadharNumber;
-            $vehicleType = $this->request->getPost('vehicle_type');
-            $vehicleNumber = $this->request->getPost('vehicle_number');
-            $licenseNumber = $this->request->getPost('license_number');
-            if ($vehicleType)
-                $dpUpdate['vehicle_type'] = $vehicleType;
-            if ($vehicleNumber)
-                $dpUpdate['vehicle_number'] = $vehicleNumber;
-            if ($licenseNumber)
-                $dpUpdate['license_number'] = $licenseNumber;
-            $db->table('delivery_persons')->where('user_id', $jwtUser['user_id'])->update($dpUpdate);
-        }
-
-        $db->table('users')->where('id', $jwtUser['user_id'])->update($updateData);
-
-        return $this->respond(['success' => true, 'message' => getAppMessage('kyc_documents_uploaded', 'KYC documents uploaded')]);
-    }
 
     public function landingContent()
     {
@@ -1727,7 +1682,7 @@ class SharedApi extends BaseApiController
         // PERFORMANCE: Cache the featured-products list for 60 seconds using
         // CI4's built-in file cache. This endpoint is hit on every homepage
         // load and the result rarely changes mid-session.
-        $cache    = \Config\Services::cache();
+        $cache = \Config\Services::cache();
         $cacheKey = 'featured_products_v1';
 
         $products = $cache->get($cacheKey);
@@ -1782,19 +1737,45 @@ class SharedApi extends BaseApiController
 
         // Apply Range Filter to transactions
         switch ($range) {
-            case 'current_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
-            case 'last_week': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'last_2_weeks': $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'current_month': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00')); break;
-            case 'last_month': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_months': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
-            case 'last_quarter': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_quarters': $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_year': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00')); break;
-            case 'last_year': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            case 'last_2_years': $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            case 'all_time': default: break;
+            case 'current_week':
+                $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week')));
+                break;
+            case 'last_week':
+                $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'last_2_weeks':
+                $txBuilder->where('t.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('t.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'current_month':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00'));
+                break;
+            case 'last_month':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_months':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_quarter':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months')));
+                break;
+            case 'last_quarter':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_quarters':
+                $txBuilder->where('t.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('t.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_year':
+                $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00'));
+                break;
+            case 'last_year':
+                $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            case 'last_2_years':
+                $txBuilder->where('t.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('t.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            case 'all_time':
+            default:
+                break;
         }
 
         $allTransactions = $txBuilder->get()->getResultArray();
@@ -1814,19 +1795,44 @@ class SharedApi extends BaseApiController
 
         // Apply same date-range filter on the free-sub query
         switch ($range) {
-            case 'current_week':    $freeSubBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
-            case 'last_week':       $freeSubBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'last_2_weeks':    $freeSubBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'current_month':   $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00')); break;
-            case 'last_month':      $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_months':   $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_quarter': $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
-            case 'last_quarter':    $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_quarters': $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_year':    $freeSubBuilder->where('us.created_at >=', date('Y-01-01 00:00:00')); break;
-            case 'last_year':       $freeSubBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            case 'last_2_years':    $freeSubBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            default: break;
+            case 'current_week':
+                $freeSubBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week')));
+                break;
+            case 'last_week':
+                $freeSubBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'last_2_weeks':
+                $freeSubBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'current_month':
+                $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00'));
+                break;
+            case 'last_month':
+                $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_months':
+                $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_quarter':
+                $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months')));
+                break;
+            case 'last_quarter':
+                $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_quarters':
+                $freeSubBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_year':
+                $freeSubBuilder->where('us.created_at >=', date('Y-01-01 00:00:00'));
+                break;
+            case 'last_year':
+                $freeSubBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            case 'last_2_years':
+                $freeSubBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            default:
+                break;
         }
 
         $freeSubRows = $freeSubBuilder->get()->getResultArray();
@@ -1834,21 +1840,21 @@ class SharedApi extends BaseApiController
 
         foreach ($freeSubRows as $fs) {
             $allTransactions[] = [
-                'id'               => 'free-' . $fs['id'],
-                'order_id'         => null,
-                'user_id'          => $fs['user_id'],
-                'user_name'        => $user['name'] ?? '',
+                'id' => 'free-' . $fs['id'],
+                'order_id' => null,
+                'user_id' => $fs['user_id'],
+                'user_name' => $user['name'] ?? '',
                 'transaction_type' => 'debit',
-                'amount'           => 0,
-                'description'      => 'Free Plan: ' . ($fs['plan_name_from_plan'] ?? 'Unknown'),
-                'payment_method'   => 'free',
-                'transaction_id'   => null,
-                'type'             => 'subscription',
-                'payment_status'   => 'paid',
-                'plan_type'        => $fs['plan_user_type'] ?? null,
-                'starts_at'        => $fs['starts_at'],
-                'expires_at'       => $fs['expires_at'],
-                'created_at'       => $fs['created_at'],
+                'amount' => 0,
+                'description' => 'Free Plan: ' . ($fs['plan_name_from_plan'] ?? 'Unknown'),
+                'payment_method' => 'free',
+                'transaction_id' => null,
+                'type' => 'subscription',
+                'payment_status' => 'paid',
+                'plan_type' => $fs['plan_user_type'] ?? null,
+                'starts_at' => $fs['starts_at'],
+                'expires_at' => $fs['expires_at'],
+                'created_at' => $fs['created_at'],
             ];
         }
 
@@ -1897,29 +1903,56 @@ class SharedApi extends BaseApiController
 
         // Apply same range filter to subscriptions
         switch ($range) {
-            case 'current_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week'))); break;
-            case 'last_week': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'last_2_weeks': $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week'))); break;
-            case 'current_month': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00')); break;
-            case 'last_month': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_months': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months'))); break;
-            case 'last_quarter': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'last_2_quarters': $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month'))); break;
-            case 'current_year': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00')); break;
-            case 'last_year': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            case 'last_2_years': $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year'))); break;
-            case 'all_time': default: break;
+            case 'current_week':
+                $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday this week')));
+                break;
+            case 'last_week':
+                $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday last week')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'last_2_weeks':
+                $subBuilder->where('us.created_at >=', date('Y-m-d 00:00:00', strtotime('monday -2 weeks')))->where('us.created_at <=', date('Y-m-d 23:59:59', strtotime('sunday last week')));
+                break;
+            case 'current_month':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00'));
+                break;
+            case 'last_month':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of last month')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_months':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -2 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_quarter':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('-2 months')));
+                break;
+            case 'last_quarter':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -3 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'last_2_quarters':
+                $subBuilder->where('us.created_at >=', date('Y-m-01 00:00:00', strtotime('first day of -6 months')))->where('us.created_at <=', date('Y-m-t 23:59:59', strtotime('last day of last month')));
+                break;
+            case 'current_year':
+                $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00'));
+                break;
+            case 'last_year':
+                $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january last year')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            case 'last_2_years':
+                $subBuilder->where('us.created_at >=', date('Y-01-01 00:00:00', strtotime('first day of january -2 years')))->where('us.created_at <=', date('Y-12-31 23:59:59', strtotime('last day of december last year')));
+                break;
+            case 'all_time':
+            default:
+                break;
         }
 
         $subs = $subBuilder->whereIn('us.payment_status', ['paid', 'completed', 'success'])->get()->getResultArray();
 
         // 3. Calculate Summary Stats from successful transactions
         $totalTxs = count($successfulTxs);
-        $totalRevenue = array_reduce($successfulTxs, fn($carry, $item) => $carry + (float)$item['amount'], 0);
+        $totalRevenue = array_reduce($successfulTxs, fn($carry, $item) => $carry + (float) $item['amount'], 0);
 
         // Bifurcation (Buyer vs Seller)
-        $buyerSpent = 0; $sellerSpent = 0;
+        $buyerSpent = 0;
+        $sellerSpent = 0;
         foreach ($successfulTxs as $tx) {
             // Orders are always buyer revenue. Subscriptions depend on plan type.
             if ($tx['type'] === 'subscription') {
@@ -1939,24 +1972,26 @@ class SharedApi extends BaseApiController
                 }
 
                 if ($s && $s['plan_user_type'] === 'seller') {
-                    $sellerSpent += (float)$tx['amount'];
+                    $sellerSpent += (float) $tx['amount'];
                 } else {
-                    $buyerSpent += (float)$tx['amount'];
+                    $buyerSpent += (float) $tx['amount'];
                 }
             } else {
                 // Orders/other
-                $buyerSpent += (float)$tx['amount'];
+                $buyerSpent += (float) $tx['amount'];
             }
         }
 
         // 4. Plan Breakdown (remain subscription based)
-        $planBreakdown = []; $planTypes = [];
+        $planBreakdown = [];
+        $planTypes = [];
         foreach ($allPlans as $p) {
             $planBreakdown[$p['name']] = 0;
             $planTypes[$p['name']] = $p['user_type'];
         }
         foreach ($subs as $s) {
-            if (isset($planBreakdown[$s['plan_name']])) $planBreakdown[$s['plan_name']]++;
+            if (isset($planBreakdown[$s['plan_name']]))
+                $planBreakdown[$s['plan_name']]++;
         }
 
         return $this->respond([
@@ -2034,7 +2069,7 @@ class SharedApi extends BaseApiController
                 $stats[$label] = ['buyer_spent' => 0, 'seller_spent' => 0, 'buyer_count' => 0, 'seller_count' => 0, 'discount' => 0];
             }
 
-            $amt = (float)$tx['amount'];
+            $amt = (float) $tx['amount'];
             if ($tx['type'] === 'subscription') {
                 $txId = $tx['transaction_id'] ?? '';
                 $sId = $tx['subscription_id'] ?? 0;
@@ -2056,7 +2091,8 @@ class SharedApi extends BaseApiController
                 } else {
                     $stats[$label]['buyer_spent'] += $amt;
                     $stats[$label]['buyer_count']++;
-                    if ($s) $stats[$label]['discount'] += $this->calculateSubscriptionDiscount($s);
+                    if ($s)
+                        $stats[$label]['discount'] += $this->calculateSubscriptionDiscount($s);
                 }
             } else {
                 $stats[$label]['buyer_spent'] += $amt;
@@ -2081,7 +2117,7 @@ class SharedApi extends BaseApiController
     {
         $rawKey = urldecode($pageKey ?? $this->request->getGet('route') ?? '');
         if (empty($rawKey)) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('no_page_key_or_route_provided', 'No page key or route provided')], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_page_key_or_route_provided')], 400);
         }
 
         $seoModel = new \App\Models\SeoSettingModel();
@@ -2102,7 +2138,7 @@ class SharedApi extends BaseApiController
         }
 
         if (!$setting) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('seo_settings_not_found_for_this_page', 'SEO settings not found for this page')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seo_settings_not_found')], 404);
         }
 
         return $this->respond(['success' => true, 'data' => $setting]);
