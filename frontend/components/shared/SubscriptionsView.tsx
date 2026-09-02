@@ -972,26 +972,19 @@ export default function SubscriptionsView({ role, userType }: Props) {
                         <input
                           type="text"
                           className="form-control coupon-input text-uppercase"
-                          placeholder={isReferralCovered ? "Coupon disabled (Referral covers price)" : "Enter code"}
+                          placeholder="Enter code"
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && !isCouponDisabled && applyCoupon()}
-                          disabled={isCouponDisabled}
+                          onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
                         />
                         <button
                           className="btn btn-outline-secondary coupon-btn fw-bold"
                           onClick={applyCoupon}
-                          disabled={isCouponDisabled}
                         >
                           {couponLoading ? <span className="spinner-border spinner-border-sm" /> : 'Apply'}
                         </button>
                       </div>
-                      {isReferralCovered ? (
-                        <div className="small mt-1 text-warning d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
-                          <i className="bi bi-info-circle" />
-                          Referral credit covers the full plan price. Coupon code cannot be applied.
-                        </div>
-                      ) : couponMsg && (
+                      {couponMsg && (
                         <div className={`small mt-1 ${couponMsg.ok ? 'text-success' : 'text-danger'}`}>
                           <i className={`bi ${couponMsg.ok ? 'bi-check-circle' : 'bi-exclamation-circle'} me-1`} />
                           {couponMsg.text}
@@ -1013,7 +1006,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                       {paying ? (
                         <><span className="spinner-border spinner-border-sm" /> Redirecting to PhonePe…</>
                       ) : (
-                        <><i className="bi bi-wallet2 fs-5" /> Pay ₹{displayTotal.toFixed(2)}</>
+                        <><i className="bi bi-wallet2 fs-5" /> Pay ₹{Math.max(1, displayTotal).toFixed(2)}</>
                       )}
                     </button>
 

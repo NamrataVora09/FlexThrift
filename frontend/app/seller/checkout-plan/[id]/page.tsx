@@ -356,22 +356,16 @@ export default function SellerCheckoutPlanPage() {
                   <input
                     type="text"
                     className="form-control coupon-input text-uppercase"
-                    placeholder={isReferralCovered ? "Coupon disabled (Referral covers price)" : "Enter code"}
+                    placeholder="Enter code"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !isCouponDisabled && applyCoupon()}
-                    disabled={isCouponDisabled}
+                    onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
                   />
-                  <button className="btn btn-outline-secondary coupon-btn fw-bold" onClick={applyCoupon} disabled={isCouponDisabled}>
+                  <button className="btn btn-outline-secondary coupon-btn fw-bold" onClick={applyCoupon}>
                     {couponLoading ? <span className="spinner-border spinner-border-sm" /> : 'Apply'}
                   </button>
                 </div>
-                {isReferralCovered ? (
-                  <div className="small mt-1 text-warning d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
-                    <i className="bi bi-info-circle" />
-                    Referral credit covers the plan price. Coupon code cannot be applied.
-                  </div>
-                ) : couponMsg && (
+                {couponMsg && (
                   <div className={`small mt-1 ${couponMsg.ok ? 'text-success' : 'text-danger'}`}>
                     <i className={`bi ${couponMsg.ok ? 'bi-check-circle' : 'bi-exclamation-circle'} me-1`} />
                     {couponMsg.text}

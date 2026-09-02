@@ -223,38 +223,38 @@ export default function CheckoutPlanPage() {
               </div>
 
               {/* Plan privileges */}
-                <div className="mb-4">
-                  <h6 className="fw-bold mb-3">Plan Privileges</h6>
-                  <ul className="list-unstyled mb-0">
-                    {(() => {
-                      const coreFeatures = [
-                        { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
-                        { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
-                      ];
-                      let customFeatures: { icon: string; text: string }[] = [];
-                      try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) {}
-                      
-                      const filteredCustom = customFeatures.filter(cf => 
-                        cf.text && 
-                        !cf.text.toLowerCase().includes('contact') && 
-                        !cf.text.toLowerCase().includes('validity') && 
-                        !cf.text.toLowerCase().includes('hour')
-                      );
+              <div className="mb-4">
+                <h6 className="fw-bold mb-3">Plan Privileges</h6>
+                <ul className="list-unstyled mb-0">
+                  {(() => {
+                    const coreFeatures = [
+                      { icon: 'contacts', text: `${plan.plan_type === 'duration' ? 'Unlimited' : plan.limit_value} Contacts` },
+                      { icon: 'schedule', text: `${Number(plan.duration_hours) > 0 ? plan.duration_hours + ' Hours' : 'Life-Time'} Validity` },
+                    ];
+                    let customFeatures: { icon: string; text: string }[] = [];
+                    try { if (plan.features) customFeatures = JSON.parse(plan.features); } catch (e) { }
 
-                      const allFeatures = [...coreFeatures, ...filteredCustom];
+                    const filteredCustom = customFeatures.filter(cf =>
+                      cf.text &&
+                      !cf.text.toLowerCase().includes('contact') &&
+                      !cf.text.toLowerCase().includes('validity') &&
+                      !cf.text.toLowerCase().includes('hour')
+                    );
 
-                      return allFeatures.map((f, i) => (
-                        <li key={i} className="mb-2 small d-flex align-items-start gap-2">
-                          <span className="material-symbols-outlined text-success" style={{ fontSize: '1.2rem', flexShrink: 0, fontVariationSettings: "'FILL' 1" }}>{f.icon}</span>
-                          <span>{f.text}</span>
-                        </li>
-                      ));
-                    })()}
-                    <li className="small d-flex align-items-center text-muted mt-2">
-                      <i className="bi bi-info-circle me-2" />Only 1 rating allowed per 3 unique contacts
-                    </li>
-                  </ul>
-                </div>
+                    const allFeatures = [...coreFeatures, ...filteredCustom];
+
+                    return allFeatures.map((f, i) => (
+                      <li key={i} className="mb-2 small d-flex align-items-start gap-2">
+                        <span className="material-symbols-outlined text-success" style={{ fontSize: '1.2rem', flexShrink: 0, fontVariationSettings: "'FILL' 1" }}>{f.icon}</span>
+                        <span>{f.text}</span>
+                      </li>
+                    ));
+                  })()}
+                  <li className="small d-flex align-items-center text-muted mt-2">
+                    <i className="bi bi-info-circle me-2" />Only 1 rating allowed per 3 unique contacts
+                  </li>
+                </ul>
+              </div>
 
               {/* Billing info */}
               <div className="mt-auto pt-4 border-top">
@@ -399,12 +399,7 @@ export default function CheckoutPlanPage() {
                     {couponLoading ? <span className="spinner-border spinner-border-sm" /> : 'Apply'}
                   </button>
                 </div>
-                {isReferralCovered ? (
-                  <div className="small mt-1 text-warning d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
-                    <i className="bi bi-info-circle" />
-                    Referral credit covers the plan price. Coupon code cannot be applied.
-                  </div>
-                ) : couponMsg && (
+                {couponMsg && (
                   <div className={`small mt-1 ${couponMsg.ok ? 'text-success' : 'text-danger'}`}>
                     <i className={`bi ${couponMsg.ok ? 'bi-check-circle' : 'bi-exclamation-circle'} me-1`} />
                     {couponMsg.text}

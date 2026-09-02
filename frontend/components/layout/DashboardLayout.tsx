@@ -21,7 +21,7 @@ interface Props {
 let globalSidebarOpen: boolean | null = null;
 
 export default function DashboardLayout({ children, requiredRoles, viewAs }: Props) {
-  const { user, isLoading, isAuthenticated, setUser } = useAuth();
+  const { user, isLoading, isAuthenticated,  } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -58,7 +58,6 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
             const data = await res.json();
             if (data.success && data.data) {
               localStorage.setItem('flex_user', JSON.stringify(data.data));
-              setUser(data.data);
             }
           }
         } catch (e) {

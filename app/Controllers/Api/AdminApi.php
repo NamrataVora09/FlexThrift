@@ -1172,8 +1172,9 @@ class AdminApi extends BaseApiController
         $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
         if ((float) $plan['price'] < $cpnMinPurchase)
             return $this->respond(['success' => false, 'message' => getAppMessage('coupon_min_purchase', null, ['amount' => $cpnMinPurchase])]);
-        // Referral discount restriction: Check if user has active referral discount for this plan
+        // ── Referral + Coupon combined validation ────────────────────────────
         $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
+        $refDiscount = 0.0;
         if ($useReferral) {
             $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
             $referralBalance = (float) ($user['referral_balance'] ?? 0);
@@ -1182,32 +1183,21 @@ class AdminApi extends BaseApiController
                 $referralBalance = 0.0;
             }
 
-            if ($referralBalance > 0) {
-                if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
-                    $settingsRows = $db->table('system_settings')
-                        ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
-                        ->get()->getResultArray();
-                    $cfg = [];
-                    foreach ($settingsRows as $s)
-                        $cfg[$s['setting_key']] = $s['setting_value'];
+            if ($referralBalance > 0 && (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time())) {
+                $settingsRows = $db->table('system_settings')
+                    ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+                    ->get()->getResultArray();
+                $cfg = [];
+                foreach ($settingsRows as $s)
+                    $cfg[$s['setting_key']] = $s['setting_value'];
 
-                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
-                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+                $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
 
-                    $basePrice = (float) $plan['price'];
-                    if ($basePrice >= $minPurchase) {
-                        $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
-                        $refDiscount = min($rawDiscount, $basePrice);
-
-                        // Only block coupon when referral fully covers the plan price
-                        if ($refDiscount >= $basePrice && $basePrice > 0) {
-                            return $this->respond([
-                                'success' => false,
-                                'message' => getAppMessage('coupon_cannot_be_applied_when_referral_discount_covers_the_full_plan_price')
-                            ], 400);
-                        }
-                        // Partial referral: coupon is allowed — both discounts will stack
-                    }
+                $basePrice = (float) $plan['price'];
+                if ($basePrice >= $minPurchase) {
+                    $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                    $refDiscount = min($rawDiscount, $basePrice);
                 }
             }
         }
@@ -1218,8 +1208,28 @@ class AdminApi extends BaseApiController
             : (float) $coupon['discount_value'];
         if ($coupon['max_discount'] && $discount > $coupon['max_discount'])
             $discount = $coupon['max_discount'];
+        $discount = round($discount, 2);
 
-        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_applied_successfully'), 'data' => ['discount' => round($discount, 2)]]);
+        $basePrice = (float) $plan['price'];
+        $remainingPayable = max(0.0, $basePrice - $refDiscount);
+
+        // If referral alone covers full price, coupon cannot be applied
+        if ($refDiscount >= $basePrice && $basePrice > 0) {
+            return $this->respond([
+                'success' => false,
+                'message' => getAppMessage('coupon_code_cannot_be_applied_when_referral_discount_covers', 'Coupon code cannot be applied when referral discount covers the full plan price.')
+            ], 400);
+        }
+
+        // If coupon discount value exceeds remaining payable amount after referral, coupon cannot be applied
+        if ($discount > $remainingPayable) {
+            return $this->respond([
+                'success' => false,
+                'message' => getAppMessage('coupon_discount_exceeds_remaining_amount', 'Coupon code cannot be applied because the coupon discount exceeds the remaining plan price after referral credit.')
+            ], 400);
+        }
+
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_applied_successfully', 'Coupon applied successfully!'), 'data' => ['discount' => round($discount, 2)]]);
     }
 
     public function initiatePayment()
@@ -1337,6 +1347,8 @@ class AdminApi extends BaseApiController
         if ($referralDiscount >= $basePrice && $basePrice > 0) {
             $discount = 0;
             $couponId = null;
+        } else {
+            $discount = min($discount, max(0.0, $basePrice - $referralDiscount));
         }
 
 
