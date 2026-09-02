@@ -83,21 +83,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
-
+ // infinite server request - that is why commented
   // Focus revalidation: Increment refreshKey when window gains focus
-  useEffect(() => {
-    let lastRefresh = 0;
-    const handleFocus = () => {
-      const now = Date.now();
-      // Only trigger if at least 10 seconds have passed since last refresh to avoid spam
-      if (now - lastRefresh > 10000) {
-        setRefreshKey(prev => prev + 1);
-        lastRefresh = now;
-      }
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+  // useEffect(() => {
+  //   let lastRefresh = 0;
+  //   const handleFocus = () => {
+  //     const now = Date.now();
+  //     // Only trigger if at least 10 seconds have passed since last refresh to avoid spam
+  //     if (now - lastRefresh > 10000) {
+  //       setRefreshKey(prev => prev + 1);
+  //       lastRefresh = now;
+  //     }
+  //   };
+  //   window.addEventListener('focus', handleFocus);
+  //   return () => window.removeEventListener('focus', handleFocus);
+  // }, []);
 
   const setAuth = useCallback((userData: User, authToken: string) => {
     setUser(userData);
