@@ -27,12 +27,16 @@ if (!function_exists('getAppMessage')) {
     {
         try {
             $db = \Config\Database::connect();
-            $row = $db->table('app_messages')
-                ->where('message_key', $key)
-                ->get()
-                ->getRowArray();
+            $row = null;
+            if ($db->fieldExists('message_key', 'app_messages')) {
+                $row = $db->table('app_messages')->where('message_key', $key)->get()->getRowArray();
+                $message = $row ? ($row['message_value'] ?? $row['message'] ?? null) : null;
+            } else {
+                $row = $db->table('app_messages')->where('key', $key)->get()->getRowArray();
+                $message = $row ? ($row['message'] ?? $row['message_value'] ?? null) : null;
+            }
 
-            $message = $row ? $row['message_value'] : ($default ?? $key);
+            $message = $message ?? ($default ?? $key);
 
             if (!empty($params)) {
                 foreach ($params as $k => $v) {

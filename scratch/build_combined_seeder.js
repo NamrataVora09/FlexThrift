@@ -35,37 +35,30 @@ frontendData.messages.forEach(item => {
 });
 
 const totalCombined = combinedMap.size;
-const sqlStatements = [];
 const arrayEntries = [];
 
 function escapePhpString(str) {
   return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-function escapeSqlString(str) {
-  return str.replace(/'/g, "''");
-}
-
 for (const [key, data] of combinedMap.entries()) {
   const phpVal = escapePhpString(data.value);
-  const sqlVal = escapeSqlString(data.value);
-  
-  sqlStatements.push(`INSERT INTO app_messages (message_key, message_value, category) VALUES ('${key}', '${sqlVal}', '${data.category}') ON DUPLICATE KEY UPDATE message_value = IF(message_value IS NULL OR message_value = '', '${sqlVal}', message_value);`);
-  arrayEntries.push(`    ['message_key' => '${key}', 'message_value' => '${phpVal}', 'category' => '${data.category}'],`);
+  arrayEntries.push(`    ['key' => '${key}', 'message' => '${phpVal}', 'category' => '${data.category}'],`);
 }
 
-// Generate standalone PHP seeder script
+// Generate dual-schema smart standalone PHP seeder script
 const phpSeederScript = `<?php
 /**
  * Combined App Messages Seeder (All Backend + Frontend Messages)
+ * Dual-Schema Auto-Detecting (Supports both key/message and message_key/message_value)
  * Total Unique Keys: ${totalCombined}
  * Run via: php seed_combined_app_messages.php
  */
 
-$host   = 'localhost';
-$dbName = 'flex-pro';
-$user   = 'flexadmin';
-$pass   = 'gZLYbwsS7a7im2vAqfNi';
+$host   = '127.0.0.1';
+$dbName = 'flex';
+$user   = 'root';
+$pass   = '';
 $port   = 3306;
 
 $envFiles = [__DIR__ . '/.env', __DIR__ . '/env', getcwd() . '/.env', getcwd() . '/env'];
@@ -97,19 +90,45 @@ try {
 
 echo "Connected to database '{$dbName}' on {$host}:{$port}.\\n";
 
+// Inspect database table structure dynamically
+$cols = $pdo->query("DESCRIBE app_messages")->fetchAll();
+$colNames = array_column($cols, 'Field');
+
+$hasKeyCol = in_array('key', $colNames);
+$keyField = $hasKeyCol ? 'key' : 'message_key';
+$valField = in_array('message', $colNames) ? 'message' : 'message_value';
+$hasCategory = in_array('category', $colNames);
+
+echo "Detected schema: Key Column = '{$keyField}', Value Column = '{$valField}'" . ($hasCategory ? ", Category Column = 'category'" : "") . "\\n";
+
 $messages = [
 ${arrayEntries.join('\n')}
 ];
 
-$stmt = $pdo->prepare("
-    INSERT INTO app_messages (message_key, message_value, category)
-    VALUES (:message_key, :message_value, :category)
-    ON DUPLICATE KEY UPDATE message_value = IF(message_value IS NULL OR message_value = '', VALUES(message_value), message_value)
-");
+if ($hasCategory) {
+    $stmt = $pdo->prepare("
+        INSERT INTO app_messages (\`{$keyField}\`, \`{$valField}\`, \`category\`)
+        VALUES (:key, :message, :category)
+        ON DUPLICATE KEY UPDATE \`{$valField}\` = IF(\`{$valField}\` IS NULL OR \`{$valField}\` = '', VALUES(\`{$valField}\`), \`{$valField}\`)
+    ");
+} else {
+    $stmt = $pdo->prepare("
+        INSERT INTO app_messages (\`{$keyField}\`, \`{$valField}\`)
+        VALUES (:key, :message)
+        ON DUPLICATE KEY UPDATE \`{$valField}\` = IF(\`{$valField}\` IS NULL OR \`{$valField}\` = '', VALUES(\`{$valField}\`), \`{$valField}\`)
+    ");
+}
 
 $inserted = 0;
 foreach ($messages as $msg) {
-    $stmt->execute($msg);
+    $data = [
+        'key' => $msg['key'],
+        'message' => $msg['message'],
+    ];
+    if ($hasCategory) {
+        $data['category'] = $msg['category'];
+    }
+    $stmt->execute($data);
     $inserted++;
 }
 
@@ -117,7 +136,4 @@ echo "Successfully seeded/updated {$inserted} app_messages in database '{$dbName
 `;
 
 fs.writeFileSync('seed_combined_app_messages.php', phpSeederScript);
-fs.writeFileSync('scratch/seed_combined_app_messages.sql', sqlStatements.join('\n'));
-
-console.log(`Combined Seeder Generated Successfully!`);
-console.log(`Total Combined Unique Message Keys: ${totalCombined}`);
+console.log('Smart dual-schema seeder generated!');
