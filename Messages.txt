@@ -111,9 +111,19 @@ already_extis_alternate_mobile
 no_page_key_or_route_provided
 seo_settings_not_found
 
-
-
-
+Buyer Api
+another_buyer_offer_accepted_for_sell_product
+another_buyer_offer_accepted_for_rent_product
+cannot_make_offer_on_own_product
+rental_dates_required
+rental_min_days_error
+rental_overlapping
+offer_submitted
+received_new_offer_amount_notify
+offer_dates_update_error
+offer_not_found
+rental_start_end_date_required
+rental_conflict
 
 
 

@@ -417,7 +417,7 @@ class BuyerApi extends BaseApiController
             ->get()->getRowArray();
 
         if (!$product) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found_product')], 404);
         }
 
         $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
@@ -442,7 +442,7 @@ class BuyerApi extends BaseApiController
 
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
         if (!$product) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found_product')], 404);
         }
 
         // Build a scored similarity query
@@ -771,18 +771,18 @@ class BuyerApi extends BaseApiController
 
         $product = $db->table('products')->where('id', $data['product_id'])->where('status', 'approved')->get()->getRowArray();
         if (!$product)
-            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found')], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found_product')], 404);
 
         // Check if buyer is blocked
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if ($currentUser && !empty($currentUser['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('buyer_blocked')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
         }
 
         // Check if seller is blocked
         $seller = $db->table('users')->where('id', $product['seller_id'])->get()->getRowArray();
         if ($seller && !empty($seller['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => getAppMessage('seller_blocked')], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
         }
 
         if ($product['seller_id'] == $jwtUser['user_id'])
@@ -1044,7 +1044,7 @@ class BuyerApi extends BaseApiController
             // Fetch product to get its rental rates
             $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
             if (!$product) {
-                return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found')], 404);
+                return $this->respond(['success' => false, 'message' => getAppMessage('no_product_found')], 404);
             }
 
             // Enforce minimum rental days from system settings
