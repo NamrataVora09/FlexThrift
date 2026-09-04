@@ -1038,7 +1038,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
 
         // Trigger refresh to update subscription quota on dashboard
         if (!isEditMode && role === 'seller') {
-          triggerRefresh();
+          // triggerRefresh();
         }
 
         setTimeout(() => router.push(redirectPath), 1500);
