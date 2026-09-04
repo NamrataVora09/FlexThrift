@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
+import { showToast } from '@/lib/toast';
 import { getCartCount } from '@/lib/cart';
 import AdBanner from '@/components/shared/AdBanner';
 
@@ -1455,7 +1456,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                         if (!file) return;
                         const url = await uploadCardImage(file, i);
                         if (url) { const n = [...editTemp]; n[i] = { ...n[i], img: url }; setEditTemp(n); }
-                        else alert('Image upload failed. Please try again.');
+                        else showToast.error('Image upload failed. Please try again.');
                         e.target.value = '';
                       }}
                     />

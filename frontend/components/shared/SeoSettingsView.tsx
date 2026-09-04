@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import { useToast } from '@/lib/toast';
+import { confirmToast } from '@/lib/toast-utils';
 
 interface SeoSetting {
   id: number;
@@ -19,7 +20,7 @@ interface SeoSetting {
 }
 
 export default function SeoSettingsView() {
-  const { toastSuccess, toastError } = useToast();
+  const { toastSuccess, toastError, resolveMsg } = useToast();
   const [settings, setSettings] = useState<SeoSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -183,17 +184,15 @@ export default function SeoSettingsView() {
 
   // Delete Handler
   const handleDeleteSeo = async (id: number, pageName: string) => {
-    if (!window.confirm(`Are you sure you want to delete the SEO configuration for "${pageName}"?`)) {
-      return;
-    }
-
-    const res = await api.delete(`/superadmin/seo-settings/${id}`);
-    if (res.success) {
-      toastSuccess('seo_delete_success', 'SEO setting deleted successfully.');
-      fetchSettings();
-    } else {
-      toastError('seo_delete_failed', res.message || 'Failed to delete SEO setting.');
-    }
+    confirmToast(resolveMsg('seo_delete_confirm', `Are you sure you want to delete the SEO configuration for "${pageName}"?`), async () => {
+      const res = await api.delete(`/superadmin/seo-settings/${id}`);
+      if (res.success) {
+        toastSuccess('seo_delete_success', 'SEO setting deleted successfully.');
+        fetchSettings();
+      } else {
+        toastError('seo_delete_failed', res.message || 'Failed to delete SEO setting.');
+      }
+    });
   };
 
   // Length Checker Helpers

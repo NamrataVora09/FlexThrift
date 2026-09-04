@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
-import { showToast } from '@/lib/toast';
+import { useToast, showToast } from '@/lib/toast';
+import { confirmToast } from '@/lib/toast-utils';
 import LandingNavbar from '../layout/LandingNavbar';
 import Footer from '../layout/Footer';
 import AdBanner from '../shared/AdBanner';
@@ -364,6 +365,7 @@ export default function HomePageClient() {
   // PERFORMANCE: Read landing-content data from SystemProvider context so we
   // don't need to make a second independent fetch call for aot_sections / category_cards.
   const { landingData } = useSystem();
+  const { toastInfo, toastSuccess, resolveMsg } = useToast();
   const router = useRouter();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -482,7 +484,7 @@ export default function HomePageClient() {
     if (!res.success) {
       // Check if the error is about verification
       if (res.message?.includes('verify your account') || res.message?.includes('verify')) {
-        alert('Please verify your account before logging in. Redirecting to verification page...');
+        toastInfo('verify_account_prompt', 'Please verify your account before logging in. Redirecting to verification page...');
         router.push(`/verify-otp?email=${encodeURIComponent(sidebarEmail)}`);
         return;
       }
@@ -512,7 +514,7 @@ export default function HomePageClient() {
     if (!res.success) {
       // Check if the error is about verification
       if (res.message?.includes('verify your account') || res.message?.includes('verify')) {
-        alert('Please verify your account before logging in. Redirecting to verification page...');
+        toastInfo('verify_account_prompt', 'Please verify your account before logging in. Redirecting to verification page...');
         router.push(`/verify-otp?email=${encodeURIComponent(sidebarEmail)}`);
         return;
       }
@@ -582,7 +584,7 @@ export default function HomePageClient() {
     setSidebarLoading(false);
     if (res.success) {
       setSidebarView('login');
-      alert('Password reset successfully! Please log in with your new password.');
+      toastSuccess('password_reset_success', 'Password reset successfully! Please log in with your new password.');
       setSidebarPassword('');
       setSidebarOtp('');
     } else {
@@ -631,8 +633,9 @@ export default function HomePageClient() {
   };
 
   const handleDeleteSection = async (id: string) => {
-    if (!confirm('Delete this section?')) return;
-    await persistSections(aotSections.filter(s => s.id !== id));
+    confirmToast(resolveMsg('delete_section_confirm', 'Delete this section?'), async () => {
+      await persistSections(aotSections.filter(s => s.id !== id));
+    });
   };
 
   const handleAddSection = async () => {

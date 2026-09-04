@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
+import { useToast } from '@/lib/toast';
+import { confirmToast } from '@/lib/toast-utils';
 import AdBanner from '@/components/shared/AdBanner';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
@@ -70,6 +72,7 @@ const DEFAULT_SECTIONS: FooterSection[] = [
 export default function Footer() {
   const { user } = useAuth();
   const { settings } = useSystem();
+  const { resolveMsg } = useToast();
   const isSuperAdmin = user?.role === 'super_admin';
 
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
@@ -315,7 +318,12 @@ export default function Footer() {
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={e => { e.stopPropagation(); if (confirm(`Delete "${section.title}"?`)) deleteSection(section.id); }}
+                            onClick={e => {
+                              e.stopPropagation();
+                              confirmToast(resolveMsg('footer_delete_section_confirm', `Delete "${section.title}"?`), async () => {
+                                deleteSection(section.id);
+                              });
+                            }}
                             className="text-red-400 hover:text-red-600 text-sm border border-red-100 rounded-lg px-2.5 py-1 hover:bg-red-50 transition-colors"
                           >
                             Delete

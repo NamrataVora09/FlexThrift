@@ -7,6 +7,7 @@ import Script from 'next/script';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { useSystem } from '@/lib/system-context';
+import { useToast } from '@/lib/toast';
 import SeoManager from '@/components/shared/SeoManager';
 import { getIPLocationCoords } from '@/lib/geolocation';
 
@@ -14,6 +15,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { register, isAuthenticated, user, isLoading } = useAuth();
   const { settings } = useSystem();
+  const { resolveMsg } = useToast();
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
@@ -174,7 +176,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
     if (mobileError || pinCodeError || emailError) {
-      setError('Please fix the errors before submitting');
+      setError(resolveMsg('form_fix_errors', 'Please fix the errors before submitting'));
       return;
     }
     setLoading(true);
@@ -185,7 +187,7 @@ export default function RegisterPage() {
       sessionStorage.setItem('otp_type', 'register');
       router.push('/verify-otp');
     } else {
-      setError(result.message || 'Registration failed');
+      setError(result.message || resolveMsg('registration_failed', 'Registration failed'));
     }
   };
 

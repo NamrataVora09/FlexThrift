@@ -4,10 +4,12 @@ import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { useToast } from '@/lib/toast';
 
 export default function VerifyOtpPage() {
   const router = useRouter();
   const { verifyOtp, sendOtp } = useAuth();
+  const { resolveMsg } = useToast();
 
   const [otp, setOtp] = useState('');
   const [email, setEmail] = useState('');
@@ -58,7 +60,7 @@ export default function VerifyOtpPage() {
       setResendMessage('OTP resent successfully!');
       startCooldown();
     } else {
-      setError(result.message || 'Failed to resend OTP. Please try again.');
+      setError(result.message || resolveMsg('otp_resend_failed', 'Failed to resend OTP. Please try again.'));
     }
   };
 
@@ -81,7 +83,7 @@ export default function VerifyOtpPage() {
       else if (userType === 'both' && Number(user.blocked_seller) === 1) router.push('/buyer/dashboard');
       else router.push('/buyer/browse');
     } else {
-      setError(result.message || 'Invalid OTP');
+      setError(result.message || resolveMsg('otp_invalid', 'Invalid OTP'));
     }
   };
 

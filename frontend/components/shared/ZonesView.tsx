@@ -60,7 +60,7 @@ const badgeSoftDanger: React.CSSProperties = {
 
 
 export default function ZonesView() {
-  const { toastSuccess, toastError } = useToast();
+  const { toastSuccess, toastError, resolveMsg } = useToast();
   const [zones, setZones] = useState<Zone[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMap, setShowMap] = useState(false);
@@ -84,7 +84,7 @@ export default function ZonesView() {
   useEffect(() => { loadZones(); }, []);
 
   const handleDelete = (id: number) => {
-    confirmToast('Delete this zone? This cannot be undone.', async () => {
+    confirmToast(resolveMsg('zone_delete_confirm', 'Delete this zone? This cannot be undone.'), async () => {
       const res = await api.delete(`/zones/${id}`);
       if (res.success) {
         toastSuccess('zone_deleted', 'Zone deleted successfully');
@@ -97,7 +97,7 @@ export default function ZonesView() {
 
   const toggleActive = (zone: Zone) => {
     const action = zone.is_active ? 'disable' : 'enable';
-    confirmToast(`Are you sure you want to ${action} this zone?`, async () => {
+    confirmToast(resolveMsg('zone_toggle_status_confirm', `Are you sure you want to ${action} this zone?`), async () => {
       const res = await api.put(`/zones/${zone.id}`, { is_active: zone.is_active ? 0 : 1 });
       if (res.success) {
         toastSuccess('zone_status_updated', `Zone ${action}d successfully`);
