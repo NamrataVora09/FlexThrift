@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import AdBanner from '@/components/shared/AdBanner';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 
 interface SellerData {
   user: { name: string; seller_rating_avg: number; seller_rating_count: number };
@@ -42,10 +43,18 @@ const SELLER_DEFAULT_SUBTITLE = 'Manage your listings, track offers, and grow yo
 
 export default function SellerDashboardClient() {
   const { user: authUser, refreshKey } = useAuth();
+  const { landingData } = useSystem();
   const [data, setData] = useState<SellerData | null>(null);
   const [activeSub, setActiveSub] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [subtitle, setSubtitle] = useState(SELLER_DEFAULT_SUBTITLE);
+
+  useEffect(() => {
+    if (landingData?.seller_dashboard_subtitle) {
+      setSubtitle(landingData.seller_dashboard_subtitle);
+    }
+  }, [landingData]);
+
   const formatDate = (d: string) => {
     if (!d) return '';
     return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -75,11 +84,6 @@ export default function SellerDashboardClient() {
   useEffect(() => {
     loadDashboardData();
     loadSubscriptionData();
-    api.get<Record<string, string>>('/landing-content').then((res) => {
-      if (res.success && res.data?.seller_dashboard_subtitle) {
-        setSubtitle(res.data.seller_dashboard_subtitle);
-      }
-    });
   }, [refreshKey, loadDashboardData, loadSubscriptionData]);
 
   const uploadsLeft = activeSub

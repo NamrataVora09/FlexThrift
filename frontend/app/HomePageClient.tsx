@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import { getCartCount } from '@/lib/cart';
@@ -192,10 +193,12 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
     finally { setImgUploading(prev => ({ ...prev, [idx]: false })); }
   };
 
-  // Load landing content — use ISR pre-fetched data if available, otherwise client-fetch
+  const { landingData } = useSystem();
+
+  // Load landing content — use ISR pre-fetched data or SystemContext data if available, otherwise client-fetch
   useEffect(() => {
-    if (isrData?.landingContent) {
-      const d = isrData.landingContent;
+    const d = isrData?.landingContent || landingData;
+    if (d) {
       if (d.hero_slides) try { setHeroSlides(JSON.parse(d.hero_slides)); } catch { }
       if (d.display_categories) try { setDisplayCategories(JSON.parse(d.display_categories)); } catch { }
       if (d.cta_title) setCtaTitle(d.cta_title);
@@ -234,7 +237,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
         }
       })
       .catch(() => { });
-  }, [isrData]);
+  }, [isrData, landingData]);
 
   useEffect(() => {
     // Skip client fetch if ISR already provided products

@@ -25,6 +25,7 @@ interface Subscription {
 }
 
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || (process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8080');
 
@@ -43,15 +44,13 @@ export default function BuyerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [subtitle, setSubtitle] = useState(BUYER_DEFAULT_SUBTITLE);
   const { refreshKey } = useAuth();
+  const { landingData } = useSystem();
 
-  // Static content — fetched once on mount only
   useEffect(() => {
-    api.get<Record<string, string>>('/landing-content').then((res) => {
-      if (res.success && res.data?.buyer_dashboard_subtitle) {
-        setSubtitle(res.data.buyer_dashboard_subtitle);
-      }
-    });
-  }, []);
+    if (landingData?.buyer_dashboard_subtitle) {
+      setSubtitle(landingData.buyer_dashboard_subtitle);
+    }
+  }, [landingData]);
 
   // User-specific data — re-fetches when refreshKey changes (e.g. window focus)
   useEffect(() => {

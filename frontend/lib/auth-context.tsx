@@ -71,8 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (parsedUser.role === 'admin' || parsedUser.user_type === 'both') {
           api.get<User>('/auth/me').then(res => {
             if (res.success && res.data) {
-              setUser(res.data);
-              localStorage.setItem('flex_user', JSON.stringify(res.data));
+              if (JSON.stringify(res.data) !== JSON.stringify(parsedUser)) {
+                setUser(res.data);
+                localStorage.setItem('flex_user', JSON.stringify(res.data));
+              }
             }
           }).catch(() => {});
         }

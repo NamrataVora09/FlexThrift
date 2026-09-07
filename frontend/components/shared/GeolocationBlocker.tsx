@@ -3,10 +3,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 import { getIPLocationCoords } from '@/lib/geolocation';
 
 export default function GeolocationBlocker({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { landingData } = useSystem();
   const [isBlocked, setIsBlocked] = useState(false);
   const [restrictionEnabled, setRestrictionEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,9 +34,11 @@ export default function GeolocationBlocker({ children }: { children: React.React
     setLoading(false);
   }, []);
 
+  const userRole = user?.role;
+
   const checkLocation = useCallback(() => {
     // Only SuperAdmin bypasses location checks
-    if (user?.role === 'super_admin') {
+    if (userRole === 'super_admin') {
       setLoading(false);
       return;
     }
@@ -70,32 +74,18 @@ export default function GeolocationBlocker({ children }: { children: React.React
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [user, checkLocationByIP]);
+  }, [userRole, checkLocationByIP]);
 
   useEffect(() => {
-    // Check if restriction is enabled from landing-content or shared settings
-    const checkRestriction = async () => {
-      try {
-        const res = await api.get<any>('/landing-content');
-        if (res.success && res.data) {
-          setGeoConfig(res.data);
-          if (res.data.enable_zone_restriction === '1') {
-            setRestrictionEnabled(true);
-            checkLocation();
-          } else {
-            setLoading(false);
-          }
-        } else {
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error("Failed to check zone restriction:", err);
-        setLoading(false);
-      }
-    };
-
-    checkRestriction();
-  }, [checkLocation]);
+    if (!landingData) return;
+    setGeoConfig(landingData);
+    if (landingData.enable_zone_restriction === '1') {
+      setRestrictionEnabled(true);
+      checkLocation();
+    } else {
+      setLoading(false);
+    }
+  }, [landingData, checkLocation]);
 
   if (loading) {
     return <>{children}</>;
