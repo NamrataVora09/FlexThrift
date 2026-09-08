@@ -22,7 +22,7 @@ interface Props {
 let globalSidebarOpen: boolean | null = null;
 
 export default function DashboardLayout({ children, requiredRoles, viewAs }: Props) {
-  const { user, isLoading, isAuthenticated,  } = useAuth();
+  const { user, isLoading, isAuthenticated, } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -54,10 +54,13 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
         try {
           const res = await api.get<any>('/auth/me');
           if (res.success && res.data) {
+            console.log('DashboardLayout useEffect success:', res.data);
+
             localStorage.setItem('flex_user', JSON.stringify(res.data));
           }
         } catch (e) {
           // Silent fail
+          console.log('refreshUserData error from DashboardLayout useEffect:', e);
         }
       };
       refreshUserData();
