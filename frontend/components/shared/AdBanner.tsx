@@ -60,7 +60,7 @@ export function VideoAdPlayer({
         if (!entry.isIntersecting) {
           el.pause();
         } else {
-          el.play().catch(() => {/* autoplay may be blocked — ignore */ });
+          el.play().catch(() => {/* autoplay may be blocked — ignore */});
         }
       },
       { threshold: 0.25 } // play when 25% visible
@@ -186,7 +186,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
                   className="w-full h-full object-cover"
                   style={{ width: '100%', height: '400px', objectFit: 'cover' }}
                 />
-
+                
               )}
             </MediaLinkWrapper>
           </div>
@@ -223,7 +223,7 @@ export default function AdBanner({ position, page, className = '' }: AdBannerPro
                 loading="lazy"
                 className="img-fluid rounded shadow-sm w-100 object-cover"
                 style={{ width: '100%', height: '400px', maxHeight: '400px', objectFit: 'cover' }}
-              />
+              />  
             )}
           </MediaLinkWrapper>
           {ad.short_description && (

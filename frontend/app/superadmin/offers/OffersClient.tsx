@@ -62,28 +62,28 @@ const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px so
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#212529', fontWeight: 600, border: 'none', borderRadius: '0.5rem', padding: '0.5rem 1.25rem' };
 
 const statusColors: Record<string, { bg: string; color: string }> = {
-  pending:     { bg: 'rgba(255,198,58,0.12)', color: '#b8860b' },
-  accepted:    { bg: 'rgba(25,135,84,0.1)',   color: '#198754' },
-  rejected:    { bg: 'rgba(220,53,69,0.1)',   color: '#dc3545' },
-  cancelled:   { bg: 'rgba(108,117,125,0.1)', color: '#6c757d' },
-  withdrawn:   { bg: 'rgba(108,117,125,0.1)', color: '#6c757d' },
-  missed:      { bg: 'rgba(255,193,7,0.15)', color: '#856404' },
-  negotiating: { bg: 'rgba(13,110,253,0.1)',  color: '#0d6efd' },
+  pending: { bg: 'rgba(255,198,58,0.12)', color: '#b8860b' },
+  accepted: { bg: 'rgba(25,135,84,0.1)', color: '#198754' },
+  rejected: { bg: 'rgba(220,53,69,0.1)', color: '#dc3545' },
+  cancelled: { bg: 'rgba(108,117,125,0.1)', color: '#6c757d' },
+  withdrawn: { bg: 'rgba(108,117,125,0.1)', color: '#6c757d' },
+  missed: { bg: 'rgba(255,193,7,0.15)', color: '#856404' },
+  negotiating: { bg: 'rgba(13,110,253,0.1)', color: '#0d6efd' },
 };
 
 const orderStatusColors: Record<string, { bg: string; color: string }> = {
-  pending:    { bg: '#fff3cd', color: '#856404' },
-  confirmed:  { bg: '#d1e7dd', color: '#0f5132' },
+  pending: { bg: '#fff3cd', color: '#856404' },
+  confirmed: { bg: '#d1e7dd', color: '#0f5132' },
   dispatched: { bg: '#cfe2ff', color: '#084298' },
-  delivered:  { bg: '#d1e7dd', color: '#0f5132' },
-  completed:  { bg: '#ffc63a22', color: '#7a5c00' },
-  cancelled:  { bg: '#f8d7da', color: '#842029' },
-  returned:   { bg: '#e2e3e5', color: '#41464b' },
+  delivered: { bg: '#d1e7dd', color: '#0f5132' },
+  completed: { bg: '#ffc63a22', color: '#7a5c00' },
+  cancelled: { bg: '#f8d7da', color: '#842029' },
+  returned: { bg: '#e2e3e5', color: '#41464b' },
 };
 
 const payColors: Record<string, { bg: string; color: string }> = {
-  paid:     { bg: '#d1e7dd', color: '#0f5132' },
-  pending:  { bg: '#fff3cd', color: '#856404' },
+  paid: { bg: '#d1e7dd', color: '#0f5132' },
+  pending: { bg: '#fff3cd', color: '#856404' },
   refunded: { bg: '#cfe2ff', color: '#084298' },
 };
 
@@ -322,7 +322,7 @@ export default function OffersClient() {
                       <InfoRow label="Mobile" value={selected.buyer_mobile || '—'} />
                       <InfoRow label="Rating" value={
                         selected.buyer_rating_count && selected.buyer_rating_count > 0
-                          ? `⭐ ${Number(selected.buyer_rating_avg).toFixed(1)} (${selected.buyer_rating_count} ratings)`
+                          ? ` ${selected.buyer_rating_count} `
                           : 'No ratings yet'
                       } />
                       <InfoRow label="Rated Buyer?" value={selected.seller_rated_buyer ? '✅ Yes' : 'Not yet'} />
@@ -337,7 +337,7 @@ export default function OffersClient() {
                       <InfoRow label="Mobile" value={selected.seller_mobile || '—'} />
                       <InfoRow label="Rating" value={
                         selected.seller_rating_count && selected.seller_rating_count > 0
-                          ? `⭐ ${Number(selected.seller_rating_avg).toFixed(1)} (${selected.seller_rating_count} ratings)`
+                          ? ` ${selected.seller_rating_count} `
                           : 'No ratings yet'
                       } />
                       <InfoRow label="Rated Seller?" value={selected.buyer_rated_seller ? '✅ Yes' : 'Not yet'} />

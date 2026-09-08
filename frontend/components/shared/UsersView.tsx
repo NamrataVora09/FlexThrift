@@ -45,7 +45,7 @@ interface Props {
 const AVATAR_COLORS = ['#377dff', '#ffc63a', '#7000ff', '#ed4c78', '#ff9d00'];
 
 export default function UsersView({ role, apiPath, searchable = false }: Props) {
-  const { toastSuccess, toastError } = useToast();
+  const { toastSuccess, toastError, resolveMsg } = useToast();
   const { user: authUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
@@ -64,14 +64,13 @@ export default function UsersView({ role, apiPath, searchable = false }: Props) 
 
   const load = () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (typeFilter) params.set('type', typeFilter);
-    if (statusFilter) params.set('status', statusFilter);
-    params.set('_t', Date.now().toString());
-    const qs = params.toString() ? `?${params.toString()}` : '';
-    api.get<User[]>(`${apiPath}${qs}`).then((r) => {
-      if (r.success && r.data) setUsers(r.data);
+    let p = `${apiPath}?search=${encodeURIComponent(search)}`;
+    if (typeFilter) p += `&user_type=${typeFilter}`;
+    if (statusFilter) p += `&status=${statusFilter}`;
+    api.get<any>(p).then(res => {
+      if (res.success && res.data) {
+        setUsers(Array.isArray(res.data) ? res.data : (res.data.users || []));
+      }
       setLoading(false);
     });
   };
@@ -88,7 +87,7 @@ export default function UsersView({ role, apiPath, searchable = false }: Props) 
   const apiBase = apiPath.substring(0, apiPath.lastIndexOf('/'));
 
   const toggleStatus = async (id: number) => {
-    confirmToast('Are you sure you want to toggle this user\'s status?', async () => {
+    confirmToast(resolveMsg('user_status_toggle_confirm', 'Are you sure you want to toggle this user\'s status?'), async () => {
       const res = await api.post(`${apiBase}/toggle-user-status/${id}`);
       if (res.success) {
         toastSuccess('user_status_update_success', 'Status updated');
@@ -100,7 +99,7 @@ export default function UsersView({ role, apiPath, searchable = false }: Props) 
   };
 
   const toggleRoleBlock = async (id: number, r: string) => {
-    confirmToast(`Toggle ${r} role access for this user?`, async () => {
+    confirmToast(resolveMsg('user_role_block_toggle_confirm', `Toggle ${r} role access for this user?`), async () => {
       const res = await api.post(`${apiBase}/toggle-role-block/${id}/${r}`);
       if (res.success) {
         toastSuccess('user_role_access_update_success', 'Role access updated');

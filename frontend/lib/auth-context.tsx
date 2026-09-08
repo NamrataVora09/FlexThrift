@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { api } from './api';
+import { getIPLocationCoords } from './geolocation';
 
 interface User {
   id: number;
@@ -23,7 +24,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password: string, coords?: { latitude?: string; longitude?: string }) => Promise<{ success: boolean; message?: string }>;
   sendOtp: (email: string) => Promise<{ success: boolean; message?: string }>;
   verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message?: string }>;
@@ -70,8 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (parsedUser.role === 'admin' || parsedUser.user_type === 'both') {
           api.get<User>('/auth/me').then(res => {
             if (res.success && res.data) {
-              setUser(res.data);
-              localStorage.setItem('flex_user', JSON.stringify(res.data));
+              if (JSON.stringify(res.data) !== JSON.stringify(parsedUser)) {
+                setUser(res.data);
+                localStorage.setItem('flex_user', JSON.stringify(res.data));
+              }
             }
           }).catch(() => {});
         }
@@ -83,21 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
- // infinite server request - that is why commented
-  // Focus revalidation: Increment refreshKey when window gains focus
-  // useEffect(() => {
-  //   let lastRefresh = 0;
-  //   const handleFocus = () => {
-  //     const now = Date.now();
-  //     // Only trigger if at least 10 seconds have passed since last refresh to avoid spam
-  //     if (now - lastRefresh > 10000) {
-  //       setRefreshKey(prev => prev + 1);
-  //       lastRefresh = now;
-  //     }
-  //   };
-  //   window.addEventListener('focus', handleFocus);
-  //   return () => window.removeEventListener('focus', handleFocus);
-  // }, []);
+
+  
 
   const setAuth = useCallback((userData: User, authToken: string) => {
     setUser(userData);
@@ -106,8 +96,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('flex_user', JSON.stringify(userData));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{ user: User; token: string }>('/auth/login', { email, password });
+  const login = useCallback(async (email: string, password: string, coords?: { latitude?: string; longitude?: string }) => {
+    let lat = coords?.latitude || '';
+    let lng = coords?.longitude || '';
+
+    if ((!lat || !lng) && typeof window !== 'undefined') {
+      if (navigator.geolocation) {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000, maximumAge: 60000 });
+          });
+          lat = String(pos.coords.latitude);
+          lng = String(pos.coords.longitude);
+        } catch {
+          // GPS permission denied or unavailable
+        }
+      }
+
+      // If GPS denied/unavailable/ignored, detect via IP (ip-api.com) and get lat/lon
+      if (!lat || !lng) {
+        const ipLocation = await getIPLocationCoords();
+        if (ipLocation) {
+          lat = ipLocation.lat;
+          lng = ipLocation.lng;
+        }
+      }
+    }
+
+    const res = await api.post<{ user: User; token: string }>('/auth/login', {
+      email,
+      password,
+      user_latitude: lat,
+      user_longitude: lng,
+    });
     if (res.success && res.data) {
       setAuth(res.data.user, res.data.token);
       return { success: true };

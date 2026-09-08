@@ -4,7 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
+import { showToast } from '@/lib/toast';
 import { getCartCount } from '@/lib/cart';
 import AdBanner from '@/components/shared/AdBanner';
 
@@ -80,7 +82,7 @@ const defaultHeroSlides: HeroSlide[] = [
     desc: 'Discover high-end fashion and lifestyle essentials reserved for the elite.',
     btnText: 'Explore Marketplace',
     btnHref: '/buyer/browse',
-    img: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070',
+    img: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=65',
   },
   {
     badge: 'RENT LUXURY',
@@ -89,15 +91,15 @@ const defaultHeroSlides: HeroSlide[] = [
     desc: 'Why buy when you can rent high-end fashion and home essentials for a fraction of the cost?',
     btnText: 'View Rental Plans',
     btnHref: '/buyer/browse?listing_type=rent',
-    img: 'https://images.unsplash.com/photo-1540574163026-643ea20ade25?q=80&w=2070',
+    img: 'https://images.unsplash.com/photo-1540574163026-643ea20ade25?w=800&auto=format&fit=crop&q=65',
   },
 ];
 
 const defaultDisplayCategories: DisplayCategory[] = [
-  { name: 'Clothing', img: 'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=1471' },
-  { name: 'Accessories', img: 'https://images.unsplash.com/photo-1596460107916-430662021049?q=80&w=1470' },
-  { name: 'Footwear', img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1412' },
-  { name: 'Electronics', img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=1470' },
+  { name: 'Clothing', img: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&auto=format&fit=crop&q=60' },
+  { name: 'Accessories', img: 'https://images.unsplash.com/photo-1596460107916-430662021049?w=600&auto=format&fit=crop&q=60' },
+  { name: 'Footwear', img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&auto=format&fit=crop&q=60' },
+  { name: 'Electronics', img: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600&auto=format&fit=crop&q=60' },
 ];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
@@ -191,10 +193,12 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
     finally { setImgUploading(prev => ({ ...prev, [idx]: false })); }
   };
 
-  // Load landing content — use ISR pre-fetched data if available, otherwise client-fetch
+  const { landingData } = useSystem();
+
+  // Load landing content — use ISR pre-fetched data or SystemContext data if available, otherwise client-fetch
   useEffect(() => {
-    if (isrData?.landingContent) {
-      const d = isrData.landingContent;
+    const d = isrData?.landingContent || landingData;
+    if (d) {
       if (d.hero_slides) try { setHeroSlides(JSON.parse(d.hero_slides)); } catch { }
       if (d.display_categories) try { setDisplayCategories(JSON.parse(d.display_categories)); } catch { }
       if (d.cta_title) setCtaTitle(d.cta_title);
@@ -233,7 +237,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
         }
       })
       .catch(() => { });
-  }, [isrData]);
+  }, [isrData, landingData]);
 
   useEffect(() => {
     // Skip client fetch if ISR already provided products
@@ -900,7 +904,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                 }}
               >
                 <div className="hero-overlay"></div>
-                <img src={slide.img} className="hero-img" alt="Hero" />
+                <img src={slide.img} className="hero-img" alt="Hero" fetchPriority={idx === 0 ? 'high' : 'auto'} />
                 <div className="hero-content">
                   <span className="hero-badge">{slide.badge}</span>
                   <h1 className="hero-title">
@@ -1033,6 +1037,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                           <img
                             src={cat.img.startsWith('http') ? cat.img : `http://localhost:8080/${cat.img}`}
                             alt={cat.name}
+                            loading="lazy"
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
                         ) : (
@@ -1454,7 +1459,7 @@ export default function HomePageClient({ isrData }: { isrData?: ISRData }) {
                         if (!file) return;
                         const url = await uploadCardImage(file, i);
                         if (url) { const n = [...editTemp]; n[i] = { ...n[i], img: url }; setEditTemp(n); }
-                        else alert('Image upload failed. Please try again.');
+                        else showToast.error('Image upload failed. Please try again.');
                         e.target.value = '';
                       }}
                     />

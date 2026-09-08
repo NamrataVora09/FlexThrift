@@ -425,24 +425,18 @@ if (!function_exists('getAppMessage')) {
                 return $default;
             }
 
-            $row = $db->table('app_messages')
-                ->where('message_key', $key)
-                ->get()
-                ->getRowArray();
+            $row = null;
+            if ($db->fieldExists('message_key', 'app_messages')) {
+                $row = $db->table('app_messages')->where('message_key', $key)->get()->getRowArray();
+            } else {
+                $row = $db->table('app_messages')->where('key', $key)->get()->getRowArray();
+            }
 
             if (!$row) {
-                // Auto-create missing key if in development for easy discovery
-                if (ENVIRONMENT === 'development') {
-                    $db->table('app_messages')->insert([
-                        'message_key' => $key,
-                        'message_value' => $default,
-                        'category' => 'general'
-                    ]);
-                }
                 return $default;
             }
 
-            $message = $row['message_value'];
+            $message = $row['message_value'] ?? $row['message'] ?? $default;
 
             // Replace parameters like {min}, {days}, etc.
             if (!empty($params)) {

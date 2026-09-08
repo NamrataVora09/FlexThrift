@@ -34,6 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
 import GeolocationBlocker from '@/components/shared/GeolocationBlocker';
 import SystemLockBlocker from '@/components/shared/SystemLockBlocker';
 import PopupAdManager from '@/components/shared/PopupAdManager';
+import SeoManager from '@/components/shared/SeoManager';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -41,8 +42,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        
+        {/* Preload the Hero LCP Image in head so download starts immediately with HTML parsing */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;600;700;800&family=Maven+Pro:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap"
+          rel="preload"
+          as="image"
+          href="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=65"
+          // @ts-ignore
+          fetchPriority="high"
+        />
+
+        {/* Google Fonts & Icon Fonts */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Manrope:wght@600;700;800&family=Poppins:wght@400;600;700&display=swap"
           rel="stylesheet"
         />
         <link
@@ -61,6 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <SystemProvider>
           <AuthProvider>
+            <SeoManager />
             <SystemLockBlocker>
               <GeolocationBlocker>
                 {children}

@@ -14,16 +14,15 @@ if (!function_exists('getLocationFromIP')) {
      */
     function getLocationFromIP($ip)
     {
-        // Skip for localhost/private IPs - return default Mumbai location
+        // Skip for localhost/private IPs, fallback to a public test IP (Delhi, India) during local development
         if ($ip === '127.0.0.1' || $ip === '::1' || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-            log_message('info', 'Local/Private IP detected, skipping geolocation: ' . $ip);
-            return null;
+            $ip = '103.48.198.141';
         }
 
-        try {
-            // Use ipapi.co free API (1000 requests/day)
-            $url = "https://ipapi.co/{$ip}/json/";
 
+        // Priority 1: Try ip-api.com
+        try {
+            $url = "http://ip-api.com/json/{$ip}";
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -36,210 +35,108 @@ if (!function_exists('getLocationFromIP')) {
 
             if ($httpCode === 200 && $response) {
                 $data = json_decode($response, true);
-
-                if (isset($data['error']) && $data['error']) {
-                    log_message('error', 'IP Geolocation API Error: ' . ($data['reason'] ?? 'Unknown'));
-                    return null;
+                if (isset($data['status']) && $data['status'] === 'success') {
+                    return [
+                        'country' => $data['country'] ?? null,
+                        'state' => $data['regionName'] ?? ($data['region'] ?? null),
+                        'city' => $data['city'] ?? null,
+                        'latitude' => $data['lat'] ?? null,
+                        'longitude' => $data['lon'] ?? null,
+                        'ip' => $ip
+                    ];
                 }
-
-                return [
-                    'country' => $data['country_name'] ?? null,
-                    'state' => $data['region'] ?? null,
-                    'city' => $data['city'] ?? null,
-                    'latitude' => $data['latitude'] ?? null,
-                    'longitude' => $data['longitude'] ?? null,
-                    'ip' => $ip
-                ];
             }
-
-            log_message('error', 'IP Geolocation API returned HTTP ' . $httpCode);
-            return null;
-
         } catch (\Exception $e) {
-            log_message('error', 'IP Geolocation Error: ' . $e->getMessage());
+            log_message('error', 'ip-api.com Error: ' . $e->getMessage());
+        }
+
+        // Priority 2: Fallback to ipapi.co
+        try {
+            $url = "https://ipapi.co/{$ip}/json/";
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'FlexMarket/1.0');
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && $response) {
+                $data = json_decode($response, true);
+                if (!isset($data['error']) || !$data['error']) {
+                    return [
+                        'country' => $data['country_name'] ?? null,
+                        'state' => $data['region'] ?? null,
+                        'city' => $data['city'] ?? null,
+                        'latitude' => $data['latitude'] ?? null,
+                        'longitude' => $data['longitude'] ?? null,
+                        'ip' => $ip
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'ipapi.co Error: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('getStateFromCoordinates')) {
+    /**
+     * Reverse geocode latitude and longitude to extract State and City
+     * 
+     * @param float|string $lat Latitude
+     * @param float|string $lng Longitude
+     * @return array|null ['state' => string, 'city' => string, 'country' => string] or null
+     */
+    function getStateFromCoordinates($lat, $lng)
+    {
+        if (empty($lat) || empty($lng)) {
             return null;
         }
-    }
-}
 
-if (!function_exists('isPointInPolygon')) {
-    /**
-     * Check if a point (lat/lng) is inside a polygon using ray-casting algorithm
-     * 
-     * @param float $lat Latitude of the point
-     * @param float $lng Longitude of the point
-     * @param array $polygon Array of [lat, lng] coordinates
-     * @return bool True if point is inside polygon
-     */
-    function isPointInPolygon($lat, $lng, $polygon)
-    {
-        $vertices = count($polygon);
-        $inside = false;
+        try {
+            // Use OpenStreetMap Nominatim reverse geocoding
+            $url = "https://nominatim.openstreetmap.org/reverse?lat={$lat}&lon={$lng}&format=json";
 
-        for ($i = 0, $j = $vertices - 1; $i < $vertices; $j = $i++) {
-            $xi = $polygon[$i][0];
-            $yi = $polygon[$i][1];
-            $xj = $polygon[$j][0];
-            $yj = $polygon[$j][1];
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'FlexMarket/1.0 (contact@flexmarket.com)');
 
-            $intersect = (($yi > $lng) != ($yj > $lng))
-                && ($lat < ($xj - $xi) * ($lng - $yi) / ($yj - $yi) + $xi);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
 
-            if ($intersect) {
-                $inside = !$inside;
+            if ($httpCode === 200 && $response) {
+                $data = json_decode($response, true);
+                $address = $data['address'] ?? [];
+
+                $state = $address['state'] ?? $address['region'] ?? $address['state_district'] ?? null;
+                $city = $address['city'] ?? $address['town'] ?? $address['village'] ?? $address['county'] ?? null;
+                $country = $address['country'] ?? null;
+
+                if ($state) {
+                    return [
+                        'state' => $state,
+                        'city' => $city,
+                        'country' => $country,
+                    ];
+                }
             }
+        } catch (\Exception $e) {
+            log_message('error', 'Reverse geocode error: ' . $e->getMessage());
         }
 
-        return $inside;
+        return null;
     }
 }
 
-if (!function_exists('isLocationAllowed')) {
-    /**
-     * Check if a location (lat/lng) is in any allowed zone polygon
-     * 
-     * @param float $latitude Latitude
-     * @param float $longitude Longitude
-     * @return array|false Zone data if allowed, false otherwise
-     */
-    function isLocationAllowed($latitude, $longitude)
-    {
-        if (empty($latitude) || empty($longitude)) {
-            return false;
-        }
 
-        $db = \Config\Database::connect();
-
-        // Get all active zones
-        $zones = $db->table('allowed_zones')
-            ->where('is_active', 1)
-            ->get()
-            ->getResultArray();
-
-        foreach ($zones as $zone) {
-            $polygon = json_decode($zone['zone_polygon'] ?? '', true);
-
-            if (is_array($polygon) && isPointInPolygon($latitude, $longitude, $polygon)) {
-                return $zone;
-            }
-        }
-
-        return false;
-    }
-}
-
-if (!function_exists('isStateAllowed')) {
-    /**
-     * Check if a state name is present in any active allowed zone.
-     * Used during registration to gate users by state.
-     *
-     * @param string $state State name from IP lookup (e.g. "Maharashtra")
-     * @return array|false Zone data if state is allowed, false otherwise
-     */
-    function isStateAllowed($state)
-    {
-        if (empty($state)) {
-            return false;
-        }
-
-        $db = \Config\Database::connect();
-
-        $zones = $db->table('allowed_zones')
-            ->where('is_active', 1)
-            ->where('state !=', null)
-            ->get()
-            ->getResultArray();
-
-        $stateNorm = strtolower(trim($state));
-
-        foreach ($zones as $zone) {
-            $zoneState = strtolower(trim($zone['state'] ?? ''));
-            if ($zoneState && (
-                $zoneState === $stateNorm ||
-                str_contains($stateNorm, $zoneState) ||
-                str_contains($zoneState, $stateNorm)
-            )) {
-                return $zone;
-            }
-        }
-
-        return false;
-    }
-}
-
-if (!function_exists('getStateFromPinCode')) {
-    /**
-     * Get Indian state name from PIN code prefix
-     * 
-     * @param string $pinCode 6-digit PIN code
-     * @return string|null State name or null
-     */
-    function getStateFromPinCode($pinCode)
-    {
-        $pin = substr(trim($pinCode), 0, 2);
-        $map = [
-            '11' => 'Delhi',
-            '12' => 'Haryana', '13' => 'Haryana',
-            '14' => 'Punjab', '15' => 'Punjab',
-            '16' => 'Chandigarh',
-            '17' => 'Himachal Pradesh',
-            '18' => 'Jammu and Kashmir', '19' => 'Jammu and Kashmir',
-            '20' => 'Uttar Pradesh', '21' => 'Uttar Pradesh', '22' => 'Uttar Pradesh', '23' => 'Uttar Pradesh', '24' => 'Uttar Pradesh', '25' => 'Uttar Pradesh', '26' => 'Uttar Pradesh', '27' => 'Uttar Pradesh', '28' => 'Uttar Pradesh',
-            '30' => 'Rajasthan', '31' => 'Rajasthan', '32' => 'Rajasthan', '33' => 'Rajasthan', '34' => 'Rajasthan',
-            '36' => 'Gujarat', '37' => 'Gujarat', '38' => 'Gujarat', '39' => 'Gujarat',
-            '40' => 'Maharashtra', '41' => 'Maharashtra', '42' => 'Maharashtra', '43' => 'Maharashtra', '44' => 'Maharashtra',
-            '45' => 'Madhya Pradesh', '46' => 'Madhya Pradesh', '47' => 'Madhya Pradesh', '48' => 'Madhya Pradesh',
-            '49' => 'Chhattisgarh',
-            '50' => 'Telangana', '51' => 'Andhra Pradesh', '52' => 'Andhra Pradesh', '53' => 'Andhra Pradesh',
-            '56' => 'Karnataka', '57' => 'Karnataka', '58' => 'Karnataka', '59' => 'Karnataka',
-            '60' => 'Tamil Nadu', '61' => 'Tamil Nadu', '62' => 'Tamil Nadu', '63' => 'Tamil Nadu', '64' => 'Tamil Nadu',
-            '67' => 'Kerala', '68' => 'Kerala', '69' => 'Kerala',
-            '70' => 'West Bengal', '71' => 'West Bengal', '72' => 'West Bengal', '73' => 'West Bengal', '74' => 'West Bengal',
-            '75' => 'Odisha', '76' => 'Odisha', '77' => 'Odisha',
-            '78' => 'Assam',
-            '79' => 'Arunachal Pradesh', 
-            '80' => 'Bihar', '81' => 'Bihar', '82' => 'Bihar', '83' => 'Jharkhand', '84' => 'Bihar', '85' => 'Bihar',
-        ];
-        return $map[$pin] ?? null;
-    }
-}
-
-if (!function_exists('logRegistrationAttempt')) {
-    /**
-     * Log a registration attempt to the database
-     * 
-     * @param array $data Registration attempt data
-     * @return int|bool Insert ID or false on failure
-     */
-    function logRegistrationAttempt($data)
-    {
-        $db = \Config\Database::connect();
-
-        $insertData = [
-            'mobile' => $data['mobile'] ?? null,
-            'name' => $data['name'] ?? null,
-            'address' => $data['address'] ?? null,
-            'pin_code' => $data['pin_code'] ?? null,
-            'user_type' => $data['user_type'] ?? null,
-            'ip_address' => $data['ip'] ?? null,
-            'country' => $data['country'] ?? null,
-            'state' => $data['state'] ?? null,
-            'city' => $data['city'] ?? null,
-            'latitude' => $data['latitude'] ?? null,
-            'longitude' => $data['longitude'] ?? null,
-            'is_allowed' => $data['is_allowed'] ?? 0,
-            'zone_id' => $data['zone_id'] ?? null,
-            'user_id' => $data['user_id'] ?? null,
-            'created_at' => date('Y-m-d H:i:s')
-        ];
-
-        if ($db->table('registration_attempts')->insert($insertData)) {
-            return $db->insertID();
-        }
-
-        return false;
-    }
-}
 
 if (!function_exists('getUserIP')) {
     /**
@@ -273,5 +170,112 @@ if (!function_exists('getUserIP')) {
         }
 
         return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    }
+}
+
+if (!function_exists('getLocationFromIPFindIP')) {
+    /**
+     * Get latitude and longitude from IP address using findip.net
+     *
+     * @param string $ip
+     * @return array|null ['latitude' => float, 'longitude' => float, 'ip' => string] or null on failure
+     */
+    function getLocationFromIPFindIP($ip)
+    {
+        $token = '42c71af76cefdc0e709a25f272cff674';
+
+        // Skip for localhost/private IPs, fallback to a public test IP (Delhi, India) during local development
+        if ($ip === '127.0.0.1' || $ip === '::1' || filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            $ip = '103.241.12.115';
+        }
+
+        try {
+            $url = "https://api.findip.net/{$ip}/?token={$token}";
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'FlexMarket/1.0');
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode === 200 && $response) {
+                $data = json_decode($response, true);
+                if (isset($data['location']['latitude']) && isset($data['location']['longitude'])) {
+                    return [
+                        'latitude' => (float) $data['location']['latitude'],
+                        'longitude' => (float) $data['location']['longitude'],
+                        'city' => $data['city']['names']['en'] ?? null,
+                        'state' => $data['subdivisions'][0]['names']['en'] ?? null,
+                        'country' => $data['country']['names']['en'] ?? null,
+                        'ip' => $ip
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'findip.net API Error: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('isPointInPolygon')) {
+    /**
+     * Check if coordinates (lat/lng) are inside a GeoJSON polygon JSON string
+     *
+     * @param float|string $latitude
+     * @param float|string $longitude
+     * @param string $polygonJson
+     * @return bool
+     */
+    function isPointInPolygon($latitude, $longitude, $polygonJson)
+    {
+        if (empty($polygonJson)) {
+            return false;
+        }
+
+        $geo = json_decode($polygonJson, true);
+        if (!$geo) {
+            return false;
+        }
+
+        $coordinates = null;
+        if (isset($geo['geometry']['coordinates'])) {
+            $coordinates = $geo['geometry']['coordinates'];
+        } elseif (isset($geo['coordinates'])) {
+            $coordinates = $geo['coordinates'];
+        }
+
+        if (!$coordinates || !is_array($coordinates)) {
+            return false;
+        }
+
+        // Polygon outer ring
+        $polygon = $coordinates[0];
+        if (!is_array($polygon)) {
+            return false;
+        }
+
+        $inside = false;
+        $numVertices = count($polygon);
+
+        // Ray-casting algorithm
+        for ($i = 0, $j = $numVertices - 1; $i < $numVertices; $j = $i++) {
+            $xi = $polygon[$i][0]; // longitude
+            $yi = $polygon[$i][1]; // latitude
+            $xj = $polygon[$j][0]; // longitude
+            $yj = $polygon[$j][1]; // latitude
+
+            $intersect = (($yi > $latitude) != ($yj > $latitude))
+                && ($longitude < ($xj - $xi) * ($latitude - $yi) / ($yj - $yi + 0.0000000001) + $xi);
+            if ($intersect) {
+                $inside = !$inside;
+            }
+        }
+
+        return $inside;
     }
 }

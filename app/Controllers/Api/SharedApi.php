@@ -51,7 +51,7 @@ class SharedApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -61,18 +61,18 @@ class SharedApi extends BaseApiController
             ->where('p.id', $id)
             ->get()->getRowArray();
         if (!$product) {
-            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found_product')], 404);
         }
 
         // Check approval permissions based on seller role
         $sellerRole = $product['seller_role'];
         if (($sellerRole === 'admin' || $sellerRole === 'super_admin' || $sellerRole === 'superadmin') && !in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => 'Only super admin can approve system-user uploaded products'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         // For normal seller products, check if admin is blocked
         if ($sellerRole !== 'admin' && $jwtUser['role'] === 'admin' && isset($jwtUser['blocked_from_approvals']) && $jwtUser['blocked_from_approvals']) {
-            return $this->respond(['success' => false, 'message' => 'You are blocked from approving products'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('admin_block_product_upload_approval', )], 403);
         }
 
         $remarks = $this->request->getJsonVar('remarks') ?? '';
@@ -102,14 +102,14 @@ class SharedApi extends BaseApiController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Product approved']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('product_approved')]);
     }
 
     public function rejectProduct(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['admin', 'super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -119,18 +119,18 @@ class SharedApi extends BaseApiController
             ->where('p.id', $id)
             ->get()->getRowArray();
         if (!$product) {
-            return $this->respond(['success' => false, 'message' => 'Product not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found_product')], 404);
         }
 
         // Check rejection permissions based on seller role
         $sellerRole = $product['seller_role'];
         if (($sellerRole === 'admin' || $sellerRole === 'super_admin' || $sellerRole === 'superadmin') && !in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
-            return $this->respond(['success' => false, 'message' => 'Only super admin can reject system-user uploaded products'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         // For normal seller products, check if admin is blocked
         if ($sellerRole !== 'admin' && $jwtUser['role'] === 'admin' && isset($jwtUser['blocked_from_approvals']) && $jwtUser['blocked_from_approvals']) {
-            return $this->respond(['success' => false, 'message' => 'You are blocked from approving products'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('admin_block_product_upload_approval')], 403);
         }
 
         $remarks = $this->request->getJsonVar('remarks') ?? '';
@@ -142,27 +142,27 @@ class SharedApi extends BaseApiController
             'admin_remarks' => $remarks,
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Product rejected']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('product_rejected')]);
     }
 
     public function toggleUserStatus(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['admin', 'super_admin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
         $user = $db->table('users')->where('id', $id)->get()->getRowArray();
         if (!$user)
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
 
         $newStatus = $user['is_blocked'] ? 0 : 1;
         $db->table('users')->where('id', $id)->update(['is_blocked' => $newStatus]);
 
         return $this->respond([
             'success' => true,
-            'message' => $newStatus ? 'User blocked' : 'User unblocked',
+            'message' => $newStatus ? getAppMessage('user_blocked') : getAppMessage('user_unblocked'),
             'data' => ['is_blocked' => $newStatus],
         ]);
     }
@@ -482,7 +482,7 @@ class SharedApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['super_admin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -517,7 +517,7 @@ class SharedApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -525,12 +525,12 @@ class SharedApi extends BaseApiController
         $value = trim($data['message_value'] ?? '');
 
         if ($value === '') {
-            return $this->respond(['success' => false, 'message' => 'Message value cannot be blank'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('message_value_required')], 400);
         }
 
         $existing = $db->table('app_messages')->where('id', $id)->get()->getRowArray();
         if (!$existing) {
-            return $this->respond(['success' => false, 'message' => 'Error message not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('error_message_not_found')], 404);
         }
 
         $placeholderError = $this->validateMessagePlaceholders($existing['message_value'], $value);
@@ -539,32 +539,19 @@ class SharedApi extends BaseApiController
         }
 
         $db->table('app_messages')->where('id', $id)->update(['message_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
-        return $this->respond(['success' => true, 'message' => 'Message updated']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('message_updated')]);
     }
 
     /**
      * POST /api/v1/shared/add-app-message — DISABLED
      * Message keys are system-defined and cannot be created via the API.
      */
-    public function addAppMessage()
-    {
-        return $this->respond([
-            'success' => false,
-            'message' => 'Creating new message keys is not allowed. Message keys are system-defined.',
-        ], 403);
-    }
+
 
     /**
      * POST /api/v1/shared/delete-app-message/{id} — DISABLED
      * Message keys are system-defined and cannot be deleted via the API.
      */
-    public function deleteAppMessage($id)
-    {
-        return $this->respond([
-            'success' => false,
-            'message' => 'Deleting message keys is not allowed. Message keys are system-defined.',
-        ], 403);
-    }
 
     /**
      * POST /api/v1/shared/business-settings
@@ -573,7 +560,7 @@ class SharedApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
@@ -610,7 +597,7 @@ class SharedApi extends BaseApiController
                 if ($valInt === false || $valInt < 0 || strpos((string) $value, '.') !== false) {
                     $fieldName = str_replace('_', ' ', $key);
                     $fieldName = ucwords($fieldName);
-                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be a whole number (no decimals allowed)."], 400);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('decimal_value_not_alowed', '', ['Flied' => $fieldName])], 400);
                 }
                 $value = (string) $valInt;
             } elseif (in_array($key, $floatFields)) {
@@ -618,7 +605,7 @@ class SharedApi extends BaseApiController
                 if ($valFloat === false || $valFloat <= 0) {
                     $fieldName = str_replace('_', ' ', $key);
                     $fieldName = ucwords($fieldName);
-                    return $this->respond(['success' => false, 'message' => "{$fieldName} must be a number greater than 0."], 400);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('value_greater_than_zero', '', ['Flied' => $fieldName])], 400);
                 }
                 $value = (string) $valFloat;
             }
@@ -631,7 +618,7 @@ class SharedApi extends BaseApiController
             }
         }
 
-        return $this->respond(['success' => true, 'message' => 'Settings saved']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('settings_saved')]);
     }
 
     /**
@@ -640,9 +627,7 @@ class SharedApi extends BaseApiController
     public function adminSubscriptionPlans()
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
+
 
         $db = \Config\Database::connect();
         $plans = $db->table('subscription_plans')->orderBy('user_type', 'ASC')->orderBy('price', 'ASC')->get()->getResultArray();
@@ -680,7 +665,7 @@ class SharedApi extends BaseApiController
     public function createFaq()
     {
         if ($this->request->jwt_user['role'] !== 'super_admin')
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
         $db->table('faqs')->insert([
@@ -690,7 +675,7 @@ class SharedApi extends BaseApiController
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
-        return $this->respond(['success' => true, 'message' => 'FAQ created']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('faq_created')]);
     }
 
     /**
@@ -699,7 +684,7 @@ class SharedApi extends BaseApiController
     public function updateFaq($id)
     {
         if ($this->request->jwt_user['role'] !== 'super_admin')
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
         $db->table('faqs')->where('id', $id)->update([
@@ -708,7 +693,7 @@ class SharedApi extends BaseApiController
             'display_order' => (int) ($data['display_order'] ?? 0),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
-        return $this->respond(['success' => true, 'message' => 'FAQ updated']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('faq_updated')]);
     }
 
     /**
@@ -717,10 +702,10 @@ class SharedApi extends BaseApiController
     public function deleteFaq($id)
     {
         if ($this->request->jwt_user['role'] !== 'super_admin')
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         $db = \Config\Database::connect();
         $db->table('faqs')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'FAQ deleted']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('faq_deleted')]);
     }
 
     /**
@@ -729,8 +714,8 @@ class SharedApi extends BaseApiController
     public function createSubscriptionPlan()
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if (!in_array($jwtUser['role'], ['super_admin'])) {
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $data = $this->request->getJSON(true);
@@ -759,7 +744,7 @@ class SharedApi extends BaseApiController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Plan created'], 201);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_created')], 201);
     }
 
     /**
@@ -768,50 +753,50 @@ class SharedApi extends BaseApiController
     public function togglePlanStatus(int $id)
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin'])) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if (!in_array($jwtUser['role'], ['super_admin'])) {
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_or_admin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $newStatus = $plan['is_active'] ? 0 : 1;
         $db->table('subscription_plans')->where('id', $id)->update(['is_active' => $newStatus]);
 
-        return $this->respond(['success' => true, 'message' => $newStatus ? 'Plan activated' : 'Plan deactivated']);
+        return $this->respond(['success' => true, 'message' => $newStatus ? getAppMessage('plan_activated') : getAppMessage('plan_deactivated')]);
     }
 
     public function toggleMostSelected(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $newVal = (int) ($plan['is_most_selected'] ?? 0) ? 0 : 1;
         $db->table('subscription_plans')->where('id', $id)->update(['is_most_selected' => $newVal, 'updated_at' => date('Y-m-d H:i:s')]);
 
-        return $this->respond(['success' => true, 'message' => $newVal ? 'Marked as Most Selected' : 'Removed Most Selected', 'is_most_selected' => $newVal]);
+        return $this->respond(['success' => true, 'message' => $newVal ? getAppMessage('mark_as_most_selected') : getAppMessage('remove_as_most_selected'), 'is_most_selected' => $newVal]);
     }
 
     public function togglePlanFeatured(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
         }
 
         $db = \Config\Database::connect();
         $plan = $db->table('subscription_plans')->where('id', $id)->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         $newFeatured = (int) ($plan['is_featured'] ?? 0) ? 0 : 1;
 
@@ -821,14 +806,14 @@ class SharedApi extends BaseApiController
 
         $db->table('subscription_plans')->where('id', $id)->update(['is_featured' => $newFeatured, 'updated_at' => date('Y-m-d H:i:s')]);
 
-        return $this->respond(['success' => true, 'message' => $newFeatured ? 'Plan marked as premium' : 'Premium removed', 'is_featured' => $newFeatured]);
+        return $this->respond(['success' => true, 'message' => $newFeatured ? getAppMessage('plan_marked_as_premium') : getAppMessage('plan_premium_removed'), 'is_featured' => $newFeatured]);
     }
 
     public function updateSubscriptionPlan(int $id)
     {
         $jwtUser = $this->request->jwt_user;
-        if (!in_array($jwtUser['role'], ['super_admin', 'admin']))
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+        if (!in_array($jwtUser['role'], ['super_admin']))
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
 
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?: $this->request->getPost();
@@ -858,18 +843,18 @@ class SharedApi extends BaseApiController
 
         $db->table('subscription_plans')->where('id', $id)->update($updateData);
 
-        return $this->respond(['success' => true, 'message' => 'Plan updated']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_updated')]);
     }
 
     public function deleteSubscriptionPlan(int $id)
     {
         $jwtUser = $this->request->jwt_user;
         if (!in_array($jwtUser['role'], ['super_admin', 'admin']))
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_superadmin_can_access')], 403);
 
         $db = \Config\Database::connect();
         $db->table('subscription_plans')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Plan deleted']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('plan_deleted')]);
     }
 
     public function moderationHistory()
@@ -897,7 +882,7 @@ class SharedApi extends BaseApiController
         $data = $this->request->getJSON(true);
         $db = \Config\Database::connect();
         $db->table('brands')->insert(['brand_name' => $data['brand_name'] ?? $data['name'] ?? '', 'seller_id' => $this->request->jwt_user['user_id'], 'created_at' => date('Y-m-d H:i:s')]);
-        return $this->respond(['success' => true, 'message' => 'Brand created'], 201);
+        return $this->respond(['success' => true, 'message' => getAppMessage('brand_created')], 201);
     }
 
     public function originalBrands()
@@ -952,7 +937,7 @@ class SharedApi extends BaseApiController
         // Prevent duplicate coupon codes
         $existing = $db->table('coupons')->where('code', $code)->get()->getRowArray();
         if ($existing) {
-            return $this->respond(['success' => false, 'message' => 'Coupon code already exists. Use a different code.'], 409);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_already_exists')], 409);
         }
 
         // Handle expiry date - if only date is provided, set it to end of that day
@@ -996,7 +981,7 @@ class SharedApi extends BaseApiController
             $insertData['created_at'] = date('Y-m-d H:i:s');
 
         $db->table('coupons')->insert($insertData);
-        return $this->respond(['success' => true, 'message' => 'Coupon created'], 201);
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_created')], 201);
     }
 
     public function updateCoupon(int $id)
@@ -1007,7 +992,7 @@ class SharedApi extends BaseApiController
         // Ensure the coupon being edited actually exists
         $existing = $db->table('coupons')->where('id', $id)->get()->getRowArray();
         if (!$existing) {
-            return $this->respond(['success' => false, 'message' => 'Coupon not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_not_found')], 404);
         }
 
         $code = strtoupper(trim($data['code'] ?? ''));
@@ -1019,7 +1004,7 @@ class SharedApi extends BaseApiController
                 ->where('id !=', $id)
                 ->get()->getRowArray();
             if ($duplicate) {
-                return $this->respond(['success' => false, 'message' => 'Coupon code already exists. Use a different code.'], 409);
+                return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_already_exists')], 409);
             }
         }
 
@@ -1069,11 +1054,11 @@ class SharedApi extends BaseApiController
             // Re-fetch to confirm the row still matches what we sent
             $after = $db->table('coupons')->where('id', $id)->get()->getRowArray();
             if (!$after) {
-                return $this->respond(['success' => false, 'message' => 'Update failed: coupon not found after update.'], 500);
+                return $this->respond(['success' => false, 'message' => getAppMessage('coupon_not_found')], 500);
             }
         }
 
-        return $this->respond(['success' => true, 'message' => 'Coupon updated']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_updated')]);
     }
 
     public function toggleCoupon(int $id)
@@ -1081,16 +1066,16 @@ class SharedApi extends BaseApiController
         $db = \Config\Database::connect();
         $coupon = $db->table('coupons')->where('id', $id)->get()->getRowArray();
         if (!$coupon)
-            return $this->respond(['success' => false, 'message' => 'Not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
         $db->table('coupons')->where('id', $id)->update(['is_active' => $coupon['is_active'] ? 0 : 1]);
-        return $this->respond(['success' => true, 'message' => 'Coupon toggled']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_toggled')]);
     }
 
     public function deleteCoupon(int $id)
     {
         $db = \Config\Database::connect();
         $db->table('coupons')->where('id', $id)->delete();
-        return $this->respond(['success' => true, 'message' => 'Coupon deleted']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('coupon_deleted')]);
     }
 
     public function financialReports()
@@ -1204,7 +1189,7 @@ class SharedApi extends BaseApiController
         $db = \Config\Database::connect();
         $page = $db->table('cms_pages')->where('slug', $slug)->where('status', 'active')->get()->getRowArray();
         if (!$page)
-            return $this->respond(['success' => false, 'message' => 'Page not found.'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('page_not_found')], 404);
         return $this->respond(['success' => true, 'data' => $page]);
     }
 
@@ -1217,7 +1202,7 @@ class SharedApi extends BaseApiController
         } else {
             $db->table('cms_pages')->insert(['slug' => $data['slug'], 'title' => $data['title'], 'content' => $data['content'], 'status' => 'active', 'created_at' => date('Y-m-d H:i:s')]);
         }
-        return $this->respond(['success' => true, 'message' => 'Page saved']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('page_saved')]);
     }
 
     public function taxonomy()
@@ -1384,25 +1369,25 @@ class SharedApi extends BaseApiController
 
         $plan = $db->table('subscription_plans')->where('id', $data['plan_id'])->where('is_active', 1)->get()->getRowArray();
         if (!$plan)
-            return $this->respond(['success' => false, 'message' => 'Plan not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
 
         // Role & Block validation
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
         }
 
         // 1. Account global block check
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account is blocked. Please contact support.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         // 2. Role-specific block check (applies to ALL users including admins if superadmin blocked their role)
         if ($plan['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role is blocked by superadmin. You cannot purchase a seller subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
         }
         if ($plan['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
         }
 
         // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
@@ -1413,11 +1398,11 @@ class SharedApi extends BaseApiController
         if (!$isGlobalAdmin) {
             if ($plan['user_type'] === 'seller') {
                 if ($userRole !== 'seller' && $userType !== 'seller' && $userType !== 'both') {
-                    return $this->respond(['success' => false, 'message' => 'Seller subscription plan requires seller role. Please enable seller role to purchase this plan.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
                 }
             } elseif ($plan['user_type'] === 'buyer') {
                 if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
-                    return $this->respond(['success' => false, 'message' => 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.'], 403);
+                    return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
                 }
             }
         }
@@ -1462,7 +1447,7 @@ class SharedApi extends BaseApiController
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
-        return $this->respond(['success' => true, 'message' => 'Subscription activated', 'data' => ['subscription_id' => $subId]]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('subscription_activated'), 'data' => ['subscription_id' => $subId]]);
     }
 
     /**
@@ -1476,7 +1461,7 @@ class SharedApi extends BaseApiController
 
         $currentUser = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
         if (!$currentUser) {
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
         }
 
         $requiredFields = [
@@ -1493,7 +1478,7 @@ class SharedApi extends BaseApiController
 
         foreach ($requiredFields as $field => $label) {
             if (!isset($data[$field]) || trim((string) $data[$field]) === '') {
-                return $this->respond(['success' => false, 'message' => "{$label} is mandatory and cannot be empty."], 400);
+                return $this->respond(['success' => false, 'message' => getAppMessage('filed_required',null,['label' => $label])], 400);
             }
         }
 
@@ -1510,27 +1495,27 @@ class SharedApi extends BaseApiController
         // 1. Email format check — must contain @, a domain, and a valid TLD (e.g. .com, .in, .org)
         $emailRegex = '/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,6}$/';
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match($emailRegex, $email)) {
-            return $this->respond(['success' => false, 'message' => 'Invalid email address. Please enter a valid email (e.g. example@gmail.com).'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_email')], 400);
         }
 
         // 1a. Mobile number format check (must be exactly 10 digits)
         if (!preg_match('/^[6-9]\d{9}$/', $mobile)) {
-            return $this->respond(['success' => false, 'message' => 'Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('valid_mobile')], 400);
         }
 
         // 1b. Alternate mobile number format check (must be exactly 10 digits)
         if (!preg_match('/^[6-9]\d{9}$/', $alternateMobile)) {
-            return $this->respond(['success' => false, 'message' => 'Alternate mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('valid_alternate_mobile')], 400);
         }
 
         // 1c. Pin code format check (must be exactly 6 digits)
         if (!preg_match('/^\d{6}$/', $pinCode)) {
-            return $this->respond(['success' => false, 'message' => 'Pin code must be a valid 6-digit number.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('valid_pindcode')], 400);
         }
 
         // 2. Primary mobile vs Alternate mobile check
         if ($mobile === $alternateMobile) {
-            return $this->respond(['success' => false, 'message' => 'Alternate mobile number cannot be the same as primary mobile number.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('alternate_mobile_number_cannot_be_the_same_as_primary_mobile', 'Alternate mobile number cannot be the same as primary mobile number.')], 400);
         }
 
         // 3. Primary mobile uniqueness check (check both mobile and alternate_mobile columns for other users)
@@ -1543,7 +1528,7 @@ class SharedApi extends BaseApiController
             ->where('id !=', $jwtUser['user_id'])
             ->countAllResults();
         if ($mobileAsPrimary > 0 || $mobileAsAlternate > 0) {
-            return $this->respond(['success' => false, 'message' => 'Mobile number is already registered by another user.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('mobile_number_is_already_registered_by_another_user', 'Mobile number is already registered by another user.')], 400);
         }
 
         // 4. Alternate mobile uniqueness check (check both mobile and alternate_mobile columns for other users)
@@ -1556,7 +1541,7 @@ class SharedApi extends BaseApiController
             ->where('id !=', $jwtUser['user_id'])
             ->countAllResults();
         if ($altAsPrimary > 0 || $altAsAlternate > 0) {
-            return $this->respond(['success' => false, 'message' => 'Alternate mobile number is already registered by another user.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('already_extis_alternate_mobile')], 400);
         }
 
         // 5. Email uniqueness check for all users
@@ -1565,7 +1550,7 @@ class SharedApi extends BaseApiController
             ->where('id !=', $jwtUser['user_id'])
             ->countAllResults();
         if ($emailExists > 0) {
-            return $this->respond(['success' => false, 'message' => 'Email is already registered by another user.'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_already_exists')], 400);
         }
 
         $updateData = [
@@ -1584,7 +1569,7 @@ class SharedApi extends BaseApiController
         $db->table('users')->where('id', $jwtUser['user_id'])->update($updateData);
 
         $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
-        return $this->respond(['success' => true, 'message' => 'Profile updated successfully', 'data' => $user]);
+        return $this->respond(['success' => true, 'message' => getAppMessage('profile_updated_successfully', 'Profile updated successfully'), 'data' => $user]);
     }
 
     /**
@@ -1597,12 +1582,12 @@ class SharedApi extends BaseApiController
 
         $file = $this->request->getFile('profile_image');
         if (!$file || !$file->isValid()) {
-            return $this->respond(['success' => false, 'message' => 'No valid image uploaded'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_valid_image_uploaded', 'No valid image uploaded')], 400);
         }
 
         $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         if (!in_array($file->getMimeType(), $allowedTypes)) {
-            return $this->respond(['success' => false, 'message' => 'Only JPG, PNG, WEBP images are allowed'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('only_jpg_png_webp_images_are_allowed', 'Only JPG, PNG, WEBP images are allowed')], 400);
         }
 
         $uploadPath = FCPATH . 'uploads/profiles/';
@@ -1630,74 +1615,12 @@ class SharedApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'Profile image updated',
+            'message' => getAppMessage('profile_image_updated', 'Profile image updated'),
             'data' => ['path' => $imagePath],
         ]);
     }
 
-    /**
-     * POST /api/v1/shared/upload-kyc
-     */
-    public function uploadKyc()
-    {
-        $jwtUser = $this->request->jwt_user;
-        $db = \Config\Database::connect();
 
-        $uploadPath = FCPATH . 'uploads/kyc/';
-        if (!is_dir($uploadPath))
-            mkdir($uploadPath, 0777, true);
-
-        $updateData = ['updated_at' => date('Y-m-d H:i:s')];
-
-        $panFile = $this->request->getFile('pan_image');
-        if ($panFile && $panFile->isValid()) {
-            $panName = $panFile->getRandomName();
-            $panFile->move($uploadPath, $panName);
-            $updateData['pan_image'] = 'uploads/kyc/' . $panName;
-        }
-
-        $aadharFile = $this->request->getFile('aadhar_image');
-        if ($aadharFile && $aadharFile->isValid()) {
-            $aadharName = $aadharFile->getRandomName();
-            $aadharFile->move($uploadPath, $aadharName);
-            $updateData['aadhar_image'] = 'uploads/kyc/' . $aadharName;
-        }
-
-        $panNumber = $this->request->getPost('pan_number');
-        $aadharNumber = $this->request->getPost('aadhar_number');
-        if ($panNumber)
-            $updateData['pan_number'] = $panNumber;
-        if ($aadharNumber)
-            $updateData['aadhar_number'] = $aadharNumber;
-
-        // For delivery person, update delivery_persons table
-        $deliveryPerson = $db->table('delivery_persons')->where('user_id', $jwtUser['user_id'])->get()->getRowArray();
-        if ($deliveryPerson) {
-            $dpUpdate = ['updated_at' => date('Y-m-d H:i:s')];
-            if (isset($updateData['pan_image']))
-                $dpUpdate['pan_image'] = $updateData['pan_image'];
-            if (isset($updateData['aadhar_image']))
-                $dpUpdate['aadhar_image'] = $updateData['aadhar_image'];
-            if ($panNumber)
-                $dpUpdate['pan_number'] = $panNumber;
-            if ($aadharNumber)
-                $dpUpdate['aadhar_number'] = $aadharNumber;
-            $vehicleType = $this->request->getPost('vehicle_type');
-            $vehicleNumber = $this->request->getPost('vehicle_number');
-            $licenseNumber = $this->request->getPost('license_number');
-            if ($vehicleType)
-                $dpUpdate['vehicle_type'] = $vehicleType;
-            if ($vehicleNumber)
-                $dpUpdate['vehicle_number'] = $vehicleNumber;
-            if ($licenseNumber)
-                $dpUpdate['license_number'] = $licenseNumber;
-            $db->table('delivery_persons')->where('user_id', $jwtUser['user_id'])->update($dpUpdate);
-        }
-
-        $db->table('users')->where('id', $jwtUser['user_id'])->update($updateData);
-
-        return $this->respond(['success' => true, 'message' => 'KYC documents uploaded']);
-    }
 
     public function landingContent()
     {
@@ -1728,7 +1651,12 @@ class SharedApi extends BaseApiController
                 'seller_dashboard_subtitle',
                 'global_system_lock',
                 'site_name',
-                'registration_terms'
+                'registration_terms',
+                'geo_blocked_header',
+                'geo_blocked_description',
+                'geo_blocked_instructions',
+                'geo_blocked_button_text',
+                'geo_blocked_icon'
             ])
             ->get()->getResultArray();
         $content = [];
@@ -2189,7 +2117,7 @@ class SharedApi extends BaseApiController
     {
         $rawKey = urldecode($pageKey ?? $this->request->getGet('route') ?? '');
         if (empty($rawKey)) {
-            return $this->respond(['success' => false, 'message' => 'No page key or route provided'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_page_key_or_route_provided')], 400);
         }
 
         $seoModel = new \App\Models\SeoSettingModel();
@@ -2210,7 +2138,7 @@ class SharedApi extends BaseApiController
         }
 
         if (!$setting) {
-            return $this->respond(['success' => false, 'message' => 'SEO settings not found for this page'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('seo_settings_not_found')], 404);
         }
 
         return $this->respond(['success' => true, 'data' => $setting]);

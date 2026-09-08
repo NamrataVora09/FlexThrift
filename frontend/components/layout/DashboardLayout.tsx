@@ -3,10 +3,14 @@
 import { useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/api';
 import DashboardTopbar from './DashboardTopbar';
 import DashboardSidebar from './DashboardSidebar';
 import { getDashboardPath } from '@/lib/navigation';
 import { showToast } from '@/lib/toast';
+
+import SeoManager from '@/components/shared/SeoManager';
+import GlobalLoader from '@/components/shared/GlobalLoader';
 
 interface Props {
   children: ReactNode;
@@ -18,7 +22,7 @@ interface Props {
 let globalSidebarOpen: boolean | null = null;
 
 export default function DashboardLayout({ children, requiredRoles, viewAs }: Props) {
-  const { user, isLoading, isAuthenticated, setUser } = useAuth();
+  const { user, isLoading, isAuthenticated,  } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -41,22 +45,16 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
     if (isBuyerRestricted) {
       showToast.error("Your buyer privileges have been restricted by the administrator.");
     }
-  }, [isSellerRestricted, isBuyerRestricted, user, router]);
+  }, [isSellerRestricted, isBuyerRestricted, user?.id, router]);
 
   // Refresh user data when accessing seller/buyer pages to catch block status changes
   useEffect(() => {
     if (user && (user.user_type === 'both' || user.role === 'admin') && (isSellerPage || isBuyerPage)) {
       const refreshUserData = async () => {
         try {
-          const res = await fetch('/api/v1/auth/me', {
-            headers: { Authorization: `Bearer ${localStorage.getItem('flex_token')}` }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && data.data) {
-              localStorage.setItem('flex_user', JSON.stringify(data.data));
-              setUser(data.data);
-            }
+          const res = await api.get<any>('/auth/me');
+          if (res.success && res.data) {
+            localStorage.setItem('flex_user', JSON.stringify(res.data));
           }
         } catch (e) {
           // Silent fail
@@ -64,7 +62,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
       };
       refreshUserData();
     }
-  }, [pathname, user, isSellerPage, isBuyerPage]);
+  }, [pathname, user?.id, user?.user_type, user?.role, isSellerPage, isBuyerPage]);
 
   // Initialize from global variable if it exists, otherwise default to true
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -138,13 +136,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
   }, [isLoading, isAuthenticated, requiredRoles, user, router]);
 
   if (isLoading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-        <div className="spinner-border" style={{ color: '#ffc63a' }} role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
+    return <GlobalLoader />;
   }
 
   if (!isAuthenticated || !user) return null;
@@ -159,6 +151,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
 
   return (
     <div>
+      <SeoManager />
       <DashboardTopbar onToggleSidebar={toggleSidebar} />
 
       {/* Mobile overlay */}

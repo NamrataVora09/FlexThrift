@@ -66,7 +66,16 @@ export default function SettingsClient() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const res = await api.post('/superadmin/update-settings', settings);
+
+    // Strip undefined, null, and empty-string values.
+    // Empty strings for int-validated fields (e.g. offer_acceptance_limit_days)
+    // will cause a 400 on the backend — don't send keys we have no value for.
+    const payload: Record<string, string> = {};
+    Object.entries(settings).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') payload[k] = String(v);
+    });
+
+    const res = await api.post('/superadmin/update-settings', payload);
     setSaving(false);
     if (res.success) {
       toastSuccess('settings_save_success', 'Settings saved successfully!');
@@ -76,6 +85,7 @@ export default function SettingsClient() {
   };
 
   const handleBulkDelete = () => {
+
     if (!fromDate || !toDate) {
       toastError('settings_date_required', 'Please select both from and to dates');
       return;
@@ -87,8 +97,8 @@ export default function SettingsClient() {
       fd.append('to_date', toDate);
       const res = await api.post('/superadmin/bulk-delete-rejected', fd);
       setDeleting(false);
-      if (res.success) toastSuccess('generic_success', res.message || 'Cleanup complete');
-      else toastError('generic_error', res.message || 'Failed');
+      if (res.success) toastSuccess('bulk_delete_rejected_success', res.message || 'Rejected products deleted successfully!');
+      else toastError('bulk_delete_rejected_error', res.message || 'Failed to delete rejected products');
     }, 'Delete All');
   };
 
@@ -141,19 +151,9 @@ export default function SettingsClient() {
           {/* ── Platform Rules ── */}
           <Section title="Platform Rules" icon="bi-sliders">
             <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Commission Rate (%)</label>
-                <input type="number" step="0.1" min="0" max="100" className="form-control" style={inputStyle} value={settings.commission_rate !== undefined ? settings.commission_rate : ''} onChange={(e) => update('commission_rate', e.target.value)} />
-                <small className="text-muted">Platform fee on each transaction</small>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Default Delivery Charge (₹)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.default_delivery_charge !== undefined ? settings.default_delivery_charge : (settings.delivery_charge !== undefined ? settings.delivery_charge : '')} onChange={(e) => update('default_delivery_charge', e.target.value)} />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Minimum Order Value (₹)</label>
-                <input type="number" min="0" className="form-control" style={inputStyle} value={settings.min_order_value !== undefined ? settings.min_order_value : ''} onChange={(e) => update('min_order_value', e.target.value)} />
-              </div>
+            
+
+
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Max Images per Product</label>
                 <input type="number" min="1" max="20" className="form-control" style={inputStyle} value={settings.max_images_per_product !== undefined ? settings.max_images_per_product : ''} onChange={(e) => update('max_images_per_product', e.target.value)} />
@@ -162,11 +162,7 @@ export default function SettingsClient() {
                 <label className="form-label fw-semibold">OTP Expiry (minutes)</label>
                 <input type="number" min="1" className="form-control" style={inputStyle} value={settings.otp_expiry_minutes !== undefined ? settings.otp_expiry_minutes : ''} onChange={(e) => update('otp_expiry_minutes', e.target.value)} />
               </div>
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Blocked from Approvals (days)</label>
-                <input type="number" min="1" className="form-control" style={inputStyle} value={settings.blocked_from_approvals_days !== undefined ? settings.blocked_from_approvals_days : ''} onChange={(e) => update('blocked_from_approvals_days', e.target.value)} />
-                <small className="text-muted">Days a seller stays blocked from approvals after violations</small>
-              </div>
+
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Max Original Price (₹)</label>
                 <input
@@ -212,6 +208,67 @@ export default function SettingsClient() {
                   settings={settings}
                   update={update}
                 />
+              </div>
+            </div>
+          </Section>
+
+          {/* ── Geolocation Blocker Customization ── */}
+          <Section title="Geolocation Blocker Customization" icon="bi-geo-alt">
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">Blocker Header / Title</label>
+                <input
+                  className="form-control"
+                  style={inputStyle}
+                  value={settings.geo_blocked_header || ''}
+                  onChange={(e) => update('geo_blocked_header', e.target.value)}
+                  placeholder="e.g. Location Access Required"
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Blocker Icon Class</label>
+                <input
+                  className="form-control"
+                  style={inputStyle}
+                  value={settings.geo_blocked_icon || ''}
+                  onChange={(e) => update('geo_blocked_icon', e.target.value)}
+                  placeholder="e.g. bi-geo-alt-fill"
+                />
+                <small className="text-muted">Bootstrap icon class name</small>
+              </div>
+              <div className="col-md-3">
+                <label className="form-label fw-semibold">Reload Button Text</label>
+                <input
+                  className="form-control"
+                  style={inputStyle}
+                  value={settings.geo_blocked_button_text || ''}
+                  onChange={(e) => update('geo_blocked_button_text', e.target.value)}
+                  placeholder="e.g. Try Again / Refresh"
+                />
+              </div>
+              <div className="col-12">
+                <label className="form-label fw-semibold">Blocker Description</label>
+                <textarea
+                  className="form-control"
+                  style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
+                  value={settings.geo_blocked_description || ''}
+                  onChange={(e) => update('geo_blocked_description', e.target.value)}
+                  placeholder="Explain why location is required or why they are blocked..."
+                />
+              </div>
+              <div className="col-12">
+                <label className="form-label fw-semibold">Instructions / How to Fix (One step per line)</label>
+                <textarea
+                  className="form-control"
+                  style={{ ...inputStyle, minHeight: '120px', resize: 'vertical', fontFamily: 'monospace' }}
+                  value={settings.geo_blocked_instructions || ''}
+                  onChange={(e) => update('geo_blocked_instructions', e.target.value)}
+                  placeholder="e.g.
+Click the lock icon (or info icon) in your browser's address bar.
+Find Location and set it to Allow.
+Refresh this page or click the button below."
+                />
+                <small className="text-muted">Enter each instruction step on a new line. Words like <strong>lock icon</strong>, <strong>Location</strong>, and <strong>Allow</strong> will automatically be bolded in the list UI.</small>
               </div>
             </div>
           </Section>

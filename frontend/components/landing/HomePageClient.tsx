@@ -4,11 +4,14 @@ import { useEffect, useState, useRef, Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
-import { showToast } from '@/lib/toast';
+import { useToast, showToast } from '@/lib/toast';
+import { confirmToast } from '@/lib/toast-utils';
 import LandingNavbar from '../layout/LandingNavbar';
 import Footer from '../layout/Footer';
 import AdBanner from '../shared/AdBanner';
+import GlobalLoader from '../shared/GlobalLoader';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api/v1').replace(/\/$/, '');
 
@@ -312,9 +315,9 @@ const CATEGORY_CARDS = [
     desc: 'Curated fashion from top brands',
     reverse: false,
     imgs: [
-      'https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=1200',
-      'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?q=80&w=1200',
-      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=1200',
+      'https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&auto=format&fit=crop&q=60',
     ],
   },
   {
@@ -324,9 +327,9 @@ const CATEGORY_CARDS = [
     desc: 'Watches, bags & more',
     reverse: true,
     imgs: [
-      'https://images.unsplash.com/photo-1596460107916-430662021049?q=80&w=1200',
-      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=1200',
-      'https://images.unsplash.com/photo-1509941943102-10c232535736?q=80&w=1200',
+      'https://images.unsplash.com/photo-1596460107916-430662021049?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1509941943102-10c232535736?w=600&auto=format&fit=crop&q=60',
     ],
   },
   {
@@ -336,9 +339,9 @@ const CATEGORY_CARDS = [
     desc: 'Sneakers, heels & boots',
     reverse: false,
     imgs: [
-      'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=1200',
-      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1200',
-      'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?q=80&w=1200',
+      'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1515955656352-a1fa3ffcd111?w=600&auto=format&fit=crop&q=60',
     ],
   },
   {
@@ -348,9 +351,9 @@ const CATEGORY_CARDS = [
     desc: 'Gadgets & premium tech',
     reverse: true,
     imgs: [
-      'https://images.unsplash.com/photo-1498049794561-7780e7231661?q=80&w=1200',
-      'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?q=80&w=1200',
-      'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?q=80&w=1200',
+      'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=600&auto=format&fit=crop&q=60',
+      'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=600&auto=format&fit=crop&q=60',
     ],
   },
 ];
@@ -359,6 +362,10 @@ const CATEGORY_CARDS = [
 
 export default function HomePageClient() {
   const { user, isLoading, isAuthenticated, login, register, verifyOtp, sendOtp, forgotPassword, resetPassword } = useAuth();
+  // PERFORMANCE: Read landing-content data from SystemProvider context so we
+  // don't need to make a second independent fetch call for aot_sections / category_cards.
+  const { landingData } = useSystem();
+  const { toastInfo, toastSuccess, resolveMsg } = useToast();
   const router = useRouter();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -477,7 +484,7 @@ export default function HomePageClient() {
     if (!res.success) {
       // Check if the error is about verification
       if (res.message?.includes('verify your account') || res.message?.includes('verify')) {
-        alert('Please verify your account before logging in. Redirecting to verification page...');
+        toastInfo('verify_account_prompt', 'Please verify your account before logging in. Redirecting to verification page...');
         router.push(`/verify-otp?email=${encodeURIComponent(sidebarEmail)}`);
         return;
       }
@@ -507,7 +514,7 @@ export default function HomePageClient() {
     if (!res.success) {
       // Check if the error is about verification
       if (res.message?.includes('verify your account') || res.message?.includes('verify')) {
-        alert('Please verify your account before logging in. Redirecting to verification page...');
+        toastInfo('verify_account_prompt', 'Please verify your account before logging in. Redirecting to verification page...');
         router.push(`/verify-otp?email=${encodeURIComponent(sidebarEmail)}`);
         return;
       }
@@ -577,7 +584,7 @@ export default function HomePageClient() {
     setSidebarLoading(false);
     if (res.success) {
       setSidebarView('login');
-      alert('Password reset successfully! Please log in with your new password.');
+      toastSuccess('password_reset_success', 'Password reset successfully! Please log in with your new password.');
       setSidebarPassword('');
       setSidebarOtp('');
     } else {
@@ -594,22 +601,20 @@ export default function HomePageClient() {
   const [savingAot, setSavingAot] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/landing-content`)
-      .then(r => r.json())
-      .then(res => {
-        if (res.success && res.data?.aot_sections) {
-          try { setAotSections(JSON.parse(res.data.aot_sections)); } catch { }
-        }
-        if (res.success && res.data?.category_cards) {
-          try {
-            const cards = JSON.parse(res.data.category_cards);
-            setCategoryCards(cards);
-            setCatImgIdx(cards.map(() => 0));
-          } catch { }
-        }
-      })
-      .catch(() => { });
-  }, []);
+    // PERFORMANCE: Read aot_sections and category_cards from SystemProvider's
+    // already-fetched landingData instead of making a second /landing-content call.
+    if (!landingData) return;
+    if (landingData.aot_sections) {
+      try { setAotSections(JSON.parse(landingData.aot_sections)); } catch { }
+    }
+    if (landingData.category_cards) {
+      try {
+        const cards = JSON.parse(landingData.category_cards);
+        setCategoryCards(cards);
+        setCatImgIdx(cards.map(() => 0));
+      } catch { }
+    }
+  }, [landingData]);
 
   const persistSections = async (next: AotSection[]) => {
     setSavingAot(true);
@@ -628,8 +633,9 @@ export default function HomePageClient() {
   };
 
   const handleDeleteSection = async (id: string) => {
-    if (!confirm('Delete this section?')) return;
-    await persistSections(aotSections.filter(s => s.id !== id));
+    confirmToast(resolveMsg('delete_section_confirm', 'Delete this section?'), async () => {
+      await persistSections(aotSections.filter(s => s.id !== id));
+    });
   };
 
   const handleAddSection = async () => {
@@ -738,7 +744,7 @@ export default function HomePageClient() {
   }, [categoryCards]); // Depend on categoryCards to stay in sync
 
   if (isLoading) {
-    return <div><span>Loading…</span></div>;
+    return <GlobalLoader />;
   }
 
   return (
@@ -782,6 +788,7 @@ export default function HomePageClient() {
                     <img
                       src={cat.imgs[catImgIdx[i]]}
                       alt={cat.name}
+                      loading="lazy"
                       className="w-full h-full min-h-[400px] object-cover transition-opacity duration-500"
                     />
 
@@ -1188,7 +1195,7 @@ export default function HomePageClient() {
                       {card.imgs.map((img, ii) => (
                         <div key={ii} className="relative group aspect-[4/3] rounded-xl overflow-hidden border-2 border-gray-200 bg-white shadow-sm hover:border-[#ffc63a] transition-all">
                           {img ? (
-                            <img src={img} className="w-full h-full object-cover" />
+                            <img src={img} loading="lazy" className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
                               <i className="bi bi-image text-2xl"></i>

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { useSystem } from '@/lib/system-context';
 import { api } from '@/lib/api';
+import { useToast } from '@/lib/toast';
+import { confirmToast } from '@/lib/toast-utils';
 import AdBanner from '@/components/shared/AdBanner';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1').replace(/\/$/, '');
@@ -69,7 +71,8 @@ const DEFAULT_SECTIONS: FooterSection[] = [
 
 export default function Footer() {
   const { user } = useAuth();
-  const { settings } = useSystem();
+  const { landingData, settings } = useSystem();
+  const { resolveMsg } = useToast();
   const isSuperAdmin = user?.role === 'super_admin';
 
   const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
@@ -87,45 +90,42 @@ export default function Footer() {
       .then(r => r.json())
       .then(res => { if (res.success && res.data?.listing_types) setListingTypes(res.data.listing_types); })
       .catch(() => { });
-
-    fetch(`${API_BASE}/landing-content`)
-      .then(r => r.json())
-      .then(res => {
-        if (!res.success || !res.data) return;
-        const d = res.data;
-        if (d.footer_description) setDesc(d.footer_description);
-
-        // Try new unified sections key first
-        if (d.footer_sections) {
-          try { setSections(JSON.parse(d.footer_sections)); return; } catch { }
-        }
-
-        // Fall back to legacy individual keys
-        const legacySections: FooterSection[] = JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
-        if (d.footer_quick_links) try {
-          legacySections[0].links = JSON.parse(d.footer_quick_links).map((l: { label: string; href: string }) => ({ label: l.label, href: l.href }));
-        } catch { }
-        if (d.footer_category_links) try {
-          const cats = JSON.parse(d.footer_category_links);
-          if (cats.length > 0) { legacySections[1].links = cats; legacySections[1].isTaxonomy = false; }
-        } catch { }
-        if (d.footer_policy_links) try {
-          legacySections[2].links = JSON.parse(d.footer_policy_links).map((l: { label: string; href: string }) => ({ label: l.label, href: l.href }));
-        } catch { }
-        if (d.footer_social_links) try {
-          legacySections[3].links = JSON.parse(d.footer_social_links).map((l: { icon: string; href: string }) => ({ icon: l.icon, href: l.href }));
-        } catch { }
-        if (d.footer_section_titles) try {
-          const t = JSON.parse(d.footer_section_titles);
-          if (t.quickLinks) legacySections[0].title = t.quickLinks;
-          if (t.categories) legacySections[1].title = t.categories;
-          if (t.policies) legacySections[2].title = t.policies;
-          if (t.socialLinks) legacySections[3].title = t.socialLinks;
-        } catch { }
-        setSections(legacySections);
-      })
-      .catch(() => { });
   }, []);
+
+  useEffect(() => {
+    if (!landingData) return;
+    const d = landingData;
+    if (d.footer_description) setDesc(d.footer_description);
+
+    // Try new unified sections key first
+    if (d.footer_sections) {
+      try { setSections(JSON.parse(d.footer_sections)); return; } catch { }
+    }
+
+    // Fall back to legacy individual keys
+    const legacySections: FooterSection[] = JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
+    if (d.footer_quick_links) try {
+      legacySections[0].links = JSON.parse(d.footer_quick_links).map((l: { label: string; href: string }) => ({ label: l.label, href: l.href }));
+    } catch { }
+    if (d.footer_category_links) try {
+      const cats = JSON.parse(d.footer_category_links);
+      if (cats.length > 0) { legacySections[1].links = cats; legacySections[1].isTaxonomy = false; }
+    } catch { }
+    if (d.footer_policy_links) try {
+      legacySections[2].links = JSON.parse(d.footer_policy_links).map((l: { label: string; href: string }) => ({ label: l.label, href: l.href }));
+    } catch { }
+    if (d.footer_social_links) try {
+      legacySections[3].links = JSON.parse(d.footer_social_links).map((l: { icon: string; href: string }) => ({ icon: l.icon, href: l.href }));
+    } catch { }
+    if (d.footer_section_titles) try {
+      const t = JSON.parse(d.footer_section_titles);
+      if (t.quickLinks) legacySections[0].title = t.quickLinks;
+      if (t.categories) legacySections[1].title = t.categories;
+      if (t.policies) legacySections[2].title = t.policies;
+      if (t.socialLinks) legacySections[3].title = t.socialLinks;
+    } catch { }
+    setSections(legacySections);
+  }, [landingData]);
 
   const openEditor = () => {
     setDraftDesc(desc);
@@ -315,7 +315,12 @@ export default function Footer() {
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={e => { e.stopPropagation(); if (confirm(`Delete "${section.title}"?`)) deleteSection(section.id); }}
+                            onClick={e => {
+                              e.stopPropagation();
+                              confirmToast(resolveMsg('footer_delete_section_confirm', `Delete "${section.title}"?`), async () => {
+                                deleteSection(section.id);
+                              });
+                            }}
                             className="text-red-400 hover:text-red-600 text-sm border border-red-100 rounded-lg px-2.5 py-1 hover:bg-red-50 transition-colors"
                           >
                             Delete

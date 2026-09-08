@@ -35,6 +35,10 @@ function register_api_routes($routes)
     $routes->post('auth/google-login', 'Api\AuthApi::googleLogin');
     $routes->post('auth/forgot-password', 'Api\AuthApi::forgotPassword');
     $routes->post('auth/reset-password', 'Api\AuthApi::resetPassword');
+    $routes->get('auth/reverse-geocode', 'Api\AuthApi::reverseGeocode');
+    $routes->post('auth/reverse-geocode', 'Api\AuthApi::reverseGeocode');
+    $routes->get('auth/check-location', 'Api\AuthApi::checkLocation');
+    $routes->post('auth/check-location', 'Api\AuthApi::checkLocation');
 
     // Public landing page content
     $routes->get('landing-content', 'Api\SharedApi::landingContent');
@@ -43,6 +47,7 @@ function register_api_routes($routes)
     // Public shared routes
     $routes->group('shared', function ($routes) {
         $routes->get('advertisements', 'Api\SharedApi::advertisements');
+        $routes->get('seo-settings/(:any)', 'Api\SharedApi::getSeoSettingByPage/$1');
     });
 
     // Public product browsing (no login required)
@@ -196,6 +201,14 @@ function register_api_routes($routes)
         $routes->post('upload-kyc', 'Api\SharedApi::uploadKyc');
     });
 
+    // Zones CRUD (protected, JWT filtered)
+    $routes->group('zones', ['filter' => 'jwt'], function ($routes) {
+        $routes->get('/', 'Api\ZonesApi::index');
+        $routes->post('/', 'Api\ZonesApi::create');
+        $routes->put('(:num)', 'Api\ZonesApi::update/$1');
+        $routes->delete('(:num)', 'Api\ZonesApi::delete/$1');
+    });
+
     // Admin API (protected)
     $routes->group('admin', ['filter' => 'jwt'], function ($routes) {
         $routes->get('subscriptions/(:any)', 'Api\SharedApi::subscriptions/$1');
@@ -347,7 +360,9 @@ function register_api_routes($routes)
         $routes->post('update-cms-page/(:any)', 'Api\SuperAdminApi::updateCmsPage/$1');
         $routes->post('delete-cms-page/(:num)', 'Api\SuperAdminApi::deleteCmsPage/$1');
         $routes->get('seo-settings', 'Api\SuperAdminApi::getSeoSettings');
+        $routes->post('seo-settings', 'Api\SuperAdminApi::createSeoSetting');
         $routes->post('seo-settings/(:num)', 'Api\SuperAdminApi::updateSeoSetting/$1');
+        $routes->delete('seo-settings/(:num)', 'Api\SuperAdminApi::deleteSeoSetting/$1');
         $routes->get('financial-reports', 'Api\SuperAdminApi::financialReports');
         $routes->get('reports', 'Api\SuperAdminApi::reports');
         // Bulk uploads

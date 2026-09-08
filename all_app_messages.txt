@@ -1,0 +1,2447 @@
+=========================================================================
+       COMPLETE REAL APP MESSAGES (BACKEND & FRONTEND)
+       Total Unique Real DB Keys: 407
+=========================================================================
+
+[   1] Key:       account_blocked
+       Message:   Your account has been blocked
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[   2] Key:       account_blocked_admin
+       Message:   Your account has been blocked by admin
+       Category:  error
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[   3] Key:       account_roles_blocked
+       Message:   Your account roles have been blocked by admin
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[   4] Key:       account_upgraded_success
+       Message:   Account upgraded successfully. OTP sent to your email.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[   5] Key:       action_not_allowed
+       Message:   Action not allowed
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[   6] Key:       active_offer_already_exists
+       Message:   You already have an active offer on this product.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[   7] Key:       ad_deleted
+       Message:   Advertisement deleted.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[   8] Key:       ad_updated
+       Message:   Advertisement updated successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[   9] Key:       ad_uploaded
+       Message:   Advertisement uploaded successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  10] Key:       admin_action_failed
+       Message:   Admin action failed. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  11] Key:       admin_action_success
+       Message:   Admin action completed successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  12] Key:       admin_activated
+       Message:   Admin activated.
+       Category:  success
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  13] Key:       admin_blocked_from_approvals
+       Message:   You are blocked from approvals.
+       Category:  error
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  14] Key:       admin_blocked_from_product_approval
+       Message:   You are blocked from approving products
+       Category:  error
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  15] Key:       admin_blocked_from_user_management
+       Message:   Your access to user management is restricted.
+       Category:  error
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  16] Key:       admin_create_failed
+       Message:   Failed to create administrator.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  17] Key:       admin_create_success
+       Message:   Administrator created successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  18] Key:       admin_created
+       Message:   Admin created successfully.
+       Category:  success
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  19] Key:       admin_delete_success
+       Message:   Admin deleted successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  20] Key:       admin_deleted
+       Message:   Admin deleted successfully.
+       Category:  success
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  21] Key:       admin_suspended
+       Message:   Admin suspended.
+       Category:  success
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  22] Key:       already_rated_buyer
+       Message:   You have already rated this buyer
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  23] Key:       already_rated_seller
+       Message:   You already rated this seller.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  24] Key:       already_rated_seller_self_delivery
+       Message:   You have already rated this seller for self-delivery.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  25] Key:       already_reported_user
+       Message:   You have already reported this user in the past 7 days
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  26] Key:       auth_login_required
+       Message:   Unauthorized
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  27] Key:       booking_conflict
+       Message:   This product already has an active offer for the selected dates. Please choose different dates.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  28] Key:       booking_dates_conflict
+       Message:   The selected dates conflict with an existing booking.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  29] Key:       brand_blocked
+       Message:   Brand blocked and products rejected.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  30] Key:       brand_create_failed
+       Message:   Failed to create brand.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  31] Key:       brand_create_success
+       Message:   Brand created
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  32] Key:       brand_delete_failed
+       Message:   Failed to delete brand.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  33] Key:       brand_delete_success
+       Message:   Brand deleted successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  34] Key:       brand_listing_type_required
+       Message:   Please select at least one listing type.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  35] Key:       brand_unblocked
+       Message:   Brand unblocked successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  36] Key:       brand_update_failed
+       Message:   Failed to update brand.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  37] Key:       brand_update_success
+       Message:   Brand updated successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  38] Key:       brand_updated
+       Message:   Brand updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  39] Key:       bulk_upload_failed
+       Message:   Bulk upload failed. Please check your file.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  40] Key:       bulk_upload_success
+       Message:   Bulk upload completed successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  41] Key:       buyer_blocked_from_offers
+       Message:   Your account is currently blocked from making offers as a buyer.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  42] Key:       buyer_rated_success
+       Message:   Buyer rated successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  43] Key:       buyer_role_blocked
+       Message:   Your buyer role has been blocked by admin
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  44] Key:       buyer_role_blocked_access
+       Message:   Your buyer role is currently blocked. Access restricted.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  45] Key:       buyer_role_restricted
+       Message:   Your buyer role has been restricted by the administrator.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  46] Key:       buyer_subscription_purchase_blocked
+       Message:   Your account is restricted from purchasing buyer subscriptions.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  47] Key:       buyer_subscription_required
+       Message:   You need an active buyer subscription to make offers. Please subscribe to a buyer plan.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  48] Key:       cannot_block_self
+       Message:   You cannot block yourself
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  49] Key:       cannot_offer_own_product
+       Message:   Cannot make offer on your own product
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  50] Key:       cannot_report_admin
+       Message:   Cannot report an admin
+       Category:  success
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  51] Key:       cannot_report_self
+       Message:   You cannot report yourself
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  52] Key:       cannot_view_own_contact
+       Message:   You cannot view your own contact
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  53] Key:       cart_add_success
+       Message:   Added to cart!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  54] Key:       cart_remove_success
+       Message:   Removed from cart.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  55] Key:       cart_update_success
+       Message:   Cart updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  56] Key:       category_added
+       Message:   Category added.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  57] Key:       category_updated
+       Message:   Category updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  58] Key:       charge_create_success
+       Message:   Platform charge created
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  59] Key:       charge_delete_failed
+       Message:   Failed to delete charge.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  60] Key:       charge_delete_success
+       Message:   Platform charge deleted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  61] Key:       charge_fields_required
+       Message:   Charge name and value are required.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  62] Key:       charge_save_failed
+       Message:   Failed to save charge.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  63] Key:       charge_save_success
+       Message:   Charge saved successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  64] Key:       charge_toggle_failed
+       Message:   Failed to toggle charge status.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  65] Key:       charge_update_success
+       Message:   Platform charge updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  66] Key:       cms_page_create_failed
+       Message:   Failed to create page.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  67] Key:       cms_page_create_success
+       Message:   CMS page created successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  68] Key:       cms_page_created
+       Message:   CMS page created successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  69] Key:       cms_page_delete_failed
+       Message:   Failed to delete page.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  70] Key:       cms_page_delete_success
+       Message:   Page deleted successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  71] Key:       cms_page_deleted
+       Message:   CMS page deleted successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  72] Key:       cms_page_update_failed
+       Message:   Failed to update page.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  73] Key:       cms_page_update_success
+       Message:   CMS page updated successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  74] Key:       color_added
+       Message:   Color added.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  75] Key:       color_updated
+       Message:   Color updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  76] Key:       contact_limit_reached
+       Message:   Your contact limit has been reached. Please upgrade or renew your plan.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  77] Key:       contact_not_viewed
+       Message:   Contact details not viewed.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  78] Key:       coupon_applied_success
+       Message:   Coupon applied!
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  79] Key:       coupon_code_required
+       Message:   Coupon code is required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  80] Key:       coupon_create_success
+       Message:   Coupon created
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  81] Key:       coupon_delete_confirm
+       Message:   This coupon will be permanently deleted. Continue?
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  82] Key:       coupon_delete_failed
+       Message:   Failed to delete coupon.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  83] Key:       coupon_delete_success
+       Message:   Coupon deleted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  84] Key:       coupon_expired
+       Message:   Coupon has expired.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  85] Key:       coupon_invalid
+       Message:   Invalid or expired coupon code.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  86] Key:       coupon_save_failed
+       Message:   Failed to save coupon.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[  87] Key:       coupon_toggle_success
+       Message:   Coupon toggled
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  88] Key:       coupon_update_success
+       Message:   Coupon updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  89] Key:       coupon_usage_limit
+       Message:   Coupon usage limit reached.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  90] Key:       dates_both_required
+       Message:   Both start and end dates are required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  91] Key:       dates_update_success
+       Message:   Rental dates updated successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-01-05-153000_CreateMissingTables.php
+
+[  92] Key:       delivery_accept_assigned_only
+       Message:   Can only accept assigned deliveries
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  93] Key:       delivery_accepted
+       Message:   Delivery accepted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  94] Key:       delivery_confirmed_success
+       Message:   Delivery confirmed successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  95] Key:       delivery_marked_delivered
+       Message:   Marked as delivered
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  96] Key:       delivery_photo_required
+       Message:   A delivery photograph is required to confirm delivery
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  97] Key:       delivery_picked_up
+       Message:   Marked as picked up
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  98] Key:       delivery_profile_updated
+       Message:   Delivery profile updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[  99] Key:       edit_request_approve_failed
+       Message:   Failed to approve edit request.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 100] Key:       edit_request_approve_success
+       Message:   Edit request approved and merged.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 101] Key:       edit_request_reject_failed
+       Message:   Failed to reject edit request.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 102] Key:       edit_request_reject_success
+       Message:   Edit request rejected.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 103] Key:       email_already_exists
+       Message:   This email is already registered.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 104] Key:       email_already_exists_role
+       Message:   This email is already registered with the selected role.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 105] Key:       email_not_found
+       Message:   No account found with this email
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 106] Key:       email_required
+       Message:   Email is required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 107] Key:       error_message_created
+       Message:   Error message created successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 108] Key:       error_message_deleted
+       Message:   Error message deleted successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 109] Key:       error_message_updated
+       Message:   Error message updated successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 110] Key:       faq_delete_failed
+       Message:   Failed to delete FAQ.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 111] Key:       faq_delete_success
+       Message:   FAQ deleted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 112] Key:       faq_fields_required
+       Message:   Question and Answer are both required.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 113] Key:       faq_save_failed
+       Message:   Failed to save FAQ.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 114] Key:       faq_save_success
+       Message:   FAQ created
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 115] Key:       file_too_large
+       Message:   File too large. Max 10 MB.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 116] Key:       file_type_not_allowed
+       Message:   File type not allowed
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 117] Key:       gender_added
+       Message:   Gender added.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 118] Key:       gender_updated
+       Message:   Gender updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 119] Key:       generic_error
+       Message:   Something went wrong. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 120] Key:       generic_save_first
+       Message:   Please save your settings first.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 121] Key:       generic_success
+       Message:   Action completed successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 122] Key:       geolocation_failed
+       Message:   Unable to get location.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 123] Key:       geolocation_not_supported
+       Message:   Geolocation is not supported by your browser.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 124] Key:       google_credential_required
+       Message:   Google credential is required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 125] Key:       google_login_failed
+       Message:   Google sign-in failed. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 126] Key:       google_token_invalid
+       Message:   Invalid Google token
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 127] Key:       google_token_parse_failed
+       Message:   Failed to parse Google token
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 128] Key:       invalid_image_type
+       Message:   Only JPG, PNG, WEBP images are allowed
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 129] Key:       invalid_role
+       Message:   Invalid role
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 130] Key:       item_deleted
+       Message:   Item deleted.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 131] Key:       key_value_required
+       Message:   Key and value are required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 132] Key:       kyc_upload_failed
+       Message:   KYC document upload failed.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 133] Key:       kyc_upload_success
+       Message:   KYC documents uploaded successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 134] Key:       kyc_uploaded
+       Message:   KYC documents uploaded
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 135] Key:       listing_type_added
+       Message:   Listing type added.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 136] Key:       listing_type_updated
+       Message:   Listing type updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 137] Key:       location_detected
+       Message:   Location detected: {name}
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 138] Key:       location_detected_success
+       Message:   Location detected successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 139] Key:       location_detecting
+       Message:   Detecting your location...
+       Category:  info
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 140] Key:       location_failed
+       Message:   Unable to detect location.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 141] Key:       location_not_supported
+       Message:   Geolocation is not supported by your browser.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 142] Key:       login_failed
+       Message:   Invalid email or password
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 143] Key:       login_fields_required
+       Message:   Email and password are required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 144] Key:       login_success
+       Message:   Login successful
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 145] Key:       logout_success
+       Message:   You have been signed out.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 146] Key:       message_empty
+       Message:   Message cannot be empty
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 147] Key:       message_key_exists
+       Message:   Message key already exists
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 148] Key:       message_sent
+       Message:   Message sent
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 149] Key:       min_rental_duration
+       Message:   Minimum rental duration is {min} days
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-01-05-153000_CreateMissingTables.php
+
+[ 150] Key:       mobile_already_exists
+       Message:   Mobile number already registered
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 151] Key:       network_error
+       Message:   Network error. Please check your connection.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 152] Key:       no_data_to_update
+       Message:   No data to update
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 153] Key:       no_valid_file
+       Message:   No valid file uploaded
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 154] Key:       no_valid_image
+       Message:   No valid image uploaded
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 155] Key:       not_found_error
+       Message:   Not found
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 156] Key:       notifications_all_read
+       Message:   All notifications marked as read
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 157] Key:       offer_acceptance_retracted
+       Message:   Acceptance retracted. Offer has been rejected.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 158] Key:       offer_accepted
+       Message:   Offer accepted successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 159] Key:       offer_accepted_order_created
+       Message:   Offer accepted, order created
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 160] Key:       offer_action_failed
+       Message:   Action failed. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 161] Key:       offer_action_success
+       Message:   Offer action successful
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 162] Key:       offer_address_required
+       Message:   Address and pin code are required for delivery
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 163] Key:       offer_cancel_not_allowed
+       Message:   This offer can no longer be cancelled
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 164] Key:       offer_cancel_success
+       Message:   Offer cancelled
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 165] Key:       offer_cancel_window_expired
+       Message:   You cannot cancel after the rejection window has expired.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 166] Key:       offer_cancelled
+       Message:   Offer cancelled.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 167] Key:       offer_cancelled_success
+       Message:   Offer cancelled successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 168] Key:       offer_date_required
+       Message:   Please select both start and end dates.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 169] Key:       offer_dates_accepted
+       Message:   Dates accepted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 170] Key:       offer_dates_accepted_with_order
+       Message:   Dates accepted! The deal is now finalized and an order has been created.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 171] Key:       offer_dates_failed
+       Message:   Failed to update rental dates.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 172] Key:       offer_dates_required
+       Message:   Rental start and end dates are required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 173] Key:       offer_dates_update_status_error
+       Message:   Dates can only be updated for active or rejected offers.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 174] Key:       offer_dates_updated
+       Message:   Offer dates updated successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 175] Key:       offer_expired
+       Message:   This offer has expired.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 176] Key:       offer_invalid
+       Message:   Invalid offer
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 177] Key:       offer_must_be_accepted_for_rating
+       Message:   Offer must be accepted before rating
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 178] Key:       offer_must_be_negotiating
+       Message:   Only negotiating offers can be confirmed
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 179] Key:       offer_not_found
+       Message:   Offer not found
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 180] Key:       offer_not_found_or_denied
+       Message:   Offer not found or permission denied
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 181] Key:       offer_rating_failed
+       Message:   Failed to submit rating. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 182] Key:       offer_rating_submitted
+       Message:   Rating submitted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 183] Key:       offer_reject_finalized_error
+       Message:   You cannot reject a finalized offer.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 184] Key:       offer_reject_status_error
+       Message:   Only pending or accepted (within window) offers can be rejected
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 185] Key:       offer_rejected
+       Message:   Offer rejected.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 186] Key:       offer_rejected_success
+       Message:   Offer rejected
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 187] Key:       offer_send_failed
+       Message:   Failed to send offer. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 188] Key:       offer_sent_success
+       Message:   Offer submitted successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 189] Key:       offer_status_not_pending
+       Message:   Offer status is not pending
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 190] Key:       offer_suggest_pending_only
+       Message:   Date suggestions are only allowed on pending offers
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 191] Key:       offer_suggestion_failed
+       Message:   Failed to send date suggestion.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 192] Key:       offer_suggestion_sent
+       Message:   Dates suggested successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 193] Key:       offer_update_failed
+       Message:   Failed to update offer.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 194] Key:       offer_update_success
+       Message:   Offer update successful
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 195] Key:       order_action_failed
+       Message:   Action failed
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 196] Key:       order_already_paid
+       Message:   This order is already paid
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 197] Key:       order_cancel_success
+       Message:   Order cancelled
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 198] Key:       order_confirm_after_dispatch
+       Message:   Order can only be confirmed after dispatching
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 199] Key:       order_confirm_status_error
+       Message:   Order cannot be confirmed in current status
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 200] Key:       order_create_failed
+       Message:   Failed to create order
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 201] Key:       order_delivery_confirmed
+       Message:   Delivery confirmed
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 202] Key:       order_delivery_failed
+       Message:   Failed to confirm delivery.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 203] Key:       order_dispatch_after_payment
+       Message:   Order can only be dispatched after payment is received
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 204] Key:       order_dispatched
+       Message:   Order marked as dispatched
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 205] Key:       order_invalid
+       Message:   Invalid order
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 206] Key:       order_must_be_pending
+       Message:   Only pending orders can be cancelled
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 207] Key:       order_not_found
+       Message:   Order not found
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 208] Key:       order_not_payable
+       Message:   Order is not in a payable state
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 209] Key:       order_review_failed
+       Message:   Review already submitted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 210] Key:       order_review_submitted
+       Message:   Review submitted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 211] Key:       original_brand_activated
+       Message:   Original brand activated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 212] Key:       original_brand_added
+       Message:   Original brand added.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 213] Key:       original_brand_blocked
+       Message:   Original brand blocked and products rejected.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 214] Key:       original_brand_deactivated
+       Message:   Original brand deactivated. Brand name hidden from all products (products are NOT detagged).
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 215] Key:       original_brand_deleted
+       Message:   Original brand deleted.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 216] Key:       original_brand_unblocked
+       Message:   Original brand unblocked. Products restored to their original statuses.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 217] Key:       original_brand_updated
+       Message:   Original brand updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 218] Key:       otp_send_failed
+       Message:   Failed to send OTP. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 219] Key:       otp_send_success
+       Message:   OTP sent to your email
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 220] Key:       otp_verify_failed
+       Message:   Invalid or expired OTP
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 221] Key:       otp_verify_fields_required
+       Message:   Email and OTP are required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 222] Key:       otp_verify_success
+       Message:   OTP verified successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 223] Key:       overlap_dates_offer_exists
+       Message:   You already have an active offer overlapping with these dates.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 224] Key:       page_not_found
+       Message:   Page not found.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 225] Key:       page_saved
+       Message:   Page saved
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 226] Key:       page_updated
+       Message:   Page updated successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 227] Key:       password_reset_fields_required
+       Message:   Email, OTP, and new password are required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 228] Key:       password_reset_otp_sent
+       Message:   Password reset OTP sent to your email
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 229] Key:       password_reset_success
+       Message:   Password reset successfully. You can now login with your new password.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 230] Key:       password_too_short
+       Message:   Password must be at least 6 characters long
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 231] Key:       password_update_failed
+       Message:   Failed to update password. Please try again.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 232] Key:       payment_failed
+       Message:   Payment initiation failed.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 233] Key:       payment_initiate_failed
+       Message:   Failed to initiate payment. Please try again.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 234] Key:       payment_order_success
+       Message:   Payment successful! Order confirmed.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 235] Key:       payment_processing
+       Message:   Payment is being processed.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 236] Key:       payment_success
+       Message:   Payment verified and plans stacked!
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 237] Key:       plan_activate_success
+       Message:   Plan activated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 238] Key:       plan_assigned
+       Message:   Plan assigned successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 239] Key:       plan_base_price_error
+       Message:   Base price cannot be less than final price.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 240] Key:       plan_create_success
+       Message:   Plan created
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 241] Key:       plan_deactivate_success
+       Message:   Plan deactivated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 242] Key:       plan_delete_failed
+       Message:   Failed to delete subscription plan.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 243] Key:       plan_delete_success
+       Message:   Plan deleted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 244] Key:       plan_duration_error
+       Message:   Duration Hours cannot be zero or empty for a Duration Based plan.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-08-21-000000_SeedMissingAppMessages.php
+
+[ 245] Key:       plan_inactive
+       Message:   Invalid or inactive plan.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 246] Key:       plan_marked_premium
+       Message:   Plan marked as premium
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 247] Key:       plan_most_selected
+       Message:   Marked as Most Selected
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 248] Key:       plan_most_selected_removed
+       Message:   Removed Most Selected
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 249] Key:       plan_not_found
+       Message:   Plan not found
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 250] Key:       plan_not_found_or_inactive
+       Message:   Plan not found or inactive
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 251] Key:       plan_premium_removed
+       Message:   Premium removed
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 252] Key:       plan_update_success
+       Message:   Plan updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 253] Key:       pricing_rule_created
+       Message:   Pricing rule created
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 254] Key:       pricing_rule_deleted
+       Message:   Pricing rule deleted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 255] Key:       pricing_rule_updated
+       Message:   Pricing rule updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 256] Key:       product_approval_failed
+       Message:   Failed to approve product.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 257] Key:       product_approve_failed
+       Message:   Failed to approve product.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 258] Key:       product_approve_success
+       Message:   Product approved successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 259] Key:       product_approved
+       Message:   Product approved
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 260] Key:       product_create_failed
+       Message:   Failed to create product
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 261] Key:       product_delete_failed
+       Message:   Failed to delete product.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 262] Key:       product_delete_has_active_offers
+       Message:   You have active offers/orders on this product. Complete or cancel them first.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 263] Key:       product_delete_has_orders
+       Message:   Cannot delete product with active orders
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 264] Key:       product_delete_success
+       Message:   Product deleted successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 265] Key:       product_deleted
+       Message:   Product deleted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 266] Key:       product_edit_approved
+       Message:   Edit request approved and merged!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 267] Key:       product_edit_failed
+       Message:   Failed to approve edit request.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 268] Key:       product_edit_pending
+       Message:   Edit request submitted. Wait for admin approval.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 269] Key:       product_fields_required
+       Message:   Category and brand are required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 270] Key:       product_max_bills
+       Message:   Maximum {max} bill uploads allowed.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 271] Key:       product_max_images
+       Message:   Maximum {max} images allowed.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 272] Key:       product_not_found
+       Message:   Product not found
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 273] Key:       product_not_found_or_unavailable
+       Message:   Product not found or currently unavailable
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 274] Key:       product_reject_failed
+       Message:   Failed to reject product.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 275] Key:       product_reject_success
+       Message:   Product rejected.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 276] Key:       product_rejected
+       Message:   Product rejected
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 277] Key:       product_rejection_failed
+       Message:   Failed to reject product.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 278] Key:       product_type_added
+       Message:   Product type added.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 279] Key:       product_type_updated
+       Message:   Product type updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 280] Key:       product_update_success
+       Message:   Product updated successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 281] Key:       product_upload_failed
+       Message:   Failed to submit product. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 282] Key:       product_upload_success
+       Message:   Product listed successfully. Wait for admin approval.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 283] Key:       profile_image_failed
+       Message:   Image upload failed. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 284] Key:       profile_image_success
+       Message:   Profile image updated!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 285] Key:       profile_image_update_failed
+       Message:   Failed to upload profile image.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 286] Key:       profile_image_update_success
+       Message:   Profile image updated successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 287] Key:       profile_image_updated
+       Message:   Profile image updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 288] Key:       profile_update_failed
+       Message:   Failed to update profile.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 289] Key:       profile_update_success
+       Message:   Profile updated successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 290] Key:       profile_updated
+       Message:   Profile updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 291] Key:       rating_limit_reached
+       Message:   Your rating limit has been reached. You get 1 rating opportunity for every 3 unique sellers you contact.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 292] Key:       rating_range_invalid
+       Message:   Rating must be between 1 and 5
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 293] Key:       rating_requires_return_confirmed
+       Message:   You can only rate the seller after they confirm the safe return of the product.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 294] Key:       rating_save_failed
+       Message:   Failed to save rating
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 295] Key:       rating_window_expired
+       Message:   Rating period has expired.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 296] Key:       reason_required
+       Message:   A reason is required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 297] Key:       register_failed
+       Message:   Registration failed
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 298] Key:       register_success
+       Message:   Registration successful. OTP sent to your email.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 299] Key:       rejection_window_expired
+       Message:   Rejection window has expired. You can no longer retract this accepted offer.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 300] Key:       rejection_window_unavailable
+       Message:   Rejection window unavailable for this offer
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 301] Key:       reliability_point_awarded
+       Message:   Reliability point awarded successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 302] Key:       rental_dates_required
+       Message:   Start and end dates are required for rental products.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 303] Key:       rental_min_days_error
+       Message:   Minimum rental period is {min} days. You selected {selected} day(s).
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 304] Key:       rental_rule_created
+       Message:   Rental rule created
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 305] Key:       rental_rule_deleted
+       Message:   Rental rule deleted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 306] Key:       rental_rule_save_success
+       Message:   Rental pricing rule saved!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 307] Key:       rental_rule_toggled
+       Message:   Rental rule toggled
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 308] Key:       rental_rule_updated
+       Message:   Rental rule updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 309] Key:       report_handled_success
+       Message:   Report handled successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 310] Key:       report_not_found
+       Message:   Report not found or not assigned to you
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 311] Key:       report_reassigned
+       Message:   Report reassigned
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 312] Key:       report_submitted_success
+       Message:   Report submitted successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 313] Key:       reported_user_not_found
+       Message:   Reported user not found
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 314] Key:       review_already_submitted
+       Message:   Review already submitted
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-06-24-111000_SeedMappedAppMessages.php
+
+[ 315] Key:       review_requires_delivery
+       Message:   You can only review after the order is delivered
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 316] Key:       review_submit_success
+       Message:   Review submitted successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-01-05-153000_CreateMissingTables.php
+
+[ 317] Key:       rights_updated
+       Message:   Rights updated successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 318] Key:       role_switch_not_allowed
+       Message:   Role switching not allowed
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 319] Key:       rule_delete_confirm
+       Message:   Delete this pricing rule? This cannot be undone.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 320] Key:       rule_delete_success
+       Message:   Pricing rule deleted.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 321] Key:       rule_save_failed
+       Message:   Failed to save pricing rule.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 322] Key:       rule_save_failed_partial
+       Message:   Failed to save one or more ranges.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 323] Key:       rule_save_success
+       Message:   Pricing rule saved successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 324] Key:       rule_threshold_required
+       Message:   Deduction Threshold is required.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 325] Key:       rule_toggled
+       Message:   Rule toggled
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 326] Key:       seller_already_blocked
+       Message:   You have already blocked this seller
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 327] Key:       seller_blocked_from_listing
+       Message:   Your account is currently blocked from listing products.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 328] Key:       seller_blocked_from_offers
+       Message:   This seller is currently blocked and cannot receive offers.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 329] Key:       seller_blocked_success
+       Message:   Seller blocked successfully
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 330] Key:       seller_brand_activated
+       Message:   Seller brand activated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 331] Key:       seller_brand_blocked
+       Message:   Seller brand blocked and products rejected.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 332] Key:       seller_brand_created
+       Message:   Seller brand created and assigned.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 333] Key:       seller_brand_deactivated
+       Message:   Seller brand deactivated. Brand name hidden from all products (products are NOT detagged).
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 334] Key:       seller_brand_deleted
+       Message:   Seller brand deleted.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 335] Key:       seller_brand_unblocked
+       Message:   Seller brand unblocked. Products restored to their original statuses.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 336] Key:       seller_brand_updated
+       Message:   Seller brand updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 337] Key:       seller_cannot_make_offer
+       Message:   Sellers cannot make offers on products. Please use your buyer account to make offers.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-06-24-111000_SeedMappedAppMessages.php
+
+[ 338] Key:       seller_not_blocked
+       Message:   This seller is not blocked
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 339] Key:       seller_not_found
+       Message:   Seller not found
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 340] Key:       seller_privileges_restricted
+       Message:   Seller privileges restricted
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 341] Key:       seller_product_id_required
+       Message:   seller_id and product_id are required
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 342] Key:       seller_rated_success
+       Message:   Seller rated successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 343] Key:       seller_role_blocked
+       Message:   Your seller role has been blocked by admin
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 344] Key:       seller_role_blocked_access
+       Message:   Your seller role is currently blocked. Access restricted.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 345] Key:       seller_role_blocked_upload
+       Message:   Your seller role has been blocked by the admin. You cannot upload products.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 346] Key:       seller_role_restricted
+       Message:   Your seller role has been restricted by the administrator.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 347] Key:       seller_subscription_purchase_blocked
+       Message:   Your account is restricted from purchasing seller subscriptions.
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 348] Key:       seller_subscription_required
+       Message:   No active seller subscription found. Please subscribe to a seller plan to upload products.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 349] Key:       seller_unblocked_success
+       Message:   Seller unblocked successfully
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 350] Key:       seo_not_found
+       Message:   SEO settings not found for this page
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 351] Key:       seo_setting_update_success
+       Message:   SEO settings updated successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-08-21-000000_SeedMissingAppMessages.php
+
+[ 352] Key:       seo_updated
+       Message:   SEO setting updated successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 353] Key:       server_error
+       Message:   Server error. Please try again later.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 354] Key:       settings_date_required
+       Message:   Please select both start and end dates.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 355] Key:       settings_message_added
+       Message:   Message added
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 356] Key:       settings_message_deleted
+       Message:   Message deleted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 357] Key:       settings_message_updated
+       Message:   Message updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 358] Key:       settings_save_error
+       Message:   Failed to save settings. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 359] Key:       settings_save_success
+       Message:   Settings saved
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 360] Key:       settings_saved_success
+       Message:   Settings saved successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 361] Key:       status_toggled
+       Message:   Status toggled.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 362] Key:       subcategory_added
+       Message:   Sub-category added.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 363] Key:       subcategory_updated
+       Message:   Sub-category updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 364] Key:       subscription_activated
+       Message:   Subscription activated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 365] Key:       subscription_already_active
+       Message:   Already active
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 366] Key:       subscription_required_for_contact
+       Message:   No active subscription found. Please subscribe to view contact details.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 367] Key:       suggested_dates_conflict
+       Message:   The suggested dates conflict with an existing booking
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 368] Key:       superadmin_approve_only
+       Message:   Only super admin can approve system-user uploaded products
+       Category:  success
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 369] Key:       superadmin_reject_only
+       Message:   Only super admin can reject system-user uploaded products
+       Category:  success
+       Audience:  Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 370] Key:       taxonomy_update_failed
+       Message:   Failed to update taxonomy.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 371] Key:       taxonomy_update_success
+       Message:   Taxonomy updated successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 372] Key:       template_create_success
+       Message:   Template created
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 373] Key:       template_delete_failed
+       Message:   Failed to delete template.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 374] Key:       template_delete_success
+       Message:   Template deleted
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 375] Key:       template_empty
+       Message:   Template text cannot be empty.
+       Category:  warning
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 376] Key:       template_save_failed
+       Message:   Failed to save template.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 377] Key:       template_save_success
+       Message:   Template saved successfully!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 378] Key:       template_update_success
+       Message:   Template updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 379] Key:       transaction_id_required
+       Message:   No transaction ID provided
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 380] Key:       transaction_not_found
+       Message:   Transaction not found
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 381] Key:       user_action_failed
+       Message:   Action failed. Please try again.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 382] Key:       user_activated_success
+       Message:   User activated successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 383] Key:       user_not_found
+       Message:   User not found
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 384] Key:       user_role_access_update_failed
+       Message:   Failed to update role access.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 385] Key:       user_role_access_update_success
+       Message:   User role access updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 386] Key:       user_role_updated
+       Message:   User role updated successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 387] Key:       user_status_update_failed
+       Message:   Failed to update user status.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 388] Key:       user_status_update_success
+       Message:   User status updated successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 389] Key:       user_status_updated
+       Message:   User status updated.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 390] Key:       user_suspended_success
+       Message:   User suspended successfully.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 391] Key:       validation_error
+       Message:   Please fix the validation errors before submitting.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-08-21-000000_SeedMissingAppMessages.php
+
+[ 392] Key:       validation_failed
+       Message:   Validation failed
+       Category:  error
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 393] Key:       wishlist_added
+       Message:   Added to wishlist!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-08-21-000000_SeedMissingAppMessages.php
+
+[ 394] Key:       wishlist_moved_to_cart
+       Message:   Item moved to cart!
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 395] Key:       wishlist_removed
+       Message:   Removed from wishlist.
+       Category:  success
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 396] Key:       wishlist_update_success
+       Message:   Wishlist updated
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 397] Key:       zone_delete_success
+       Message:   Zone deleted successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 398] Key:       zone_duplicate_active
+       Message:   An active zone for
+       Category:  general
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 399] Key:       zone_duplicate_error
+       Message:   An active zone for this location already exists.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 400] Key:       zone_location_required
+       Message:   Please select a location via the map first.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 401] Key:       zone_no_polygon
+       Message:   No polygon data found for this zone.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 402] Key:       zone_polygon_missing
+       Message:   No polygon data for this zone.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 403] Key:       zone_polygon_render_failed
+       Message:   Could not render polygon on map.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 404] Key:       zone_save_failed
+       Message:   Failed to save zone.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 405] Key:       zone_save_success
+       Message:   Zone saved successfully
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+
+[ 406] Key:       zone_select_map_first
+       Message:   Please select a location on the map first.
+       Category:  error
+       Audience:  User/Admin
+       Source:    Seeder: 2026-05-15-000000_SeedAllAppMessages.php
+
+[ 407] Key:       zone_status_toggled
+       Message:   Zone status toggled.
+       Category:  success
+       Audience:  User/Admin
+       Source:    BaseApiController.php ($messageKeyMap)
+

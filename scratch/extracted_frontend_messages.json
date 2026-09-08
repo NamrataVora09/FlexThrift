@@ -1,0 +1,950 @@
+{
+  "totalExtracted": 149,
+  "uniqueKeysCount": 115,
+  "messages": [
+    {
+      "key": "your_buyer_privileges_have_been_restricted_by_the_",
+      "value": "Your buyer privileges have been restricted by the administrator.",
+      "category": "error",
+      "files": [
+        "app/buyer/browse/BrowsePageClient.tsx"
+      ]
+    },
+    {
+      "key": "endorsement_submitted_success",
+      "value": "Endorsement submitted successfully!",
+      "category": "success",
+      "files": [
+        "app/buyer/contacts/page.tsx"
+      ]
+    },
+    {
+      "key": "rating_submitted_success",
+      "value": "Rating submitted successfully!",
+      "category": "success",
+      "files": [
+        "app/buyer/my-offers/page.tsx"
+      ]
+    },
+    {
+      "key": "reward_sent_success",
+      "value": "Reward sent successfully!",
+      "category": "success",
+      "files": [
+        "app/buyer/my-orders/page.tsx",
+        "app/buyer/order/[id]/page.tsx"
+      ]
+    },
+    {
+      "key": "notifications_marked_read",
+      "value": "All notifications marked as read",
+      "category": "success",
+      "files": [
+        "app/buyer/notifications/page.tsx"
+      ]
+    },
+    {
+      "key": "offer_sent_success",
+      "value": "Offer sent successfully!",
+      "category": "success",
+      "files": [
+        "app/buyer/product/[id]/ProductDetailClient.tsx"
+      ]
+    },
+    {
+      "key": "wishlist_removed",
+      "value": "Removed from wishlist",
+      "category": "success",
+      "files": [
+        "app/buyer/product/[id]/ProductDetailClient.tsx",
+        "app/wishlist/page.tsx"
+      ]
+    },
+    {
+      "key": "wishlist_added",
+      "value": "Added to wishlist",
+      "category": "success",
+      "files": [
+        "app/buyer/product/[id]/ProductDetailClient.tsx"
+      ]
+    },
+    {
+      "key": "seller_cannot_make_offer",
+      "value": "Sellers cannot make offers on products. Please use your buyer account to make offers.",
+      "category": "info",
+      "files": [
+        "app/buyer/product/[id]/ProductDetailClient.tsx"
+      ]
+    },
+    {
+      "key": "moved_to_wishlist",
+      "value": "Moved to wishlist",
+      "category": "success",
+      "files": [
+        "app/cart/page.tsx"
+      ]
+    },
+    {
+      "key": "passwords_mismatch",
+      "value": "Passwords do not match.",
+      "category": "info",
+      "files": [
+        "app/forgot-password/page.tsx"
+      ]
+    },
+    {
+      "key": "password_min_length",
+      "value": "Password must be at least 6 characters long.",
+      "category": "info",
+      "files": [
+        "app/forgot-password/page.tsx"
+      ]
+    },
+    {
+      "key": "password_reset_failed",
+      "value": "Failed to reset password. Please verify the OTP.",
+      "category": "info",
+      "files": [
+        "app/forgot-password/page.tsx"
+      ]
+    },
+    {
+      "key": "image_upload_failed_please_try_again",
+      "value": "Image upload failed. Please try again.",
+      "category": "error",
+      "files": [
+        "app/HomePageClient.tsx"
+      ]
+    },
+    {
+      "key": "form_fix_errors",
+      "value": "Please fix the errors before submitting",
+      "category": "info",
+      "files": [
+        "app/register/page.tsx"
+      ]
+    },
+    {
+      "key": "registration_failed",
+      "value": "Registration failed",
+      "category": "info",
+      "files": [
+        "app/register/page.tsx"
+      ]
+    },
+    {
+      "key": "file_upload_failed",
+      "value": "Upload failed",
+      "category": "error",
+      "files": [
+        "app/seller/chat/page.tsx"
+      ]
+    },
+    {
+      "key": "admin_delete_success",
+      "value": "Admin deleted successfully",
+      "category": "success",
+      "files": [
+        "app/superadmin/admins/AdminsClient.tsx"
+      ]
+    },
+    {
+      "key": "form_validation_error",
+      "value": "Please fix the errors before submitting",
+      "category": "error",
+      "files": [
+        "app/superadmin/admins/AdminsClient.tsx",
+        "app/superadmin/admins/AdminsClient.tsx"
+      ]
+    },
+    {
+      "key": "admin_create_success",
+      "value": "Administrator created!",
+      "category": "success",
+      "files": [
+        "app/superadmin/admins/AdminsClient.tsx"
+      ]
+    },
+    {
+      "key": "admin_update_success",
+      "value": "Administrator updated!",
+      "category": "success",
+      "files": [
+        "app/superadmin/admins/AdminsClient.tsx"
+      ]
+    },
+    {
+      "key": "file_too_large",
+      "value": "File too large. Maximum allowed size is 100MB.",
+      "category": "error",
+      "files": [
+        "app/superadmin/advertisements/AdvertisementsClient.tsx"
+      ]
+    },
+    {
+      "key": "advertisement_delete_success",
+      "value": "Advertisement deleted",
+      "category": "success",
+      "files": [
+        "app/superadmin/advertisements/AdvertisementsClient.tsx"
+      ]
+    },
+    {
+      "key": "app_messages_load_failed",
+      "value": "Failed to load messages",
+      "category": "error",
+      "files": [
+        "app/superadmin/app-messages/ErrorMessagesClient.tsx"
+      ]
+    },
+    {
+      "key": "app_messages_update_success",
+      "value": "Message updated successfully!",
+      "category": "success",
+      "files": [
+        "app/superadmin/app-messages/ErrorMessagesClient.tsx"
+      ]
+    },
+    {
+      "key": "brand_blocked",
+      "value": "Brand blocked and all products rejected.",
+      "category": "success",
+      "files": [
+        "app/superadmin/brands/BrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "brand_unblocked",
+      "value": "Brand unblocked — products restored to pending review.",
+      "category": "success",
+      "files": [
+        "app/superadmin/brands/BrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "brand_update_success",
+      "value": "Brand updated successfully.",
+      "category": "success",
+      "files": [
+        "app/superadmin/brands/BrandsClient.tsx",
+        "app/superadmin/brands/BrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "brand_delete_success",
+      "value": "Brand deleted successfully.",
+      "category": "success",
+      "files": [
+        "app/superadmin/brands/BrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "brand_create_success",
+      "value": "Brand created successfully!",
+      "category": "success",
+      "files": [
+        "app/superadmin/brands/BrandsClient.tsx",
+        "lib/toast.ts"
+      ]
+    },
+    {
+      "key": "charge_delete_success",
+      "value": "Charge deleted",
+      "category": "success",
+      "files": [
+        "app/superadmin/fee-management/FeeManagementClient.tsx"
+      ]
+    },
+    {
+      "key": "original_brand_listing_type_required",
+      "value": "Please select at least one listing type",
+      "category": "error",
+      "files": [
+        "app/superadmin/original-brands/OriginalBrandsClient.tsx",
+        "app/superadmin/original-brands/OriginalBrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "original_brand_create_success",
+      "value": "Brand created successfully!",
+      "category": "success",
+      "files": [
+        "app/superadmin/original-brands/OriginalBrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "original_brand_create_failed",
+      "value": "Error creating brand",
+      "category": "error",
+      "files": [
+        "app/superadmin/original-brands/OriginalBrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "original_brand_update_success",
+      "value": "Brand updated successfully!",
+      "category": "success",
+      "files": [
+        "app/superadmin/original-brands/OriginalBrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "original_brand_update_failed",
+      "value": "Error updating brand",
+      "category": "error",
+      "files": [
+        "app/superadmin/original-brands/OriginalBrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "original_brand_delete_success",
+      "value": "Brand deleted successfully",
+      "category": "success",
+      "files": [
+        "app/superadmin/original-brands/OriginalBrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "original_brand_delete_failed",
+      "value": "Error deleting brand",
+      "category": "error",
+      "files": [
+        "app/superadmin/original-brands/OriginalBrandsClient.tsx"
+      ]
+    },
+    {
+      "key": "product_delete_success",
+      "value": "Products deleted",
+      "category": "success",
+      "files": [
+        "app/superadmin/product-management/page.tsx",
+        "components/shared/MyProductsView.tsx"
+      ]
+    },
+    {
+      "key": "settings_save_success",
+      "value": "Settings saved successfully!",
+      "category": "success",
+      "files": [
+        "app/superadmin/settings/SettingsClient.tsx",
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "settings_date_required",
+      "value": "Please select both from and to dates",
+      "category": "error",
+      "files": [
+        "app/superadmin/settings/SettingsClient.tsx"
+      ]
+    },
+    {
+      "key": "subscription_assigned",
+      "value": "Subscription assigned successfully!",
+      "category": "success",
+      "files": [
+        "app/superadmin/user-subscriptions/UserSubscriptionsClient.tsx"
+      ]
+    },
+    {
+      "key": "otp_resend_failed",
+      "value": "Failed to resend OTP. Please try again.",
+      "category": "info",
+      "files": [
+        "app/verify-otp/page.tsx"
+      ]
+    },
+    {
+      "key": "otp_invalid",
+      "value": "Invalid OTP",
+      "category": "info",
+      "files": [
+        "app/verify-otp/page.tsx"
+      ]
+    },
+    {
+      "key": "wishlist_moved_to_cart",
+      "value": "Item moved to cart!",
+      "category": "success",
+      "files": [
+        "app/wishlist/page.tsx"
+      ]
+    },
+    {
+      "key": "verify_account_prompt",
+      "value": "Please verify your account before logging in. Redirecting to verification page...",
+      "category": "info",
+      "files": [
+        "components/landing/HomePageClient.tsx",
+        "components/landing/HomePageClient.tsx"
+      ]
+    },
+    {
+      "key": "password_reset_success",
+      "value": "Password reset successfully! Please log in with your new password.",
+      "category": "success",
+      "files": [
+        "components/landing/HomePageClient.tsx"
+      ]
+    },
+    {
+      "key": "delete_section_confirm",
+      "value": "Delete this section?",
+      "category": "info",
+      "files": [
+        "components/landing/HomePageClient.tsx"
+      ]
+    },
+    {
+      "key": "your_seller_privileges_have_been_restricted_redire",
+      "value": "Your seller privileges have been restricted. Redirecting to browse market.",
+      "category": "error",
+      "files": [
+        "components/layout/DashboardLayout.tsx"
+      ]
+    },
+    {
+      "key": "your_seller_privileges_have_been_restricted_by_the",
+      "value": "Your seller privileges have been restricted by the administrator.",
+      "category": "error",
+      "files": [
+        "components/layout/DashboardLayout.tsx"
+      ]
+    },
+    {
+      "key": "settings_save_error",
+      "value": "Failed to save settings",
+      "category": "info",
+      "files": [
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "save_settings_first",
+      "value": "Save settings first",
+      "category": "error",
+      "files": [
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "name_and_value_are_required",
+      "value": "Name and value are required",
+      "category": "warning",
+      "files": [
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "charge_deleted",
+      "value": "Charge deleted",
+      "category": "success",
+      "files": [
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "failed_to_delete",
+      "value": "Failed to delete",
+      "category": "error",
+      "files": [
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "question_and_answer_are_required",
+      "value": "Question and Answer are required",
+      "category": "warning",
+      "files": [
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "faq_deleted",
+      "value": "FAQ deleted",
+      "category": "success",
+      "files": [
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "template_text_cannot_be_empty",
+      "value": "Template text cannot be empty",
+      "category": "warning",
+      "files": [
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "template_deleted",
+      "value": "Template deleted",
+      "category": "success",
+      "files": [
+        "components/shared/BusinessSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "cms_page_create_success",
+      "value": "CMS Page created successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/CmsPagesView.tsx"
+      ]
+    },
+    {
+      "key": "cms_page_update_success",
+      "value": "CMS Page updated successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/CmsPagesView.tsx"
+      ]
+    },
+    {
+      "key": "cms_page_delete_success",
+      "value": "Page deleted",
+      "category": "success",
+      "files": [
+        "components/shared/CmsPagesView.tsx"
+      ]
+    },
+    {
+      "key": "coupon_delete_success",
+      "value": "Coupon deleted",
+      "category": "success",
+      "files": [
+        "components/shared/CouponsView.tsx"
+      ]
+    },
+    {
+      "key": "product_delete_confirm",
+      "value": "Are you sure you want to delete this product? This action cannot be undone.",
+      "category": "info",
+      "files": [
+        "components/shared/MyProductsView.tsx"
+      ]
+    },
+    {
+      "key": "offer_rating_submitted",
+      "value": "Rating submitted successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/OffersView.tsx"
+      ]
+    },
+    {
+      "key": "offer_update_success",
+      "value": "Offer updated successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/OffersView.tsx"
+      ]
+    },
+    {
+      "key": "offer_address_required",
+      "value": "Please fill in your delivery address and pin code.",
+      "category": "warning",
+      "files": [
+        "components/shared/OffersView.tsx"
+      ]
+    },
+    {
+      "key": "offer_dates_updated",
+      "value": "Rental dates updated successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/OffersView.tsx"
+      ]
+    },
+    {
+      "key": "offer_date_required",
+      "value": "Please select both start and end dates.",
+      "category": "warning",
+      "files": [
+        "components/shared/OffersView.tsx"
+      ]
+    },
+    {
+      "key": "offer_suggestion_sent",
+      "value": "Date suggestion sent to buyer!",
+      "category": "success",
+      "files": [
+        "components/shared/OffersView.tsx"
+      ]
+    },
+    {
+      "key": "offer_dates_accepted",
+      "value": "Dates accepted! Deal is finalized.",
+      "category": "success",
+      "files": [
+        "components/shared/OffersView.tsx"
+      ]
+    },
+    {
+      "key": "order_delivery_confirmed",
+      "value": "Delivery confirmed!",
+      "category": "success",
+      "files": [
+        "components/shared/OrdersView.tsx"
+      ]
+    },
+    {
+      "key": "order_review_submitted",
+      "value": "Review submitted successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/OrdersView.tsx"
+      ]
+    },
+    {
+      "key": "product_approve_success",
+      "value": "Product approved!",
+      "category": "success",
+      "files": [
+        "components/shared/PendingProductsView.tsx"
+      ]
+    },
+    {
+      "key": "edit_request_approve_success",
+      "value": "Edit request approved and merged!",
+      "category": "success",
+      "files": [
+        "components/shared/PendingProductsView.tsx"
+      ]
+    },
+    {
+      "key": "rule_save_failed",
+      "value": "Failed to save rule",
+      "category": "info",
+      "files": [
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "rule_save_failed_partial",
+      "value": "Failed to save one or more ranges",
+      "category": "info",
+      "files": [
+        "components/shared/PricingRulesManager.tsx",
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "rule_save_success",
+      "value": "Pricing rule(s) saved!",
+      "category": "info",
+      "files": [
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "rule_delete_confirm",
+      "value": "Delete this pricing rule?",
+      "category": "info",
+      "files": [
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "rule_delete_success",
+      "value": "Deleted",
+      "category": "info",
+      "files": [
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "rental_rule_save_success",
+      "value": "Rental rule(s) saved!",
+      "category": "info",
+      "files": [
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "deleted",
+      "value": "Deleted",
+      "category": "success",
+      "files": [
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "status_updated",
+      "value": "Status updated",
+      "category": "success",
+      "files": [
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "failed_to_update_status",
+      "value": "Failed to update status",
+      "category": "error",
+      "files": [
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "network_error",
+      "value": "Network error: ",
+      "category": "error",
+      "files": [
+        "components/shared/PricingRulesManager.tsx"
+      ]
+    },
+    {
+      "key": "profile_update_success",
+      "value": "Profile updated successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/ProfilePageClient.tsx",
+        "components/shared/ProfileView.tsx"
+      ]
+    },
+    {
+      "key": "profile_image_update_success",
+      "value": "Profile image updated!",
+      "category": "success",
+      "files": [
+        "components/shared/ProfilePageClient.tsx"
+      ]
+    },
+    {
+      "key": "kyc_upload_success",
+      "value": "KYC documents uploaded successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/ProfileView.tsx"
+      ]
+    },
+    {
+      "key": "seo_setting_update_success",
+      "value": "SEO settings updated successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/SeoSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "seo_validation_error",
+      "value": "Page name and route path are required.",
+      "category": "error",
+      "files": [
+        "components/shared/SeoSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "seo_create_success",
+      "value": "New page SEO configuration created successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/SeoSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "seo_delete_success",
+      "value": "SEO setting deleted successfully.",
+      "category": "success",
+      "files": [
+        "components/shared/SeoSettingsView.tsx"
+      ]
+    },
+    {
+      "key": "plan_base_price_error",
+      "value": "Base Original price cannot be less than Final price.",
+      "category": "error",
+      "files": [
+        "components/shared/SubscriptionPlansAdmin.tsx"
+      ]
+    },
+    {
+      "key": "plan_duration_error",
+      "value": "Duration Hours cannot be zero or empty for a Duration Based plan.",
+      "category": "error",
+      "files": [
+        "components/shared/SubscriptionPlansAdmin.tsx"
+      ]
+    },
+    {
+      "key": "plan_delete_success",
+      "value": "Plan deleted",
+      "category": "success",
+      "files": [
+        "components/shared/SubscriptionPlansAdmin.tsx"
+      ]
+    },
+    {
+      "key": "plan_delete_confirm",
+      "value": "Deleting this plan might affect users currently on it! Are you sure?",
+      "category": "info",
+      "files": [
+        "components/shared/SubscriptionPlansAdmin.tsx"
+      ]
+    },
+    {
+      "key": "taxonomy_update_success",
+      "value": "Successfully updated!",
+      "category": "success",
+      "files": [
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx"
+      ]
+    },
+    {
+      "key": "taxonomy_update_failed",
+      "value": "Failed to update taxonomy.",
+      "category": "error",
+      "files": [
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx"
+      ]
+    },
+    {
+      "key": "validation_error",
+      "value": "Listing Type is required",
+      "category": "error",
+      "files": [
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx",
+        "components/shared/TaxonomyView.tsx"
+      ]
+    },
+    {
+      "key": "product_cannot_be_edited",
+      "value": "Sold or rented products cannot be edited.",
+      "category": "error",
+      "files": [
+        "components/shared/UploadProductView.tsx"
+      ]
+    },
+    {
+      "key": "gender_required",
+      "value": "Gender is required",
+      "category": "info",
+      "files": [
+        "components/shared/UploadProductView.tsx"
+      ]
+    },
+    {
+      "key": "bill_upload_required",
+      "value": "Please upload at least one bill image or uncheck ",
+      "category": "info",
+      "files": [
+        "components/shared/UploadProductView.tsx"
+      ]
+    },
+    {
+      "key": "failed_to_load_product_data_for_editing",
+      "value": "Failed to load product data for editing",
+      "category": "error",
+      "files": [
+        "components/shared/UploadProductView.tsx"
+      ]
+    },
+    {
+      "key": "an_unexpected_error_occurred_during_upload_please_",
+      "value": "An unexpected error occurred during upload. Please check your connection.",
+      "category": "error",
+      "files": [
+        "components/shared/UploadProductView.tsx"
+      ]
+    },
+    {
+      "key": "user_status_update_success",
+      "value": "Status updated",
+      "category": "success",
+      "files": [
+        "components/shared/UsersView.tsx"
+      ]
+    },
+    {
+      "key": "user_role_access_update_success",
+      "value": "Role access updated",
+      "category": "success",
+      "files": [
+        "components/shared/UsersView.tsx"
+      ]
+    },
+    {
+      "key": "user_status_toggle_confirm",
+      "value": "Are you sure you want to toggle this user\\",
+      "category": "info",
+      "files": [
+        "components/shared/UsersView.tsx"
+      ]
+    },
+    {
+      "key": "zone_name_required",
+      "value": "Enter a zone name first.",
+      "category": "error",
+      "files": [
+        "components/shared/ZoneMap.tsx"
+      ]
+    },
+    {
+      "key": "zone_polygon_required",
+      "value": "Draw a polygon on the map first.",
+      "category": "error",
+      "files": [
+        "components/shared/ZoneMap.tsx"
+      ]
+    },
+    {
+      "key": "zone_created",
+      "value": "Zone created successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/ZoneMap.tsx",
+        "components/shared/ZoneMap.tsx"
+      ]
+    },
+    {
+      "key": "zone_enter_name_to_save",
+      "value": "Polygon drawn! Now enter a Zone Name and click ",
+      "category": "warning",
+      "files": [
+        "components/shared/ZoneMap.tsx"
+      ]
+    },
+    {
+      "key": "zone_updated",
+      "value": "Zone updated successfully!",
+      "category": "success",
+      "files": [
+        "components/shared/ZoneMap.tsx"
+      ]
+    },
+    {
+      "key": "zone_deleted",
+      "value": "Zone deleted successfully",
+      "category": "success",
+      "files": [
+        "components/shared/ZonesView.tsx"
+      ]
+    },
+    {
+      "key": "zone_delete_confirm",
+      "value": "Delete this zone? This cannot be undone.",
+      "category": "info",
+      "files": [
+        "components/shared/ZonesView.tsx"
+      ]
+    },
+    {
+      "key": "login_failed",
+      "value": "Login failed. Please check your credentials.",
+      "category": "error",
+      "files": [
+        "lib/toast.ts"
+      ]
+    }
+  ]
+}

@@ -32,7 +32,6 @@ const categoryBgColors: Record<string, string> = {
 
 const sectionStyle: React.CSSProperties = { background: '#fff', padding: 25, borderRadius: 12, marginBottom: 25, border: '1px solid #eee' };
 const btnGold: React.CSSProperties = { background: '#ffc63a', color: '#fff', fontWeight: 600, border: 'none', borderRadius: 8, padding: '10px 20px', cursor: 'pointer' };
-const btnDanger: React.CSSProperties = { background: '#dc3545', color: '#fff', fontWeight: 600, border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' };
 const btnSecondary: React.CSSProperties = { background: '#6c757d', color: '#fff', fontWeight: 600, border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' };
 const inputStyle: React.CSSProperties = { background: '#f8f9fa', border: '1px solid #e7eaf3', borderRadius: '0.5rem', padding: '0.6rem 1rem', fontSize: '0.875rem' };
 const modalBackdrop: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050 };
@@ -49,15 +48,12 @@ export default function ErrorMessagesClient() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  // Modal states
-  const [showAddModal, setShowAddModal] = useState(false);
+  // Modal states — Edit only; no Add or Delete
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editingMessage, setEditingMessage] = useState<ErrorMessage | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   // Form states
-  const [formData, setFormData] = useState({ message_key: '', message_value: '', category: 'general' });
+  const [formData, setFormData] = useState({ message_value: '', category: 'general' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -74,7 +70,7 @@ export default function ErrorMessagesClient() {
         setMessages(res.data);
       }
     } catch (err: any) {
-      toastError('generic_error', 'Failed to load error messages');
+      toastError('app_messages_load_failed', 'Failed to load messages');
     } finally {
       setLoading(false);
     }
@@ -82,38 +78,11 @@ export default function ErrorMessagesClient() {
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData.message_key.trim()) errors.message_key = 'Message key is required';
-    if (!formData.message_value.trim()) errors.message_value = 'Message value is required';
-    if (formData.message_key.includes(' ')) errors.message_key = 'Message key cannot contain spaces';
-
-    if (!editingMessage) {
-      const exists = messages.some(m => m.message_key === formData.message_key);
-      if (exists) errors.message_key = 'This message key already exists';
+    if (!formData.message_value.trim()) {
+      errors.message_value = 'Message value cannot be blank';
     }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
-
-  const handleAddMessage = async () => {
-    if (!validateForm()) return;
-
-    setSubmitting(true);
-    try {
-      const res = await api.post('/superadmin/error-messages', formData);
-      if (res.success) {
-        toastSuccess('cms_page_create_success', 'Error message created successfully!');
-        setShowAddModal(false);
-        setFormData({ message_key: '', message_value: '', category: 'general' });
-        await loadMessages();
-      } else {
-        toastError('generic_error', res.message || 'Failed to create message');
-      }
-    } catch (err: any) {
-      toastError('generic_error', err.message || 'Failed to create message');
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const handleEditMessage = async () => {
@@ -121,39 +90,21 @@ export default function ErrorMessagesClient() {
 
     setSubmitting(true);
     try {
-      const res = await api.post(`/superadmin/error-messages/${editingMessage.id}`, formData);
+      const res = await api.post(`/superadmin/error-messages/${editingMessage.id}`, {
+        message_value: formData.message_value.trim(),
+        category: formData.category,
+      });
       if (res.success) {
-        toastSuccess('cms_page_update_success', 'Error message updated successfully!');
+        toastSuccess('app_messages_update_success', 'Message updated successfully!');
         setShowEditModal(false);
         setEditingMessage(null);
-        setFormData({ message_key: '', message_value: '', category: 'general' });
+        setFormData({ message_value: '', category: 'general' });
         await loadMessages();
       } else {
-        toastError('generic_error', res.message || 'Failed to update message');
+        toastError('app_messages_update_failed', res.message || 'Failed to update message');
       }
     } catch (err: any) {
-      toastError('generic_error', err.message || 'Failed to update message');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteMessage = async () => {
-    if (!deleteId) return;
-
-    setSubmitting(true);
-    try {
-      const res = await api.delete(`/superadmin/error-messages/${deleteId}`);
-      if (res.success) {
-        toastSuccess('cms_page_delete_success', 'Error message deleted successfully!');
-        setShowDeleteConfirm(false);
-        setDeleteId(null);
-        await loadMessages();
-      } else {
-        toastError('generic_error', res.message || 'Failed to delete message');
-      }
-    } catch (err: any) {
-      toastError('generic_error', err.message || 'Failed to delete message');
+      toastError('app_messages_update_failed', err.message || 'Failed to update message');
     } finally {
       setSubmitting(false);
     }
@@ -161,20 +112,9 @@ export default function ErrorMessagesClient() {
 
   const openEditModal = (message: ErrorMessage) => {
     setEditingMessage(message);
-    setFormData({ message_key: message.message_key, message_value: message.message_value, category: message.category });
+    setFormData({ message_value: message.message_value, category: message.category });
     setFormErrors({});
     setShowEditModal(true);
-  };
-
-  const openAddModal = () => {
-    setFormData({ message_key: '', message_value: '', category: 'general' });
-    setFormErrors({});
-    setShowAddModal(true);
-  };
-
-  const openDeleteConfirm = (id: number) => {
-    setDeleteId(id);
-    setShowDeleteConfirm(true);
   };
 
   // Filter messages
@@ -204,15 +144,18 @@ export default function ErrorMessagesClient() {
         {/* Header */}
         <div className="mb-4">
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <i className="bi bi-chat-square-text" style={{ color: '#ffc63a' }}></i> Dynamic Error Messages
+            <i className="bi bi-chat-square-text" style={{ color: '#ffc63a' }}></i> Dynamic App Messages
           </h1>
-          <p className="text-muted small">Manage system-wide messages shown to users across the platform. SuperAdmin only.</p>
+          <p className="text-muted small">
+            View and edit system-wide messages shown to users across the platform. SuperAdmin only.
+          </p>
+         
         </div>
 
         {/* Controls Section */}
         <div style={sectionStyle}>
           <div className="row g-3 mb-3">
-            <div className="col-md-4">
+            <div className="col-md-5">
               <input
                 type="text"
                 className="form-control"
@@ -222,7 +165,7 @@ export default function ErrorMessagesClient() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="col-md-3">
+            <div className="col-md-4">
               <select
                 className="form-control"
                 style={inputStyle}
@@ -232,11 +175,6 @@ export default function ErrorMessagesClient() {
                 <option value="">All Categories</option>
                 {categories.map(cat => <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>)}
               </select>
-            </div>
-            <div className="col-md-5 text-end">
-              <button style={btnGold} onClick={openAddModal} className="btn">
-                <i className="bi bi-plus-circle me-2"></i>Add New Message
-              </button>
             </div>
           </div>
           <div style={{ fontSize: '0.875rem', color: '#666', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -265,9 +203,9 @@ export default function ErrorMessagesClient() {
               <thead style={{ background: '#f8f9fa' }}>
                 <tr>
                   <th style={{ fontWeight: 600, borderTop: 'none' }}>Key</th>
-                  <th style={{ fontWeight: 600, borderTop: 'none' }}>Value</th>
+                  <th style={{ fontWeight: 600, borderTop: 'none' }}>Message</th>
                   <th style={{ fontWeight: 600, borderTop: 'none' }}>Category</th>
-                  <th style={{ fontWeight: 600, borderTop: 'none', textAlign: 'center' }}>Actions</th>
+                  <th style={{ fontWeight: 600, borderTop: 'none', textAlign: 'center' }}>Edit</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,7 +216,7 @@ export default function ErrorMessagesClient() {
                     </td>
                     <td style={{ verticalAlign: 'middle', fontSize: '0.875rem', maxWidth: 300 }}>
                       <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={msg.message_value}>
-                        {msg.message_value.substring(0, 60)}{msg.message_value.length > 60 ? '...' : ''}
+                        {msg.message_value.substring(0, 70)}{msg.message_value.length > 70 ? '...' : ''}
                       </div>
                     </td>
                     <td style={{ verticalAlign: 'middle' }}>
@@ -294,11 +232,14 @@ export default function ErrorMessagesClient() {
                       </span>
                     </td>
                     <td style={{ verticalAlign: 'middle', textAlign: 'center' }}>
-                      <button style={{ ...btnSecondary, marginRight: 8, padding: '6px 10px' }} onClick={() => openEditModal(msg)} className="btn btn-sm">
-                        <i className="bi bi-pencil"></i>
-                      </button>
-                      <button style={btnDanger} onClick={() => openDeleteConfirm(msg.id)} className="btn btn-sm">
-                        <i className="bi bi-trash"></i>
+                      <button
+                        id={`edit-msg-${msg.id}`}
+                        style={{ ...btnSecondary, padding: '6px 12px' }}
+                        onClick={() => openEditModal(msg)}
+                        className="btn btn-sm"
+                        title="Edit message text"
+                      >
+                        <i className="bi bi-pencil me-1"></i> Edit
                       </button>
                     </td>
                   </tr>
@@ -323,7 +264,6 @@ export default function ErrorMessagesClient() {
             <div className="d-flex gap-1 align-items-center mx-2">
               {[...Array(totalPages)].map((_, i) => {
                 const pageNum = i + 1;
-                // Only show current, first, last, and neighbors
                 if (
                   pageNum === 1 ||
                   pageNum === totalPages ||
@@ -350,10 +290,7 @@ export default function ErrorMessagesClient() {
                       {pageNum}
                     </button>
                   );
-                } else if (
-                  pageNum === currentPage - 2 ||
-                  pageNum === currentPage + 2
-                ) {
+                } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
                   return <span key={pageNum} className="text-muted mx-1">...</span>;
                 }
                 return null;
@@ -382,7 +319,7 @@ export default function ErrorMessagesClient() {
               </span>
             </h6>
             <p className="text-muted mb-3" style={{ fontSize: '0.78rem' }}>
-              These are all the message keys currently defined in the system. Use these keys in your application code to display dynamic, editable messages.
+              These are all the message keys currently configured in the system. Use these keys in your application code to display dynamic, editable messages.
             </p>
             <div className="d-flex flex-wrap gap-2">
               {(messages.length > 0
@@ -420,45 +357,61 @@ export default function ErrorMessagesClient() {
         )}
       </div>
 
-      {/* Add/Edit Message Modal */}
-      {(showAddModal || showEditModal) && (
-        <div style={modalBackdrop} onClick={() => { setShowAddModal(false); setShowEditModal(false); }}>
+      {/* Edit Message Modal — Key is read-only, message value and category editable */}
+      {showEditModal && editingMessage && (
+        <div style={modalBackdrop} onClick={() => { setShowEditModal(false); }}>
           <div style={modalContent} onClick={(e) => e.stopPropagation()}>
-            <h5 style={{ fontWeight: 700, marginBottom: 20 }}>
-              {editingMessage ? 'Edit Error Message' : 'Add New Error Message'}
-            </h5>
+            <h5 style={{ fontWeight: 700, marginBottom: 4 }}>Edit Message</h5>
+            <p className="text-muted small mb-4">You can only edit the message text. The key is fixed and cannot be changed.</p>
 
+            {/* Message Key — display only, no input */}
             <div className="mb-3">
-              <label className="form-label fw-bold small">Message Key {!editingMessage && <span style={{ color: '#dc3545' }}>*</span>}</label>
-              <input
-                type="text"
-                className="form-control"
-                style={inputStyle}
-                value={formData.message_key}
-                onChange={(e) => setFormData({ ...formData, message_key: e.target.value })}
-                disabled={!!editingMessage}
-                placeholder="e.g., auth_login_required"
-              />
-              {formErrors.message_key && <small style={{ color: '#dc3545' }}>{formErrors.message_key}</small>}
+              <label className="form-label fw-bold small">Message Key <span className="text-muted fw-normal">(read-only)</span></label>
+              <div style={{
+                background: '#f0f0f0',
+                border: '1px solid #ddd',
+                borderRadius: '0.5rem',
+                padding: '0.6rem 1rem',
+                fontSize: '0.875rem',
+                fontFamily: 'monospace',
+                color: '#555',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <i className="bi bi-lock-fill" style={{ color: '#aaa', fontSize: '0.75rem' }}></i>
+                {editingMessage.message_key}
+              </div>
             </div>
 
+            {/* Message Value — editable */}
             <div className="mb-3">
-              <label className="form-label fw-bold small">Message Value <span style={{ color: '#dc3545' }}>*</span></label>
+              <label className="form-label fw-bold small">Message Text <span style={{ color: '#dc3545' }}>*</span></label>
               <textarea
+                id="edit-message-value"
                 className="form-control"
-                style={inputStyle}
+                style={{ ...inputStyle, borderColor: formErrors.message_value ? '#dc3545' : '#e7eaf3' }}
                 rows={4}
                 value={formData.message_value}
-                onChange={(e) => setFormData({ ...formData, message_value: e.target.value })}
-                placeholder="Enter the message text. Use {key} for placeholders."
+                onChange={(e) => {
+                  setFormData({ ...formData, message_value: e.target.value });
+                  if (formErrors.message_value) setFormErrors({});
+                }}
+                placeholder="Enter the message text shown to users. Use {key} for dynamic placeholders."
               />
-              {formErrors.message_value && <small style={{ color: '#dc3545' }}>{formErrors.message_value}</small>}
-              <small className="text-muted d-block mt-1">Tip: Use {'{min}'} or {'{key}'} for dynamic placeholders</small>
+              {formErrors.message_value && (
+                <small style={{ color: '#dc3545' }}>
+                  <i className="bi bi-exclamation-circle me-1"></i>{formErrors.message_value}
+                </small>
+              )}
+              <small className="text-muted d-block mt-1">Tip: Use {'{min}'} or {'{name}'} for dynamic placeholders</small>
             </div>
 
-            <div className="mb-3">
+            {/* Category — editable */}
+            <div className="mb-4">
               <label className="form-label fw-bold small">Category</label>
               <select
+                id="edit-message-category"
                 className="form-control"
                 style={inputStyle}
                 value={formData.category}
@@ -471,43 +424,18 @@ export default function ErrorMessagesClient() {
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
                 style={btnSecondary}
-                onClick={() => { setShowAddModal(false); setShowEditModal(false); }}
+                onClick={() => { setShowEditModal(false); }}
                 disabled={submitting}
               >
                 Cancel
               </button>
               <button
+                id="save-edit-message-btn"
                 style={btnGold}
-                onClick={editingMessage ? handleEditMessage : handleAddMessage}
+                onClick={handleEditMessage}
                 disabled={submitting}
               >
                 {submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Saving...</> : <>Save Message</>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div style={modalBackdrop} onClick={() => setShowDeleteConfirm(false)}>
-          <div style={modalContent} onClick={(e) => e.stopPropagation()}>
-            <h5 style={{ fontWeight: 700, marginBottom: 20 }}>Confirm Delete</h5>
-            <p>Are you sure you want to delete this error message? This action cannot be undone.</p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button
-                style={btnSecondary}
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                style={btnDanger}
-                onClick={handleDeleteMessage}
-                disabled={submitting}
-              >
-                {submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Deleting...</> : <>Delete</>}
               </button>
             </div>
           </div>

@@ -5,7 +5,6 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
 import { RentalCalendar } from './RentalCalendar';
 import { useToast } from '@/lib/toast';
-import toast from 'react-hot-toast';
 import { confirmToast } from '@/lib/toast-utils';
 import { useAuth } from '@/lib/auth-context';
 

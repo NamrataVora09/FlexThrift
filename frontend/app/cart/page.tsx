@@ -7,12 +7,13 @@ import { useAuth } from '@/lib/auth-context';
 import { getCartItems, removeFromCart, clearCart, CartItem } from '@/lib/cart';
 import { addToWishlist } from '@/lib/wishlist';
 import { confirmToast } from '@/lib/toast-utils';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
 const BASE_URL = BACKEND_URL;
 
 export default function CartPage() {
+  const { toastSuccess } = useToast();
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
@@ -146,7 +147,7 @@ export default function CartPage() {
                             onClick={() => {
                               addToWishlist(item);
                               handleRemove(item.id);
-                              toast.success('Moved to wishlist');
+                              toastSuccess('moved_to_wishlist', 'Moved to wishlist');
                             }}
                           >
                             <i className="bi bi-heart me-1"></i> Move to Wishlist

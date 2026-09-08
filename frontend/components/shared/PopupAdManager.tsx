@@ -176,11 +176,12 @@ export default function PopupAdManager() {
               <>
                 <video
                   src={mediaUrl}
-                  style={{ width: '100%', height: '100%' , objectFit:'fill' }}
+                  style={{ width: '100%', height: '100%' , objectFit:'cover' }}
                   autoPlay
                   muted={isMuted}
                   loop
                   playsInline
+                  preload="none"
                 />
                 <button
                   onClick={(e) => {

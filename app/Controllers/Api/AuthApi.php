@@ -28,7 +28,7 @@ class AuthApi extends BaseApiController
         if (!$email || !$password) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Email and password are required',
+                'message' => getAppMessage('email_passwod_required'),
             ], 400);
         }
 
@@ -37,28 +37,28 @@ class AuthApi extends BaseApiController
         if (!$user) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Invalid email or password',
+                'message' => getAppMessage('invalid_email_password'),
             ], 401);
         }
 
         if (!empty($user['is_blocked'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your account has been blocked by admin',
+                'message' => getAppMessage('user_blocked'),
             ], 403);
         }
 
         if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your buyer role has been blocked by admin',
+                'message' => getAppMessage('user_buyer_role_blocked'),
             ], 403);
         }
 
         if ($user['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your seller role has been blocked by admin',
+                'message' => getAppMessage('user_seller_role_blocked'),
             ], 403);
         }
 
@@ -66,7 +66,7 @@ class AuthApi extends BaseApiController
         if ($user['user_type'] === 'both' && !empty($user['blocked_seller']) && !empty($user['blocked_buyer'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your account roles have been blocked by admin',
+                'message' => getAppMessage('user_blocked'),
             ], 403);
         }
 
@@ -74,7 +74,7 @@ class AuthApi extends BaseApiController
         if (empty($user['is_verified']) || $user['is_verified'] == '0') {
             return $this->respond([
                 'success' => false,
-                'message' => 'Please verify your account before logging in. Check your email for verification instructions.',
+                'message' => getAppMessage('user_not_verified'),
             ], 403);
         }
 
@@ -82,34 +82,35 @@ class AuthApi extends BaseApiController
             log_message('warning', 'Failed login attempt for: ' . $email);
             return $this->respond([
                 'success' => false,
-                'message' => 'Invalid email or password',
+                'message' => getAppMessage('invalid_email_password'),
             ], 401);
         }
+
+        helper(['utilityClass']);
 
         // Determine effective role — for 'both' users, redirect based on which role is blocked
         $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
         if ($user['user_type'] === 'both') {
-            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+            if ((int) ($user['blocked_buyer'] ?? 0) === 1) {
                 $role = 'seller';
-            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+            } elseif ((int) ($user['blocked_seller'] ?? 0) === 1) {
                 $role = 'buyer';
             }
         }
 
-        log_message('info', 'API Login successful for: ' . $email . ', Role: ' . $role);
 
         $token = JWT::encode([
             'user_id' => $user['id'],
-            'email'   => $user['email'],
-            'role'    => $role,
+            'email' => $user['email'],
+            'role' => $role,
             'blocked_from_approvals' => $user['blocked_from_approvals'] ?? 0,
         ]);
 
         return $this->respond([
             'success' => true,
-            'message' => 'Login successful',
-            'data'    => [
-                'user'  => $this->sanitizeUser($user, $role),
+            'message' => getAppMessage('login_success'),
+            'data' => [
+                'user' => $this->sanitizeUser($user, $role),
                 'token' => $token,
             ],
         ]);
@@ -123,30 +124,30 @@ class AuthApi extends BaseApiController
         $email = $this->request->getJsonVar('email');
 
         if (!$email) {
-            return $this->respond(['success' => false, 'message' => 'Email is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_required')], 400);
         }
 
         $user = $this->userModel->getUserByEmail($email);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'No account found with this email'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_account_found')], 404);
         }
 
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer role has been blocked by admin'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
         }
 
         if ($user['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller role has been blocked by admin'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
         }
 
         // If 'both' user has BOTH roles blocked, deny OTP entirely
         if ($user['user_type'] === 'both' && !empty($user['blocked_seller']) && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account roles have been blocked by admin'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         $otp = $this->userModel->generateOTP($user['id']);
@@ -157,7 +158,7 @@ class AuthApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'OTP sent to your email',
+            'message' => getAppMessage('otp_sent'),
         ]);
     }
 
@@ -167,33 +168,33 @@ class AuthApi extends BaseApiController
     public function verifyOtp()
     {
         $email = $this->request->getJsonVar('email');
-        $otp   = $this->request->getJsonVar('otp');
+        $otp = $this->request->getJsonVar('otp');
 
         if (!$email || !$otp) {
-            return $this->respond(['success' => false, 'message' => 'Email and OTP are required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_otp_required')], 400);
         }
 
         $user = $this->userModel->verifyOTP($email, $otp);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'Invalid or expired OTP'], 401);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_otp')], 401);
         }
 
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your buyer role has been blocked by admin',
+                'message' => getAppMessage('user_buyer_role_blocked'),
             ], 403);
         }
 
         if ($user['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your seller role has been blocked by admin',
+                'message' => getAppMessage('user_seller_role_blocked'),
             ], 403);
         }
 
@@ -201,7 +202,7 @@ class AuthApi extends BaseApiController
         if ($user['user_type'] === 'both' && !empty($user['blocked_seller']) && !empty($user['blocked_buyer'])) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Your account roles have been blocked by admin',
+                'message' => getAppMessage('user_blocked'),
             ], 403);
         }
 
@@ -209,31 +210,31 @@ class AuthApi extends BaseApiController
         if (empty($user['is_verified']) || $user['is_verified'] == '0') {
             return $this->respond([
                 'success' => false,
-                'message' => 'Please verify your account before logging in. Check your email for verification instructions.',
+                'message' => getAppMessage('user_not_verified'),
             ], 403);
         }
 
         // Determine effective role — for 'both' users, redirect based on which role is blocked
         $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
         if ($user['user_type'] === 'both') {
-            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+            if ((int) ($user['blocked_buyer'] ?? 0) === 1) {
                 $role = 'seller';
-            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+            } elseif ((int) ($user['blocked_seller'] ?? 0) === 1) {
                 $role = 'buyer';
             }
         }
 
         $token = JWT::encode([
             'user_id' => $user['id'],
-            'email'   => $user['email'],
-            'role'    => $role,
+            'email' => $user['email'],
+            'role' => $role,
         ]);
 
         return $this->respond([
             'success' => true,
-            'message' => 'OTP verified successfully',
-            'data'    => [
-                'user'  => $this->sanitizeUser($user, $role),
+            'message' => getAppMessage('otp_verified'),
+            'data' => [
+                'user' => $this->sanitizeUser($user, $role),
                 'token' => $token,
             ],
         ]);
@@ -247,28 +248,34 @@ class AuthApi extends BaseApiController
         $email = $this->request->getJsonVar('email');
 
         if (!$email) {
-            return $this->respond(['success' => false, 'message' => 'Email is required'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('email_required')], 400);
         }
 
         $user = $this->userModel->getUserByEmail($email);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'No account found with this email'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_account_found')], 404);
         }
 
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
+
 
         $otp = $this->userModel->generateOTP($user['id']);
 
         if ($otp) {
-            $this->sendPasswordResetEmail($email, $user['name'], $otp);
+            if (!$this->sendPasswordResetEmail($email, $user['name'], $otp)) {
+                return $this->respond([
+                    'success' => false,
+                    'message' => getAppMessage('password_reset_email_failed'),
+                ], 500);
+            }
         }
 
         return $this->respond([
             'success' => true,
-            'message' => 'Password reset OTP sent to your email',
+            'message' => getAppMessage('password_reset_otp_sent'),
         ]);
     }
 
@@ -277,61 +284,61 @@ class AuthApi extends BaseApiController
      */
     public function resetPassword()
     {
-        $email    = $this->request->getJsonVar('email');
-        $otp      = $this->request->getJsonVar('otp');
+        $email = $this->request->getJsonVar('email');
+        $otp = $this->request->getJsonVar('otp');
         $password = $this->request->getJsonVar('password');
 
         if (!$email || !$otp || !$password) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Email, OTP, and new password are required'
+                'message' => getAppMessage('otp_required'),
             ], 400);
         }
 
         if (strlen($password) < 6) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Password must be at least 6 characters long'
+                'message' => getAppMessage('password_length'),
             ], 400);
         }
 
         $user = $this->userModel->getUserByEmail($email);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'No account found with this email'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_account_found')], 404);
         }
 
         if (!empty($user['is_blocked'])) {
-            return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_blocked')], 403);
         }
 
         // Verify OTP matches and is not expired
         if ($user['otp'] == $otp && strtotime($user['otp_expires_at']) > time()) {
             // Update password, clear OTP, and mark user as verified
             $updateSuccess = $this->userModel->update($user['id'], [
-                'password'       => password_hash($password, PASSWORD_DEFAULT),
-                'otp'            => null,
+                'password' => password_hash($password, PASSWORD_DEFAULT),
+                'otp' => null,
                 'otp_expires_at' => null,
-                'is_verified'    => 1
+                'is_verified' => 1
             ]);
 
             if ($updateSuccess) {
                 return $this->respond([
                     'success' => true,
-                    'message' => 'Password reset successfully. You can now login with your new password.',
+                    'message' => getAppMessage('password_reset_success'),
                 ]);
             }
 
-            return $this->respond(['success' => false, 'message' => 'Failed to update password. Please try again.'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('password_reset_failure')], 500);
         }
 
-        return $this->respond(['success' => false, 'message' => 'Invalid or expired OTP'], 401);
+        return $this->respond(['success' => false, 'message' => getAppMessage('invalid_otp')], 401);
     }
 
     /**
      * Send password reset email
      */
-    private function sendPasswordResetEmail(string $to, string $name, string $otp): void
+    private function sendPasswordResetEmail(string $to, string $name, string $otp): bool
     {
         $db = \Config\Database::connect();
         $rows = $db->table('system_settings')->get()->getResultArray();
@@ -341,16 +348,16 @@ class AuthApi extends BaseApiController
         }
 
         $emailConfig = [
-            'protocol'    => 'smtp',
-            'SMTPHost'    => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
-            'SMTPPort'    => !empty($cfg['smtp_port']) ? (int)$cfg['smtp_port'] : 587,
-            'SMTPUser'    => $cfg['smtp_username'] ?? '',
-            'SMTPPass'    => $cfg['smtp_password'] ?? '',
-            'SMTPCrypto'  => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
-            'mailType'    => 'html',
-            'charset'     => 'utf-8',
-            'newline'     => "\r\n",
-            'CRLF'        => "\r\n",
+            'protocol' => 'smtp',
+            'SMTPHost' => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
+            'SMTPPort' => !empty($cfg['smtp_port']) ? (int) $cfg['smtp_port'] : 587,
+            'SMTPUser' => $cfg['smtp_username'] ?? '',
+            'SMTPPass' => $cfg['smtp_password'] ?? '',
+            'SMTPCrypto' => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
+            'mailType' => 'html',
+            'charset' => 'utf-8',
+            'newline' => "\r\n",
+            'CRLF' => "\r\n",
             'SMTPTimeout' => 30,
         ];
 
@@ -373,9 +380,10 @@ class AuthApi extends BaseApiController
         ");
 
         if (!$email->send(false)) {
-            log_message('error', 'Password reset email failed to send to: ' . $to);
-            log_message('error', 'Email Debugger: ' . $email->printDebugger(['headers', 'subject', 'body']));
+            return false;
         }
+
+        return true;
     }
 
     /**
@@ -386,87 +394,49 @@ class AuthApi extends BaseApiController
         $data = $this->request->getJSON(true);
 
         $rules = [
-            'name'      => 'required|min_length[2]|max_length[100]',
-            'email'     => 'required|valid_email',
-            'mobile'    => 'required|min_length[10]|max_length[15]',
-            'password'  => 'required|min_length[6]',
-            'address'   => 'required',
-            'pin_code'  => 'required',
-            'state'     => 'required',
-            'city'      => 'required',
+            'name' => 'required|min_length[2]|max_length[100]',
+            'email' => 'required|valid_email',
+            'mobile' => 'required|min_length[10]|max_length[15]',
+            'password' => 'required|min_length[6]',
+            'address' => 'required',
+            'pin_code' => 'required',
+            'state' => 'required',
+            'city' => 'required',
             'user_type' => 'required|in_list[seller,buyer,both]',
         ];
 
         if (!$this->validateData($data, $rules)) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors'  => $this->validator->getErrors(),
+                'message' => getAppMessage('validation_failed_for_register'),
+                'errors' => $this->validator->getErrors(),
             ], 422);
         }
 
-        // Zone restriction check — state-based
+        // Auto-detect location
         helper(['geolocation', 'utilityClass']);
-        $enableZones = getSystemSetting('enable_zone_restriction', '0');
 
         $ip = getUserIP();
         $loc = getLocationFromIP($ip);
-        
+
         $clientLat = $data['user_latitude'] ?? null;
         $clientLng = $data['user_longitude'] ?? null;
-        $clientState = $data['state'] ?? $data['user_state'] ?? null;
 
-        $zoneMatch = false;
-        $detectedZone = null;
-        $detectedState = $clientState ?: ($loc['state'] ?? null);
-
-        // 3. Last Fallback: Check PIN code (Especially for Localhost/Blocked GPS)
-        if (empty($detectedState) && !empty($data['pin_code'])) {
-            $detectedState = getStateFromPinCode($data['pin_code']);
+        // Priority 1: Reverse-geocode GPS coordinates sent by browser
+        $detectedState = null;
+        if (!empty($clientLat) && !empty($clientLng)) {
+            $geoData = getStateFromCoordinates($clientLat, $clientLng);
+            if (!empty($geoData['state'])) {
+                $detectedState = $geoData['state'];
+                if (empty($data['city']) && !empty($geoData['city'])) {
+                    $data['city'] = $geoData['city'];
+                }
+            }
         }
 
-        if ($enableZones === '1') {
-            // 1. Priority: Check GPS coordinates against Polygon zones (Highest accuracy)
-            if (!empty($clientLat) && !empty($clientLng)) {
-                $detectedZone = isLocationAllowed((float)$clientLat, (float)$clientLng);
-                if ($detectedZone) {
-                    $zoneMatch = true;
-                }
-            }
-
-            // 2. Fallback: Check state name (from IP or client)
-            if (!$zoneMatch && !empty($detectedState)) {
-                $detectedZone = isStateAllowed($detectedState);
-                if ($detectedZone) {
-                    $zoneMatch = true;
-                }
-            }
-
-            if (!$zoneMatch) {
-                // Log the blocked attempt
-                logRegistrationAttempt([
-                    'name'       => $data['name'],
-                    'email'      => $data['email'],
-                    'mobile'     => $data['mobile'],
-                    'address'    => $data['address'],
-                    'pin_code'   => $data['pin_code'],
-                    'user_type'  => $data['user_type'],
-                    'ip'         => $ip,
-                    'country'    => $loc['country'] ?? null,
-                    'state'      => $clientState,
-                    'city'       => $loc['city'] ?? null,
-                    'latitude'   => $clientLat ?: ($loc['latitude'] ?? null),
-                    'longitude'  => $clientLng ?: ($loc['longitude'] ?? null),
-                    'is_allowed' => 0,
-                ]);
-
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Sorry, our services are not yet available in ' . ($detectedState ? "\"{$detectedState}\"" : 'your area') . '. Registration is restricted to authorised zones only.',
-                    'state_detected' => $detectedState,
-                    'is_outside_zone' => true
-                ], 403);
-            }
+        // Priority 2: IP-based geolocation (used when GPS was denied or unavailable)
+        if (empty($detectedState) && !empty($loc['state'])) {
+            $detectedState = $loc['state'];
         }
 
         // Add detected location to user data for storage if missing
@@ -474,34 +444,16 @@ class AuthApi extends BaseApiController
         $data['city'] = $data['city'] ?? ($loc['city'] ?? null);
         $data['latitude'] = $clientLat ?: ($loc['latitude'] ?? null);
         $data['longitude'] = $clientLng ?: ($loc['longitude'] ?? null);
-
-        // Log successful registration attempt
-        logRegistrationAttempt([
-            'name'       => $data['name'],
-            'email'      => $data['email'],
-            'mobile'     => $data['mobile'],
-            'address'    => $data['address'],
-            'pin_code'   => $data['pin_code'],
-            'user_type'  => $data['user_type'],
-            'ip'         => $ip,
-            'country'    => $loc['country'] ?? null,
-            'state'      => $data['state'],
-            'city'       => $data['city'],
-            'latitude'   => $data['latitude'],
-            'longitude'  => $data['longitude'],
-            'is_allowed' => 1,
-            'zone_id'    => $detectedZone['id'] ?? null,
-        ]);
         // --- Duplicate detection: check email and phone upfront ---
-        $existingByEmail  = $this->userModel->getUserByEmail($data['email']);
+        $existingByEmail = $this->userModel->getUserByEmail($data['email']);
         $existingByMobile = $this->userModel->where('mobile', $data['mobile'])->first();
-        $requestedType    = $data['user_type'] ?? 'buyer';
+        $requestedType = $data['user_type'] ?? 'buyer';
 
         // Case A: Both email AND phone belong to the SAME existing account → conflict
         if ($existingByEmail && $existingByMobile && $existingByEmail['id'] === $existingByMobile['id']) {
             return $this->respond([
                 'success' => false,
-                'message' => 'An account with this email and mobile number already exists.',
+                'message' => getAppMessage('email_already_exists'),
             ], 409);
         }
 
@@ -509,7 +461,7 @@ class AuthApi extends BaseApiController
         if ($existingByEmail && $existingByMobile && $existingByEmail['id'] !== $existingByMobile['id']) {
             return $this->respond([
                 'success' => false,
-                'message' => 'This email address and mobile number are each associated with different existing accounts. Please use credentials that belong to a single account.',
+                'message' => getAppMessage('mobile_already_exists'),
             ], 409);
         }
 
@@ -517,7 +469,7 @@ class AuthApi extends BaseApiController
         if ($existingByEmail && !$existingByMobile) {
             return $this->respond([
                 'success' => false,
-                'message' => 'This email address is already registered.',
+                'message' => getAppMessage('email_already_exists'),
             ], 409);
         }
 
@@ -525,32 +477,32 @@ class AuthApi extends BaseApiController
         if (!$existingByEmail && $existingByMobile) {
             return $this->respond([
                 'success' => false,
-                'message' => 'This mobile number is already registered.',
+                'message' => getAppMessage('mobile_already_exists'),
             ], 409);
         }
 
         $referralCode = strtoupper(substr(md5(uniqid()), 0, 8));
 
         $userData = [
-            'name'             => $data['name'],
-            'email'            => $data['email'],
-            'mobile'           => $data['mobile'],
-            'password'         => password_hash($data['password'], PASSWORD_DEFAULT),
-            'address'          => $data['address'],
-            'pin_code'         => $data['pin_code'],
-            'state'            => $data['state'],
-            'city'             => $data['city'],
-            'user_type'        => $data['user_type'],
-            'role'             => ($data['user_type'] === 'both') ? 'buyer' : $data['user_type'],
-            'referral_code'    => $referralCode,
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'mobile' => $data['mobile'],
+            'password' => password_hash($data['password'], PASSWORD_DEFAULT),
+            'address' => $data['address'],
+            'pin_code' => $data['pin_code'],
+            'state' => $data['state'],
+            'city' => $data['city'],
+            'user_type' => $data['user_type'],
+            'role' => ($data['user_type'] === 'both') ? 'buyer' : $data['user_type'],
+            'referral_code' => $referralCode,
             'reliability_score' => 0,
-            'is_verified'      => 0,
+            'is_verified' => 0,
         ];
 
         $userId = $this->userModel->insert($userData);
 
         if (!$userId) {
-            return $this->respond(['success' => false, 'message' => 'Registration failed'], 500);
+            return $this->respond(['success' => false, 'message' => getAppMessage('registration_failed_for_register')], 500);
         }
 
         // Process referral code
@@ -566,7 +518,7 @@ class AuthApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'message' => 'Registration successful. OTP sent to your email.',
+            'message' => getAppMessage('user_created_successfully'),
         ], 201);
     }
 
@@ -578,26 +530,26 @@ class AuthApi extends BaseApiController
         $jwtUser = $this->request->jwt_user ?? null;
 
         if (!$jwtUser) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 401);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized_for_switch_role')], 401);
         }
 
         if (!in_array($newRole, ['seller', 'buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Invalid role'], 400);
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_role_for_switch_role')], 400);
         }
 
         $user = $this->userModel->find($jwtUser['user_id']);
 
         if (!$user || $user['user_type'] !== 'both') {
-            return $this->respond(['success' => false, 'message' => 'Role switching not allowed'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_allowed_to_switch_role')], 403);
         }
 
         // Check if the target role is blocked before allowing switch
         if ($newRole === 'buyer' && !empty($user['blocked_buyer'])) {
-            return $this->respond(['success' => false, 'message' => 'Your buyer privileges have been restricted by the administrator.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_buyer_role_blocked')], 403);
         }
 
         if ($newRole === 'seller' && !empty($user['blocked_seller'])) {
-            return $this->respond(['success' => false, 'message' => 'Your seller privileges have been restricted by the administrator.'], 403);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_seller_role_blocked')], 403);
         }
 
         $this->userModel->update($user['id'], ['role' => $newRole]);
@@ -607,17 +559,17 @@ class AuthApi extends BaseApiController
 
         $token = JWT::encode([
             'user_id' => $user['id'],
-            'email'   => $user['email'],
-            'role'    => $newRole,
+            'email' => $user['email'],
+            'role' => $newRole,
         ]);
 
         $updatedUser['role'] = $newRole;
 
         return $this->respond([
             'success' => true,
-            'message' => "Switched to $newRole",
-            'data'    => [
-                'user'  => $this->sanitizeUser($updatedUser, $newRole),
+            'message' => getAppMessage('role_switched_successfully', null,['role'=>$newRole]),
+            'data' => [
+                'user' => $this->sanitizeUser($updatedUser, $newRole),
                 'token' => $token,
             ],
         ]);
@@ -630,17 +582,17 @@ class AuthApi extends BaseApiController
     {
         $jwtUser = $this->request->jwt_user ?? null;
         if (!$jwtUser) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 401);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized_for_referral')], 401);
         }
 
         $user = $this->userModel->find($jwtUser['user_id']);
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
         }
 
         // Generate referral code if missing (for legacy users)
         if (empty($user['referral_code'])) {
-            $user['referral_code'] = strtoupper(substr(md5(uniqid((string)$user['id'], true)), 0, 8));
+            $user['referral_code'] = strtoupper(substr(md5(uniqid((string) $user['id'], true)), 0, 8));
             $this->userModel->update($user['id'], ['referral_code' => $user['referral_code']]);
         }
 
@@ -659,8 +611,8 @@ class AuthApi extends BaseApiController
         }
 
         $rewardAmount = (float) (
-            (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '') 
-            ? $cfg['referral_referrer_reward'] 
+            (isset($cfg['referral_referrer_reward']) && $cfg['referral_referrer_reward'] !== '')
+            ? $cfg['referral_referrer_reward']
             : (isset($cfg['referral_reward_amount']) && $cfg['referral_reward_amount'] !== '' ? $cfg['referral_reward_amount'] : 50)
         );
         $referralEnabled = ($cfg['referral_enabled'] ?? '1') === '1';
@@ -680,11 +632,11 @@ class AuthApi extends BaseApiController
                 $nameParts = explode(' ', trim($r['name']));
                 $initials = strtoupper(substr($nameParts[0], 0, 1) . (isset($nameParts[1]) ? substr($nameParts[1], 0, 1) : ''));
                 $referredUsers[] = [
-                    'initials'        => $initials,
-                    'name'            => substr($r['name'], 0, 3) . str_repeat('*', max(0, strlen($r['name']) - 3)),
-                    'joined_at'       => $r['created_at'],
-                    'reward_used'     => (int) $r['has_used_referral'],
-                    'reward_earned'   => (int) $r['has_used_referral'] ? $rewardAmount : 0,
+                    'initials' => $initials,
+                    'name' => substr($r['name'], 0, 3) . str_repeat('*', max(0, strlen($r['name']) - 3)),
+                    'joined_at' => $r['created_at'],
+                    'reward_used' => (int) $r['has_used_referral'],
+                    'reward_earned' => (int) $r['has_used_referral'] ? $rewardAmount : 0,
                 ];
             }
         }
@@ -709,19 +661,19 @@ class AuthApi extends BaseApiController
 
         return $this->respond([
             'success' => true,
-            'data'    => [
-                'referral_code'     => $user['referral_code'] ?? '',
-                'referral_balance'  => $referralBalance,
+            'data' => [
+                'referral_code' => $user['referral_code'] ?? '',
+                'referral_balance' => $referralBalance,
                 'has_used_referral' => (int) ($user['has_used_referral'] ?? 0),
                 'referral_expires_at' => $user['referral_expires_at'] ?? null,
-                'referred_by'       => $user['referred_by'] ?? null,
-                'total_referrals'   => count($referredUsers),
-                'total_earned'      => $totalEarned,
-                'reward_amount'     => $rewardAmount,
-                'referral_enabled'  => $referralEnabled,
-                'how_it_works'      => $howItWorks,
-                'terms'             => $terms,
-                'referred_users'    => $referredUsers,
+                'referred_by' => $user['referred_by'] ?? null,
+                'total_referrals' => count($referredUsers),
+                'total_earned' => $totalEarned,
+                'reward_amount' => $rewardAmount,
+                'referral_enabled' => $referralEnabled,
+                'how_it_works' => $howItWorks,
+                'terms' => $terms,
+                'referred_users' => $referredUsers,
             ],
         ]);
     }
@@ -734,149 +686,61 @@ class AuthApi extends BaseApiController
         $jwtUser = $this->request->jwt_user ?? null;
 
         if (!$jwtUser) {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 401);
+            return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized_for_me')], 401);
         }
 
         $user = $this->userModel->find($jwtUser['user_id']);
 
         if (!$user) {
-            return $this->respond(['success' => false, 'message' => 'User not found'], 404);
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found')], 404);
         }
 
         // Compute effective role from live DB block flags (not stale JWT)
         $effectiveRole = $jwtUser['role'];
         if ($user['user_type'] === 'both') {
-            if ((int)($user['blocked_buyer'] ?? 0) === 1) {
+            if ((int) ($user['blocked_buyer'] ?? 0) === 1) {
                 $effectiveRole = 'seller';
-            } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
+            } elseif ((int) ($user['blocked_seller'] ?? 0) === 1) {
                 $effectiveRole = 'buyer';
             }
         }
 
         return $this->respond([
             'success' => true,
-            'data'    => $this->sanitizeUser($user, $effectiveRole),
+            'data' => $this->sanitizeUser($user, $effectiveRole),
         ]);
     }
 
     // ── Helpers ──────────────────────────────────────
 
-    public function googleLogin()
-    {
-        $data = $this->request->getJSON(true);
-        $googleToken = $data['credential'] ?? '';
-        if (!$googleToken) {
-            return $this->respond(['success' => false, 'message' => 'Google credential is required'], 400);
-        }
-
-        // Decode Google JWT (id_token) without verification for now
-        $parts = explode('.', $googleToken);
-        if (count($parts) !== 3) {
-            return $this->respond(['success' => false, 'message' => 'Invalid Google token'], 400);
-        }
-        $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-        if (!$payload || empty($payload['email'])) {
-            return $this->respond(['success' => false, 'message' => 'Failed to parse Google token'], 400);
-        }
-
-        $email = $payload['email'];
-        $name = $payload['name'] ?? $payload['given_name'] ?? 'User';
-
-        $user = $this->userModel->getUserByEmail($email);
-
-        if ($user) {
-            // Existing user — login
-            if (!empty($user['is_blocked'])) {
-                return $this->respond(['success' => false, 'message' => 'Your account has been blocked'], 403);
-            }
-            if ($user['user_type'] === 'buyer' && !empty($user['blocked_buyer'])) {
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Your buyer role has been blocked by admin',
-                ], 403);
-            }
-            if ($user['user_type'] === 'seller' && !empty($user['blocked_seller'])) {
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Your seller role has been blocked by admin',
-                ], 403);
-            }
-            if ($user['user_type'] === 'both' && !empty($user['blocked_seller']) && !empty($user['blocked_buyer'])) {
-                return $this->respond([
-                    'success' => false,
-                    'message' => 'Your account roles have been blocked by admin',
-                ], 403);
-            }
-            $role = $user['role'] ?? (($user['user_type'] === 'both') ? 'buyer' : $user['user_type']);
-            if ($user['user_type'] === 'both') {
-                if ((int)($user['blocked_buyer'] ?? 0) === 1) {
-                    $role = 'seller';
-                } elseif ((int)($user['blocked_seller'] ?? 0) === 1) {
-                    $role = 'buyer';
-                }
-            }
-        } else {
-            // New user — auto-register as buyer
-            $db = \Config\Database::connect();
-            $referralCode = strtoupper(substr(md5(uniqid()), 0, 8));
-            $db->table('users')->insert([
-                'name' => $name,
-                'email' => $email,
-                'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
-                'user_type' => 'buyer',
-                'role' => 'buyer',
-                'referral_code' => $referralCode,
-                'is_verified' => 1,
-                'reliability_score' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
-            $user = $this->userModel->getUserByEmail($email);
-            $role = 'buyer';
-        }
-
-        $token = JWT::encode([
-            'user_id' => $user['id'],
-            'email'   => $user['email'],
-            'role'    => $role,
-            'blocked_from_approvals' => $user['blocked_from_approvals'] ?? 0,
-        ]);
-
-        return $this->respond([
-            'success' => true,
-            'message' => 'Login successful',
-            'data'    => [
-                'user'  => $this->sanitizeUser($user, $role),
-                'token' => $token,
-            ],
-        ]);
-    }
 
     private function applyReferral($userId, $referredBy)
     {
         $referredBy = strtoupper(trim($referredBy));
-        if (!$referredBy) return;
+        if (!$referredBy)
+            return;
 
         $db = \Config\Database::connect();
         $referrer = $db->table('users')->where('referral_code', $referredBy)->get()->getRowArray();
 
-        if ($referrer && (int)$referrer['id'] !== (int)$userId) {
+        if ($referrer && (int) $referrer['id'] !== (int) $userId) {
             $settingsRows = $db->table('system_settings')
                 ->whereIn('setting_key', ['referral_enabled', 'referral_receiver_reward', 'referral_expiry_days'])
                 ->get()->getResultArray();
             $cfg = [];
-            foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+            foreach ($settingsRows as $s)
+                $cfg[$s['setting_key']] = $s['setting_value'];
 
             if (($cfg['referral_enabled'] ?? '1') === '1') {
                 $receiverReward = (float) ((isset($cfg['referral_receiver_reward']) && $cfg['referral_receiver_reward'] !== '') ? $cfg['referral_receiver_reward'] : 50);
-                $expiryDays     = (float) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
-                $expiresAt      = date('Y-m-d H:i:s', time() + (int)($expiryDays * 86400));
+                $expiryDays = (float) ((isset($cfg['referral_expiry_days']) && $cfg['referral_expiry_days'] !== '') ? $cfg['referral_expiry_days'] : 30);
+                $expiresAt = date('Y-m-d H:i:s', time() + (int) ($expiryDays * 86400));
 
                 // Check if user already has an expired referral balance and reset it in database
                 $existingUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
                 $currentBalance = (float) ($existingUser['referral_balance'] ?? 0);
                 $currentExpiry = $existingUser['referral_expires_at'] ?? null;
-                
+
                 // If existing referral is expired, reset balance to 0 in database
                 if ($currentExpiry && $currentExpiry !== '0000-00-00 00:00:00' && strtotime($currentExpiry) <= time()) {
                     $currentBalance = 0.0;
@@ -888,13 +752,13 @@ class AuthApi extends BaseApiController
 
                 // Credit the receiver immediately (add to existing balance if not expired, or set to new reward)
                 $newBalance = $currentBalance + $receiverReward;
-                
+
                 $db->table('users')->where('id', $userId)->update([
-                    'referred_by'         => $referredBy,
-                    'referral_balance'    => $newBalance,
+                    'referred_by' => $referredBy,
+                    'referral_balance' => $newBalance,
                     'referral_expires_at' => $expiresAt,
-                    'has_used_referral'   => 0, 
-                    'updated_at'          => date('Y-m-d H:i:s'),
+                    'has_used_referral' => 0,
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
             }
         }
@@ -908,18 +772,18 @@ class AuthApi extends BaseApiController
     {
         try {
             $db = \Config\Database::connect();
-            
+
             // Find all users with referral balance and check expiry in PHP to avoid MySQL strict mode issues
             $usersWithBalance = $db->table('users')
                 ->select('id, referral_expires_at')
                 ->where('referral_balance >', 0)
                 ->where('referral_expires_at IS NOT NULL')
                 ->get();
-            
+
             if ($usersWithBalance) {
                 $expiredUserIds = [];
                 $currentTime = time();
-                
+
                 foreach ($usersWithBalance->getResultArray() as $user) {
                     $expiry = $user['referral_expires_at'];
                     // Skip invalid dates
@@ -931,7 +795,7 @@ class AuthApi extends BaseApiController
                         $expiredUserIds[] = $user['id'];
                     }
                 }
-                
+
                 if (!empty($expiredUserIds)) {
                     $db->table('users')
                         ->whereIn('id', $expiredUserIds)
@@ -939,7 +803,7 @@ class AuthApi extends BaseApiController
                             'referral_balance' => 0,
                             'updated_at' => date('Y-m-d H:i:s'),
                         ]);
-                    
+
                     log_message('info', 'Cleared expired referral balances for ' . count($expiredUserIds) . ' users');
                 }
             }
@@ -951,32 +815,32 @@ class AuthApi extends BaseApiController
     private function sanitizeUser(array $user, string $role): array
     {
         return [
-            'id'                => (int) $user['id'],
-            'name'              => $user['name'],
-            'email'             => $user['email'],
-            'mobile'            => $user['mobile'] ?? '',
-            'alternate_mobile'  => $user['alternate_mobile'] ?? '',
-            'gender'            => $user['gender'] ?? '',
-            'address'           => $user['address'] ?? '',
-            'pin_code'          => $user['pin_code'] ?? '',
-            'city'              => $user['city'] ?? '',
-            'state'             => $user['state'] ?? '',
-            'profile_image'     => $user['profile_image'] ?? '',
-            'user_type'         => $user['user_type'],
-            'role'              => $role,
-            'reliability_score'          => (int) ($user['reliability_score'] ?? 100),
-            'seller_reliability_score'   => (int) ($user['seller_reliability_score'] ?? 0),
-            'buyer_rating_avg'           => (float) ($user['buyer_rating_avg'] ?? 0),
-            'buyer_rating_count'         => (int) ($user['buyer_rating_count'] ?? 0),
-            'seller_rating_avg'          => (float) ($user['seller_rating_avg'] ?? 0),
-            'seller_rating_count'        => (int) ($user['seller_rating_count'] ?? 0),
-            'products_uploaded_count'    => (int) ($user['products_uploaded_count'] ?? 0),
-            'referral_code'              => $user['referral_code'] ?? '',
-            'is_verified'                => (int) ($user['is_verified'] ?? 0),
-            'bgv_cleared'                => (int) ($user['bgv_cleared'] ?? 0),
-            'blocked_buyer'              => (int) ($user['blocked_buyer'] ?? 0),
-            'blocked_seller'             => (int) ($user['blocked_seller'] ?? 0),
-            'created_at'                 => $user['created_at'] ?? '',
+            'id' => (int) $user['id'],
+            'name' => $user['name'],
+            'email' => $user['email'],
+            'mobile' => $user['mobile'] ?? '',
+            'alternate_mobile' => $user['alternate_mobile'] ?? '',
+            'gender' => $user['gender'] ?? '',
+            'address' => $user['address'] ?? '',
+            'pin_code' => $user['pin_code'] ?? '',
+            'city' => $user['city'] ?? '',
+            'state' => $user['state'] ?? '',
+            'profile_image' => $user['profile_image'] ?? '',
+            'user_type' => $user['user_type'],
+            'role' => $role,
+            'reliability_score' => (int) ($user['reliability_score'] ?? 100),
+            'seller_reliability_score' => (int) ($user['seller_reliability_score'] ?? 0),
+            'buyer_rating_avg' => (float) ($user['buyer_rating_avg'] ?? 0),
+            'buyer_rating_count' => (int) ($user['buyer_rating_count'] ?? 0),
+            'seller_rating_avg' => (float) ($user['seller_rating_avg'] ?? 0),
+            'seller_rating_count' => (int) ($user['seller_rating_count'] ?? 0),
+            'products_uploaded_count' => (int) ($user['products_uploaded_count'] ?? 0),
+            'referral_code' => $user['referral_code'] ?? '',
+            'is_verified' => (int) ($user['is_verified'] ?? 0),
+            'bgv_cleared' => (int) ($user['bgv_cleared'] ?? 0),
+            'blocked_buyer' => (int) ($user['blocked_buyer'] ?? 0),
+            'blocked_seller' => (int) ($user['blocked_seller'] ?? 0),
+            'created_at' => $user['created_at'] ?? '',
         ];
     }
 
@@ -990,16 +854,16 @@ class AuthApi extends BaseApiController
         }
 
         $emailConfig = [
-            'protocol'    => 'smtp',
-            'SMTPHost'    => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
-            'SMTPPort'    => !empty($cfg['smtp_port']) ? (int)$cfg['smtp_port'] : 587,
-            'SMTPUser'    => $cfg['smtp_username'] ?? '',
-            'SMTPPass'    => $cfg['smtp_password'] ?? '',
-            'SMTPCrypto'  => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
-            'mailType'    => 'html',
-            'charset'     => 'utf-8',
-            'newline'     => "\r\n",
-            'CRLF'        => "\r\n",
+            'protocol' => 'smtp',
+            'SMTPHost' => !empty($cfg['smtp_host']) ? $cfg['smtp_host'] : 'smtp.gmail.com',
+            'SMTPPort' => !empty($cfg['smtp_port']) ? (int) $cfg['smtp_port'] : 587,
+            'SMTPUser' => $cfg['smtp_username'] ?? '',
+            'SMTPPass' => $cfg['smtp_password'] ?? '',
+            'SMTPCrypto' => !empty($cfg['smtp_encryption']) ? $cfg['smtp_encryption'] : 'tls',
+            'mailType' => 'html',
+            'charset' => 'utf-8',
+            'newline' => "\r\n",
+            'CRLF' => "\r\n",
             'SMTPTimeout' => 30,
         ];
 
@@ -1019,5 +883,138 @@ class AuthApi extends BaseApiController
             log_message('error', 'Email failed to send to: ' . $to);
             log_message('error', 'Email Debugger: ' . $email->printDebugger(['headers', 'subject', 'body']));
         }
+    }
+
+    /**
+     * Reverse geocode latitude and longitude to return state and city to client
+     */
+    public function reverseGeocode()
+    {
+        helper(['geolocation']);
+        $lat = $this->request->getVar('latitude') ?? $this->request->getVar('lat');
+        $lng = $this->request->getVar('longitude') ?? $this->request->getVar('lng');
+
+        if (empty($lat) || empty($lng)) {
+            return $this->respond(['success' => false, 'message' => getAppMessage('latitude_longitude_required')], 400);
+        }
+
+        $geo = getStateFromCoordinates($lat, $lng);
+
+        if ($geo && !empty($geo['state'])) {
+            return $this->respond([
+                'success' => true,
+                'data' => $geo
+            ]);
+        }
+
+        return $this->respond(['success' => false, 'message' => getAppMessage('unable_to_resolve_state')], 404);
+    }
+
+    /**
+     * GET/POST /api/v1/auth/check-location
+     * Verify if the user's location is within allowed service zones
+     */
+    public function checkLocation()
+    {
+        helper(['geolocation']);
+
+        $db = \Config\Database::connect();
+
+        // Fetch zone restriction system setting
+        $landingSettings = $db->table('system_settings')
+            ->where('setting_key', 'enable_zone_restriction')
+            ->get()
+            ->getRowArray();
+
+        $restrictionEnabled = ($landingSettings && $landingSettings['setting_value'] === '1');
+
+        if (!$restrictionEnabled) {
+            return $this->respond([
+                'success' => true,
+                'data' => [
+                    'restriction_enabled' => false,
+                    'is_allowed' => true,
+                    'message' => getAppMessage('zone_restriction_disabled')
+                ]
+            ]);
+        }
+
+        // Get coordinates from request (e.g. browser GPS)
+        $lat = $this->request->getVar('lat');
+        $lng = $this->request->getVar('lng');
+
+        $method = 'GPS';
+
+        // Fallback: IP-based location in backend using token-free APIs first, then findip.net
+        if (empty($lat) || empty($lng)) {
+            $ip = getUserIP();
+            $loc = getLocationFromIP($ip);
+            if (!$loc) {
+                $loc = getLocationFromIPFindIP($ip);
+            }
+            if ($loc && !empty($loc['latitude']) && !empty($loc['longitude'])) {
+                $lat = $loc['latitude'];
+                $lng = $loc['longitude'];
+                $method = 'IP (' . $loc['ip'] . ')';
+            }
+        }
+
+        // Cannot verify location without coordinates
+        if (empty($lat) || empty($lng)) {
+            return $this->respond([
+                'success' => true,
+                'data' => [
+                    'restriction_enabled' => true,
+                    'is_allowed' => false,
+                    'message' => getAppMessage('location_detection_failed')
+                ]
+            ]);
+        }
+
+        // Get all active polygon zones
+        $activeZones = $db->table('allowed_zones')
+            ->where('is_active', 1)
+            ->get()
+            ->getResultArray();
+
+        $isAllowed = false;
+        $matchedZoneName = '';
+
+        foreach ($activeZones as $zone) {
+            if (!empty($zone['zone_polygon'])) {
+                if (isPointInPolygon($lat, $lng, $zone['zone_polygon'])) {
+                    $isAllowed = true;
+                    $matchedZoneName = $zone['zone_name'];
+                    break;
+                }
+            }
+        }
+
+        if ($isAllowed) {
+            return $this->respond([
+                'success' => true,
+                'data' => [
+                    'restriction_enabled' => true,
+                    'is_allowed' => true,
+                    'method' => $method,
+                    'zone' => $matchedZoneName,
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'message' => getAppMessage('access_granted_in_your_zone')
+                ]
+            ]);
+        }
+
+        return $this->respond([
+            'success' => true,
+            'data' => [
+                'restriction_enabled' => true,
+                'is_allowed' => false,
+                'method' => $method,
+                'lat' => $lat,
+                'lng' => $lng,
+                'message' => getAppMessage('not_available_in_your_area')
+            ]
+        ]);
     }
 }

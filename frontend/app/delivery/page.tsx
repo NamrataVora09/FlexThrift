@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import StatsCard from '@/components/ui/StatsCard';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 interface DeliveryData {
   user: { name: string };
@@ -20,6 +20,7 @@ interface PendingOrder {
 }
 
 export default function DeliveryDashboard() {
+  const { toastSuccess, toastError } = useToast();
   const [data, setData] = useState<DeliveryData | null>(null);
   const [pending, setPending] = useState<PendingOrder[]>([]);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -42,10 +43,10 @@ export default function DeliveryDashboard() {
     }
     setActionLoading(null);
     if (res?.success) {
-      toast.success(res?.message || 'Status updated');
+      toastSuccess('delivery_status_updated', res?.message || 'Status updated');
       load();
     } else {
-      toast.error(res?.message || 'Action failed');
+      toastError('delivery_action_failed', res?.message || 'Action failed');
     }
   };
 

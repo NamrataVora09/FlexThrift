@@ -359,10 +359,9 @@ export default function SellerCheckoutPlanPage() {
                     placeholder={isReferralCovered ? "Coupon disabled (Referral covers price)" : "Enter code"}
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !isCouponDisabled && applyCoupon()}
-                    disabled={isCouponDisabled}
+                    onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
                   />
-                  <button className="btn btn-outline-secondary coupon-btn fw-bold" onClick={applyCoupon} disabled={isCouponDisabled}>
+                  <button className="btn btn-outline-secondary coupon-btn fw-bold" onClick={applyCoupon}>
                     {couponLoading ? <span className="spinner-border spinner-border-sm" /> : 'Apply'}
                   </button>
                 </div>

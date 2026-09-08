@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
 interface Product {
@@ -85,6 +85,7 @@ export default function ProductManagementPage() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  const { toastSuccess, toastError } = useToast();
   const [bulkLoading, setBulkLoading] = useState(false);
 
   const bulkUpdateStatus = async (newSt: string) => {
@@ -94,7 +95,7 @@ export default function ProductManagementPage() {
       await Promise.all(selectedIds.map(id => api.post(`/superadmin/update-product-status/${id}`, { status: newSt })));
       setBulkLoading(false);
       setSelectedIds([]);
-      toast.success(`Products updated to ${newSt}`);
+      toastSuccess('product_update_success', `Products updated to ${newSt}`);
       load();
     }, 'Update');
   };
@@ -111,7 +112,7 @@ export default function ProductManagementPage() {
       }
       setBulkLoading(false);
       setSelectedIds([]);
-      toast.success(`Products ${val ? 'featured' : 'unfeatured'}`);
+      toastSuccess('product_update_success', `Products ${val ? 'featured' : 'unfeatured'}`);
       load();
     }, val ? 'Feature' : 'Unfeature');
   };
@@ -123,7 +124,7 @@ export default function ProductManagementPage() {
       await Promise.all(selectedIds.map(id => api.post(`/superadmin/delete-product/${id}`)));
       setBulkLoading(false);
       setSelectedIds([]);
-      toast.success('Products deleted');
+      toastSuccess('product_delete_success', 'Products deleted');
       load();
     }, 'Delete');
   };
@@ -131,8 +132,13 @@ export default function ProductManagementPage() {
   const statusColor = (s: string) => {
     switch (s) {
       case 'approved': return { bg: '#d1fae5', color: '#065f46' };
-      case 'pending': return { bg: '#fef3c7', color: '#92400e' };
-      case 'rejected': return { bg: '#fee2e2', color: '#991b1b' };
+      case 'pending':
+      case 'changesPending':
+      case 'edit_pending': return { bg: '#fef3c7', color: '#92400e' };
+      case 'rejected':
+      case 'rejected_changes':
+      case 'changesRejected':
+      case 'edit_rejected': return { bg: '#fee2e2', color: '#991b1b' };
       case 'inactive': return { bg: '#e5e7eb', color: '#374151' };
       default: return { bg: '#f3f4f6', color: '#6b7280' };
     }

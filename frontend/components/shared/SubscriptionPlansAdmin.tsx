@@ -144,7 +144,7 @@ function PlanPointsEditor({ value, onChange, form }: { value: string; onChange: 
 
 
 export default function SubscriptionPlansAdmin() {
-  const { toastSuccess, toastError } = useToast();
+  const { toastSuccess, toastError, resolveMsg } = useToast();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -167,6 +167,29 @@ export default function SubscriptionPlansAdmin() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleCreateNew = () => {
+    setEditId(null);
+    setForm(emptyForm);
+    setShowModal(true);
+  };
+
+  const handleEdit = (p: Plan) => {
+    setEditId(p.id);
+    setForm({
+      name: p.name || '',
+      user_type: p.user_type || 'seller',
+      plan_type: p.plan_type || 'quantity',
+      limit_value: p.limit_value || '',
+      duration_hours: p.duration_hours || '',
+      price: p.price || '',
+      base_price: p.base_price || '',
+      features: p.features || '[]',
+      is_featured: String(p.is_featured ?? '0'),
+      is_most_selected: String(p.is_most_selected ?? '0'),
+    });
+    setShowModal(true);
+  };
 
   // Client-side filtering
   const filtered = useMemo(() => plans.filter((p) => {
@@ -252,7 +275,7 @@ export default function SubscriptionPlansAdmin() {
   };
 
   const deletePlan = async (id: number) => {
-    confirmToast('Deleting this plan might affect users currently on it! Are you sure?', async () => {
+    confirmToast(resolveMsg('plan_delete_confirm', 'Deleting this plan might affect users currently on it! Are you sure?'), async () => {
       const res = await api.post(`/shared/admin-subscription-plans/${id}/delete`);
       if (res.success) {
         toastSuccess('plan_delete_success', 'Plan deleted');

@@ -1,18 +1,15 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
-
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import BulkCsvUpload from '@/components/shared/BulkCsvUpload';
 import { api } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import { confirmToast } from '@/lib/toast-utils';
 
-interface Brand { id: number; brand_name: string; seller_id: number; seller_name: string | null; seller_mobile: string | null; is_blocked: string; rejection_reason: string | null; is_active?: string | number; description?: string; listing_type_id?: number | null; listing_type_ids?: number[]; listing_type_names?: string[]; created_at: string; }
+interface Brand { id: number; brand_name: string; seller_id: number; seller_name: string | null; seller_mobile: string | null; is_blocked: string; rejection_reason: string | null; is_active?: string | number; description?: string; created_at: string; }
 interface Seller { id: number; name: string; email: string; user_type: string; }
 interface Product { id: number; title: string; product_number: string; brand_id: number | null; listing_type_id?: number | null; status: string; }
-interface ListingType { id: number; type_name: string; }
 interface RejectionTemplate { id: number; template_text: string; type: string; }
 
 const thStyle: React.CSSProperties = { backgroundColor: '#f8f9fa', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, color: '#677788', padding: '1.1rem 1rem' };
@@ -29,8 +26,7 @@ export default function BrandsClient() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showTag, setShowTag] = useState(false);
-  const [listingTypes, setListingTypes] = useState<ListingType[]>([]);
-  const [createForm, setCreateForm] = useState({ seller_id: '', brand_name: '', description: '', listing_type_ids: [] as number[] });
+  const [createForm, setCreateForm] = useState({ seller_id: '', brand_name: '', description: '' });
   const [sellerSearch, setSellerSearch] = useState('');
   const [sellerDropdownOpen, setSellerDropdownOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -44,21 +40,13 @@ export default function BrandsClient() {
 
   // Edit brand state
   const [showEdit, setShowEdit] = useState<Brand | null>(null);
-  const [editForm, setEditForm] = useState({ brand_name: '', seller_id: '', listing_type_ids: [] as number[], description: '' });
+  const [editForm, setEditForm] = useState({ brand_name: '', seller_id: '', description: '' });
 
   // Block brand modal state
   const [blockTarget, setBlockTarget] = useState<Brand | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [rejectionTemplates, setRejectionTemplates] = useState<RejectionTemplate[]>([]);
   const [blockSubmitting, setBlockSubmitting] = useState(false);
-
-  // Multi-select states for listing types
-  const [createLtSearch, setCreateLtSearch] = useState('');
-  const [createShowLtDropdown, setCreateShowLtDropdown] = useState(false);
-  const [editLtSearch, setEditLtSearch] = useState('');
-  const [editShowLtDropdown, setEditShowLtDropdown] = useState(false);
-  const createLtRef = useRef<HTMLDivElement>(null);
-  const editLtRef = useRef<HTMLDivElement>(null);
 
   // Tag products state
   const [tagSellerId, setTagSellerId] = useState('');
@@ -86,12 +74,10 @@ export default function BrandsClient() {
     Promise.all([
       api.get<Brand[]>('/superadmin/brands'),
       api.get<Seller[]>('/superadmin/sellers-list'),
-      api.get<{ listing_types: ListingType[] }>('/shared/taxonomy'),
       api.get<RejectionTemplate[]>('/superadmin/rejection-templates?type=Brands'),
-    ]).then(([br, sl, tx, rt]) => {
+    ]).then(([br, sl, rt]) => {
       if (br.success && br.data) setBrands(br.data);
       if (sl.success && sl.data) setSellers(sl.data);
-      if (tx.success && tx.data) setListingTypes(tx.data.listing_types || []);
       if (rt.success && rt.data) setRejectionTemplates(rt.data);
       setLoading(false);
     });
@@ -99,56 +85,7 @@ export default function BrandsClient() {
 
   useEffect(() => { load(); }, []);
 
-  // Close dropdowns on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (createLtRef.current && !createLtRef.current.contains(e.target as Node)) {
-        setCreateShowLtDropdown(false);
-      }
-      if (editLtRef.current && !editLtRef.current.contains(e.target as Node)) {
-        setEditShowLtDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
-  // Filter listing types based on search
-  const filteredCreateLt = listingTypes.filter(lt =>
-    lt.type_name.toLowerCase().includes(createLtSearch.toLowerCase()) &&
-    !createForm.listing_type_ids.includes(lt.id)
-  );
-
-  const filteredEditLt = listingTypes.filter(lt =>
-    lt.type_name.toLowerCase().includes(editLtSearch.toLowerCase()) &&
-    !editForm.listing_type_ids.includes(lt.id)
-  );
-
-  // Add listing type to selection (Create modal)
-  const addCreateListingType = (id: number) => {
-    if (!createForm.listing_type_ids.includes(id)) {
-      setCreateForm({ ...createForm, listing_type_ids: [...createForm.listing_type_ids, id] });
-      setCreateLtSearch('');
-    }
-  };
-
-  // Remove listing type from selection (Create modal)
-  const removeCreateListingType = (id: number) => {
-    setCreateForm({ ...createForm, listing_type_ids: createForm.listing_type_ids.filter(ltId => ltId !== id) });
-  };
-
-  // Add listing type to selection (Edit modal)
-  const addEditListingType = (id: number) => {
-    if (!editForm.listing_type_ids.includes(id)) {
-      setEditForm({ ...editForm, listing_type_ids: [...editForm.listing_type_ids, id] });
-      setEditLtSearch('');
-    }
-  };
-
-  // Remove listing type from selection (Edit modal)
-  const removeEditListingType = (id: number) => {
-    setEditForm({ ...editForm, listing_type_ids: editForm.listing_type_ids.filter(ltId => ltId !== id) });
-  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -196,16 +133,7 @@ export default function BrandsClient() {
 
   const openEditBrand = (b: Brand) => {
     setShowEdit(b);
-    // Handle listing_type_ids being string (JSON from PHP) or array
-    let ltIds: number[] = [];
-    if (Array.isArray(b.listing_type_ids)) {
-      ltIds = b.listing_type_ids;
-    } else if (typeof b.listing_type_ids === 'string') {
-      try { ltIds = JSON.parse(b.listing_type_ids); } catch { ltIds = []; }
-    } else if (b.listing_type_id) {
-      ltIds = [Number(b.listing_type_id)];
-    }
-    setEditForm({ brand_name: b.brand_name, seller_id: String(b.seller_id || ''), listing_type_ids: ltIds.map(Number), description: b.description || '' });
+    setEditForm({ brand_name: b.brand_name, seller_id: String(b.seller_id || ''), description: b.description || '' });
   };
 
   const handleEditBrand = async (e: React.FormEvent) => {
@@ -215,7 +143,6 @@ export default function BrandsClient() {
     const fd = new FormData();
     fd.append('brand_name', editForm.brand_name);
     fd.append('seller_id', editForm.seller_id);
-    fd.append('listing_type_ids', JSON.stringify(editForm.listing_type_ids));
     fd.append('description', editForm.description);
     const res = await api.upload(`/superadmin/update-brand/${showEdit.id}`, fd);
     setSubmitting(false);
@@ -258,37 +185,29 @@ export default function BrandsClient() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (createForm.listing_type_ids.length === 0) {
-      toast.error('Please select at least one listing type');
-      return;
-    }
     setSubmitting(true);
     const fd = new FormData();
     fd.append('brand_name', createForm.brand_name);
     fd.append('seller_id', createForm.seller_id);
     fd.append('description', createForm.description);
-    fd.append('listing_type_ids', JSON.stringify(createForm.listing_type_ids));
     const res = await api.upload('/superadmin/create-brand', fd);
     setSubmitting(false);
     if (res.success) {
       toastSuccess('brand_create_success', 'Brand created successfully!');
       setShowCreate(false);
-      setCreateForm({ seller_id: '', brand_name: '', description: '', listing_type_ids: [] as number[] });
-      setCreateLtSearch('');
+      setCreateForm({ seller_id: '', brand_name: '', description: '' });
       load();
     }
     else toastError('brand_create_failed', res.message || 'Failed to create brand.');
   };
 
   const openTagModal = (brandId: number, sellerId: number | null) => {
-    const brand = brands.find((b) => b.id === brandId);
-    const ltId = brand?.listing_type_id ? String(brand.listing_type_id) : undefined;
     setTagBrandId(String(brandId));
     setTagSellerId(sellerId ? String(sellerId) : '');
     setTagProducts([]);
     setTagSelected(new Set());
     setShowTag(true);
-    if (sellerId) loadProducts(String(sellerId), String(brandId), ltId);
+    if (sellerId) loadProducts(String(sellerId), String(brandId));
   };
 
   const loadProducts = async (uid: string, brandId?: string, listingTypeId?: string) => {
@@ -311,9 +230,7 @@ export default function BrandsClient() {
   const handleTagSellerChange = (uid: string) => {
     setTagSellerId(uid);
     setTagSelected(new Set());
-    const brand = brands.find((b) => String(b.id) === tagBrandId);
-    const ltId = brand?.listing_type_id ? String(brand.listing_type_id) : undefined;
-    if (uid) loadProducts(uid, tagBrandId, ltId);
+    if (uid) loadProducts(uid, tagBrandId);
     else setTagProducts([]);
   };
 
@@ -390,9 +307,9 @@ export default function BrandsClient() {
 
         <BulkCsvUpload
           endpoint="/superadmin/bulk-upload-brands"
-          templateCsv='brand_name,listing_types,seller_email,description\nNike,"Clothing, Footwear, Accessories",seller@example.com,Premium sportswear\nAdidas,"Footwear, Sports",admin@example.com,Sports & lifestyle'
+          templateCsv='brand_name,seller_email,description\nNike,seller@example.com,Premium sportswear\nAdidas,admin@example.com,Sports & lifestyle'
           templateFilename="brands_template.csv"
-          formatGuide="brand_name (required), listing_types (Listing Type Names, comma separated), seller_email (User Email), description"
+          formatGuide="brand_name (required), seller_email (User Email — links brand to seller), description (optional)"
           title="Bulk Upload Brands"
           onSuccess={load}
         />
@@ -405,14 +322,15 @@ export default function BrandsClient() {
               <div className="position-relative">
                 <i className="bi bi-search" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#677788', fontSize: '0.9rem' }}></i>
                 <input
-                  className="form-control"
-                  style={{ ...inputStyle, paddingLeft: 40 }}
-                  placeholder="Search brands by name, seller, or listing type..."
+                  type="text"
+                  className="form-control ps-5"
+                  style={inputStyle}
+                  placeholder="Search brands by name or seller..."
                   value={brandSearch}
                   onChange={(e) => { setBrandSearch(e.target.value); setBrandPage(1); }}
                 />
               </div>
-              {brandSearch && <small className="text-muted mt-1 d-block">{brands.filter(b => (b.brand_name + (b.seller_name || '') + (b.listing_type_names?.join(' ') || '')).toLowerCase().includes(brandSearch.toLowerCase())).length} result(s)</small>}
+              {brandSearch && <small className="text-muted mt-1 d-block">{brands.filter(b => (b.brand_name + (b.seller_name || '')).toLowerCase().includes(brandSearch.toLowerCase())).length} result(s)</small>}
             </div>
             {loading ? (
               <div className="text-center py-5"><div className="spinner-border" style={{ color: '#ffc63a' }}></div></div>
@@ -421,7 +339,6 @@ export default function BrandsClient() {
                 <table className="table table-hover align-middle mb-0">
                   <thead><tr>
                     <th style={{ ...thStyle, paddingLeft: '1.5rem' }}>Brand</th>
-                    <th style={thStyle}>Listing Type</th>
                     <th style={thStyle}>Seller Assigned</th>
                     <th style={thStyle}>Created At</th>
                     <th style={thStyle}>Rejection Reason</th>
@@ -430,7 +347,7 @@ export default function BrandsClient() {
                   </tr></thead>
                   <tbody>
                     {(() => { 
-                      const filtered = brands.filter(b => (b.brand_name + ' ' + (b.seller_name || '') + ' ' + (b.listing_type_names?.join(' ') || '')).toLowerCase().includes(brandSearch.toLowerCase())); 
+                      const filtered = brands.filter(b => (b.brand_name + ' ' + (b.seller_name || '')).toLowerCase().includes(brandSearch.toLowerCase())); 
                       const paged = filtered.slice((brandPage - 1) * PAGE_SIZE, brandPage * PAGE_SIZE);
                       return paged.length > 0 ? paged.map((b) => (
                       <tr key={b.id}>
@@ -442,19 +359,6 @@ export default function BrandsClient() {
                               <small className="text-muted">ID: #{b.id}</small>
                             </div>
                           </div>
-                        </td>
-                        <td style={tdStyle}>
-                          {b.listing_type_names && b.listing_type_names.length > 0 ? (
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              {b.listing_type_names.map((name, idx) => (
-                                <span key={idx} className="badge px-3 py-2" style={{ background: 'rgba(255,198,58,0.15)', color: '#b8860b', fontWeight: 600, fontSize: '0.75rem' }}>
-                                  {name}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-muted fst-italic">Not set</span>
-                          )}
                         </td>
                         <td style={tdStyle}>
                           {b.seller_name ? (
@@ -492,7 +396,7 @@ export default function BrandsClient() {
                         </td>
                       </tr>
                     )) : (
-                      <tr><td colSpan={7} className="text-center py-5">
+                      <tr><td colSpan={6} className="text-center py-5">
                         <i className="bi bi-patch-exclamation" style={{ fontSize: '2.5rem', color: '#ddd' }}></i>
                         <div className="fw-bold mt-2">{brandSearch ? `No results for "${brandSearch}"` : 'No brands found'}</div>
                         <p className="text-muted small">{brandSearch ? 'Try a different search term.' : "You haven't created any brands yet."}</p>
@@ -503,7 +407,7 @@ export default function BrandsClient() {
               </div>
             )}
             <Paginator 
-              total={brands.filter(b => (b.brand_name + ' ' + (b.seller_name || '') + ' ' + (b.listing_type_names?.join(' ') || '')).toLowerCase().includes(brandSearch.toLowerCase())).length} 
+              total={brands.filter(b => (b.brand_name + ' ' + (b.seller_name || '')).toLowerCase().includes(brandSearch.toLowerCase())).length} 
               page={brandPage} 
               setPage={setBrandPage} 
             />
@@ -589,86 +493,11 @@ export default function BrandsClient() {
                     <div className="form-text small mt-1">Assign this brand to a certified seller or hybrid user.</div>
                   </div>
                   <div className="mb-3"><label style={labelStyle}>Brand Name</label><input className="form-control" style={inputStyle} placeholder="Enter official brand name" required value={createForm.brand_name} onChange={(e) => setCreateForm({ ...createForm, brand_name: e.target.value })} /></div>
-                  <div className="mb-3">
-                    <label style={labelStyle}>Applicable Listing Types <span style={{ color: '#dc3545' }}>*</span></label>
-                    <p className="small text-muted mb-2">Select which listing types this brand applies to. Example: Nike for Clothing/Footwear/Accessories.</p>
-
-                    {/* Search Input with Checkboxes */}
-                    <div ref={createLtRef} style={{ position: 'relative', marginBottom: 10 }}>
-                      <input
-                        type="text"
-                        className="form-control"
-                        style={inputStyle}
-                        placeholder="Search listing types..."
-                        value={createLtSearch}
-                        onChange={(e) => setCreateLtSearch(e.target.value)}
-                        onFocus={() => setCreateShowLtDropdown(true)}
-                      />
-                      <i className="bi bi-search" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#999', fontSize: '0.875rem' }}></i>
-
-                      {/* Dropdown with Checkbox Options */}
-                      {createShowLtDropdown && filteredCreateLt.length > 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          background: '#fff',
-                          border: '1px solid #e7eaf3',
-                          borderRadius: '0.5rem',
-                          marginTop: 4,
-                          zIndex: 1000,
-                          maxHeight: 200,
-                          overflowY: 'auto',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                        }}>
-                          {filteredCreateLt.map((lt) => (
-                            <label key={lt.id} style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              padding: '10px 12px',
-                              cursor: 'pointer',
-                              borderBottom: '1px solid #f0f0f0',
-                              userSelect: 'none'
-                            }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                              <input
-                                type="checkbox"
-                                style={{ cursor: 'pointer', marginRight: 8 }}
-                                checked={createForm.listing_type_ids.includes(lt.id)}
-                                onChange={() => addCreateListingType(lt.id)}
-                              />
-                              <span style={{ fontSize: '0.875rem' }}>{lt.type_name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Selected Types */}
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                      {createForm.listing_type_ids.map((id) => {
-                        const lt = listingTypes.find(l => String(l.id) === String(id));
-                        return (
-                          <span key={id} className="badge px-3 py-2" style={{ background: 'rgba(255,198,58,0.2)', color: '#b8860b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {lt?.type_name || `Type #${id}`}
-                            <button
-                              type="button"
-                              onClick={() => removeCreateListingType(id)}
-                              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, fontSize: '1rem' }}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                    {createForm.listing_type_ids.length === 0 && <small style={{ color: '#dc3545' }}>⚠ Please select at least one listing type</small>}
-                  </div>
                   <div className="mb-0"><label style={labelStyle}>Description (Optional)</label><textarea className="form-control" style={inputStyle} rows={3} placeholder="Brief about the brand..." value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} /></div>
                 </div>
                 <div className="modal-footer border-0 p-4 pt-0" style={{ background: '#f8f9fa' }}>
                   <button type="button" className="btn btn-light px-4" onClick={() => setShowCreate(false)}>Cancel</button>
-                  <button type="submit" className="btn sa-filter-btn px-4 fw-bold" style={btnGold} disabled={submitting || !createForm.seller_id || createForm.listing_type_ids.length === 0}>
+                  <button type="submit" className="btn sa-filter-btn px-4 fw-bold" style={btnGold} disabled={submitting || !createForm.seller_id || !createForm.brand_name}>
                     {submitting ? <><span className="spinner-border spinner-border-sm me-2"></span>Creating...</> : 'Create Brand'}
                   </button>
                 </div>
@@ -691,17 +520,47 @@ export default function BrandsClient() {
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
                     <label style={labelStyle}>1. Select User (Seller/Hybrid)</label>
-                    <select className="form-select" style={inputStyle} value={tagSellerId} onChange={(e) => handleTagSellerChange(e.target.value)}>
-                      <option value="">Choose a user...</option>
-                      {sellers.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
-                    </select>
+                    <div style={{
+                      ...inputStyle,
+                      background: '#f0f2f5',
+                      color: '#4b566b',
+                      cursor: 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      userSelect: 'none',
+                    }}>
+                      <i className="bi bi-lock-fill" style={{ color: '#adb5bd', fontSize: '0.75rem', flexShrink: 0 }}></i>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {tagSellerId
+                          ? (sellers.find(s => String(s.id) === tagSellerId)?.name
+                              ? `${sellers.find(s => String(s.id) === tagSellerId)!.name} (${sellers.find(s => String(s.id) === tagSellerId)!.email})`
+                              : `User #${tagSellerId}`)
+                          : <span className="text-muted fst-italic">No seller selected</span>}
+                      </span>
+                    </div>
+                    <div className="form-text small mt-1 text-muted">User is fixed to this brand\'s seller.</div>
                   </div>
                   <div className="col-md-6">
                     <label style={labelStyle}>2. Select Target Brand</label>
-                    <select className="form-select" style={inputStyle} value={tagBrandId} onChange={(e) => setTagBrandId(e.target.value)}>
-                      <option value="">Choose a brand...</option>
-                      {brands.map((b) => <option key={b.id} value={b.id}>{b.brand_name}</option>)}
-                    </select>
+                    <div style={{
+                      ...inputStyle,
+                      background: '#f0f2f5',
+                      color: '#4b566b',
+                      cursor: 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      userSelect: 'none',
+                    }}>
+                      <i className="bi bi-lock-fill" style={{ color: '#adb5bd', fontSize: '0.75rem', flexShrink: 0 }}></i>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {tagBrandId
+                          ? (brands.find(b => String(b.id) === tagBrandId)?.brand_name || `Brand #${tagBrandId}`)
+                          : <span className="text-muted fst-italic">No brand selected</span>}
+                      </span>
+                    </div>
+                    <div className="form-text small mt-1 text-muted">Brand is fixed and cannot be changed here.</div>
                   </div>
                 </div>
 
@@ -772,81 +631,6 @@ export default function BrandsClient() {
                 <div className="modal-body p-4">
                   <div className="mb-3"><label style={labelStyle}>Brand Name</label><input className="form-control" style={inputStyle} required value={editForm.brand_name} onChange={(e) => setEditForm({ ...editForm, brand_name: e.target.value })} /></div>
                   <div className="mb-3">
-                    <label style={labelStyle}>Applicable Listing Types <span style={{ color: '#dc3545' }}>*</span></label>
-                    <p className="small text-muted mb-2">Select which listing types this brand applies to.</p>
-
-                    {/* Search Input with Checkboxes */}
-                    <div ref={editLtRef} style={{ position: 'relative', marginBottom: 10 }}>
-                      <input
-                        type="text"
-                        className="form-control"
-                        style={inputStyle}
-                        placeholder="Search listing types..."
-                        value={editLtSearch}
-                        onChange={(e) => setEditLtSearch(e.target.value)}
-                        onFocus={() => setEditShowLtDropdown(true)}
-                      />
-                      <i className="bi bi-search" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#999', fontSize: '0.875rem' }}></i>
-
-                      {/* Dropdown with Checkbox Options */}
-                      {editShowLtDropdown && filteredEditLt.length > 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          background: '#fff',
-                          border: '1px solid #e7eaf3',
-                          borderRadius: '0.5rem',
-                          marginTop: 4,
-                          zIndex: 1000,
-                          maxHeight: 200,
-                          overflowY: 'auto',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                        }}>
-                          {filteredEditLt.map((lt) => (
-                            <label key={lt.id} style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              padding: '10px 12px',
-                              cursor: 'pointer',
-                              borderBottom: '1px solid #f0f0f0',
-                              userSelect: 'none'
-                            }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                              <input
-                                type="checkbox"
-                                style={{ cursor: 'pointer', marginRight: 8 }}
-                                checked={editForm.listing_type_ids.includes(lt.id)}
-                                onChange={() => addEditListingType(lt.id)}
-                              />
-                              <span style={{ fontSize: '0.875rem' }}>{lt.type_name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Selected Types */}
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                      {editForm.listing_type_ids.map((id) => {
-                        const lt = listingTypes.find(l => String(l.id) === String(id));
-                        return (
-                          <span key={id} className="badge px-3 py-2" style={{ background: 'rgba(255,198,58,0.2)', color: '#b8860b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {lt?.type_name || `Type #${id}`}
-                            <button
-                              type="button"
-                              onClick={() => removeEditListingType(id)}
-                              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, fontSize: '1rem' }}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                    {editForm.listing_type_ids.length === 0 && <small style={{ color: '#dc3545' }}>⚠ Please select at least one listing type</small>}
-                  </div>
-                  <div className="mb-3">
                     <label style={labelStyle}>Seller</label>
                     <div className="form-control" style={{ ...inputStyle, background: '#f0f2f5', color: '#4b566b', cursor: 'not-allowed' }}>
                       {showEdit?.seller_name || <span className="text-muted fst-italic">No seller linked</span>}
@@ -857,7 +641,7 @@ export default function BrandsClient() {
                 </div>
                 <div className="modal-footer border-0 p-4 pt-0" style={{ background: '#f8f9fa' }}>
                   <button type="button" className="btn btn-light px-4" onClick={() => setShowEdit(null)}>Cancel</button>
-                  <button type="submit" className="btn sa-filter-btn px-4 fw-bold" style={btnGold} disabled={submitting || editForm.listing_type_ids.length === 0}>
+                  <button type="submit" className="btn sa-filter-btn px-4 fw-bold" style={btnGold} disabled={submitting || !editForm.brand_name}>
                     {submitting ? 'Saving...' : 'Save'}
                   </button>
                 </div>

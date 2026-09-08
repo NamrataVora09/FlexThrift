@@ -975,13 +975,11 @@ export default function SubscriptionsView({ role, userType }: Props) {
                           placeholder={isReferralCovered ? "Coupon disabled (Referral covers price)" : "Enter code"}
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && !isCouponDisabled && applyCoupon()}
-                          disabled={isCouponDisabled}
+                          onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
                         />
                         <button
                           className="btn btn-outline-secondary coupon-btn fw-bold"
                           onClick={applyCoupon}
-                          disabled={isCouponDisabled}
                         >
                           {couponLoading ? <span className="spinner-border spinner-border-sm" /> : 'Apply'}
                         </button>
@@ -1013,7 +1011,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                       {paying ? (
                         <><span className="spinner-border spinner-border-sm" /> Redirecting to PhonePe…</>
                       ) : (
-                        <><i className="bi bi-wallet2 fs-5" /> Pay ₹{displayTotal.toFixed(2)}</>
+                        <><i className="bi bi-wallet2 fs-5" /> Pay ₹{Math.max(1, displayTotal).toFixed(2)}</>
                       )}
                     </button>
 

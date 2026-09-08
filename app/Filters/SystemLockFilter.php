@@ -10,9 +10,17 @@ class SystemLockFilter implements FilterInterface
 {
     public function before(RequestInterface $request, $arguments = null)
     {
-        $db = \Config\Database::connect();
-        $lockSetting = $db->table('system_settings')->where('setting_key', 'global_system_lock')->get()->getRowArray();
-        $isLocked = ($lockSetting && ($lockSetting['setting_value'] == '1' || $lockSetting['setting_value'] == 'true'));
+        // PERFORMANCE: Cache the lock value as a static property so the DB is
+        // only queried once per PHP process (per worker on PHP-FPM / Apache).
+        // getSystemSetting() itself also uses a bulk in-memory cache within a request.
+        static $isLockedCache = null;
+
+        if ($isLockedCache === null) {
+            $lockValue     = getSystemSetting('global_system_lock', '0');
+            $isLockedCache = ($lockValue === '1' || $lockValue === 'true' || $lockValue === true);
+        }
+
+        $isLocked = $isLockedCache;
 
         if (!$isLocked) {
             return;
@@ -61,7 +69,7 @@ class SystemLockFilter implements FilterInterface
             ->setStatusCode(403)
             ->setJSON([
                 'success' => false,
-                'message' => 'System is currently locked by administration. Only Superadmin access is permitted.',
+                'message' => getAppMessage('system_locked_error', 'System is currently locked by administration. Only Superadmin access is permitted.'),
                 'system_locked' => true
             ]);
     }

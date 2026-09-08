@@ -10,13 +10,15 @@ import { useAuth } from '@/lib/auth-context';
 
 interface AdminData {
   user: { name: string };
-  stats: { 
-    total_users: number; 
+  stats: {
+    total_users: number;
     total_sellers: number;
     total_buyers: number;
-    total_products: number; 
-    pending_products: number; 
+    total_products: number;
+    pending_products: number;
     total_offers: number;
+    pending_offers: number;
+    missed_offers: number;
     successful_deals: number;
     active_subscriptions: number;
   };
@@ -55,16 +57,23 @@ export default function AdminDashboardClient() {
         </div>
 
         <h5 className="fw-bold mb-3" style={{ opacity: 0.6 }}>Operations & Sales</h5>
-        <div className="row mb-5">
+        <div className="row mb-3">
           <div className="col-md-3 mt-2"><StatsCard title="Total Products" value={data?.stats.total_products ?? 0} icon="bi bi-box-seam" color="#6366f1" /></div>
           <div className="col-md-3 mt-2"><StatsCard title="Pending Approvals" value={data?.stats.pending_products ?? 0} icon="bi bi-hourglass-split" color="#f59e0b" /></div>
           <div className="col-md-3 mt-2"><StatsCard title="Total Offers" value={data?.stats.total_offers ?? 0} icon="bi bi-chat-left-dots" color="#3b82f6" /></div>
           <div className="col-md-3 mt-2"><StatsCard title="Completed Deals" value={data?.stats.successful_deals ?? 0} icon="bi bi-check-circle-fill" color="#10b981" /></div>
         </div>
 
+        <h5 className="fw-bold mb-3" style={{ opacity: 0.6 }}>My Offer Activity</h5>
+        <div className="row mb-5">
+          <div className="col-md-4 mt-2"><StatsCard title="Pending Offers" value={data?.stats.pending_offers ?? 0} icon="bi bi-clock" color="#f59e0b" /></div>
+          <div className="col-md-4 mt-2"><StatsCard title="Missed Offers" value={data?.stats.missed_offers ?? 0} icon="bi bi-calendar-x" color="#ef4444" /></div>
+          <div className="col-md-4 mt-2"><StatsCard title="Successful Deals" value={data?.stats.successful_deals ?? 0} icon="bi bi-check-circle-fill" color="#10b981" /></div>
+        </div>
+
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h5 className="fw-bold mb-0" style={{ opacity: 0.6 }}>Recent Offers Activity</h5>
-          <a href="/admin/all-platform-offers" className="btn btn-sm btn-link text-decoration-none fw-bold" style={{ color: '#ffc63a' }}>
+          <a href="/admin/offers" className="btn btn-sm btn-link text-decoration-none fw-bold" style={{ color: '#ffc63a' }}>
             View All Offers →
           </a>
         </div>
@@ -121,6 +130,7 @@ export default function AdminDashboardClient() {
         .status-badge-accepted { background: #dcfce7; color: #15803d; }
         .status-badge-pending { background: #fef3c7; color: #92400e; }
         .status-badge-rejected { background: #fee2e2; color: #b91c1c; }
+        .status-badge-missed { background: #fee2e2; color: #b91c1c; }
         .status-badge-completed { background: #dbeafe; color: #1d4ed8; }
       `}</style>
     </DashboardLayout>

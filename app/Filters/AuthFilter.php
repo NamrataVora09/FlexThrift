@@ -36,10 +36,10 @@ class AuthFilter implements FilterInterface
 
             if ($isAjax) {
                 return service('response')
-                    ->setJSON(['success' => false, 'logged_in' => false, 'message' => 'Session expired. Please login again.'])
+                    ->setJSON(['success' => false, 'logged_in' => false, 'message' => getAppMessage('session_expired', 'Session expired. Please login again.')])
                     ->setStatusCode(401);
             }
-            return redirect()->to('/')->with('error', 'Please login first');
+            return redirect()->to('/')->with('error', getAppMessage('please_login_first', 'Please login first'));
         }
     }
 

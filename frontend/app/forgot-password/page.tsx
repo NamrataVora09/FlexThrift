@@ -4,11 +4,13 @@ import { useState, useEffect, FormEvent, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { useToast } from '@/lib/toast';
 import SeoManager from '@/components/shared/SeoManager';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const { forgotPassword, resetPassword, isAuthenticated, isLoading, user } = useAuth();
+  const { resolveMsg } = useToast();
 
   // Redirect to browse/portal if already authenticated
   useEffect(() => {
@@ -92,12 +94,12 @@ export default function ForgotPasswordPage() {
     setSuccessMessage('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError(resolveMsg('passwords_mismatch', 'Passwords do not match.'));
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+      setError(resolveMsg('password_min_length', 'Password must be at least 6 characters long.'));
       return;
     }
 
@@ -108,7 +110,7 @@ export default function ForgotPasswordPage() {
     if (result.success) {
       setStep('success');
     } else {
-      setError(result.message || 'Failed to reset password. Please verify the OTP.');
+      setError(result.message || resolveMsg('password_reset_failed', 'Failed to reset password. Please verify the OTP.'));
     }
   };
 

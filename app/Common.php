@@ -17,7 +17,7 @@
 if (!function_exists('getAppMessage')) {
     /**
      * Retrieve a dynamic message from the database.
-     * 
+     *
      * @param string $key The message key
      * @param string|null $default Default message if key not found
      * @param array $params Key => Value pairs for placeholder substitution (e.g. ['min' => 3])
@@ -27,49 +27,64 @@ if (!function_exists('getAppMessage')) {
     {
         try {
             $db = \Config\Database::connect();
-            $message = $db->table('app_messages')
-                ->where('message_key', $key)
-                ->get()
-                ->getRowArray();
-
-            $output = $message ? $message['message_value'] : ($default ?? $key);
-
-            if (!empty($params)) {
-                $pairs = [];
-                foreach ($params as $k => $v) {
-                    $pairs["{{$k}}"] = $v;
-                    $pairs["{$k}"] = $v;
-                }
-                $output = strtr($output, $pairs);
+            $row = null;
+            if ($db->fieldExists('message_key', 'app_messages')) {
+                $row = $db->table('app_messages')->where('message_key', $key)->get()->getRowArray();
+                $message = $row ? ($row['message_value'] ?? $row['message'] ?? null) : null;
+            } else {
+                $row = $db->table('app_messages')->where('key', $key)->get()->getRowArray();
+                $message = $row ? ($row['message'] ?? $row['message_value'] ?? null) : null;
             }
 
-            return $output;
+            $message = $message ?? ($default ?? $key);
+
+            if (!empty($params)) {
+                foreach ($params as $k => $v) {
+                    // Support both {param} and {{param}} placeholder formats
+                    $message = str_replace('{' . $k . '}', (string)$v, $message);
+                    $message = str_replace('{{' . $k . '}}', (string)$v, $message);
+                }
+            }
+            return $message;
         } catch (\Exception $e) {
             return $default ?? $key;
         }
     }
 }
+
 if (!function_exists('getSystemSetting')) {
     /**
      * Retrieve a system setting from the database.
-     * 
+     *
+     * PERFORMANCE: Bulk-preloads all system_settings rows on first call,
+     * then serves from a static in-memory array for the rest of the request.
+     *
      * @param string $key The setting key
      * @param mixed $default Default value if key not found
      * @return mixed
      */
     function getSystemSetting(string $key, $default = null)
     {
-        try {
-            $db = \Config\Database::connect();
-            $setting = $db->table('system_settings')
-                ->where('setting_key', $key)
-                ->get()
-                ->getRowArray();
+        static $loaded = false;
+        static $cache  = [];
 
-            return $setting ? $setting['setting_value'] : $default;
-        } catch (\Exception $e) {
-            return $default;
+        if (!$loaded) {
+            $loaded = true;
+            try {
+                $db   = \Config\Database::connect();
+                $rows = $db->table('system_settings')
+                    ->select('setting_key, setting_value')
+                    ->get()
+                    ->getResultArray();
+                foreach ($rows as $row) {
+                    $cache[$row['setting_key']] = $row['setting_value'];
+                }
+            } catch (\Exception $e) {
+                // DB unavailable — fall back to defaults
+            }
         }
+
+        return array_key_exists($key, $cache) ? $cache[$key] : $default;
     }
 }
 

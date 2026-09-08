@@ -1,0 +1,186 @@
+AdminApi.php
+
+1) only_superadmin_can_access - You are not authorized to perform this action.
+
+2) admin_block_user_managenent - Your access to user management is restricted.
+
+3) report_not_found - Report not found
+4) user_report_not_found - Reported user not found
+5) report_handled_successfully - Report handled successfully
+6) not_found_product - Product not found
+7) edit_request_not_found - Edit request not found
+8) edit_request_invalid - Invalid edit request
+9) server_error - Server error
+10)failed_to_update_product
+11) edit_request_rejected
+12) offer_missed_message
+user_not_found
+user_blocked
+user_unblocked
+plan_not_found
+user_account_blocked
+user_seller_role_blocked
+user_buyer_role_blocked
+coupon_code_required
+invalid_coupon_code
+coupon_usage_limit_reached
+coupon_min_purchase
+coupon_cannot_be_applied_when_referral_discount_covers_the_full_plan_price
+coupon_applied_successfully
+Payment_initiation_failed
+Transaction_not_found
+plan_aldready_active
+payment_successfully_verified
+payment_failed
+payment_processing
+failed_to_activate_subscription
+plan_activated_successfully
+
+auth Api
+
+email_passwod_required
+invalid_email_password
+user_not_verified
+login_success
+email_required
+no_account_found
+otp_sent
+invalid_otp
+otp_verified
+password_reset_email_failed
+email_otp_required
+otp_required
+password_length
+password_reset_success
+password_reset_failure
+validation_failed_for_register
+email_already_exists
+mobile_already_exists
+user_created_successfully
+unauthorized_for_switch_role
+invalid_role_for_switch_role
+user_not_allowed_to_switch_role
+role_switched_successfully
+unauthorized_for_referral
+unauthorized_for_noraml_user
+latitude_longitude_required
+unable_to_resolve_state
+zone_restriction_disabled
+location_detection_failed
+access_granted_in_your_zone
+not_available_in_your_area
+
+Shared Api 
+admin_block_product_upload_approval
+product_approved
+product_rejected
+message_value_required
+error_message_not_found
+message_updated
+decimal_value_not_alowed
+value_greater_than_zero
+settings_saved
+faq_created
+faq_updated
+faq_deleted
+plan_created
+plan_activated
+plan_deactivated
+mark_as_most_selected
+remove_as_most_selected
+plan_marked_as_premium
+plan_premium_removed
+plan_updated
+plan_deleted
+brand_created
+coupon_code_already_exists
+coupon_not_found
+coupon_created
+coupon_updated
+coupon_deleted
+coupon_toggled
+page_not_found
+page_saved
+subscription_activated
+filed_required
+invalid_email
+valid_mobile
+valid_alternate_mobile
+valid_pindcode
+already_extis_alternate_mobile
+no_page_key_or_route_provided
+seo_settings_not_found
+
+Buyer Api
+another_buyer_offer_accepted_for_sell_product
+another_buyer_offer_accepted_for_rent_product
+cannot_make_offer_on_own_product
+rental_dates_required
+rental_min_days_error
+rental_overlapping
+offer_submitted
+received_new_offer_amount_notify
+offer_dates_update_error
+offer_not_found
+rental_start_end_date_required
+rental_conflict
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ZonesApi.php
+zone_name_required - Zone name is required.
+zone_saved_successfully - Zone saved successfully.
+zone_id_required - Zone ID is required.
+zone_not_found - Zone not found.
+zone_status_toggled - Zone status toggled.
+zone_deleted_successfully

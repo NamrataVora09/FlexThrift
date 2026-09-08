@@ -69,7 +69,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 const TABS = ['all', 'pending', 'approved', 'rejected', 'inactive'];
 
 export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
-  const { toastSuccess, toastError } = useToast();
+  const { toastSuccess, toastError, resolveMsg } = useToast();
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState('all');
@@ -87,16 +87,16 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
     });
   };
 
-  useEffect(() => { load(); }, [apiPath]);
+  useEffect(() => { load(); }, []);
 
   const getDeletePath = (id: number) => {
-    if (role === 'super_admin') return `/superadmin/delete-product/${id}`;
-    if (role === 'admin') return `/superadmin/delete-product/${id}`;
+    if (role === 'admin') return `/admin/delete-product/${id}`;
+    if (role === 'superadmin') return `/superadmin/delete-product/${id}`;
     return `/seller/delete-product/${id}`;
   };
 
   const handleDelete = (id: number) => {
-    confirmToast('Are you sure you want to delete this product? This action cannot be undone.', async () => {
+    confirmToast(resolveMsg('product_delete_confirm', 'Are you sure you want to delete this product? This action cannot be undone.'), async () => {
       setActionLoading(true);
       const res = await api.post(getDeletePath(id));
       setActionLoading(false);

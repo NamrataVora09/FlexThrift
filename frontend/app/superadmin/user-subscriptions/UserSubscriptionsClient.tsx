@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { api } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/lib/toast';
 
 import { confirmToast } from '@/lib/toast-utils';
 
@@ -124,6 +124,7 @@ export default function UserSubscriptionsClient() {
     return groups;
   }, [filteredPlans]);
 
+  const { toastSuccess, toastError } = useToast();
   const handleAssign = async () => {
     if (!selectedUser || !selectedPlanId) return;
     const plan = plans.find(p => p.id === selectedPlanId);
@@ -132,11 +133,11 @@ export default function UserSubscriptionsClient() {
       const res = await api.post('/superadmin/assign-subscription', { user_id: selectedUser.id, plan_id: selectedPlanId });
       setAssigning(false);
       if (res.success) {
-        toast.success('Subscription assigned successfully!');
+        toastSuccess('subscription_assigned', 'Subscription assigned successfully!');
         setShowAssign(false);
         load();
       } else {
-        toast.error(res.message || 'Failed');
+        toastError('subscription_assign_failed', res.message || 'Failed to assign subscription');
       }
     }, 'Assign');
   };

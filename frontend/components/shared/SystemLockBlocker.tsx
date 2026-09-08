@@ -3,34 +3,31 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { useSystem } from '@/lib/system-context';
 
 export default function SystemLockBlocker({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { landingData } = useSystem();
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkLock = async () => {
-      try {
-        const res = await api.get<any>('/landing-content');
-        if (res.success && res.data && (res.data.global_system_lock === '1' || res.data.global_system_lock === 'true')) {
-          // If locked, check if user is NOT superadmin
-          if (!['super_admin', 'superadmin'].includes(user?.role || '')) {
-            setIsLocked(true);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to check system lock:", err);
-      } finally {
-        setLoading(false);
+    if (!landingData) return;
+    if (landingData.global_system_lock === '1' || landingData.global_system_lock === 'true') {
+      // If user is superadmin, always allow access even when locked
+      if (['super_admin', 'superadmin'].includes(user?.role || '')) {
+        setIsLocked(false);
+      } else {
+        setIsLocked(true);
       }
-    };
-
-    checkLock();
-  }, [user]);
+    } else {
+      setIsLocked(false);
+    }
+    setLoading(false);
+  }, [landingData, user?.role]);
 
   if (loading) {
-    return null;
+    return <>{children}</>;
   }
 
   if (isLocked) {
