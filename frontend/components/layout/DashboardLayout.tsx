@@ -7,6 +7,7 @@ import DashboardTopbar from './DashboardTopbar';
 import DashboardSidebar from './DashboardSidebar';
 import { getDashboardPath } from '@/lib/navigation';
 import { showToast } from '@/lib/toast';
+import { api } from '@/lib/api';
 
 interface Props {
   children: ReactNode;
