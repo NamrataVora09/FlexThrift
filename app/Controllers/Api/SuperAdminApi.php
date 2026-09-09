@@ -20,7 +20,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
-        if (empty($data['charge_name'])) return $this->respond(['success' => false, 'message' => getAppMessage('charge_name_is_required', 'Charge name is required.')], 400);
+        if (empty($data['charge_name']))
+            return $this->respond(['success' => false, 'message' => getAppMessage('charge_name_is_required', 'Charge name is required.')], 400);
         $db->table('platform_charges')->insert([
             'charge_name' => $data['charge_name'],
             'charge_type' => $data['charge_type'] ?? 'percentage',
@@ -36,10 +37,14 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
         $update = [];
-        if (isset($data['charge_name'])) $update['charge_name'] = $data['charge_name'];
-        if (isset($data['charge_type'])) $update['charge_type'] = $data['charge_type'];
-        if (isset($data['charge_value'])) $update['charge_value'] = $data['charge_value'];
-        if (isset($data['is_active'])) $update['is_active'] = $data['is_active'];
+        if (isset($data['charge_name']))
+            $update['charge_name'] = $data['charge_name'];
+        if (isset($data['charge_type']))
+            $update['charge_type'] = $data['charge_type'];
+        if (isset($data['charge_value']))
+            $update['charge_value'] = $data['charge_value'];
+        if (isset($data['is_active']))
+            $update['is_active'] = $data['is_active'];
         $update['updated_at'] = date('Y-m-d H:i:s');
         $db->table('platform_charges')->where('id', $id)->update($update);
         return $this->respond(['success' => true, 'message' => getAppMessage('charge_updated', 'Charge updated.')]);
@@ -90,23 +95,23 @@ class SuperAdminApi extends AdminApi
         $id = $data['id'] ?? null;
         $filterType = $data['filter_type'] ?? '';
         $filterValue = (int) ($data['filter_value'] ?? 0);
-        
+
         // Validation: filter_value is mandatory when filter_type is selected
         if (!empty($filterType) && empty($filterValue)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('filter_value_is_required_when_filter_type_is_selected', 'Filter value is required when filter type is selected')], 400);
         }
-        
+
         $filterLabel = $this->resolveFilterLabel($filterType, $filterValue);
 
         $row = [
-            'filter_type'            => $filterType,
-            'filter_value'           => $filterValue,
-            'filter_label'           => $filterLabel,
-            'deduction_threshold'    => (float) ($data['deduction_threshold'] ?? 0),
+            'filter_type' => $filterType,
+            'filter_value' => $filterValue,
+            'filter_label' => $filterLabel,
+            'deduction_threshold' => (float) ($data['deduction_threshold'] ?? 0),
             'depreciation_range_min' => (int) ($data['depreciation_range_min'] ?? 0),
             'depreciation_range_max' => (int) ($data['depreciation_range_max'] ?? 0),
-            'depreciation_amount'    => (float) ($data['depreciation_amount'] ?? 0),
-            'is_active'              => 1,
+            'depreciation_amount' => (float) ($data['depreciation_amount'] ?? 0),
+            'is_active' => 1,
         ];
 
         if ($id) {
@@ -119,9 +124,9 @@ class SuperAdminApi extends AdminApi
 
             // Sync deduction_threshold across all rows in the same filter group
             $db->table('pricing_rules')
-               ->where('filter_type', $filterType)
-               ->where('filter_value', $filterValue)
-               ->update(['deduction_threshold' => $row['deduction_threshold']]);
+                ->where('filter_type', $filterType)
+                ->where('filter_value', $filterValue)
+                ->update(['deduction_threshold' => $row['deduction_threshold']]);
 
             return $this->respond(['success' => true, 'message' => getAppMessage('pricing_rule_updated', 'Pricing rule updated'), 'id' => $id]);
         } else {
@@ -133,9 +138,9 @@ class SuperAdminApi extends AdminApi
 
             // Sync deduction_threshold across all existing rows in the same filter group
             $db->table('pricing_rules')
-               ->where('filter_type', $filterType)
-               ->where('filter_value', $filterValue)
-               ->update(['deduction_threshold' => $row['deduction_threshold']]);
+                ->where('filter_type', $filterType)
+                ->where('filter_value', $filterValue)
+                ->update(['deduction_threshold' => $row['deduction_threshold']]);
 
             $db->table('pricing_rules')->insert($row);
             $row['id'] = $db->insertID();
@@ -159,14 +164,14 @@ class SuperAdminApi extends AdminApi
 
         // Overlap if: (new_min <= existing_max OR existing_max == 0) AND (existing_min <= new_max OR new_max == 0)
         $builder->groupStart();
-            $builder->groupStart()
-                ->where('depreciation_range_max >=', $minVal)
-                ->orWhere('depreciation_range_max', 0)
+        $builder->groupStart()
+            ->where('depreciation_range_max >=', $minVal)
+            ->orWhere('depreciation_range_max', 0)
             ->groupEnd();
 
-            if ($maxVal > 0) {
-                $builder->where('depreciation_range_min <=', $maxVal);
-            }
+        if ($maxVal > 0) {
+            $builder->where('depreciation_range_min <=', $maxVal);
+        }
         $builder->groupEnd();
 
         return $builder->get()->getRowArray();
@@ -184,7 +189,8 @@ class SuperAdminApi extends AdminApi
     {
         $model = new \App\Models\PricingRuleModel();
         $rule = $model->find((int) $id);
-        if (!$rule) return $this->respond(['success' => false, 'message' => getAppMessage('rule_not_found', 'Rule not found')], 404);
+        if (!$rule)
+            return $this->respond(['success' => false, 'message' => getAppMessage('rule_not_found', 'Rule not found')], 404);
         $newStatus = $rule['is_active'] ? 0 : 1;
         $model->update((int) $id, ['is_active' => $newStatus]);
         return $this->respond(['success' => true, 'message' => getAppMessage('rule_toggled', 'Rule toggled'), 'is_active' => $newStatus]);
@@ -197,25 +203,25 @@ class SuperAdminApi extends AdminApi
         $id = $data['id'] ?? null;
         $filterType = $data['filter_type'] ?? '';
         $filterValue = (int) ($data['filter_value'] ?? 0);
-        
+
         // Validation: filter_value is mandatory when filter_type is selected
         if (!empty($filterType) && empty($filterValue)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('filter_value_is_required_when_filter_type_is_selected', 'Filter value is required when filter type is selected')], 400);
         }
-        
+
         $filterLabel = $this->resolveFilterLabel($filterType, $filterValue);
 
         $row = [
-            'filter_type'                  => $filterType,
-            'filter_value'                 => $filterValue,
-            'filter_label'                 => $filterLabel,
-            'deposit_deduction_threshold'  => (float) ($data['deposit_deduction_threshold'] ?? 0),
-            'depreciation_range_min'       => (int) ($data['depreciation_range_min'] ?? 0),
-            'depreciation_range_max'       => (int) ($data['depreciation_range_max'] ?? 0),
-            'depreciation_amount'          => (float) ($data['depreciation_amount'] ?? 0),
-            'deposit_percentage'           => (float) ($data['deposit_percentage'] ?? 0),
-            'max_cost_cap_per_day'         => (float) ($data['max_cost_cap_per_day'] ?? 0),
-            'is_active'                    => 1,
+            'filter_type' => $filterType,
+            'filter_value' => $filterValue,
+            'filter_label' => $filterLabel,
+            'deposit_deduction_threshold' => (float) ($data['deposit_deduction_threshold'] ?? 0),
+            'depreciation_range_min' => (int) ($data['depreciation_range_min'] ?? 0),
+            'depreciation_range_max' => (int) ($data['depreciation_range_max'] ?? 0),
+            'depreciation_amount' => (float) ($data['depreciation_amount'] ?? 0),
+            'deposit_percentage' => (float) ($data['deposit_percentage'] ?? 0),
+            'max_cost_cap_per_day' => (float) ($data['max_cost_cap_per_day'] ?? 0),
+            'is_active' => 1,
         ];
 
         if ($id) {
@@ -228,9 +234,9 @@ class SuperAdminApi extends AdminApi
 
             // Sync threshold across group
             $db->table('rental_pricing_rules')
-               ->where('filter_type', $filterType)
-               ->where('filter_value', $filterValue)
-               ->update(['deposit_deduction_threshold' => $row['deposit_deduction_threshold']]);
+                ->where('filter_type', $filterType)
+                ->where('filter_value', $filterValue)
+                ->update(['deposit_deduction_threshold' => $row['deposit_deduction_threshold']]);
 
             return $this->respond(['success' => true, 'message' => getAppMessage('rental_rule_updated', 'Rental rule updated'), 'id' => $id]);
         } else {
@@ -244,9 +250,9 @@ class SuperAdminApi extends AdminApi
 
             // Sync threshold across group
             $db->table('rental_pricing_rules')
-               ->where('filter_type', $filterType)
-               ->where('filter_value', $filterValue)
-               ->update(['deposit_deduction_threshold' => $row['deposit_deduction_threshold']]);
+                ->where('filter_type', $filterType)
+                ->where('filter_value', $filterValue)
+                ->update(['deposit_deduction_threshold' => $row['deposit_deduction_threshold']]);
 
             return $this->respond(['success' => true, 'message' => getAppMessage('rental_rule_created', 'Rental rule created'), 'id' => $row['id'], 'data' => $row]);
         }
@@ -263,7 +269,8 @@ class SuperAdminApi extends AdminApi
     {
         $model = new \App\Models\RentalPricingRuleModel();
         $rule = $model->find((int) $id);
-        if (!$rule) return $this->respond(['success' => false, 'message' => getAppMessage('rule_not_found', 'Rule not found')], 404);
+        if (!$rule)
+            return $this->respond(['success' => false, 'message' => getAppMessage('rule_not_found', 'Rule not found')], 404);
         $newStatus = $rule['is_active'] ? 0 : 1;
         $model->update((int) $id, ['is_active' => $newStatus]);
         return $this->respond(['success' => true, 'message' => getAppMessage('rental_rule_toggled', 'Rental rule toggled'), 'is_active' => $newStatus]);
@@ -278,7 +285,7 @@ class SuperAdminApi extends AdminApi
 
         $db->query("DELETE FROM `{$table}`");
 
-        return $this->respond(['success' => true, 'message' => getAppMessage('all', 'All ') . $type . ' rules deleted']);
+        return $this->respond(['success' => true, 'message' => getAppMessage('all', 'All rules ', ['rules ' . ($type === 'rental' ? 'deleted' : 'deleted')])]);
     }
 
     public function bulkTogglePricingRules()
@@ -314,12 +321,13 @@ class SuperAdminApi extends AdminApi
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
         $text = trim($data['template_text'] ?? '');
         $type = $data['type'] ?? 'Products';
-        if (empty($text)) return $this->respond(['success' => false, 'message' => getAppMessage('template_text_is_required', 'Template text is required')], 400);
+        if (empty($text))
+            return $this->respond(['success' => false, 'message' => getAppMessage('template_text_is_required', 'Template text is required')], 400);
         $db->table('rejection_templates')->insert([
             'template_text' => $text,
-            'type'          => $type,
-            'created_at'    => date('Y-m-d H:i:s'),
-            'updated_at'    => date('Y-m-d H:i:s'),
+            'type' => $type,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
         return $this->respond(['success' => true, 'message' => getAppMessage('template_added', 'Template added'), 'id' => $db->insertID()]);
     }
@@ -330,11 +338,12 @@ class SuperAdminApi extends AdminApi
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
         $text = trim($data['template_text'] ?? '');
         $type = $data['type'] ?? 'Products';
-        if (empty($text)) return $this->respond(['success' => false, 'message' => getAppMessage('template_text_is_required', 'Template text is required')], 400);
-        $db->table('rejection_templates')->where('id', (int)$id)->update([
+        if (empty($text))
+            return $this->respond(['success' => false, 'message' => getAppMessage('template_text_is_required', 'Template text is required')], 400);
+        $db->table('rejection_templates')->where('id', (int) $id)->update([
             'template_text' => $text,
-            'type'          => $type,
-            'updated_at'    => date('Y-m-d H:i:s'),
+            'type' => $type,
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
         return $this->respond(['success' => true, 'message' => getAppMessage('template_updated', 'Template updated')]);
     }
@@ -342,7 +351,7 @@ class SuperAdminApi extends AdminApi
     public function deleteRejectionTemplate($id)
     {
         $db = \Config\Database::connect();
-        $db->table('rejection_templates')->where('id', (int)$id)->delete();
+        $db->table('rejection_templates')->where('id', (int) $id)->delete();
         return $this->respond(['success' => true, 'message' => getAppMessage('template_deleted', 'Template deleted')]);
     }
 
@@ -413,7 +422,7 @@ class SuperAdminApi extends AdminApi
     public function personalOffers()
     {
         $jwtUser = $this->request->jwt_user;
-        $db      = \Config\Database::connect();
+        $db = \Config\Database::connect();
 
         // ── Received (superadmin is seller) – matches SellerApi::offers() ──
         $received = $db->table('offers o')
@@ -452,8 +461,12 @@ class SuperAdminApi extends AdminApi
 
         // Attach offer history
         $historyModel = new \App\Models\OfferHistoryModel();
-        foreach ($received as &$o) { $o['history'] = $historyModel->getHistoryByOffer($o['id']); }
-        foreach ($sent as &$o)     { $o['history'] = $historyModel->getHistoryByOffer($o['id']); }
+        foreach ($received as &$o) {
+            $o['history'] = $historyModel->getHistoryByOffer($o['id']);
+        }
+        foreach ($sent as &$o) {
+            $o['history'] = $historyModel->getHistoryByOffer($o['id']);
+        }
         unset($o);
 
         // Booked dates for rental conflict detection (both sent and received offers)
@@ -495,13 +508,13 @@ class SuperAdminApi extends AdminApi
         usort($all, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
         return $this->respond([
-            'success'              => true,
-            'data'                 => $all,
-            'bookedDates'          => $bookedDates,
-            'acceptanceLimitDays'  => $limitDays,
-            'ratingPeriod'         => (float) getSystemSetting('seller_rating_period_days', 7),
+            'success' => true,
+            'data' => $all,
+            'bookedDates' => $bookedDates,
+            'acceptanceLimitDays' => $limitDays,
+            'ratingPeriod' => (float) getSystemSetting('seller_rating_period_days', 7),
             'rejectionWindowHours' => (float) getSystemSetting('seller_rejection_window_hours', 24),
-            'minRentalDays'        => (float) getSystemSetting('min_rental_days', 3),
+            'minRentalDays' => (float) getSystemSetting('min_rental_days', 3),
         ]);
     }
 
@@ -530,11 +543,11 @@ class SuperAdminApi extends AdminApi
             'accepted_offers' => $db->table('offers')->where('status', 'accepted')->countAllResults(),
             'missed_offers' => $db->table('offers')
                 ->groupStart()
-                    ->where('status', 'missed')
-                    ->orGroupStart()
-                        ->where('status', 'pending')
-                        ->where('created_at <', $cutoff)
-                    ->groupEnd()
+                ->where('status', 'missed')
+                ->orGroupStart()
+                ->where('status', 'pending')
+                ->where('created_at <', $cutoff)
+                ->groupEnd()
                 ->groupEnd()
                 ->countAllResults(),
         ];
@@ -677,7 +690,7 @@ class SuperAdminApi extends AdminApi
     public function createAdmin()
     {
         $db = \Config\Database::connect();
-        
+
         // Support both JSON and Post data
         $json = $this->request->getJSON(true);
         $name = $json['name'] ?? $this->request->getPost('name');
@@ -726,7 +739,7 @@ class SuperAdminApi extends AdminApi
     public function updateAdmin($id)
     {
         $db = \Config\Database::connect();
-        
+
         // Support both JSON and Post data
         $json = $this->request->getJSON(true);
         $name = $json['name'] ?? $this->request->getPost('name');
@@ -789,7 +802,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $admin = $db->table('users')->where('id', $id)->where('role', 'admin')->get()->getRowArray();
-        if (!$admin) return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
+        if (!$admin)
+            return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
 
         $newBlocked = $admin['is_blocked'] ? 0 : 1;
         $db->table('users')->where('id', $id)->update(['is_blocked' => $newBlocked]);
@@ -801,7 +815,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $admin = $db->table('users')->where('id', $id)->where('role', 'admin')->get()->getRowArray();
-        if (!$admin) return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
+        if (!$admin)
+            return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
 
         $db->table('users')->where('id', $id)->delete();
         return $this->respond(['success' => true, 'message' => getAppMessage('admin_deleted_successfully', 'Admin deleted successfully.')]);
@@ -810,7 +825,7 @@ class SuperAdminApi extends AdminApi
     public function toggleAdminRights($id, $type)
     {
         $db = \Config\Database::connect();
-        
+
         // Map type to column name
         $columnMap = [
             'approval' => 'blocked_from_approvals',
@@ -818,12 +833,14 @@ class SuperAdminApi extends AdminApi
             'seller' => 'blocked_seller',
             'buyer' => 'blocked_buyer',
         ];
-        
+
         $col = $columnMap[$type] ?? null;
-        if (!$col) return $this->respond(['success' => false, 'message' => getAppMessage('invalid_type', 'Invalid type.')], 400);
-        
+        if (!$col)
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_type', 'Invalid type.')], 400);
+
         $admin = $db->table('users')->where('id', $id)->get()->getRowArray();
-        if (!$admin) return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
+        if (!$admin)
+            return $this->respond(['success' => false, 'message' => getAppMessage('admin_not_found', 'Admin not found.')], 404);
 
         $current = $admin[$col] ?? 0;
         $newValue = $current ? 0 : 1;
@@ -854,20 +871,21 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         $gender = $this->request->getPost('gender_config') ?? 'optional';
-        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
-        
+        if (!$name)
+            return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
+
         // Check for duplicate
         $exists = $db->table('listing_types')->where('type_name', $name)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('listing_type_with_this_name_already_exists', 'Listing type with this name already exists.')], 400);
         }
-        
+
         $data = [
             'type_name' => $name,
             'field_config' => json_encode(['gender' => $gender]),
             'created_at' => date('Y-m-d H:i:s'),
         ];
-        
+
         // Add gender_config column if it exists
         if ($db->fieldExists('gender_config', 'listing_types')) {
             $data['gender_config'] = $gender;
@@ -876,7 +894,8 @@ class SuperAdminApi extends AdminApi
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
             $path = FCPATH . 'uploads/listing-types/';
-            if (!is_dir($path)) mkdir($path, 0777, true);
+            if (!is_dir($path))
+                mkdir($path, 0777, true);
             $file->move($path, $newName);
             $data['image'] = 'uploads/listing-types/' . $newName;
         }
@@ -888,14 +907,15 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
-        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
-        
+        if (!$name)
+            return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
+
         // Check for duplicate
         $exists = $db->table('genders')->where('name', $name)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('gender_with_this_name_already_exists', 'Gender with this name already exists.')], 400);
         }
-        
+
         $db->table('genders')->insert(['name' => $name, 'created_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => getAppMessage('gender_added', 'Gender added.')]);
     }
@@ -905,7 +925,8 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         $ltId = $this->request->getPost('listing_type_id');
-        if (!$name || !$ltId) return $this->respond(['success' => false, 'message' => getAppMessage('name_and_listing_type_are_required', 'Name and listing type are required.')], 400);
+        if (!$name || !$ltId)
+            return $this->respond(['success' => false, 'message' => getAppMessage('name_and_listing_type_are_required', 'Name and listing type are required.')], 400);
 
         // Validate that listing_type_id exists in database
         $existingLt = $db->table('listing_types')->where('id', $ltId)->select('id')->get()->getRowArray();
@@ -929,25 +950,26 @@ class SuperAdminApi extends AdminApi
         $name = $this->request->getPost('category_name');
         $ptIds = $this->request->getPost('product_type_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
-        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
-        
+        if (!$name)
+            return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
+
         // Validate product_type_ids is not empty
         if (empty($ptIds)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_product_type_is_required', 'At least one product type is required.')], 400);
         }
-        
+
         // Validate that product_type_ids exist in database
         $existingPtIds = $db->table('product_types')->whereIn('id', $ptIds)->select('id')->get()->getResultArray();
         $validPtIds = array_column($existingPtIds, 'id');
         $invalidPtIds = array_diff($ptIds, $validPtIds);
-        
+
         if (!empty($invalidPtIds)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('invalid_product_type_ids', 'Invalid product type IDs: ') . implode(', ', $invalidPtIds) . '. These product types do not exist in the database.'], 400);
         }
-        
+
         // Check if gender is required based on listing type's gender_config
         $isGenderRequired = $this->isGenderRequiredForCategories($ptIds);
-        
+
         // If gender is optional or hidden, allow creating category without gender
         // Only enforce gender requirement if it's mandatory
         if (!$isGenderRequired && empty($appliesTo)) {
@@ -956,13 +978,13 @@ class SuperAdminApi extends AdminApi
             // Gender is mandatory but not provided - allow at category level
             // The validation will be enforced at product upload level, not at category level
         }
-        
+
         // Check for duplicate
         $exists = $db->table('categories')->where('category_name', $name)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('category_with_this_name_already_exists', 'Category with this name already exists.')], 400);
         }
-        
+
         $db->table('categories')->insert([
             'category_name' => $name,
             'product_type_ids' => json_encode($ptIds),
@@ -978,21 +1000,23 @@ class SuperAdminApi extends AdminApi
         $name = $this->request->getPost('name');
         $catIds = $this->request->getPost('category_ids') ?? [];
         $appliesTo = $this->request->getPost('applies_to') ?? [];
-        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
-        if (empty($catIds)) return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_category_is_required', 'At least one Category is required.')], 400);
-        
+        if (!$name)
+            return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
+        if (empty($catIds))
+            return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_category_is_required', 'At least one Category is required.')], 400);
+
         // Validate that category_ids exist in database
         $existingCatIds = $db->table('categories')->whereIn('id', $catIds)->select('id')->get()->getResultArray();
         $validCatIds = array_column($existingCatIds, 'id');
         $invalidCatIds = array_diff($catIds, $validCatIds);
-        
+
         if (!empty($invalidCatIds)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('invalid_category_ids', 'Invalid category IDs: ') . implode(', ', $invalidCatIds) . '. These categories do not exist in the database.'], 400);
         }
-        
+
         // Check if gender is required based on parent categories' listing types' gender_config
         $isGenderRequired = $this->isGenderRequiredForCategories($catIds);
-        
+
         // If gender is optional or hidden, allow creating sub-category without gender
         // Only enforce gender requirement if it's mandatory
         if (!$isGenderRequired && empty($appliesTo)) {
@@ -1007,7 +1031,7 @@ class SuperAdminApi extends AdminApi
                     $categoriesWithGenders++;
                 }
             }
-            
+
             // Only make gender mandatory if categories are selected AND none of them have genders
             if (!empty($categories) && $categoriesWithGenders === 0) {
                 // All selected categories have no genders - sub-category must have genders
@@ -1015,13 +1039,13 @@ class SuperAdminApi extends AdminApi
             }
         }
         // If gender is not required (listing type has gender hidden), gender is optional
-        
+
         // Check for duplicate
         $exists = $db->table('sub_categories')->where('name', $name)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('subcategory_with_this_name_already_exists', 'Sub-category with this name already exists.')], 400);
         }
-        
+
         $db->table('sub_categories')->insert([
             'name' => $name,
             'category_ids' => json_encode($catIds),
@@ -1036,21 +1060,22 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         $hex = $this->request->getPost('hex_code');
-        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
-        
+        if (!$name)
+            return $this->respond(['success' => false, 'message' => getAppMessage('name_is_required', 'Name is required.')], 400);
+
         // Check for duplicate by name
         $nameExists = $db->table('colors')->where('LOWER(name)', strtolower($name))->countAllResults();
         if ($nameExists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('color_with_this_name_already_exists', 'Color with this name already exists.')], 400);
         }
-        
+
         // Check for duplicate by hex code
         $hexCode = $hex ?? '#000000';
         $hexExists = $db->table('colors')->where('hex_code', $hexCode)->countAllResults();
         if ($hexExists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('color_with_this_hex_code_already_exists_hex_codes_must_be_un', 'Color with this hex code already exists. Hex codes must be unique.')], 400);
         }
-        
+
         $db->table('colors')->insert(['name' => $name, 'hex_code' => $hexCode, 'created_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => getAppMessage('color_added', 'Color added.')]);
     }
@@ -1059,32 +1084,33 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('type_name') ?? $this->request->getPost('name');
-        
+
         // Validate name is not empty
         if (empty($name)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('listing_type_name_cannot_be_empty', 'Listing type name cannot be empty.')], 400);
         }
-        
+
         $gender = strtolower(trim($this->request->getPost('gender_config') ?? 'optional'));
-        
+
         // Validate gender_config value
         $allowedGenderConfigs = ['optional', 'hidden', 'mandatory'];
         if (!in_array($gender, $allowedGenderConfigs)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('invalid_gender_config_value_must_be_one_of', 'Invalid gender_config value. Must be one of: ') . implode(', ', $allowedGenderConfigs)], 400);
         }
-        
+
         $attrs = $this->request->getPost('attributes');
         $config = ['gender' => $gender];
-        if ($attrs) $config['attributes'] = json_decode($attrs, true) ?: [];
-        
+        if ($attrs)
+            $config['attributes'] = json_decode($attrs, true) ?: [];
+
         // Check for duplicate (excluding current record, case-insensitive)
         $exists = $db->table('listing_types')->where('LOWER(type_name)', strtolower($name))->where('id !=', $id)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('listing_type_with_this_name_already_exists', 'Listing type with this name already exists.')], 400);
         }
-        
+
         $data = ['type_name' => $name, 'field_config' => json_encode($config)];
-        
+
         // Update gender_config column if it exists
         if ($db->fieldExists('gender_config', 'listing_types')) {
             $data['gender_config'] = $gender;
@@ -1093,7 +1119,8 @@ class SuperAdminApi extends AdminApi
         if ($file && $file->isValid() && !$file->hasMoved()) {
             $newName = $file->getRandomName();
             $path = FCPATH . 'uploads/listing-types/';
-            if (!is_dir($path)) mkdir($path, 0777, true);
+            if (!is_dir($path))
+                mkdir($path, 0777, true);
             $file->move($path, $newName);
             $data['image'] = 'uploads/listing-types/' . $newName;
         }
@@ -1105,13 +1132,13 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
-        
+
         // Check for duplicate (excluding current record)
         $exists = $db->table('genders')->where('name', $name)->where('id !=', $id)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('gender_with_this_name_already_exists', 'Gender with this name already exists.')], 400);
         }
-        
+
         $db->table('genders')->where('id', $id)->update(['name' => $name]);
         return $this->respond(['success' => true, 'message' => getAppMessage('gender_updated', 'Gender updated.')]);
     }
@@ -1121,7 +1148,7 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         $ltId = $this->request->getPost('listing_type_id');
-        
+
         // Validate that listing_type_id exists in database
         if ($ltId) {
             $existingLt = $db->table('listing_types')->where('id', $ltId)->select('id')->get()->getRowArray();
@@ -1129,13 +1156,13 @@ class SuperAdminApi extends AdminApi
                 return $this->respond(['success' => false, 'message' => getAppMessage('invalid_listing_type_id', 'Invalid listing type ID: ') . $ltId . '. This listing type does not exist in the database.'], 400);
             }
         }
-        
+
         // Check for duplicate (same name within same listing type, excluding current record)
         $exists = $db->table('product_types')->where('name', $name)->where('listing_type_id', $ltId)->where('id !=', $id)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('product_type_with_this_name_already_exists_in_this_listing_t', 'Product type with this name already exists in this listing type.')], 400);
         }
-        
+
         $db->table('product_types')->where('id', $id)->update([
             'name' => $name,
             'listing_type_id' => $ltId,
@@ -1147,12 +1174,12 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('category_name');
-        
+
         // Validate name is not empty
         if (empty($name)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('category_name_cannot_be_empty', 'Category name cannot be empty.')], 400);
         }
-        
+
         $ptIds = $this->request->getPost('product_type_ids');
         // Handle JSON string format from frontend
         if (is_string($ptIds)) {
@@ -1163,7 +1190,7 @@ class SuperAdminApi extends AdminApi
         if (!is_array($ptIds)) {
             $ptIds = $ptIds ? [$ptIds] : [];
         }
-        
+
         $appliesTo = $this->request->getPost('applies_to');
         // Handle JSON string format from frontend
         if (is_string($appliesTo)) {
@@ -1175,36 +1202,36 @@ class SuperAdminApi extends AdminApi
             $appliesTo = $appliesTo ? [$appliesTo] : [];
         }
         $attrs = $this->request->getPost('attributes');
-        
+
         // Validate product_type_ids is not empty
         if (empty($ptIds)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_product_type_is_required', 'At least one product type is required.')], 400);
         }
-        
+
         // Validate that product_type_ids exist in database
         // Convert all IDs to integers for consistent comparison with database
         $ptIdsInt = array_map('intval', $ptIds);
         $existingPtIds = $db->table('product_types')->whereIn('id', $ptIdsInt)->select('id')->get()->getResultArray();
         $validPtIds = array_column($existingPtIds, 'id');
-        
+
         // Filter out invalid IDs instead of rejecting the entire request
         $ptIdsInt = array_intersect($ptIdsInt, $validPtIds);
-        
+
         if (empty($ptIdsInt)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('none_of_the_provided_product_type_ids_exist_in_the_database', 'None of the provided product type IDs exist in the database.')], 400);
         }
-        
+
         // Check for duplicate (excluding current record)
         $exists = $db->table('categories')->where('category_name', $name)->where('id !=', $id)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('category_with_this_name_already_exists', 'Category with this name already exists.')], 400);
         }
-        
+
         // Check if removing genders would affect sub-categories without genders
         // Use isGenderRequiredForProductTypes because $ptIdsInt contains product type IDs, not category IDs
         if (empty($appliesTo)) {
             $isGenderRequired = $this->isGenderRequiredForProductTypes($ptIdsInt);
-            
+
             // Only block if gender is not hidden
             if ($isGenderRequired) {
                 // User is removing all genders from category - check if any linked sub-categories also have no genders
@@ -1212,7 +1239,7 @@ class SuperAdminApi extends AdminApi
                 foreach ($subCategories as $sc) {
                     $scCatIds = json_decode($sc['category_ids'] ?? '[]', true);
                     // Use loose in_array to handle int/string mismatches
-                    if (in_array((int)$id, array_map('intval', (array)$scCatIds))) {
+                    if (in_array((int) $id, array_map('intval', (array) $scCatIds))) {
                         $scAppliesTo = json_decode($sc['applies_to'] ?? '[]', true);
                         if (empty($scAppliesTo)) {
                             // Both category AND this sub-category have no genders — block
@@ -1222,19 +1249,19 @@ class SuperAdminApi extends AdminApi
                 }
             }
         }
-        
+
         // Use the filtered valid product_type_ids directly
         // No need to merge since the frontend sends the complete selection
         $finalPtIds = $ptIdsInt;
-        
+
         // Check if we have any valid product type IDs left after filtering
         if (empty($finalPtIds) || !is_array($finalPtIds)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('none_of_the_provided_product_type_ids_are_valid', 'None of the provided product type IDs are valid.')], 400);
         }
-        
+
         // Re-index array to ensure numeric keys
         $finalPtIds = array_values($finalPtIds);
-        
+
         $data = [
             'category_name' => $name,
             'product_type_ids' => json_encode($finalPtIds),
@@ -1252,12 +1279,12 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
-        
+
         // Validate name is not empty
         if (empty($name)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('subcategory_name_cannot_be_empty', 'Sub-category name cannot be empty.')], 400);
         }
-        
+
         $catIds = $this->request->getPost('category_ids');
         // Handle JSON string format from frontend
         if (is_string($catIds)) {
@@ -1268,7 +1295,7 @@ class SuperAdminApi extends AdminApi
         if (!is_array($catIds)) {
             $catIds = $catIds ? [$catIds] : [];
         }
-        
+
         $appliesTo = $this->request->getPost('applies_to');
         // Handle JSON string format from frontend
         if (is_string($appliesTo)) {
@@ -1279,28 +1306,29 @@ class SuperAdminApi extends AdminApi
         if (!is_array($appliesTo)) {
             $appliesTo = $appliesTo ? [$appliesTo] : [];
         }
-        
+
         $attrs = $this->request->getPost('attributes');
-        
-        if (empty($catIds)) return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_category_is_required', 'At least one Category is required.')], 400);
-        
+
+        if (empty($catIds))
+            return $this->respond(['success' => false, 'message' => getAppMessage('at_least_one_category_is_required', 'At least one Category is required.')], 400);
+
         // Validate that category_ids exist in database
         // Convert all IDs to integers for consistent comparison
         $catIdsInt = array_map('intval', $catIds);
         $existingCatIds = $db->table('categories')->whereIn('id', $catIdsInt)->select('id')->get()->getResultArray();
         $validCatIds = array_column($existingCatIds, 'id');
         $invalidCatIds = array_diff($catIdsInt, $validCatIds);
-        
+
         // Filter out invalid category IDs instead of rejecting the entire request
         $catIdsInt = array_intersect($catIdsInt, $validCatIds);
-        
+
         if (empty($catIdsInt)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('none_of_the_provided_category_ids_exist_in_the_database', 'None of the provided category IDs exist in the database.')], 400);
         }
-        
+
         // Check if gender is required based on parent categories' listing types' gender_config
         $isGenderRequired = $this->isGenderRequiredForCategories($catIds);
-        
+
         // If gender is optional or hidden, allow updating sub-category without gender
         // Only enforce gender requirement if it's mandatory
         if (!$isGenderRequired && empty($appliesTo)) {
@@ -1315,7 +1343,7 @@ class SuperAdminApi extends AdminApi
                     $categoriesWithGenders++;
                 }
             }
-            
+
             // Only make gender mandatory if categories are selected AND none of them have genders
             if (!empty($categories) && $categoriesWithGenders === 0) {
                 // All selected categories have no genders - sub-category must have genders
@@ -1323,24 +1351,24 @@ class SuperAdminApi extends AdminApi
             }
         }
         // If gender is not required (listing type has gender hidden), gender is optional
-        
+
         // Check for duplicate (excluding current record)
         $exists = $db->table('sub_categories')->where('name', $name)->where('id !=', $id)->countAllResults();
         if ($exists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('subcategory_with_this_name_already_exists', 'Sub-category with this name already exists.')], 400);
         }
-        
+
         // Use the filtered valid category_ids directly
         $finalCatIds = $catIdsInt;
-        
+
         // Check if we have any valid category IDs left after filtering
         if (empty($finalCatIds) || !is_array($finalCatIds)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('none_of_the_provided_category_ids_are_valid', 'None of the provided category IDs are valid.')], 400);
         }
-        
+
         // Re-index array to ensure numeric keys
         $finalCatIds = array_values($finalCatIds);
-        
+
         $data = [
             'name' => $name,
             'category_ids' => json_encode($finalCatIds),
@@ -1359,19 +1387,19 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         $hex = $this->request->getPost('hex_code');
-        
+
         // Check for duplicate by name (excluding current record)
         $nameExists = $db->table('colors')->where('LOWER(name)', strtolower($name))->where('id !=', $id)->countAllResults();
         if ($nameExists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('color_with_this_name_already_exists', 'Color with this name already exists.')], 400);
         }
-        
+
         // Check for duplicate by hex code (excluding current record)
         $hexExists = $db->table('colors')->where('hex_code', $hex)->where('id !=', $id)->countAllResults();
         if ($hexExists) {
             return $this->respond(['success' => false, 'message' => getAppMessage('color_with_this_hex_code_already_exists_hex_codes_must_be_un', 'Color with this hex code already exists. Hex codes must be unique.')], 400);
         }
-        
+
         $db->table('colors')->where('id', $id)->update([
             'name' => $name,
             'hex_code' => $hex,
@@ -1382,14 +1410,15 @@ class SuperAdminApi extends AdminApi
     public function removeTaxonomy($table, $id)
     {
         $allowed = ['listing_types', 'genders', 'product_types', 'categories', 'sub_categories', 'colors', 'attributes'];
-        if (!in_array($table, $allowed)) return $this->respond(['success' => false, 'message' => getAppMessage('invalid_table', 'Invalid table.')], 400);
+        if (!in_array($table, $allowed))
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_table', 'Invalid table.')], 400);
         $db = \Config\Database::connect();
-        
+
         // Special handling for attributes - delete related assignments first
         if ($table === 'attributes') {
             $db->table('attribute_assignments')->where('attribute_id', $id)->delete();
         }
-        
+
         $db->table($table)->where('id', $id)->delete();
         return $this->respond(['success' => true, 'message' => getAppMessage('item_deleted', 'Item deleted.')]);
     }
@@ -1411,14 +1440,17 @@ class SuperAdminApi extends AdminApi
                     if (is_array($ltIds)) {
                         foreach ($ltIds as $ltId) {
                             $lt = $db->table('listing_types')->where('id', $ltId)->select('type_name')->get()->getRowArray();
-                            if ($lt) $listingTypeNames[] = $lt['type_name'];
+                            if ($lt)
+                                $listingTypeNames[] = $lt['type_name'];
                         }
                     }
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             }
             if (empty($listingTypeNames) && !empty($b['listing_type_id'])) {
                 $lt = $db->table('listing_types')->where('id', $b['listing_type_id'])->select('type_name')->get()->getRowArray();
-                if ($lt) $listingTypeNames[] = $lt['type_name'];
+                if ($lt)
+                    $listingTypeNames[] = $lt['type_name'];
             }
             $b['listing_type_names'] = $listingTypeNames;
             $b['listing_type_ids'] = !empty($b['listing_type_ids']) ? json_decode($b['listing_type_ids'], true) : [];
@@ -1436,7 +1468,7 @@ class SuperAdminApi extends AdminApi
             ->join('users u', 'u.id = b.seller_id', 'left')
             ->orderBy('b.created_at', 'DESC')
             ->get()->getResultArray();
-        
+
         return $this->respond(['success' => true, 'data' => $brands]);
     }
 
@@ -1477,17 +1509,23 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $data = [];
         $name = $this->request->getPost('brand_name');
-        if ($name) $data['brand_name'] = $name;
+        if ($name)
+            $data['brand_name'] = $name;
         $sellerId = $this->request->getPost('seller_id');
-        if ($sellerId !== null) $data['seller_id'] = $sellerId ?: null;
+        if ($sellerId !== null)
+            $data['seller_id'] = $sellerId ?: null;
         $desc = $this->request->getPost('description');
-        if ($desc !== null) $data['description'] = $desc;
+        if ($desc !== null)
+            $data['description'] = $desc;
         $isBlocked = $this->request->getPost('is_blocked');
-        if ($isBlocked !== null) $data['is_blocked'] = $isBlocked;
+        if ($isBlocked !== null)
+            $data['is_blocked'] = $isBlocked;
         $isActive = $this->request->getPost('is_active');
-        if ($isActive !== null) $data['is_active'] = $isActive;
+        if ($isActive !== null)
+            $data['is_active'] = $isActive;
 
-        if (empty($data)) return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update.')], 400);
+        if (empty($data))
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update.')], 400);
         $db->table('brands')->where('id', $id)->update($data);
         return $this->respond(['success' => true, 'message' => getAppMessage('seller_brand_updated', 'Seller brand updated.')]);
     }
@@ -1510,7 +1548,8 @@ class SuperAdminApi extends AdminApi
             'created_at' => date('Y-m-d H:i:s'),
         ];
         $ltId = $this->request->getPost('listing_type_id');
-        if ($ltId) $data['listing_type_id'] = $ltId;
+        if ($ltId)
+            $data['listing_type_id'] = $ltId;
         $db->table('orignal_brands')->insert($data);
         return $this->respond(['success' => true, 'message' => getAppMessage('brand_created_successfully', 'Brand created successfully.')]);
     }
@@ -1520,14 +1559,19 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $data = [];
         $name = $this->request->getPost('brand_name');
-        if ($name) $data['brand_name'] = $name;
+        if ($name)
+            $data['brand_name'] = $name;
         $sellerId = $this->request->getPost('seller_id');
-        if ($sellerId !== null) $data['seller_id'] = $sellerId ?: null;
+        if ($sellerId !== null)
+            $data['seller_id'] = $sellerId ?: null;
         $ltId = $this->request->getPost('listing_type_id');
-        if ($ltId !== null) $data['listing_type_id'] = $ltId ?: null;
+        if ($ltId !== null)
+            $data['listing_type_id'] = $ltId ?: null;
         $desc = $this->request->getPost('description');
-        if ($desc !== null) $data['description'] = $desc;
-        if (empty($data)) return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update.')], 400);
+        if ($desc !== null)
+            $data['description'] = $desc;
+        if (empty($data))
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update.')], 400);
         $db->table('orignal_brands')->where('id', $id)->update($data);
         return $this->respond(['success' => true, 'message' => getAppMessage('brand_updated', 'Brand updated.')]);
     }
@@ -1562,10 +1606,11 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $reason = trim($this->request->getPost('reason') ?? '');
-        if (!$reason) $reason = 'Brand Blocked';
+        if (!$reason)
+            $reason = 'Brand Blocked';
 
         $db->table('orignal_brands')->where('id', $id)->update([
-            'is_blocked'       => 1,
+            'is_blocked' => 1,
             'rejection_reason' => $reason,
         ]);
 
@@ -1579,7 +1624,7 @@ class SuperAdminApi extends AdminApi
         foreach ($products as $product) {
             $preStatus = $product['status'];
             $db->table('products')->where('id', $product['id'])->update([
-                'status'       => 'rejected',
+                'status' => 'rejected',
                 'admin_remarks' => 'Original Brand Blocked: ' . $reason . ' [pre_status:' . $preStatus . ']',
             ]);
         }
@@ -1605,7 +1650,7 @@ class SuperAdminApi extends AdminApi
                 $preStatus = $m[1];
             }
             $db->table('products')->where('id', $product['id'])->update([
-                'status'        => $preStatus,
+                'status' => $preStatus,
                 'admin_remarks' => null,
             ]);
         }
@@ -1637,10 +1682,11 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $reason = trim($this->request->getPost('reason') ?? '');
-        if (!$reason) $reason = 'Brand Blocked';
+        if (!$reason)
+            $reason = 'Brand Blocked';
 
         $db->table('brands')->where('id', $id)->update([
-            'is_blocked'       => 1,
+            'is_blocked' => 1,
             'rejection_reason' => $reason,
         ]);
 
@@ -1653,7 +1699,7 @@ class SuperAdminApi extends AdminApi
         foreach ($products as $product) {
             $preStatus = $product['status'];
             $db->table('products')->where('id', $product['id'])->update([
-                'status'        => 'rejected',
+                'status' => 'rejected',
                 'admin_remarks' => 'Seller Brand Blocked: ' . $reason . ' [pre_status:' . $preStatus . ']',
             ]);
         }
@@ -1679,7 +1725,7 @@ class SuperAdminApi extends AdminApi
                 $preStatus = $m[1];
             }
             $db->table('products')->where('id', $product['id'])->update([
-                'status'        => $preStatus,
+                'status' => $preStatus,
                 'admin_remarks' => null,
             ]);
         }
@@ -1694,8 +1740,8 @@ class SuperAdminApi extends AdminApi
             ->select('id, name, email, user_type')
             // Include sellers, hybrid users, and all admin/super_admin roles
             ->groupStart()
-                ->whereIn('user_type', ['seller', 'both'])
-                ->orWhereIn('role', ['admin', 'super_admin'])
+            ->whereIn('user_type', ['seller', 'both'])
+            ->orWhereIn('role', ['admin', 'super_admin'])
             ->groupEnd()
             ->where('is_blocked', 0)
             ->orderBy('name', 'ASC')
@@ -1720,23 +1766,24 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $productIds = $this->request->getPost('product_ids') ?? [];
-        $untagIds   = $this->request->getPost('untag_ids') ?? [];
-        $brandId    = $this->request->getPost('brand_id');
+        $untagIds = $this->request->getPost('untag_ids') ?? [];
+        $brandId = $this->request->getPost('brand_id');
         $isOriginal = $this->request->getPost('is_original') ?? 0;
-        
+
         $column = $isOriginal ? 'orignal_brand_id' : 'brand_id';
-        
-        if (!$brandId) return $this->respond(['success' => false, 'message' => getAppMessage('no_brand_selected', 'No brand selected.')], 400);
+
+        if (!$brandId)
+            return $this->respond(['success' => false, 'message' => getAppMessage('no_brand_selected', 'No brand selected.')], 400);
         // Tag selected products
         foreach ($productIds as $pid) {
-            $db->table('products')->where('id', (int)$pid)->update([$column => $brandId]);
+            $db->table('products')->where('id', (int) $pid)->update([$column => $brandId]);
         }
         // Untag deselected products that belonged to this brand
         if (!empty($untagIds)) {
             $db->table('products')
-               ->where($column, $brandId)
-               ->whereIn('id', array_map('intval', $untagIds))
-               ->update([$column => null]);
+                ->where($column, $brandId)
+                ->whereIn('id', array_map('intval', $untagIds))
+                ->update([$column => null]);
         }
         return $this->respond(['success' => true, 'message' => count($productIds) . ' tagged, ' . count($untagIds) . ' untagged.']);
     }
@@ -1759,10 +1806,12 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $userId = $this->request->getPost('user_id') ?? $this->request->getJSON(true)['user_id'] ?? null;
         $planId = $this->request->getPost('plan_id') ?? $this->request->getJSON(true)['plan_id'] ?? null;
-        if (!$userId || !$planId) return $this->respond(['success' => false, 'message' => getAppMessage('user_and_plan_are_required', 'User and plan are required.')], 400);
+        if (!$userId || !$planId)
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_and_plan_are_required', 'User and plan are required.')], 400);
 
         $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
-        if (!$plan) return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found', 'Plan not found.')], 404);
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found', 'Plan not found.')], 404);
 
         // Stacking Logic: Find the latest expiry among active plans for the same user type
         $latestActive = $db->table('user_subscriptions us')
@@ -1774,7 +1823,7 @@ class SuperAdminApi extends AdminApi
             ->orderBy('us.expires_at', 'DESC')
             ->get()->getRowArray();
 
-        $durationHours = (float)($plan['duration_hours'] ?: 720);
+        $durationHours = (float) ($plan['duration_hours'] ?: 720);
         $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
         $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
         $expiresAt = $durationHours > 0
@@ -1815,7 +1864,8 @@ class SuperAdminApi extends AdminApi
             ->join('listing_types lt', 'lt.type_name = p.listing_type_category', 'left')
             ->where('p.id', $id)
             ->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
+        if (!$product)
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
 
         $images = $db->table('product_images')->where('product_id', $id)->orderBy('display_order', 'ASC')->get()->getResultArray();
 
@@ -1841,14 +1891,14 @@ class SuperAdminApi extends AdminApi
                 $deletedIdList = [];
                 foreach ($deletedIds as $del) {
                     if (is_numeric($del)) {
-                        $deletedIdList[] = (int)$del;
+                        $deletedIdList[] = (int) $del;
                     } elseif (is_array($del) && isset($del['id'])) {
-                        $deletedIdList[] = (int)$del['id'];
+                        $deletedIdList[] = (int) $del['id'];
                     }
                 }
                 if (!empty($deletedIdList)) {
-                    $images = array_values(array_filter($images, function($img) use ($deletedIdList) {
-                        return !in_array((int)($img['id'] ?? 0), $deletedIdList, true);
+                    $images = array_values(array_filter($images, function ($img) use ($deletedIdList) {
+                        return !in_array((int) ($img['id'] ?? 0), $deletedIdList, true);
                     }));
                 }
             }
@@ -1880,7 +1930,7 @@ class SuperAdminApi extends AdminApi
             ->where('r.status', 'changesPending')
             ->orderBy('r.created_at', 'DESC')
             ->get()->getResultArray();
-        
+
         // Attach product images for each request
         foreach ($requests as &$request) {
             $request['images'] = $db->table('product_images')
@@ -1888,7 +1938,7 @@ class SuperAdminApi extends AdminApi
                 ->orderBy('display_order', 'ASC')
                 ->get()->getResultArray();
         }
-        
+
         return $this->respond(['success' => true, 'data' => $requests]);
     }
 
@@ -1896,7 +1946,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-        if (!$request) return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
+        if (!$request)
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
 
         $original = $db->table('products p')
             ->select('p.*, ob.brand_name as orignal_brand, b.brand_name as seller_brand, p.listing_type_category as listing_type_name, p.listing_type_category as listing_category_name')
@@ -1965,26 +2016,27 @@ class SuperAdminApi extends AdminApi
         try {
             $db = \Config\Database::connect();
             $request = $db->table('product_edit_requests')->where('id', $id)->get()->getRowArray();
-            if (!$request) return $this->respond(['success' => false, 'message' => getAppMessage('edit_request_not_found', 'Edit request not found')], 404);
+            if (!$request)
+                return $this->respond(['success' => false, 'message' => getAppMessage('edit_request_not_found', 'Edit request not found')], 404);
 
             $updatedData = json_decode($request['updated_data'], true) ?: [];
             if (empty($updatedData)) {
                 return $this->respond(['success' => false, 'message' => getAppMessage('invalid_update_data', 'Invalid update data')], 400);
             }
-            
+
             // Get current product data to preserve fields that weren't updated
             $currentProduct = $db->table('products')->where('id', $request['product_id'])->get()->getRowArray();
             if (!$currentProduct) {
                 return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found')], 404);
             }
-            
+
             // Merge updated data with current product data, preserving fields that weren't in the update
             foreach ($currentProduct as $key => $value) {
                 if (!isset($updatedData[$key])) {
                     $updatedData[$key] = $value;
                 }
             }
-            
+
             // Force status back to approved after merging edit
             $updatedData['status'] = 'approved';
             $updatedData['updated_at'] = date('Y-m-d H:i:s');
@@ -2003,7 +2055,7 @@ class SuperAdminApi extends AdminApi
                     $productUpdateData[$col] = $val;
                 }
             }
-            
+
             $productUpdate = $db->table('products')->where('id', $request['product_id'])->update($productUpdateData);
             if (!$productUpdate) {
                 log_message('error', "Failed to update product ID: {$request['product_id']} for edit request ID: {$id}");
@@ -2018,28 +2070,28 @@ class SuperAdminApi extends AdminApi
                     $finalPath = str_replace('uploads/products/temp/', 'uploads/products/', $tempPath);
                     $tempFullPath = FCPATH . $tempPath;
                     $finalFullPath = FCPATH . $finalPath;
-                    
+
                     if (file_exists($tempFullPath)) {
                         // Ensure target directory exists
                         $targetDir = dirname($finalFullPath);
                         if (!is_dir($targetDir)) {
                             mkdir($targetDir, 0777, true);
                         }
-                        
+
                         // Move the file
                         if (rename($tempFullPath, $finalFullPath)) {
                             // Insert with final path
                             $db->table('product_images')->insert([
-                                'product_id' => $request['product_id'], 
-                                'image_path' => $finalPath, 
+                                'product_id' => $request['product_id'],
+                                'image_path' => $finalPath,
                                 'created_at' => date('Y-m-d H:i:s')
                             ]);
                         }
                     } else {
                         // If temp file doesn't exist, still insert with temp path (fallback)
                         $db->table('product_images')->insert([
-                            'product_id' => $request['product_id'], 
-                            'image_path' => $tempPath, 
+                            'product_id' => $request['product_id'],
+                            'image_path' => $tempPath,
                             'created_at' => date('Y-m-d H:i:s')
                         ]);
                     }
@@ -2052,29 +2104,29 @@ class SuperAdminApi extends AdminApi
                 // Handle both old format (IDs only) and new format (with paths)
                 $validIds = [];
                 $pathsToDelete = [];
-                
+
                 foreach ($deletedIds as $item) {
                     if (is_numeric($item)) {
                         // Old format: just ID
-                        $validIds[] = (int)$item;
+                        $validIds[] = (int) $item;
                     } elseif (is_array($item) && isset($item['id'])) {
                         // New format: array with id and image_path
-                        $validIds[] = (int)$item['id'];
+                        $validIds[] = (int) $item['id'];
                         if (isset($item['image_path'])) {
                             $pathsToDelete[] = $item['image_path'];
                         }
                     }
                 }
-                
+
                 if (!empty($validIds)) {
                     // Get the image paths before deletion for file cleanup
                     $imagesToDelete = $db->table('product_images')
                         ->whereIn('id', $validIds)
                         ->get()->getResultArray();
-                    
+
                     // Delete from database
                     $db->table('product_images')->whereIn('id', $validIds)->delete();
-                    
+
                     // Delete files from filesystem
                     foreach ($imagesToDelete as $img) {
                         $filePath = FCPATH . $img['image_path'];
@@ -2083,7 +2135,7 @@ class SuperAdminApi extends AdminApi
                         }
                     }
                 }
-                
+
                 // Also delete files from the paths array (new format)
                 foreach ($pathsToDelete as $path) {
                     $filePath = FCPATH . $path;
@@ -2187,11 +2239,26 @@ class SuperAdminApi extends AdminApi
             $previousData = json_decode($product['previous_data'], true);
             if (is_array($previousData)) {
                 $restoreFields = [
-                    'title', 'description', 'listing_type', 'listing_type_category',
-                    'product_type', 'category', 'sub_category', 'color', 'gender',
-                    'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
-                    'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                    'has_bill', 'allow_alter_fitting',
+                    'title',
+                    'description',
+                    'listing_type',
+                    'listing_type_category',
+                    'product_type',
+                    'category',
+                    'sub_category',
+                    'color',
+                    'gender',
+                    'used_times',
+                    'original_price',
+                    'price',
+                    'rental_cost',
+                    'rental_deposit',
+                    'dispatch_address',
+                    'dispatch_city',
+                    'dispatch_state',
+                    'dispatch_pin_code',
+                    'has_bill',
+                    'allow_alter_fitting',
                 ];
                 $updateData = [];
                 foreach ($restoreFields as $field) {
@@ -2260,9 +2327,12 @@ class SuperAdminApi extends AdminApi
         $period = $this->request->getGet('period') ?? 'monthly';
         $now = date('Y-m-d H:i:s');
 
-        if ($period === 'daily') $from = date('Y-m-d 00:00:00');
-        elseif ($period === 'weekly') $from = date('Y-m-d 00:00:00', strtotime('-7 days'));
-        else $from = date('Y-m-d 00:00:00', strtotime('-30 days'));
+        if ($period === 'daily')
+            $from = date('Y-m-d 00:00:00');
+        elseif ($period === 'weekly')
+            $from = date('Y-m-d 00:00:00', strtotime('-7 days'));
+        else
+            $from = date('Y-m-d 00:00:00', strtotime('-30 days'));
 
         $report = [
             'total_orders' => $db->table('orders')->where('created_at >=', $from)->countAllResults(),
@@ -2288,7 +2358,8 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $rows = $db->table('system_settings')->get()->getResultArray();
         $settings = [];
-        foreach ($rows as $r) $settings[$r['setting_key']] = $r['setting_value'];
+        foreach ($rows as $r)
+            $settings[$r['setting_key']] = $r['setting_value'];
         return $this->respond(['success' => true, 'data' => $settings]);
     }
 
@@ -2309,11 +2380,14 @@ class SuperAdminApi extends AdminApi
 
         foreach ($data as $key => $value) {
             // Skip keys with no value — don't overwrite DB with blank
-            if ($value === '' || $value === null) continue;
+            if ($value === '' || $value === null)
+                continue;
 
             $exists = $db->table('system_settings')->where('setting_key', $key)->countAllResults();
-            if ($exists) $db->table('system_settings')->where('setting_key', $key)->update(['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
-            else $db->table('system_settings')->insert(['setting_key' => $key, 'setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
+            if ($exists)
+                $db->table('system_settings')->where('setting_key', $key)->update(['setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
+            else
+                $db->table('system_settings')->insert(['setting_key' => $key, 'setting_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
         }
 
         return $this->respond(['success' => true, 'message' => getAppMessage('settings_saved_successfully', 'Settings saved successfully.')]);
@@ -2325,25 +2399,25 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $row = $db->table('system_settings')->where('setting_key', 'offer_acceptance_limit_days')->get()->getRowArray();
         $limitDays = isset($row['setting_value']) ? (float) $row['setting_value'] : 7;
-        $cutoff = date('Y-m-d H:i:s', time() - (int)($limitDays * 86400));
-        
+        $cutoff = date('Y-m-d H:i:s', time() - (int) ($limitDays * 86400));
+
         // Get the offers that will be marked as missed before updating
         $offersToMark = $db->table('offers')
             ->where('status', 'pending')
             ->where('created_at <', $cutoff)
             ->get()->getResultArray();
-        
+
         $affected = $db->table('offers')
             ->where('status', 'pending')
             ->where('created_at <', $cutoff)
             ->update(['status' => 'missed', 'updated_at' => date('Y-m-d H:i:s')]);
         $count = $db->affectedRows();
-        
+
         // Send notifications to both sellers and buyers for each missed offer
         foreach ($offersToMark as $offer) {
             $product = $db->table('products')->where('id', $offer['product_id'])->get()->getRowArray();
             $productTitle = $product['title'] ?? 'Product';
-            
+
             // Notify seller
             $db->table('notifications')->insert([
                 'user_id' => $offer['seller_id'],
@@ -2353,7 +2427,7 @@ class SuperAdminApi extends AdminApi
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
-            
+
             // Notify buyer
             $db->table('notifications')->insert([
                 'user_id' => $offer['buyer_id'],
@@ -2364,7 +2438,7 @@ class SuperAdminApi extends AdminApi
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
-        
+
         return $this->respond(['success' => true, 'message' => "Marked {$count} expired offers as missed. Notifications sent to sellers and buyers."]);
     }
 
@@ -2373,7 +2447,8 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $from = $this->request->getPost('from_date');
         $to = $this->request->getPost('to_date');
-        if (!$from || !$to) return $this->respond(['success' => false, 'message' => getAppMessage('both_dates_required', 'Both dates required.')], 400);
+        if (!$from || !$to)
+            return $this->respond(['success' => false, 'message' => getAppMessage('both_dates_required', 'Both dates required.')], 400);
 
         $products = $db->table('products')->where('status', 'rejected')->where('updated_at >=', $from)->where('updated_at <=', $to . ' 23:59:59')->get()->getResultArray();
         $count = count($products);
@@ -2440,10 +2515,12 @@ class SuperAdminApi extends AdminApi
         $title = $this->request->getPost('title') ?? $this->request->getJSON(true)['title'] ?? '';
         $content = $this->request->getPost('content') ?? $this->request->getJSON(true)['content'] ?? '';
 
-        if (!$slug || !$title) return $this->respond(['success' => false, 'message' => getAppMessage('slug_and_title_are_required', 'Slug and title are required.')], 400);
+        if (!$slug || !$title)
+            return $this->respond(['success' => false, 'message' => getAppMessage('slug_and_title_are_required', 'Slug and title are required.')], 400);
 
         $exists = $db->table('cms_pages')->where('slug', $slug)->countAllResults();
-        if ($exists) return $this->respond(['success' => false, 'message' => getAppMessage('a_page_with_this_slug_already_exists', 'A page with this slug already exists.')], 400);
+        if ($exists)
+            return $this->respond(['success' => false, 'message' => getAppMessage('a_page_with_this_slug_already_exists', 'A page with this slug already exists.')], 400);
 
         $db->table('cms_pages')->insert([
             'slug' => strtolower(preg_replace('/[^a-z0-9\-]/', '', str_replace(' ', '-', strtolower($slug)))),
@@ -2461,14 +2538,15 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $page = $db->table('cms_pages')->where('id', $id)->get()->getRowArray();
-        if (!$page) return $this->respond(['success' => false, 'message' => getAppMessage('page_not_found', 'Page not found.')], 404);
-        
+        if (!$page)
+            return $this->respond(['success' => false, 'message' => getAppMessage('page_not_found', 'Page not found.')], 404);
+
         // Remove associated SEO setting if it exists
         if (!empty($page['slug'])) {
             $seoModel = new \App\Models\SeoSettingModel();
             $seoModel->where('page_key', 'cms_' . $page['slug'])->delete();
         }
-        
+
         $db->table('cms_pages')->where('id', $id)->delete();
         return $this->respond(['success' => true, 'message' => getAppMessage('cms_page_deleted_successfully', 'CMS page deleted successfully.')]);
     }
@@ -2477,7 +2555,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $page = $db->table('cms_pages')->where('slug', $slug)->get()->getRowArray();
-        if (!$page) return $this->respond(['success' => false, 'message' => getAppMessage('page_not_found', 'Page not found.')], 404);
+        if (!$page)
+            return $this->respond(['success' => false, 'message' => getAppMessage('page_not_found', 'Page not found.')], 404);
         return $this->respond(['success' => true, 'data' => $page]);
     }
 
@@ -2488,8 +2567,10 @@ class SuperAdminApi extends AdminApi
         $title = $this->request->getPost('title') ?? $this->request->getJSON(true)['title'] ?? '';
         $status = $this->request->getPost('status') ?? $this->request->getJSON(true)['status'] ?? null;
         $data = ['content' => $content, 'updated_at' => date('Y-m-d H:i:s')];
-        if ($title) $data['title'] = $title;
-        if ($status) $data['status'] = $status;
+        if ($title)
+            $data['title'] = $title;
+        if ($status)
+            $data['status'] = $status;
         $db->table('cms_pages')->where('slug', $slug)->update($data);
         return $this->respond(['success' => true, 'message' => getAppMessage('page_updated_successfully', 'Page updated successfully.')]);
     }
@@ -2508,12 +2589,24 @@ class SuperAdminApi extends AdminApi
         } else {
             $to = date('Y-m-d');
             switch ($period) {
-                case 'today': $from = date('Y-m-d'); break;
-                case '7d': $from = date('Y-m-d', strtotime('-7 days')); break;
-                case '30d': $from = date('Y-m-d', strtotime('-30 days')); break;
-                case '90d': $from = date('Y-m-d', strtotime('-90 days')); break;
-                case '1y': $from = date('Y-m-d', strtotime('-1 year')); break;
-                case 'all': $from = null; break;
+                case 'today':
+                    $from = date('Y-m-d');
+                    break;
+                case '7d':
+                    $from = date('Y-m-d', strtotime('-7 days'));
+                    break;
+                case '30d':
+                    $from = date('Y-m-d', strtotime('-30 days'));
+                    break;
+                case '90d':
+                    $from = date('Y-m-d', strtotime('-90 days'));
+                    break;
+                case '1y':
+                    $from = date('Y-m-d', strtotime('-1 year'));
+                    break;
+                case 'all':
+                    $from = null;
+                    break;
             }
         }
 
@@ -2522,8 +2615,10 @@ class SuperAdminApi extends AdminApi
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $trxBuilder->where('user_id', $jwtUser['user_id']);
         }
-        if ($from) $trxBuilder->where('created_at >=', $from . ' 00:00:00');
-        if ($from) $trxBuilder->where('created_at <=', $to . ' 23:59:59');
+        if ($from)
+            $trxBuilder->where('created_at >=', $from . ' 00:00:00');
+        if ($from)
+            $trxBuilder->where('created_at <=', $to . ' 23:59:59');
         $totalTrx = (clone $trxBuilder)->countAllResults(false);
         $totalRevenue = (clone $trxBuilder)->selectSum('amount')->get()->getRowArray()['amount'] ?? 0;
 
@@ -2531,7 +2626,8 @@ class SuperAdminApi extends AdminApi
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $trxBuilder2->where('user_id', $jwtUser['user_id']);
         }
-        if ($from) $trxBuilder2->where('created_at >=', $from . ' 00:00:00')->where('created_at <=', $to . ' 23:59:59');
+        if ($from)
+            $trxBuilder2->where('created_at >=', $from . ' 00:00:00')->where('created_at <=', $to . ' 23:59:59');
         $subRevenue = (clone $trxBuilder2)->selectSum('amount')->like('description', 'Subscription', 'after')->get()->getRowArray()['amount'] ?? 0;
 
         $paidTrx = $totalTrx;
@@ -2544,7 +2640,8 @@ class SuperAdminApi extends AdminApi
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $ordBuilder->where('buyer_id', $jwtUser['user_id']);
         }
-        if ($from) $ordBuilder->where('created_at >=', $from . ' 00:00:00')->where('created_at <=', $to . ' 23:59:59');
+        if ($from)
+            $ordBuilder->where('created_at >=', $from . ' 00:00:00')->where('created_at <=', $to . ' 23:59:59');
         $totalOrders = (clone $ordBuilder)->countAllResults(false);
         $orderRevenue = (clone $ordBuilder)->selectSum('final_price')->where('payment_status', 'paid')->get()->getRowArray()['final_price'] ?? 0;
 
@@ -2557,23 +2654,27 @@ class SuperAdminApi extends AdminApi
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $listBuilder->where('t.user_id', $jwtUser['user_id']);
         }
-        if ($from) $listBuilder->where('t.created_at >=', $from . ' 00:00:00')->where('t.created_at <=', $to . ' 23:59:59');
+        if ($from)
+            $listBuilder->where('t.created_at >=', $from . ' 00:00:00')->where('t.created_at <=', $to . ' 23:59:59');
         $transactions = $listBuilder->orderBy('t.created_at', 'DESC')->limit(200)->get()->getResultArray();
 
-        return $this->respond(['success' => true, 'data' => [
-            'stats' => [
-                'total_revenue' => $totalRevenue,
-                'sub_revenue' => $subRevenue,
-                'order_revenue' => $orderRevenue,
-                'success_rate' => round($successRate, 1),
-                'total_transactions' => $totalTrx,
-                'total_orders' => $totalOrders,
-                'paid_count' => $paidTrx,
-                'pending_count' => $pendingTrx,
-                'failed_count' => $failedTrx,
-            ],
-            'transactions' => $transactions,
-        ]]);
+        return $this->respond([
+            'success' => true,
+            'data' => [
+                'stats' => [
+                    'total_revenue' => $totalRevenue,
+                    'sub_revenue' => $subRevenue,
+                    'order_revenue' => $orderRevenue,
+                    'success_rate' => round($successRate, 1),
+                    'total_transactions' => $totalTrx,
+                    'total_orders' => $totalOrders,
+                    'paid_count' => $paidTrx,
+                    'pending_count' => $pendingTrx,
+                    'failed_count' => $failedTrx,
+                ],
+                'transactions' => $transactions,
+            ]
+        ]);
     }
 
     // ── Advertisements ──────────────────────────────────
@@ -2588,7 +2689,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $ad = $db->table('advertisements')->where('id', $id)->get()->getRowArray();
-        if (!$ad) return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
+        if (!$ad)
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
         return $this->respond(['success' => true, 'data' => $ad]);
     }
 
@@ -2628,8 +2730,8 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $id = $this->request->getVar('ad_id') ?? $this->request->getPost('ad_id') ?? ($_POST['ad_id'] ?? null);
         if (!$id) {
-            if (empty($_POST) && isset($_SERVER['CONTENT_LENGTH']) && (int)$_SERVER['CONTENT_LENGTH'] > 0) {
-                $payloadMB = round((int)$_SERVER['CONTENT_LENGTH'] / (1024 * 1024), 2);
+            if (empty($_POST) && isset($_SERVER['CONTENT_LENGTH']) && (int) $_SERVER['CONTENT_LENGTH'] > 0) {
+                $payloadMB = round((int) $_SERVER['CONTENT_LENGTH'] / (1024 * 1024), 2);
                 $postMax = ini_get('post_max_size');
                 $iniFile = php_ini_loaded_file() ?: 'unknown';
                 return $this->respond([
@@ -2677,7 +2779,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $ad = $db->table('advertisements')->where('id', $id)->get()->getRowArray();
-        if (!$ad) return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
+        if (!$ad)
+            return $this->respond(['success' => false, 'message' => getAppMessage('not_found', 'Not found')], 404);
         $db->table('advertisements')->where('id', $id)->update(['is_active' => $ad['is_active'] ? 0 : 1]);
         return $this->respond(['success' => true, 'message' => getAppMessage('status_toggled', 'Status toggled.')]);
     }
@@ -2697,11 +2800,11 @@ class SuperAdminApi extends AdminApi
             ->select('ob.*')
             ->orderBy('ob.brand_name', 'ASC')
             ->get()->getResultArray();
-        
+
         // Process brands to include listing type info
         foreach ($brands as &$b) {
             $listingTypeNames = [];
-            
+
             // Check listing_type_ids (JSON array - primary)
             if (!empty($b['listing_type_ids'])) {
                 try {
@@ -2709,24 +2812,26 @@ class SuperAdminApi extends AdminApi
                     if (is_array($ltIds)) {
                         foreach ($ltIds as $ltId) {
                             $lt = $db->table('listing_types')->where('id', $ltId)->select('type_name')->get()->getRowArray();
-                            if ($lt) $listingTypeNames[] = $lt['type_name'];
+                            if ($lt)
+                                $listingTypeNames[] = $lt['type_name'];
                         }
                     }
                 } catch (\Exception $e) {
                     // JSON decode error, skip
                 }
             }
-            
+
             // Fallback to single listing_type_id (for backward compatibility)
             if (empty($listingTypeNames) && !empty($b['listing_type_id'])) {
                 $lt = $db->table('listing_types')->where('id', $b['listing_type_id'])->get()->getRowArray();
-                if ($lt) $listingTypeNames[] = $lt['type_name'];
+                if ($lt)
+                    $listingTypeNames[] = $lt['type_name'];
             }
-            
+
             $b['listing_type_names'] = $listingTypeNames;
             $b['listing_type_ids'] = !empty($b['listing_type_ids']) ? json_decode($b['listing_type_ids'], true) : [];
         }
-        
+
         return $this->respond(['success' => true, 'data' => $brands]);
     }
 
@@ -2735,7 +2840,8 @@ class SuperAdminApi extends AdminApi
         $db = \Config\Database::connect();
         $name = $this->request->getPost('brand_name');
         $desc = $this->request->getPost('description') ?? '';
-        if (!$name) return $this->respond(['success' => false, 'message' => getAppMessage('brand_name_is_required', 'Brand name is required.')], 400);
+        if (!$name)
+            return $this->respond(['success' => false, 'message' => getAppMessage('brand_name_is_required', 'Brand name is required.')], 400);
 
         // Check if brand name already exists (unique validation)
         $existingBrand = $db->table('orignal_brands')->where('LOWER(brand_name)', strtolower($name))->get()->getRowArray();
@@ -2744,7 +2850,7 @@ class SuperAdminApi extends AdminApi
         }
 
         $data = ['brand_name' => $name, 'description' => $desc, 'is_active' => 1, 'created_at' => date('Y-m-d H:i:s')];
-        
+
         // Handle multiple listing types
         $ltIds = $this->request->getPost('listing_type_ids');
         if ($ltIds) {
@@ -2760,13 +2866,13 @@ class SuperAdminApi extends AdminApi
                 $data['listing_type_id'] = $ltIds[0] ?? null;
             }
         }
-        
+
         // Fallback: single listing_type_id if listing_type_ids not provided
         if (empty($data['listing_type_ids'])) {
             $ltId = $this->request->getPost('listing_type_id');
             if ($ltId) {
                 $data['listing_type_id'] = $ltId;
-                $data['listing_type_ids'] = json_encode([(int)$ltId]);
+                $data['listing_type_ids'] = json_encode([(int) $ltId]);
             }
         }
 
@@ -2791,7 +2897,7 @@ class SuperAdminApi extends AdminApi
             'description' => $this->request->getPost('description') ?? '',
             'is_active' => $this->request->getPost('is_active') ?? 1,
         ];
-        
+
         // Handle multiple listing types
         $ltIds = $this->request->getPost('listing_type_ids');
         if ($ltIds !== null) {
@@ -2814,7 +2920,7 @@ class SuperAdminApi extends AdminApi
             if ($ltId !== null) {
                 $data['listing_type_id'] = $ltId ?: null;
                 if ($ltId) {
-                    $data['listing_type_ids'] = json_encode([(int)$ltId]);
+                    $data['listing_type_ids'] = json_encode([(int) $ltId]);
                 } else {
                     $data['listing_type_ids'] = null;
                 }
@@ -2856,9 +2962,9 @@ class SuperAdminApi extends AdminApi
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id', 'left')
             ->join('brands b', 'b.id = p.brand_id', 'left')
             ->groupStart()
-                ->where('p.status', 'pending')
-                ->orWhere('p.edit_request', '1')
-                ->orWhere('p.edit_request', 'pending')
+            ->where('p.status', 'pending')
+            ->orWhere('p.edit_request', '1')
+            ->orWhere('p.edit_request', 'pending')
             ->groupEnd()
             ->orderBy('p.created_at', 'ASC')
             ->get()->getResultArray();
@@ -2879,7 +2985,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
-        if (!$user) return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
+        if (!$user)
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
 
         $isActive = !$user['is_blocked'] && $user['is_verified'];
         if ($isActive) {
@@ -2897,7 +3004,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
-        if (!$user) return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
+        if (!$user)
+            return $this->respond(['success' => false, 'message' => getAppMessage('user_not_found', 'User not found')], 404);
 
         $col = $role === 'seller' ? 'blocked_seller' : 'blocked_buyer';
         $current = $user[$col] ?? 0;
@@ -2925,7 +3033,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $product = $db->table('products')->where('id', $productId)->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found.')], 404);
+        if (!$product)
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found.')], 404);
 
         $newVal = $product['is_featured'] ? 0 : 1;
         $db->table('products')->where('id', $productId)->update(['is_featured' => $newVal, 'updated_at' => date('Y-m-d H:i:s')]);
@@ -2964,7 +3073,7 @@ class SuperAdminApi extends AdminApi
                     ->orWhere('p.edit_request', 1)
                     ->orWhere('p.edit_request', '1')
                     ->orWhere('p.edit_request', 'pending')
-                ->groupEnd();
+                    ->groupEnd();
             } elseif ($status === 'rejected') {
                 $builder->groupStart()
                     ->where('p.status', 'rejected')
@@ -2972,7 +3081,7 @@ class SuperAdminApi extends AdminApi
                     ->orWhere('p.status', 'changesRejected')
                     ->orWhere('p.status', 'edit_rejected')
                     ->orWhere('p.edit_request', 'rejected')
-                ->groupEnd();
+                    ->groupEnd();
             } else {
                 $builder->where('p.status', $status);
             }
@@ -2984,7 +3093,8 @@ class SuperAdminApi extends AdminApi
                 $builder->where('LOWER(p.listing_type_category)', strtolower($listingType));
             }
         }
-        if ($featured !== null && $featured !== '') $builder->where('p.is_featured', (int) $featured);
+        if ($featured !== null && $featured !== '')
+            $builder->where('p.is_featured', (int) $featured);
 
         $total = $builder->countAllResults(false);
         $products = $builder->orderBy('p.created_at', 'DESC')->limit($perPage, $offset)->get()->getResultArray();
@@ -3002,7 +3112,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found.')], 404);
+        if (!$product)
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found.')], 404);
 
         $newStatus = $this->request->getJsonVar('status');
         $remarks = $this->request->getJsonVar('remarks') ?? '';
@@ -3011,9 +3122,9 @@ class SuperAdminApi extends AdminApi
         }
 
         $updateFields = [
-            'status'       => $newStatus,
+            'status' => $newStatus,
             'admin_remarks' => $remarks,
-            'updated_at'   => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ];
 
         // Clear pending_reason and previous_data when status moves away from pending
@@ -3046,7 +3157,8 @@ class SuperAdminApi extends AdminApi
     {
         $db = \Config\Database::connect();
         $product = $db->table('products')->where('id', $id)->get()->getRowArray();
-        if (!$product) return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found.')], 404);
+        if (!$product)
+            return $this->respond(['success' => false, 'message' => getAppMessage('product_not_found', 'Product not found.')], 404);
 
         // Delete physical image files from disk
         $images = $db->table('product_images')->where('product_id', $id)->get()->getResultArray();
@@ -3175,7 +3287,7 @@ class SuperAdminApi extends AdminApi
         $requiredHeaders = $expectedHeaders[$type] ?? [];
         $missingHeaders = array_diff($requiredHeaders, $header);
         $extraHeaders = array_diff($header, $requiredHeaders);
-        
+
         if (!empty($missingHeaders) || !empty($extraHeaders)) {
             fclose($handle);
             $errorMsg = 'CSV template does not match the selected type.';
@@ -3186,7 +3298,7 @@ class SuperAdminApi extends AdminApi
                 $errorMsg .= ' Extra columns found: ' . implode(', ', $extraHeaders) . '.';
             }
             return $this->respond([
-                'success' => false, 
+                'success' => false,
                 'message' => $errorMsg,
                 'expected_columns' => $requiredHeaders,
                 'found_columns' => $header,
@@ -3202,10 +3314,10 @@ class SuperAdminApi extends AdminApi
 
         while (($line = fgetcsv($handle)) !== false) {
             $row++;
-            if (count($line) < count($header)) { 
-                $skipped++; 
-                $errors[] = "Row {$row}: Insufficient columns (Expected: " . implode(', ', $header) . ")"; 
-                continue; 
+            if (count($line) < count($header)) {
+                $skipped++;
+                $errors[] = "Row {$row}: Insufficient columns (Expected: " . implode(', ', $header) . ")";
+                continue;
             }
             $data = array_combine($header, array_map('trim', $line));
 
@@ -3213,19 +3325,23 @@ class SuperAdminApi extends AdminApi
                 switch ($type) {
                     case 'listing_types':
                         $name = $data['name'] ?? $data['type_name'] ?? '';
-                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
-                        
+                        if (!$name) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Name is empty";
+                            continue 2;
+                        }
+
                         $genderInput = trim($data['gender_config'] ?? '');
-                        
+
                         // Blank value validation: skip if gender is blank
                         if ($genderInput === '') {
                             $skipped++;
                             $errors[] = "Row {$row}: Gender config is blank. Skipping row.";
                             continue 2;
                         }
-                        
+
                         $gender = strtolower($genderInput);
-                        
+
                         // Validate gender_config value (partial update: if invalid, skip but don't fail entire row if name exists)
                         $allowedGenderConfigs = ['optional', 'hidden', 'mandatory'];
                         if (!in_array($gender, $allowedGenderConfigs)) {
@@ -3233,20 +3349,21 @@ class SuperAdminApi extends AdminApi
                             $errors[] = "Row {$row}: Invalid gender_config '{$gender}'. Must be one of: " . implode(', ', $allowedGenderConfigs) . ". Skipping row.";
                             continue 2;
                         }
-                        
+
                         $config = ['gender' => $gender];
-                        
+
                         $rec = [
-                            'type_name' => $name, 
+                            'type_name' => $name,
                             'field_config' => json_encode($config)
                         ];
-                        
+
                         $imageSource = $data['image'] ?? $data['image_path'] ?? '';
                         if ($imageSource) {
                             $processed = $this->processImage($imageSource, 'uploads/listing-types/');
-                            if ($processed) $rec['image'] = $processed;
+                            if ($processed)
+                                $rec['image'] = $processed;
                         }
-                        
+
                         // Check if exists (case-insensitive)
                         $existing = $db->table('listing_types')->where('LOWER(type_name)', strtolower($name))->get()->getRowArray();
                         if ($existing) {
@@ -3261,8 +3378,12 @@ class SuperAdminApi extends AdminApi
 
                     case 'genders':
                         $name = $data['name'] ?? '';
-                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
-                        
+                        if (!$name) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Name is empty";
+                            continue 2;
+                        }
+
                         // Check if exists (case-insensitive)
                         $existing = $db->table('genders')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
                         if ($existing) {
@@ -3299,7 +3420,11 @@ class SuperAdminApi extends AdminApi
                             continue 2;
                         }
 
-                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
+                        if (!$name) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Name is empty";
+                            continue 2;
+                        }
 
                         // Check if exists globally by name only (case-insensitive)
                         $existing = $db->table('product_types')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
@@ -3314,34 +3439,39 @@ class SuperAdminApi extends AdminApi
 
                     case 'categories':
                         $name = $data['category_name'] ?? $data['name'] ?? '';
-                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
-                        
+                        if (!$name) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Name is empty";
+                            continue 2;
+                        }
+
                         // Product types handling with partial update
                         $ptInput = trim($data['product_types'] ?? '');
-                        
+
                         // Blank value validation: skip if product types is blank
                         if ($ptInput === '') {
                             $skipped++;
                             $errors[] = "Row {$row}: Product types is blank. Skipping row.";
                             continue 2;
                         }
-                        
+
                         $names = array_map('trim', explode(',', $ptInput));
                         $pts = $db->table('product_types')->whereIn('LOWER(name)', array_map('strtolower', $names))->get()->getResultArray();
                         $foundNames = array_map('strtolower', array_column($pts, 'name'));
                         $ptIds = array_column($pts, 'id');
-                        
+
                         // Partial update: log invalid product types but continue with valid ones
                         if (count($ptIds) < count($names)) {
                             $missing = [];
                             foreach ($names as $n) {
-                                if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
+                                if (!in_array(strtolower($n), $foundNames))
+                                    $missing[] = $n;
                             }
                             if (!empty($missing)) {
                                 $errors[] = "Row {$row}: Invalid product types skipped: " . implode(', ', $missing) . ". Proceeding with valid ones.";
                             }
                         }
-                        
+
                         // Validate that at least one valid product type exists
                         if (empty($ptIds)) {
                             $skipped++;
@@ -3352,7 +3482,7 @@ class SuperAdminApi extends AdminApi
                         // Gender handling with partial update
                         $appliesToInput = trim($data['applies_to'] ?? '');
                         $appliesTo = [];
-                        
+
                         if ($appliesToInput !== '') {
                             // Try JSON decode first
                             $appliesTo = json_decode($appliesToInput, true);
@@ -3365,16 +3495,16 @@ class SuperAdminApi extends AdminApi
                                     $appliesTo = [$appliesToInput];
                                 }
                                 // Strip quotes from individual values if present
-                                $appliesTo = array_map(function($val) {
+                                $appliesTo = array_map(function ($val) {
                                     return trim($val, '"\'');
                                 }, $appliesTo);
                             }
-                            
+
                             // Filter out "all" and convert to lowercase for comparison
-                            $appliesTo = array_filter(array_map('trim', $appliesTo), function($val) {
+                            $appliesTo = array_filter(array_map('trim', $appliesTo), function ($val) {
                                 return strtolower($val) !== 'all';
                             });
-                            
+
                             // Validate applies_to gender values against existing genders (partial update)
                             $allGenders = $db->table('genders')->select('LOWER(name) as name')->get()->getResultArray();
                             $validGenderNames = array_map('strtolower', array_column($allGenders, 'name'));
@@ -3394,47 +3524,47 @@ class SuperAdminApi extends AdminApi
                         } else {
                             // Blank gender validation: check if gender is required based on listing type's gender_config
                             $isGenderRequired = $this->isGenderRequiredForProductTypes($ptIds);
-                            
+
                             if (!$isGenderRequired) {
                                 // Gender is not required (listing type has gender hidden), allow blank
                                 $appliesTo = [];
                             } else {
                                 // Gender is required, check if any sub-category with this category's gender exists
                                 // If gender is blank and sub-category with this category's gender is also blank, skip
-                                
+
                                 // Check if exists (case-insensitive by category_name) to get ID for sub-category check
                                 $existingCategory = $db->table('categories')->where('LOWER(category_name)', strtolower($name))->get()->getRowArray();
-                                
+
                                 if ($existingCategory) {
                                     // Check sub-categories that reference this category
                                     $hasSubCategoriesWithBlankGender = $db->table('sub_categories')
                                         ->where("JSON_CONTAINS(category_ids, '\"{$existingCategory['id']}\"')")
                                         ->groupStart()
-                                            ->where('applies_to', '[]')
-                                            ->orWhere('applies_to', '["N/A"]')
+                                        ->where('applies_to', '[]')
+                                        ->orWhere('applies_to', '["N/A"]')
                                         ->groupEnd()
                                         ->countAllResults() > 0;
-                                    
+
                                     if ($hasSubCategoriesWithBlankGender) {
                                         $skipped++;
                                         $errors[] = "Row {$row}: Gender is blank and sub-category with this category's gender is also blank. Skipping row.";
                                         continue 2;
                                     }
                                 }
-                                
+
                                 // If no gender value is present, use "N/A" only for new records
                                 // For existing records, preserve the existing applies_to value
                                 $appliesTo = ['N/A'];
                             }
                         }
-                        
+
                         // Check if exists (case-insensitive by category_name)
                         $existing = $db->table('categories')->where('LOWER(category_name)', strtolower($name))->get()->getRowArray();
                         $rec = [
                             'category_name' => $name,
                             'product_type_ids' => json_encode(is_array($ptIds) ? $ptIds : []),
                         ];
-                        
+
                         // Only update applies_to if it was provided in CSV
                         if ($appliesToInput !== '') {
                             $rec['applies_to'] = json_encode(is_array($appliesTo) ? $appliesTo : []);
@@ -3445,7 +3575,7 @@ class SuperAdminApi extends AdminApi
                             // New record with blank gender, use N/A
                             $rec['applies_to'] = json_encode(['N/A']);
                         }
-                        
+
                         if ($existing) {
                             $db->table('categories')->where('id', $existing['id'])->update($rec);
                             $updated++;
@@ -3458,34 +3588,39 @@ class SuperAdminApi extends AdminApi
 
                     case 'sub_categories':
                         $name = $data['name'] ?? '';
-                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
-                        
+                        if (!$name) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Name is empty";
+                            continue 2;
+                        }
+
                         // Categories handling with partial update
                         $catInput = trim($data['categories'] ?? $data['category'] ?? '');
-                        
+
                         // Blank value validation: skip if categories is blank
                         if ($catInput === '') {
                             $skipped++;
                             $errors[] = "Row {$row}: Categories is blank. Skipping row.";
                             continue 2;
                         }
-                        
+
                         $names = array_map('trim', explode(',', $catInput));
                         $cats = $db->table('categories')->whereIn('LOWER(category_name)', array_map('strtolower', $names))->get()->getResultArray();
                         $foundNames = array_map('strtolower', array_column($cats, 'category_name'));
                         $catIds = array_column($cats, 'id');
-                        
+
                         // Partial update: log invalid categories but continue with valid ones
                         if (count($catIds) < count($names)) {
                             $missing = [];
                             foreach ($names as $n) {
-                                if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
+                                if (!in_array(strtolower($n), $foundNames))
+                                    $missing[] = $n;
                             }
                             if (!empty($missing)) {
                                 $errors[] = "Row {$row}: Invalid categories skipped: " . implode(', ', $missing) . ". Proceeding with valid ones.";
                             }
                         }
-                        
+
                         // Validate that at least one valid category exists
                         if (empty($catIds)) {
                             $skipped++;
@@ -3507,7 +3642,7 @@ class SuperAdminApi extends AdminApi
                         // Gender handling with partial update
                         $appliesToInput = trim($data['applies_to'] ?? '');
                         $appliesTo = [];
-                        
+
                         if ($appliesToInput !== '') {
                             // Try JSON decode first
                             $appliesTo = json_decode($appliesToInput, true);
@@ -3520,16 +3655,16 @@ class SuperAdminApi extends AdminApi
                                     $appliesTo = [$appliesToInput];
                                 }
                                 // Strip quotes from individual values if present
-                                $appliesTo = array_map(function($val) {
+                                $appliesTo = array_map(function ($val) {
                                     return trim($val, '"\'');
                                 }, $appliesTo);
                             }
-                            
+
                             // Filter out "all" and convert to lowercase for comparison
-                            $appliesTo = array_filter(array_map('trim', $appliesTo), function($val) {
+                            $appliesTo = array_filter(array_map('trim', $appliesTo), function ($val) {
                                 return strtolower($val) !== 'all';
                             });
-                            
+
                             // Validate applies_to gender values against existing genders (partial update)
                             $allGenders = $db->table('genders')->select('LOWER(name) as name')->get()->getResultArray();
                             $validGenderNames = array_map('strtolower', array_column($allGenders, 'name'));
@@ -3549,7 +3684,7 @@ class SuperAdminApi extends AdminApi
                         } else {
                             // Blank gender validation: check if gender is required based on listing type's gender_config
                             $isGenderRequired = $this->isGenderRequiredForCategories($catIds);
-                            
+
                             if (!$isGenderRequired) {
                                 // Gender is not required (listing type has gender hidden), allow blank
                                 $appliesTo = [];
@@ -3563,24 +3698,24 @@ class SuperAdminApi extends AdminApi
                                         break;
                                     }
                                 }
-                                
+
                                 if ($hasCategoriesWithBlankGender) {
                                     $skipped++;
                                     $errors[] = "Row {$row}: Gender is blank and category with this sub-category's gender is also blank. Skipping row.";
                                     continue 2;
                                 }
-                                
+
                                 // If no gender value is present, will be handled below with existing check
                             }
                         }
-                        
+
                         // Check if exists (case-insensitive by name)
                         $existing = $db->table('sub_categories')->where('LOWER(name)', strtolower($name))->get()->getRowArray();
                         $rec = [
                             'name' => $name,
                             'category_ids' => json_encode(is_array($catIds) ? $catIds : []),
                         ];
-                        
+
                         // Only update applies_to if it was provided in CSV
                         if ($appliesToInput !== '') {
                             $rec['applies_to'] = json_encode(is_array($appliesTo) ? $appliesTo : []);
@@ -3591,7 +3726,7 @@ class SuperAdminApi extends AdminApi
                             // New record with blank gender, use N/A
                             $rec['applies_to'] = json_encode(['N/A']);
                         }
-                        
+
                         if ($existing) {
                             $db->table('sub_categories')->where('id', $existing['id'])->update($rec);
                             $updated++;
@@ -3604,9 +3739,13 @@ class SuperAdminApi extends AdminApi
 
                     case 'colors':
                         $name = $data['name'] ?? '';
-                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty"; continue 2; }
+                        if (!$name) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Name is empty";
+                            continue 2;
+                        }
                         $hex = $data['hex_code'] ?? '#000000';
-                        
+
                         // Validate hex_code format
                         $hex = trim($hex);
                         // Add # prefix if missing
@@ -3619,7 +3758,7 @@ class SuperAdminApi extends AdminApi
                             $errors[] = "Row {$row}: Invalid hex_code '{$data['hex_code']}'. Must be a valid hex color code (e.g., #FFF or #FFFFFF)";
                             continue 2;
                         }
-                        
+
                         // Check if exists by name or hex code (hex code must be unique)
                         $existing = $db->table('colors')
                             ->groupStart()
@@ -3628,7 +3767,7 @@ class SuperAdminApi extends AdminApi
                             ->groupEnd()
                             ->get()
                             ->getRowArray();
-                        
+
                         $rec = ['name' => $name, 'hex_code' => $hex];
                         if ($existing) {
                             // If hex code matches but name is different, skip as hex must be unique
@@ -3649,10 +3788,18 @@ class SuperAdminApi extends AdminApi
 
                     case 'attributes':
                         $name = $data['name'] ?? '';
-                        if (!$name) { $skipped++; $errors[] = "Row {$row}: Name is empty, skipping."; continue 2; }
+                        if (!$name) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Name is empty, skipping.";
+                            continue 2;
+                        }
 
                         $type = $data['type'] ?? '';
-                        if (!$type) { $skipped++; $errors[] = "Row {$row}: Type is required, skipping."; continue 2; }
+                        if (!$type) {
+                            $skipped++;
+                            $errors[] = "Row {$row}: Type is required, skipping.";
+                            continue 2;
+                        }
 
                         $allowedTypes = ['text', 'number', 'picklist'];
                         if (!in_array($type, $allowedTypes)) {
@@ -3671,23 +3818,23 @@ class SuperAdminApi extends AdminApi
                                 continue 2;
                             }
                         }
-                        
-                        $required = (int)($data['required'] ?? 0);
+
+                        $required = (int) ($data['required'] ?? 0);
                         $placeholder = $data['placeholder'] ?? null;
-                        
+
                         $rec = [
                             'name' => $name,
                             'type' => $type,
                             'required' => $required,
                             'placeholder' => $placeholder,
                         ];
-                        
+
                         // Parse allowed_values for picklist type
                         if ($type === 'picklist') {
                             $values = array_filter(array_map('trim', explode(',', $allowedValuesRaw)), fn($v) => $v !== '');
                             $rec['allowed_values'] = json_encode(array_values($values));
                         }
-                        
+
                         // Check if exists by name only (case-insensitive)
                         $existing = $db->table('attributes')
                             ->where('LOWER(name)', strtolower($name))
@@ -3717,21 +3864,21 @@ class SuperAdminApi extends AdminApi
                             $attributeId = $db->insertID();
                             $inserted++;
                         }
-                        
+
                         // ── Parse & resolve entity_types ──────────────────────────────────────
                         $entityTypesRaw = $data['entity_types'] ?? null;
-                        $entityPairs    = []; // [['type'=>..., 'name'=>...], ...]
+                        $entityPairs = []; // [['type'=>..., 'name'=>...], ...]
 
-                        if (!empty($entityTypesRaw) && trim((string)$entityTypesRaw) !== '') {
-                            $decoded     = json_decode($entityTypesRaw, true);
-                            $parsedList  = (json_last_error() === JSON_ERROR_NONE && is_array($decoded))
+                        if (!empty($entityTypesRaw) && trim((string) $entityTypesRaw) !== '') {
+                            $decoded = json_decode($entityTypesRaw, true);
+                            $parsedList = (json_last_error() === JSON_ERROR_NONE && is_array($decoded))
                                 ? $decoded
                                 : array_map('trim', explode(',', $entityTypesRaw));
 
                             $validEntityTypes = ['listing_type', 'category', 'sub_category'];
 
                             foreach ($parsedList as $item) {
-                                $item = trim((string)$item);
+                                $item = trim((string) $item);
                                 if (strpos($item, ':') !== false) {
                                     [$et, $en] = explode(':', $item, 2);
                                     $et = strtolower(trim($et));
@@ -3760,17 +3907,20 @@ class SuperAdminApi extends AdminApi
                                 $entity = $db->table('listing_types')
                                     ->where('LOWER(type_name)', strtolower($en))
                                     ->get()->getRowArray();
-                                if ($entity) $entityId = $entity['id'];
+                                if ($entity)
+                                    $entityId = $entity['id'];
                             } elseif ($et === 'category') {
                                 $entity = $db->table('categories')
                                     ->where('LOWER(category_name)', strtolower($en))
                                     ->get()->getRowArray();
-                                if ($entity) $entityId = $entity['id'];
+                                if ($entity)
+                                    $entityId = $entity['id'];
                             } elseif ($et === 'sub_category') {
                                 $entity = $db->table('sub_categories')
                                     ->where('LOWER(name)', strtolower($en))
                                     ->get()->getRowArray();
-                                if ($entity) $entityId = $entity['id'];
+                                if ($entity)
+                                    $entityId = $entity['id'];
                             }
 
                             if ($entityId) {
@@ -3794,9 +3944,9 @@ class SuperAdminApi extends AdminApi
                             foreach ($resolvedAssignments as $asgn) {
                                 $db->table('attribute_assignments')->insert([
                                     'attribute_id' => $attributeId,
-                                    'entity_type'  => $asgn['entity_type'],
-                                    'entity_id'    => $asgn['entity_id'],
-                                    'created_at'   => $now,
+                                    'entity_type' => $asgn['entity_type'],
+                                    'entity_id' => $asgn['entity_id'],
+                                    'created_at' => $now,
                                 ]);
                             }
                         }
@@ -3826,39 +3976,39 @@ class SuperAdminApi extends AdminApi
     }
 
     // ── Helper Functions ──────────────────────────────────
-    
+
     private function isGenderRequiredForProductTypes(array $productTypeIds): bool
     {
         $db = \Config\Database::connect();
-        
+
         // Get listing types for the given product types
         $productTypes = $db->table('product_types')
             ->whereIn('id', $productTypeIds)
             ->select('listing_type_id')
             ->get()
             ->getResultArray();
-        
+
         if (empty($productTypes)) {
             return false; // Default to not required if no product types found
         }
-        
+
         $listingTypeIds = array_unique(array_column($productTypes, 'listing_type_id'));
-        
+
         // Check if gender_config column exists
         $hasGenderConfig = $db->fieldExists('gender_config', 'listing_types');
         $selectFields = $hasGenderConfig ? 'id, gender_config, field_config' : 'id, field_config';
-        
+
         // Get listing types with their gender_config
         $listingTypes = $db->table('listing_types')
             ->whereIn('id', $listingTypeIds)
             ->select($selectFields)
             ->get()
             ->getResultArray();
-        
+
         $hasMandatory = false;
         $hasOptional = false;
         $hasHidden = false;
-        
+
         foreach ($listingTypes as $lt) {
             // Use gender_config column if available, otherwise fall back to field_config JSON
             if ($hasGenderConfig && isset($lt['gender_config']) && $lt['gender_config'] !== '' && $lt['gender_config'] !== null) {
@@ -3872,7 +4022,7 @@ class SuperAdminApi extends AdminApi
                     $genderConfig = $config['gender'] ?? 'optional';
                 }
             }
-            
+
             if ($genderConfig === 'mandatory') {
                 $hasMandatory = true;
             } elseif ($genderConfig === 'optional') {
@@ -3881,37 +4031,37 @@ class SuperAdminApi extends AdminApi
                 $hasHidden = true;
             }
         }
-        
+
         // If any listing type has gender as mandatory or optional, gender is required
         // Only if ALL listing types have gender hidden, gender is not required
         if ($hasMandatory || $hasOptional) {
             return true;
         }
-        
+
         // If all listing types have gender hidden, gender is not required
         if ($hasHidden && !$hasOptional && !$hasMandatory) {
             return false;
         }
-        
+
         // Default: gender is required
         return true;
     }
-    
+
     private function isGenderRequiredForCategories(array $categoryIds): bool
     {
         $db = \Config\Database::connect();
-        
+
         // Get product types for the given categories
         $categories = $db->table('categories')
             ->whereIn('id', $categoryIds)
             ->select('product_type_ids')
             ->get()
             ->getResultArray();
-        
+
         if (empty($categories)) {
             return false; // Default to not required if no categories found
         }
-        
+
         $productTypeIds = [];
         foreach ($categories as $cat) {
             $ptIds = json_decode($cat['product_type_ids'] ?? '[]', true);
@@ -3919,11 +4069,11 @@ class SuperAdminApi extends AdminApi
                 $productTypeIds = array_merge($productTypeIds, $ptIds);
             }
         }
-        
+
         if (empty($productTypeIds)) {
             return false; // Default to not required if no product types found
         }
-        
+
         return $this->isGenderRequiredForProductTypes($productTypeIds);
     }
 
@@ -3935,9 +4085,13 @@ class SuperAdminApi extends AdminApi
             return ['error' => 'Please upload a valid CSV file.'];
         }
         $handle = fopen($file->getTempName(), 'r');
-        if (!$handle) return ['error' => 'Failed to read CSV file.'];
+        if (!$handle)
+            return ['error' => 'Failed to read CSV file.'];
         $header = fgetcsv($handle);
-        if (!$header) { fclose($handle); return ['error' => 'CSV file is empty.']; }
+        if (!$header) {
+            fclose($handle);
+            return ['error' => 'CSV file is empty.'];
+        }
         $header = array_map('trim', array_map('strtolower', $header));
         $rows = [];
         while (($line = fgetcsv($handle)) !== false) {
@@ -3945,77 +4099,96 @@ class SuperAdminApi extends AdminApi
                 $rows[] = array_combine($header, array_slice(array_map('trim', $line), 0, count($header)));
             }
         }
-    fclose($handle);
-    return ['header' => $header, 'rows' => $rows];
-}
-
-private function processImage($source, $subDir): ?string
-{
-    if (empty($source)) return null;
-    $source = trim($source, " \t\n\r\0\x0B\""); // Trim whitespace and quotes
-    
-    $targetDir = FCPATH . $subDir;
-    if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
-
-    $ext = pathinfo($source, PATHINFO_EXTENSION);
-    if (!$ext || strlen($ext) > 5) $ext = 'png';
-    
-    $newFileName = time() . '_' . uniqid() . '.' . $ext;
-    $targetPath = $targetDir . $newFileName;
-    $dbPath = $subDir . $newFileName;
-
-    $success = false;
-    if (filter_var($source, FILTER_VALIDATE_URL)) {
-        try {
-            $content = @file_get_contents($source);
-            if ($content) {
-                file_put_contents($targetPath, $content);
-                $success = true;
-            }
-        } catch (\Exception $e) {}
-    } else {
-        if (file_exists($source)) {
-            $success = @copy($source, $targetPath);
-        }
+        fclose($handle);
+        return ['header' => $header, 'rows' => $rows];
     }
 
-    return ($success && file_exists($targetPath)) ? $dbPath : null;
-}
+    private function processImage($source, $subDir): ?string
+    {
+        if (empty($source))
+            return null;
+        $source = trim($source, " \t\n\r\0\x0B\""); // Trim whitespace and quotes
+
+        $targetDir = FCPATH . $subDir;
+        if (!is_dir($targetDir))
+            mkdir($targetDir, 0777, true);
+
+        $ext = pathinfo($source, PATHINFO_EXTENSION);
+        if (!$ext || strlen($ext) > 5)
+            $ext = 'png';
+
+        $newFileName = time() . '_' . uniqid() . '.' . $ext;
+        $targetPath = $targetDir . $newFileName;
+        $dbPath = $subDir . $newFileName;
+
+        $success = false;
+        if (filter_var($source, FILTER_VALIDATE_URL)) {
+            try {
+                $content = @file_get_contents($source);
+                if ($content) {
+                    file_put_contents($targetPath, $content);
+                    $success = true;
+                }
+            } catch (\Exception $e) {
+            }
+        } else {
+            if (file_exists($source)) {
+                $success = @copy($source, $targetPath);
+            }
+        }
+
+        return ($success && file_exists($targetPath)) ? $dbPath : null;
+    }
 
     public function bulkUploadBrands()
     {
         $db = \Config\Database::connect();
         $csv = $this->parseCsv($this->request->getFile('csv_file'));
-        if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
+        if (isset($csv['error']))
+            return $this->respond(['success' => false, 'message' => $csv['error']], 400);
 
-        $inserted = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $inserted = 0;
+        $skipped = 0;
+        $errors = [];
+        $now = date('Y-m-d H:i:s');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
             $name = $data['brand_name'] ?? $data['name'] ?? '';
-            if (!$name) { $skipped++; $errors[] = "Row {$row}: brand_name is empty"; continue; }
+            if (!$name) {
+                $skipped++;
+                $errors[] = "Row {$row}: brand_name is empty";
+                continue;
+            }
             try {
                 $rec = ['brand_name' => $name, 'created_at' => $now];
-                
+
                 // Seller Resolution (by email or ID)
                 $sellerId = $data['seller_id'] ?? '';
                 $sellerEmail = $data['seller_email'] ?? $data['email'] ?? '';
                 if (!$sellerId && $sellerEmail) {
                     $seller = $db->table('users')->where('email', $sellerEmail)->get()->getRowArray();
-                    if ($seller) $sellerId = $seller['id'];
+                    if ($seller)
+                        $sellerId = $seller['id'];
                 }
-                if ($sellerId) $rec['seller_id'] = $sellerId;
+                if ($sellerId)
+                    $rec['seller_id'] = $sellerId;
 
-                if (!empty($data['description'])) $rec['description'] = $data['description'];
-                
+                if (!empty($data['description']))
+                    $rec['description'] = $data['description'];
+
                 $logoSource = $data['logo'] ?? $data['image'] ?? $data['brand_image'] ?? '';
                 if ($logoSource) {
                     $processed = $this->processImage($logoSource, 'uploads/brands/');
-                    if ($processed) $rec['logo'] = $processed;
+                    if ($processed)
+                        $rec['logo'] = $processed;
                 }
 
                 $db->table('brands')->insert($rec);
                 $inserted++;
-            } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
+            } catch (\Exception $e) {
+                $skipped++;
+                $errors[] = "Row {$row}: " . $e->getMessage();
+            }
         }
         return $this->respond(['success' => true, 'message' => "{$inserted} brands inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
@@ -4024,31 +4197,40 @@ private function processImage($source, $subDir): ?string
     {
         $db = \Config\Database::connect();
         $csv = $this->parseCsv($this->request->getFile('csv_file'));
-        if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
+        if (isset($csv['error']))
+            return $this->respond(['success' => false, 'message' => $csv['error']], 400);
 
-        $inserted = 0; $updated = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $inserted = 0;
+        $updated = 0;
+        $skipped = 0;
+        $errors = [];
+        $now = date('Y-m-d H:i:s');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
             $name = $data['brand_name'] ?? $data['name'] ?? '';
-            if (!$name) { $skipped++; $errors[] = "Row {$row}: brand_name is empty"; continue; }
-            
+            if (!$name) {
+                $skipped++;
+                $errors[] = "Row {$row}: brand_name is empty";
+                continue;
+            }
+
             // Check if brand name already exists (update if exists)
             $existingBrand = $db->table('orignal_brands')->where('LOWER(brand_name)', strtolower($name))->get()->getRowArray();
-            
+
             try {
                 $rec = ['brand_name' => $name, 'is_active' => 1, 'created_at' => $now];
-                
+
                 // Listing Type Resolution with partial update
                 $ltIds = [];
                 $ltInput = $data['listing_types'] ?? $data['listing_type_ids'] ?? '';
-                
+
                 // Validate that listing types are provided
                 if (empty($ltInput)) {
                     $skipped++;
                     $errors[] = "Row {$row}: listing_types is required. Brand cannot be created without listing types.";
                     continue;
                 }
-                
+
                 if (strpos($ltInput, '[') === 0) {
                     $ltIds = json_decode($ltInput, true) ?: [];
                 } else {
@@ -4056,35 +4238,39 @@ private function processImage($source, $subDir): ?string
                     $lts = $db->table('listing_types')->whereIn('LOWER(type_name)', array_map('strtolower', $names))->get()->getResultArray();
                     $foundNames = array_map('strtolower', array_column($lts, 'type_name'));
                     $ltIds = array_column($lts, 'id');
-                    
+
                     // Partial update: log invalid listing types but continue with valid ones
                     if (count($ltIds) < count($names)) {
                         $missing = [];
                         foreach ($names as $n) {
-                            if (!in_array(strtolower($n), $foundNames)) $missing[] = $n;
+                            if (!in_array(strtolower($n), $foundNames))
+                                $missing[] = $n;
                         }
                         if (!empty($missing)) {
                             $errors[] = "Row {$row}: Invalid listing types skipped: " . implode(', ', $missing) . ". Proceeding with valid ones.";
                         }
                     }
                 }
-                
+
                 // Validate that at least one valid listing type exists
                 if (empty($ltIds)) {
                     $skipped++;
                     $errors[] = "Row {$row}: No valid listing types found. Brand cannot be created without listing types.";
                     continue;
                 }
-                
-                $rec['listing_type_ids'] = json_encode(array_map('intval', $ltIds));
-                if (!empty($ltIds)) $rec['listing_type_id'] = $ltIds[0]; // For backward compatibility
 
-                if (!empty($data['description'])) $rec['description'] = $data['description'];
+                $rec['listing_type_ids'] = json_encode(array_map('intval', $ltIds));
+                if (!empty($ltIds))
+                    $rec['listing_type_id'] = $ltIds[0]; // For backward compatibility
+
+                if (!empty($data['description']))
+                    $rec['description'] = $data['description'];
 
                 $imageSource = $data['brand_image'] ?? $data['image'] ?? $data['logo'] ?? '';
                 if ($imageSource) {
                     $processed = $this->processImage($imageSource, 'uploads/original_brands/');
-                    if ($processed) $rec['brand_image'] = $processed;
+                    if ($processed)
+                        $rec['brand_image'] = $processed;
                 }
 
                 if ($existingBrand) {
@@ -4097,7 +4283,10 @@ private function processImage($source, $subDir): ?string
                     $db->table('orignal_brands')->insert($rec);
                     $inserted++;
                 }
-            } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
+            } catch (\Exception $e) {
+                $skipped++;
+                $errors[] = "Row {$row}: " . $e->getMessage();
+            }
         }
         return $this->respond(['success' => true, 'message' => "{$inserted} records inserted, {$updated} updated, {$skipped} skipped.", 'inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors]);
     }
@@ -4107,7 +4296,7 @@ private function processImage($source, $subDir): ?string
     {
         $db = \Config\Database::connect();
         $attributes = $db->table('attributes')->orderBy('created_at', 'DESC')->get()->getResultArray();
-        
+
         // Get entity assignments for each attribute
         $assignments = $db->table('attribute_assignments')->get()->getResultArray();
         $assignmentMap = [];
@@ -4120,7 +4309,7 @@ private function processImage($source, $subDir): ?string
                 'entity_id' => $assignment['entity_id'],
             ];
         }
-        
+
         // Parse allowed_values JSON and add entity linking for each attribute
         foreach ($attributes as &$attr) {
             $attr['allowed_values'] = !empty($attr['allowed_values']) ? json_decode($attr['allowed_values'], true) : [];
@@ -4128,22 +4317,22 @@ private function processImage($source, $subDir): ?string
             if (!is_array($attr['allowed_values'])) {
                 $attr['allowed_values'] = [];
             }
-            
+
             // Ensure required field exists and is a number
             if (!isset($attr['required'])) {
                 $attr['required'] = 0;
             }
-            
+
             // Ensure type field exists
             if (!isset($attr['type'])) {
                 $attr['type'] = 'text';
             }
-            
+
             // Ensure placeholder field exists
             if (!isset($attr['placeholder'])) {
                 $attr['placeholder'] = '';
             }
-            
+
             // Initialize entity linking fields
             $attr['entity_types'] = [];
             $attr['entity_type'] = null;
@@ -4152,7 +4341,7 @@ private function processImage($source, $subDir): ?string
             $attr['listing_type_id'] = null;
             $attr['category_id'] = null;
             $attr['sub_category_id'] = null;
-            
+
             // Add entity linking information
             if (isset($assignmentMap[$attr['id']]) && !empty($assignmentMap[$attr['id']])) {
                 // Group entity IDs by entity type
@@ -4161,7 +4350,7 @@ private function processImage($source, $subDir): ?string
                     'category' => [],
                     'sub_category' => []
                 ];
-                
+
                 foreach ($assignmentMap[$attr['id']] as $assignment) {
                     $entityType = $assignment['entity_type'];
                     $entityId = $assignment['entity_id'];
@@ -4169,28 +4358,28 @@ private function processImage($source, $subDir): ?string
                         $entityIdsByType[$entityType][] = $entityId;
                     }
                 }
-                
+
                 // Extract all unique entity_types
                 $entityTypes = array_unique(array_column($assignmentMap[$attr['id']], 'entity_type'));
                 $attr['entity_types'] = array_values($entityTypes);
-                
+
                 // Return entity IDs grouped by type for frontend
                 $attr['entity_ids'] = array_merge(
                     $entityIdsByType['listing_type'],
                     $entityIdsByType['category'],
                     $entityIdsByType['sub_category']
                 );
-                
+
                 // For backward compatibility, set single entity_type to first one
                 $attr['entity_type'] = $attr['entity_types'][0] ?? null;
-                
+
                 // Map entity_type to the appropriate ID column for frontend compatibility (backward compatibility)
                 $attr['listing_type_id'] = $entityIdsByType['listing_type'][0] ?? null;
                 $attr['category_id'] = $entityIdsByType['category'][0] ?? null;
                 $attr['sub_category_id'] = $entityIdsByType['sub_category'][0] ?? null;
             }
         }
-        
+
         return $this->respond(['success' => true, 'data' => $attributes]);
     }
 
@@ -4199,7 +4388,7 @@ private function processImage($source, $subDir): ?string
         $db = \Config\Database::connect();
         $name = $this->request->getPost('name');
         $type = $this->request->getPost('type') ?? 'text';
-        $required = (int)($this->request->getPost('required') ?? 0);
+        $required = (int) ($this->request->getPost('required') ?? 0);
         $allowedValues = $this->request->getPost('allowed_values');
         $placeholder = $this->request->getPost('placeholder');
 
@@ -4242,7 +4431,7 @@ private function processImage($source, $subDir): ?string
 
         $db->table('attributes')->insert($data);
         $attributeId = $db->insertID();
-        
+
         // Handle entity linking through attribute_assignments table
         $entityTypes = $this->request->getPost('entity_types');
         $entityIds = $this->request->getPost('entity_ids');
@@ -4258,7 +4447,7 @@ private function processImage($source, $subDir): ?string
             for ($i = 0; $i < $maxCount; $i++) {
                 $entityType = $entityTypesArray[$i] ?? null;
                 $entityId = $entityIdsArray[$i] ?? null;
-                
+
                 if ($entityType && $entityId) {
                     $db->table('attribute_assignments')->insert([
                         'attribute_id' => $attributeId,
@@ -4269,7 +4458,7 @@ private function processImage($source, $subDir): ?string
                 }
             }
         }
-        
+
         return $this->respond(['success' => true, 'message' => getAppMessage('attribute_added_successfully', 'Attribute added successfully.')]);
     }
 
@@ -4277,9 +4466,10 @@ private function processImage($source, $subDir): ?string
     {
         $db = \Config\Database::connect();
         $data = [];
-        
+
         $name = $this->request->getPost('name');
-        if ($name) $data['name'] = $name;
+        if ($name)
+            $data['name'] = $name;
 
         $type = $this->request->getPost('type');
         if ($type) {
@@ -4292,11 +4482,13 @@ private function processImage($source, $subDir): ?string
         }
 
         $required = $this->request->getPost('required');
-        if ($required !== null) $data['required'] = (int)$required;
+        if ($required !== null)
+            $data['required'] = (int) $required;
 
         $placeholder = $this->request->getPost('placeholder');
-        if ($placeholder !== null) $data['placeholder'] = $placeholder;
-        
+        if ($placeholder !== null)
+            $data['placeholder'] = $placeholder;
+
         $allowedValues = $this->request->getPost('allowed_values');
         if ($allowedValues !== null) {
             // If type is picklist, allowed_values is required
@@ -4329,7 +4521,7 @@ private function processImage($source, $subDir): ?string
             for ($i = 0; $i < $maxCount; $i++) {
                 $entityType = $entityTypesArray[$i] ?? null;
                 $entityId = $entityIdsArray[$i] ?? null;
-                
+
                 if ($entityType && $entityId) {
                     $db->table('attribute_assignments')->insert([
                         'attribute_id' => $id,
@@ -4370,8 +4562,10 @@ private function processImage($source, $subDir): ?string
             ->join('attributes a', 'a.id = aa.attribute_id', 'inner')
             ->orderBy('aa.sort_order', 'ASC');
 
-        if ($entityType) $query->where('aa.entity_type', $entityType);
-        if ($entityId) $query->where('aa.entity_id', $entityId);
+        if ($entityType)
+            $query->where('aa.entity_type', $entityType);
+        if ($entityId)
+            $query->where('aa.entity_id', $entityId);
 
         $assignments = $query->get()->getResultArray();
 
@@ -4424,12 +4618,14 @@ private function processImage($source, $subDir): ?string
     {
         $db = \Config\Database::connect();
         $data = [];
-        
+
         $required = $this->request->getPost('required');
-        if ($required !== null) $data['required'] = $required;
-        
+        if ($required !== null)
+            $data['required'] = $required;
+
         $sortOrder = $this->request->getPost('sort_order');
-        if ($sortOrder !== null) $data['sort_order'] = $sortOrder;
+        if ($sortOrder !== null)
+            $data['sort_order'] = $sortOrder;
 
         if (empty($data)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update.')], 400);
@@ -4450,9 +4646,13 @@ private function processImage($source, $subDir): ?string
     {
         $db = \Config\Database::connect();
         $csv = $this->parseCsv($this->request->getFile('csv_file'));
-        if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
+        if (isset($csv['error']))
+            return $this->respond(['success' => false, 'message' => $csv['error']], 400);
 
-        $inserted = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $inserted = 0;
+        $skipped = 0;
+        $errors = [];
+        $now = date('Y-m-d H:i:s');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
             $title = $data['title'] ?? '';
@@ -4463,13 +4663,14 @@ private function processImage($source, $subDir): ?string
             // Seller Lookup by Email
             if (!$sellerId && !empty($data['seller_email'])) {
                 $user = $db->table('users')->where('email', $data['seller_email'])->get()->getRowArray();
-                if ($user) $sellerId = $user['id'];
+                if ($user)
+                    $sellerId = $user['id'];
             }
 
-            if (!$title || !$sellerId || !$originalPrice) { 
-                $skipped++; 
-                $errors[] = "Row {$row}: title, seller (id/email), or original_price missing"; 
-                continue; 
+            if (!$title || !$sellerId || !$originalPrice) {
+                $skipped++;
+                $errors[] = "Row {$row}: title, seller (id/email), or original_price missing";
+                continue;
             }
 
             try {
@@ -4477,7 +4678,8 @@ private function processImage($source, $subDir): ?string
                 $brandId = !empty($data['brand_id']) ? $data['brand_id'] : null;
                 if (!$brandId && !empty($data['brand_name'])) {
                     $brand = $db->table('brands')->where('brand_name', $data['brand_name'])->get()->getRowArray();
-                    if ($brand) $brandId = $brand['id'];
+                    if ($brand)
+                        $brandId = $brand['id'];
                 }
 
                 // Category Lookup by Name
@@ -4485,11 +4687,14 @@ private function processImage($source, $subDir): ?string
                 $categoryIds = $data['category_ids'] ?? null;
                 if (!$categoryIds && !empty($category)) {
                     $cat = $db->table('categories')->where('category_name', $category)->get()->getRowArray();
-                    if ($cat) $categoryIds = json_encode([$cat['id']]);
+                    if ($cat)
+                        $categoryIds = json_encode([$cat['id']]);
                 }
 
                 $rec = [
-                    'seller_id' => $sellerId, 'title' => $title, 'listing_type' => $listingType,
+                    'seller_id' => $sellerId,
+                    'title' => $title,
+                    'listing_type' => $listingType,
                     'original_price' => $originalPrice,
                     'description' => $data['description'] ?? '',
                     'selling_price' => $data['selling_price'] ?? null,
@@ -4504,7 +4709,8 @@ private function processImage($source, $subDir): ?string
                     'times_used' => $data['times_used'] ?? $data['used_times'] ?? 0,
                     'condition_description' => $data['condition_description'] ?? '',
                     'status' => $data['status'] ?? 'pending',
-                    'created_at' => $now, 'updated_at' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ];
                 $db->table('products')->insert($rec);
                 $productId = $db->insertID();
@@ -4526,7 +4732,10 @@ private function processImage($source, $subDir): ?string
                         }
                     }
                 }
-            } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
+            } catch (\Exception $e) {
+                $skipped++;
+                $errors[] = "Row {$row}: " . $e->getMessage();
+            }
         }
         return $this->respond(['success' => true, 'message' => "{$inserted} products inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
@@ -4536,9 +4745,13 @@ private function processImage($source, $subDir): ?string
         $db = \Config\Database::connect();
         $type = $this->request->getPost('type') ?? 'sale'; // 'sale' or 'rental'
         $csv = $this->parseCsv($this->request->getFile('csv_file'));
-        if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
+        if (isset($csv['error']))
+            return $this->respond(['success' => false, 'message' => $csv['error']], 400);
 
-        $inserted = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $inserted = 0;
+        $skipped = 0;
+        $errors = [];
+        $now = date('Y-m-d H:i:s');
         $table = ($type === 'rental') ? 'rental_pricing_rules' : 'pricing_rules';
 
         foreach ($csv['rows'] as $i => $data) {
@@ -4546,26 +4759,29 @@ private function processImage($source, $subDir): ?string
             try {
                 $filterType = $data['filter_type'] ?? '';
                 $filterName = $data['filter_value_name'] ?? $data['filter_label'] ?? '';
-                $filterValue = (int)($data['filter_value'] ?? 0);
+                $filterValue = (int) ($data['filter_value'] ?? 0);
 
                 if (!$filterValue && $filterType && $filterName) {
                     if ($filterType === 'listing_type') {
                         $lt = $db->table('listing_types')->where('LOWER(type_name)', strtolower($filterName))->get()->getRowArray();
-                        if ($lt) $filterValue = $lt['id'];
+                        if ($lt)
+                            $filterValue = $lt['id'];
                     } elseif ($filterType === 'category') {
                         $cat = $db->table('categories')->where('LOWER(category_name)', strtolower($filterName))->get()->getRowArray();
-                        if ($cat) $filterValue = $cat['id'];
+                        if ($cat)
+                            $filterValue = $cat['id'];
                     } elseif ($filterType === 'sub_category') {
                         $sc = $db->table('sub_categories')->where('LOWER(name)', strtolower($filterName))->get()->getRowArray();
-                        if ($sc) $filterValue = $sc['id'];
+                        if ($sc)
+                            $filterValue = $sc['id'];
                     }
                 }
 
                 $filterLabel = $this->resolveFilterLabel($filterType, $filterValue);
 
-                $min = (int)($data['depreciation_range_min'] ?? $data['min'] ?? 0);
-                $max = (int)($data['depreciation_range_max'] ?? $data['max'] ?? 0);
-                $amount = (float)($data['depreciation_amount'] ?? $data['amount'] ?? 0);
+                $min = (int) ($data['depreciation_range_min'] ?? $data['min'] ?? 0);
+                $max = (int) ($data['depreciation_range_max'] ?? $data['max'] ?? 0);
+                $amount = (float) ($data['depreciation_amount'] ?? $data['amount'] ?? 0);
 
                 if ($min >= $max && $max !== 0) {
                     $skipped++;
@@ -4597,21 +4813,21 @@ private function processImage($source, $subDir): ?string
                         'filter_type' => $filterType,
                         'filter_value' => $filterValue,
                         'filter_label' => $filterLabel,
-                        'deposit_deduction_threshold' => (float)($data['deposit_deduction_threshold'] ?? $data['threshold'] ?? 0),
+                        'deposit_deduction_threshold' => (float) ($data['deposit_deduction_threshold'] ?? $data['threshold'] ?? 0),
                         'depreciation_range_min' => $min,
                         'depreciation_range_max' => $max,
-                        'depreciation_amount' => (float)($data['depreciation_amount'] ?? $data['amount'] ?? 0),
-                        'max_cost_cap_per_day' => (float)($data['max_cost_cap_per_day'] ?? $data['cap'] ?? 0),
+                        'depreciation_amount' => (float) ($data['depreciation_amount'] ?? $data['amount'] ?? 0),
+                        'max_cost_cap_per_day' => (float) ($data['max_cost_cap_per_day'] ?? $data['cap'] ?? 0),
                         'is_active' => 1,
                     ]);
                 } else {
-                    $threshold = (float)($data['deduction_threshold'] ?? $data['threshold'] ?? 0);
-                    
+                    $threshold = (float) ($data['deduction_threshold'] ?? $data['threshold'] ?? 0);
+
                     // Sync deduction_threshold across all existing rows in the same filter group (Same rule as single upload)
                     $db->table('pricing_rules')
-                       ->where('filter_type', $filterType)
-                       ->where('filter_value', $filterValue)
-                       ->update(['deduction_threshold' => $threshold]);
+                        ->where('filter_type', $filterType)
+                        ->where('filter_value', $filterValue)
+                        ->update(['deduction_threshold' => $threshold]);
 
                     $db->table($table)->insert([
                         'filter_type' => $filterType,
@@ -4620,12 +4836,15 @@ private function processImage($source, $subDir): ?string
                         'deduction_threshold' => $threshold,
                         'depreciation_range_min' => $min,
                         'depreciation_range_max' => $max,
-                        'depreciation_amount' => (float)($data['depreciation_amount'] ?? $data['amount'] ?? 0),
+                        'depreciation_amount' => (float) ($data['depreciation_amount'] ?? $data['amount'] ?? 0),
                         'is_active' => 1,
                     ]);
                 }
                 $inserted++;
-            } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
+            } catch (\Exception $e) {
+                $skipped++;
+                $errors[] = "Row {$row}: " . $e->getMessage();
+            }
         }
         return $this->respond(['success' => true, 'message' => "{$inserted} rules inserted, {$skipped} skipped.", 'inserted' => $inserted, 'skipped' => $skipped, 'errors' => $errors]);
     }
@@ -4634,9 +4853,14 @@ private function processImage($source, $subDir): ?string
     {
         $db = \Config\Database::connect();
         $csv = $this->parseCsv($this->request->getFile('csv_file'));
-        if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
+        if (isset($csv['error']))
+            return $this->respond(['success' => false, 'message' => $csv['error']], 400);
 
-        $inserted = 0; $updated = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $inserted = 0;
+        $updated = 0;
+        $skipped = 0;
+        $errors = [];
+        $now = date('Y-m-d H:i:s');
         $fields = $db->getFieldNames('coupons');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
@@ -4649,10 +4873,10 @@ private function processImage($source, $subDir): ?string
 
             // Required fields check: Coupon Code, Discount Type, Discount Value, Expiry Date
             // usage_limit is optional (empty = unlimited)
-            if ($code === '' || $discountTypeRaw === '' || $discountValue === '' || $discountValue === null || $expiryDateRaw === '') { 
-                $skipped++; 
-                $errors[] = "Row {$row}: Coupon Code, Discount Type, Discount Value, and Expiry Date are required fields."; 
-                continue; 
+            if ($code === '' || $discountTypeRaw === '' || $discountValue === '' || $discountValue === null || $expiryDateRaw === '') {
+                $skipped++;
+                $errors[] = "Row {$row}: Coupon Code, Discount Type, Discount Value, and Expiry Date are required fields.";
+                continue;
             }
 
             try {
@@ -4678,23 +4902,27 @@ private function processImage($source, $subDir): ?string
 
                 // usage_limit: empty/0 = unlimited, store NULL
                 $rawUsageLimit = $usageLimit ?? null;
-                $parsedUsageLimit = ($rawUsageLimit !== null && $rawUsageLimit !== '' && (int)$rawUsageLimit > 0)
-                    ? (int)$rawUsageLimit
+                $parsedUsageLimit = ($rawUsageLimit !== null && $rawUsageLimit !== '' && (int) $rawUsageLimit > 0)
+                    ? (int) $rawUsageLimit
                     : null;
 
                 $rowPayload = [
-                    'code'           => $code,
-                    'discount_type'  => $discountType,
-                    'discount_value' => (float)$discountValue,
-                    'usage_limit'    => $parsedUsageLimit,
-                    'is_active'      => 1,
+                    'code' => $code,
+                    'discount_type' => $discountType,
+                    'discount_value' => (float) $discountValue,
+                    'usage_limit' => $parsedUsageLimit,
+                    'is_active' => 1,
                 ];
 
-                if (in_array('min_order_amount', $fields)) $rowPayload['min_order_amount'] = (float)$minAmt;
-                if (in_array('min_purchase', $fields)) $rowPayload['min_purchase'] = (float)$minAmt;
-                if (in_array('valid_until', $fields)) $rowPayload['valid_until'] = $expiryDate;
-                if (in_array('expires_at', $fields)) $rowPayload['expires_at'] = $expiryDate;
-                
+                if (in_array('min_order_amount', $fields))
+                    $rowPayload['min_order_amount'] = (float) $minAmt;
+                if (in_array('min_purchase', $fields))
+                    $rowPayload['min_purchase'] = (float) $minAmt;
+                if (in_array('valid_until', $fields))
+                    $rowPayload['valid_until'] = $expiryDate;
+                if (in_array('expires_at', $fields))
+                    $rowPayload['expires_at'] = $expiryDate;
+
                 $validFromRaw = trim($data['valid_from'] ?? $data['valid from'] ?? '');
                 if (in_array('valid_from', $fields) && !empty($validFromRaw)) {
                     $rowPayload['valid_from'] = date('Y-m-d H:i:s', strtotime($validFromRaw));
@@ -4702,27 +4930,29 @@ private function processImage($source, $subDir): ?string
 
                 $existing = $db->table('coupons')->where('code', $code)->get()->getRowArray();
                 if ($existing) {
-                    if (in_array('updated_at', $fields)) $rowPayload['updated_at'] = $now;
+                    if (in_array('updated_at', $fields))
+                        $rowPayload['updated_at'] = $now;
                     $db->table('coupons')->where('id', $existing['id'])->update($rowPayload);
                     $updated++;
                 } else {
                     $rowPayload['created_at'] = $now;
-                    if (in_array('updated_at', $fields)) $rowPayload['updated_at'] = $now;
+                    if (in_array('updated_at', $fields))
+                        $rowPayload['updated_at'] = $now;
                     $db->table('coupons')->insert($rowPayload);
                     $inserted++;
                 }
-            } catch (\Exception $e) { 
-                $skipped++; 
-                $errors[] = "Row {$row}: " . $e->getMessage(); 
+            } catch (\Exception $e) {
+                $skipped++;
+                $errors[] = "Row {$row}: " . $e->getMessage();
             }
         }
         return $this->respond([
-            'success'  => true, 
-            'message'  => "{$inserted} coupons inserted, {$updated} updated, {$skipped} skipped.", 
-            'inserted' => $inserted, 
-            'updated'  => $updated, 
-            'skipped'  => $skipped, 
-            'errors'   => $errors
+            'success' => true,
+            'message' => "{$inserted} coupons inserted, {$updated} updated, {$skipped} skipped.",
+            'inserted' => $inserted,
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'errors' => $errors
         ]);
     }
 
@@ -4730,15 +4960,20 @@ private function processImage($source, $subDir): ?string
     {
         $db = \Config\Database::connect();
         $csv = $this->parseCsv($this->request->getFile('csv_file'));
-        if (isset($csv['error'])) return $this->respond(['success' => false, 'message' => $csv['error']], 400);
+        if (isset($csv['error']))
+            return $this->respond(['success' => false, 'message' => $csv['error']], 400);
 
-        $inserted = 0; $updated = 0; $skipped = 0; $errors = []; $now = date('Y-m-d H:i:s');
+        $inserted = 0;
+        $updated = 0;
+        $skipped = 0;
+        $errors = [];
+        $now = date('Y-m-d H:i:s');
         foreach ($csv['rows'] as $i => $data) {
             $row = $i + 2;
             $name = trim($data['name'] ?? $data['plan_name'] ?? '');
             $userType = strtolower(trim($data['user_type'] ?? ''));
             $price = $data['price'] ?? $data['final_price'] ?? '';
-            
+
             // Basic validation
             if (!$name || $price === '' || $price === null || !in_array($userType, ['buyer', 'seller'])) {
                 $skipped++;
@@ -4747,20 +4982,22 @@ private function processImage($source, $subDir): ?string
             }
 
             $planType = strtolower(trim($data['plan_type'] ?? 'duration'));
-            if ($planType === 'limit') $planType = 'quantity';
-            if (!in_array($planType, ['quantity', 'duration'])) $planType = 'duration';
+            if ($planType === 'limit')
+                $planType = 'quantity';
+            if (!in_array($planType, ['quantity', 'duration']))
+                $planType = 'duration';
 
             // Plan-type mandatory validations
             if ($planType === 'quantity') {
                 $qty = $data['limit_value'] ?? $data['qty'] ?? $data['quantity'] ?? '';
-                if ($qty === '' || $qty === null || !is_numeric($qty) || (int)$qty <= 0) {
+                if ($qty === '' || $qty === null || !is_numeric($qty) || (int) $qty <= 0) {
                     $skipped++;
                     $errors[] = "Row {$row}: Quantity (limit_value/qty) is mandatory and must be > 0 for quantity-based plans";
                     continue;
                 }
             } elseif ($planType === 'duration') {
                 $durationHours = $data['duration_hours'] ?? '';
-                if ($durationHours === '' || $durationHours === null || !is_numeric($durationHours) || (float)$durationHours <= 0) {
+                if ($durationHours === '' || $durationHours === null || !is_numeric($durationHours) || (float) $durationHours <= 0) {
                     $skipped++;
                     $errors[] = "Row {$row}: duration_hours is mandatory and must be > 0 for duration-based plans";
                     continue;
@@ -4768,7 +5005,7 @@ private function processImage($source, $subDir): ?string
             }
 
             try {
-                $isFeatured = (int)($data['is_featured'] ?? 0);
+                $isFeatured = (int) ($data['is_featured'] ?? 0);
 
                 $existing = $db->table('subscription_plans')
                     ->where('name', $name)
@@ -4789,19 +5026,19 @@ private function processImage($source, $subDir): ?string
                 }
 
                 $payload = [
-                    'name'             => $name,
-                    'plan_name'        => $name,
-                    'user_type'        => $userType,
-                    'plan_type'        => $planType,
-                    'limit_value'      => (int)($data['limit_value'] ?? $data['qty'] ?? $data['quantity'] ?? 0),
-                    'duration_hours'   => (float)($data['duration_hours'] ?? 0),
-                    'price'            => (float)$price,
-                    'base_price'       => (float)($data['base_price'] ?? $price),
-                    'features'         => !empty($data['features']) ? $data['features'] : null,
-                    'is_featured'      => $isFeatured,
-                    'is_most_selected' => (int)($data['is_most_selected'] ?? 0),
-                    'is_active'        => 1,
-                    'updated_at'       => $now,
+                    'name' => $name,
+                    'plan_name' => $name,
+                    'user_type' => $userType,
+                    'plan_type' => $planType,
+                    'limit_value' => (int) ($data['limit_value'] ?? $data['qty'] ?? $data['quantity'] ?? 0),
+                    'duration_hours' => (float) ($data['duration_hours'] ?? 0),
+                    'price' => (float) $price,
+                    'base_price' => (float) ($data['base_price'] ?? $price),
+                    'features' => !empty($data['features']) ? $data['features'] : null,
+                    'is_featured' => $isFeatured,
+                    'is_most_selected' => (int) ($data['is_most_selected'] ?? 0),
+                    'is_active' => 1,
+                    'updated_at' => $now,
                 ];
 
                 if ($existing) {
@@ -4814,7 +5051,10 @@ private function processImage($source, $subDir): ?string
                     $db->table('subscription_plans')->insert($payload);
                     $inserted++;
                 }
-            } catch (\Exception $e) { $skipped++; $errors[] = "Row {$row}: " . $e->getMessage(); }
+            } catch (\Exception $e) {
+                $skipped++;
+                $errors[] = "Row {$row}: " . $e->getMessage();
+            }
         }
         return $this->respond(['success' => true, 'message' => "{$inserted} plans inserted, {$updated} updated, {$skipped} skipped.", 'inserted' => $inserted, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors]);
     }
@@ -4850,9 +5090,9 @@ private function processImage($source, $subDir): ?string
             ->get()->getResultArray();
 
         $summary = [
-            'total'     => $db->table('user_reports')->countAllResults(),
-            'pending'   => $db->table('user_reports')->where('status', 'pending')->countAllResults(),
-            'reviewed'  => $db->table('user_reports')->where('status', 'reviewed')->countAllResults(),
+            'total' => $db->table('user_reports')->countAllResults(),
+            'pending' => $db->table('user_reports')->where('status', 'pending')->countAllResults(),
+            'reviewed' => $db->table('user_reports')->where('status', 'reviewed')->countAllResults(),
             'dismissed' => $db->table('user_reports')->where('status', 'dismissed')->countAllResults(),
         ];
 
@@ -4868,15 +5108,15 @@ private function processImage($source, $subDir): ?string
     {
         $jwtUser = $this->request->jwt_user;
         $adminId = $jwtUser['user_id'];
-        $db      = \Config\Database::connect();
+        $db = \Config\Database::connect();
 
         $report = $db->table('user_reports')->where('id', $reportId)->get()->getRowArray();
         if (!$report) {
             return $this->respond(['success' => false, 'message' => getAppMessage('report_not_found', 'Report not found')], 404);
         }
 
-        $input      = $this->request->getPost() ?: ($this->request->getJSON(true) ?: []);
-        $action     = $input['action'] ?? 'dismiss';
+        $input = $this->request->getPost() ?: ($this->request->getJSON(true) ?: []);
+        $action = $input['action'] ?? 'dismiss';
         $adminNotes = $input['admin_notes'] ?? null;
 
         $reported = $db->table('users')->where('id', $report['reported_id'])->get()->getRowArray();
@@ -4894,17 +5134,17 @@ private function processImage($source, $subDir): ?string
             $actionTaken = 'blocked';
         } elseif ($action === 'unblock') {
             $db->table('users')->where('id', $reported['id'])->update([
-                'is_blocked'        => 0,
-                'is_suspended'      => 0,
-                'updated_at'        => date('Y-m-d H:i:s'),
+                'is_blocked' => 0,
+                'is_suspended' => 0,
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
             $actionTaken = 'none';
         } elseif ($action === 'unsuspend') {
             $db->table('users')->where('id', $reported['id'])->update([
-                'is_suspended'      => 0,
-                'suspended_at'      => null,
+                'is_suspended' => 0,
+                'suspended_at' => null,
                 'suspension_reason' => null,
-                'updated_at'        => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]);
             $actionTaken = 'none';
         } elseif ($action === 'reassign') {
@@ -4912,7 +5152,7 @@ private function processImage($source, $subDir): ?string
             if ($assignTo) {
                 $db->table('user_reports')->where('id', $reportId)->update([
                     'assigned_admin_id' => $assignTo,
-                    'updated_at'        => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
                 return $this->respond(['success' => true, 'message' => getAppMessage('report_reassigned', 'Report reassigned')]);
             }
@@ -4920,11 +5160,11 @@ private function processImage($source, $subDir): ?string
         }
 
         $db->table('user_reports')->where('id', $reportId)->update([
-            'status'       => 'reviewed',
-            'reviewed_by'  => $adminId,
-            'admin_notes'  => $adminNotes,
+            'status' => 'reviewed',
+            'reviewed_by' => $adminId,
+            'admin_notes' => $adminNotes,
             'action_taken' => $actionTaken,
-            'updated_at'   => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond(['success' => true, 'message' => getAppMessage('report_handled_successfully', 'Report handled successfully'), 'action' => $actionTaken]);
@@ -4957,14 +5197,14 @@ private function processImage($source, $subDir): ?string
             $value = $row['message'] ?? ($row['message_value'] ?? '');
             $category = $row['category'] ?? 'general';
             return [
-                'id'            => (int) ($row['id'] ?? 0),
-                'key'           => $key,
-                'message_key'   => $key,
-                'message'       => $value,
+                'id' => (int) ($row['id'] ?? 0),
+                'key' => $key,
+                'message_key' => $key,
+                'message' => $value,
                 'message_value' => $value,
-                'category'      => $category,
-                'created_at'    => $row['created_at'] ?? '',
-                'updated_at'    => $row['updated_at'] ?? '',
+                'category' => $category,
+                'created_at' => $row['created_at'] ?? '',
+                'updated_at' => $row['updated_at'] ?? '',
             ];
         }, $rows);
 
@@ -5068,14 +5308,14 @@ private function processImage($source, $subDir): ?string
             $key = $row['key'] ?? ($row['message_key'] ?? '');
             $value = $row['message'] ?? ($row['message_value'] ?? '');
             return [
-                'id'            => (int) ($row['id'] ?? 0),
-                'key'           => $key,
-                'message_key'   => $key,
-                'message'       => $value,
+                'id' => (int) ($row['id'] ?? 0),
+                'key' => $key,
+                'message_key' => $key,
+                'message' => $value,
                 'message_value' => $value,
-                'category'      => $row['category'] ?? 'general',
-                'created_at'    => $row['created_at'] ?? '',
-                'updated_at'    => $row['updated_at'] ?? '',
+                'category' => $row['category'] ?? 'general',
+                'created_at' => $row['created_at'] ?? '',
+                'updated_at' => $row['updated_at'] ?? '',
             ];
         }, $rows);
         return $this->respond(['success' => true, 'data' => $messages]);
@@ -5106,14 +5346,14 @@ private function processImage($source, $subDir): ?string
             $key = $row['key'] ?? ($row['message_key'] ?? '');
             $value = $row['message'] ?? ($row['message_value'] ?? '');
             return [
-                'id'            => (int) ($row['id'] ?? 0),
-                'key'           => $key,
-                'message_key'   => $key,
-                'message'       => $value,
+                'id' => (int) ($row['id'] ?? 0),
+                'key' => $key,
+                'message_key' => $key,
+                'message' => $value,
                 'message_value' => $value,
-                'category'      => $row['category'] ?? 'general',
-                'created_at'    => $row['created_at'] ?? '',
-                'updated_at'    => $row['updated_at'] ?? '',
+                'category' => $row['category'] ?? 'general',
+                'created_at' => $row['created_at'] ?? '',
+                'updated_at' => $row['updated_at'] ?? '',
             ];
         }, $rows);
 
@@ -5126,8 +5366,8 @@ private function processImage($source, $subDir): ?string
      */
     public function testPhonePeConnection()
     {
-        $phonepe    = new \App\Libraries\PhonePe();
-        $tokenData  = $phonepe->getAuthToken();
+        $phonepe = new \App\Libraries\PhonePe();
+        $tokenData = $phonepe->getAuthToken();
 
         if (isset($tokenData['access_token'])) {
             return $this->respond([
@@ -5139,7 +5379,7 @@ private function processImage($source, $subDir): ?string
         return $this->respond([
             'success' => false,
             'message' => getAppMessage('failed_to_connect_to_phonepe_check_your_credentials', 'Failed to connect to PhonePe. Check your credentials.'),
-            'debug'   => $tokenData,
+            'debug' => $tokenData,
         ]);
     }
 
@@ -5157,33 +5397,48 @@ private function processImage($source, $subDir): ?string
             return $this->respond(['success' => false, 'message' => getAppMessage('unauthorized', 'Unauthorized')], 403);
         }
 
-        $db   = \Config\Database::connect();
+        $db = \Config\Database::connect();
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
 
         $allowed = [
-            'hero_slides', 'display_categories', 'cta_title', 'cta_subtitle',
-            'footer_description', 'section_title_categories', 'section_title_products',
-            'footer_quick_links', 'footer_policy_links', 'footer_social_links',
-            'footer_sections', 'footer_category_links', 'footer_section_titles',
-            'how_it_works_steps', 'stats_banner', 'trust_features', 'testimonials',
-            'aot_sections', 'category_cards', 'site_name',
+            'hero_slides',
+            'display_categories',
+            'cta_title',
+            'cta_subtitle',
+            'footer_description',
+            'section_title_categories',
+            'section_title_products',
+            'footer_quick_links',
+            'footer_policy_links',
+            'footer_social_links',
+            'footer_sections',
+            'footer_category_links',
+            'footer_section_titles',
+            'how_it_works_steps',
+            'stats_banner',
+            'trust_features',
+            'testimonials',
+            'aot_sections',
+            'category_cards',
+            'site_name',
         ];
 
         $saved = 0;
         foreach ($data as $key => $value) {
-            if (!in_array($key, $allowed)) continue;
+            if (!in_array($key, $allowed))
+                continue;
             $strValue = is_array($value) ? json_encode($value) : (string) $value;
             $existing = $db->table('system_settings')->where('setting_key', $key)->get()->getRowArray();
             if ($existing) {
                 $db->table('system_settings')->where('setting_key', $key)->update([
                     'setting_value' => $strValue,
-                    'updated_at'    => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
             } else {
                 $db->table('system_settings')->insert([
-                    'setting_key'   => $key,
+                    'setting_key' => $key,
                     'setting_value' => $strValue,
-                    'updated_at'    => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]);
             }
             $saved++;
@@ -5237,8 +5492,8 @@ private function processImage($source, $subDir): ?string
         return $this->respond([
             'success' => true,
             'message' => getAppMessage('image_uploaded', 'Image uploaded.'),
-            'path'    => $publicPath,
-            'url'     => base_url($publicPath),
+            'path' => $publicPath,
+            'url' => base_url($publicPath),
         ]);
     }
 
@@ -5253,14 +5508,14 @@ private function processImage($source, $subDir): ?string
         }
 
         $db = \Config\Database::connect();
-        
+
         // Check if seo_settings table exists
         if (!$db->tableExists('seo_settings')) {
             return $this->respond(['success' => true, 'data' => []]);
         }
-        
+
         $seoModel = new \App\Models\SeoSettingModel();
-        
+
         // 1. Auto-register standard system routes if missing
         $defaultSystemPages = [
             ['page_key' => 'home', 'page_name' => 'Home', 'route' => '/', 'title' => 'FlexMarket — Rent or Buy Premium Fashion', 'meta_description' => 'FlexMarket is India\'s premier platform for renting and buying premium fashion. Discover luxury clothing, accessories, and more at affordable prices.', 'meta_keywords' => 'flexmarket, rent fashion, buy fashion, luxury clothing, rental platform'],
@@ -5342,20 +5597,20 @@ private function processImage($source, $subDir): ?string
                 ]);
             }
         }
-        
+
         // 2. Check if cms_pages table exists and sync active CMS pages
         $cmsPagesTableExists = $db->tableExists('cms_pages');
         if ($cmsPagesTableExists) {
             $cmsPages = $db->table('cms_pages')->get()->getResultArray();
-            
+
             foreach ($cmsPages as $cms) {
                 $pageKey = 'cms_' . $cms['slug'];
                 $exists = $seoModel->where('page_key', $pageKey)->first();
-                
+
                 $plainContent = strip_tags($cms['content'] ?? '');
                 $plainContent = preg_replace('/\s+/', ' ', $plainContent);
                 $descPreview = trim(substr($plainContent, 0, 150));
-                
+
                 if (!$exists) {
                     $seoModel->insert([
                         'page_key' => $pageKey,
@@ -5405,7 +5660,7 @@ private function processImage($source, $subDir): ?string
         }
 
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
-        
+
         $pageName = trim($data['page_name'] ?? '');
         $route = trim($data['route'] ?? '');
         $pageKey = trim($data['page_key'] ?? '');
@@ -5420,7 +5675,7 @@ private function processImage($source, $subDir): ?string
         }
 
         $seoModel = new \App\Models\SeoSettingModel();
-        
+
         // Check uniqueness of page_key or route
         $existing = $seoModel->where('page_key', $pageKey)->orWhere('route', $formattedRoute)->first();
         if ($existing) {
@@ -5462,12 +5717,18 @@ private function processImage($source, $subDir): ?string
         $data = $this->request->getJSON(true) ?: $this->request->getPost() ?: [];
 
         $updateData = [];
-        if (array_key_exists('page_name', $data)) $updateData['page_name'] = $data['page_name'];
-        if (array_key_exists('title', $data)) $updateData['title'] = $data['title'];
-        if (array_key_exists('meta_description', $data)) $updateData['meta_description'] = $data['meta_description'];
-        if (array_key_exists('meta_keywords', $data)) $updateData['meta_keywords'] = $data['meta_keywords'];
-        if (array_key_exists('og_title', $data)) $updateData['og_title'] = $data['og_title'];
-        if (array_key_exists('og_description', $data)) $updateData['og_description'] = $data['og_description'];
+        if (array_key_exists('page_name', $data))
+            $updateData['page_name'] = $data['page_name'];
+        if (array_key_exists('title', $data))
+            $updateData['title'] = $data['title'];
+        if (array_key_exists('meta_description', $data))
+            $updateData['meta_description'] = $data['meta_description'];
+        if (array_key_exists('meta_keywords', $data))
+            $updateData['meta_keywords'] = $data['meta_keywords'];
+        if (array_key_exists('og_title', $data))
+            $updateData['og_title'] = $data['og_title'];
+        if (array_key_exists('og_description', $data))
+            $updateData['og_description'] = $data['og_description'];
 
         if (empty($updateData)) {
             return $this->respond(['success' => false, 'message' => getAppMessage('no_data_to_update', 'No data to update')], 400);
@@ -5581,15 +5842,24 @@ private function processImage($source, $subDir): ?string
         }
 
         $updateData = [];
-        if (array_key_exists('field_label', $data)) $updateData['field_label'] = $data['field_label'];
-        if (array_key_exists('is_required', $data)) $updateData['is_required'] = $data['is_required'];
-        if (array_key_exists('min_length', $data)) $updateData['min_length'] = $data['min_length'];
-        if (array_key_exists('max_length', $data)) $updateData['max_length'] = $data['max_length'];
-        if (array_key_exists('min_value', $data)) $updateData['min_value'] = $data['min_value'];
-        if (array_key_exists('max_value', $data)) $updateData['max_value'] = $data['max_value'];
-        if (array_key_exists('pattern', $data)) $updateData['pattern'] = $data['pattern'];
-        if (array_key_exists('error_message', $data)) $updateData['error_message'] = $data['error_message'];
-        if (array_key_exists('is_active', $data)) $updateData['is_active'] = $data['is_active'];
+        if (array_key_exists('field_label', $data))
+            $updateData['field_label'] = $data['field_label'];
+        if (array_key_exists('is_required', $data))
+            $updateData['is_required'] = $data['is_required'];
+        if (array_key_exists('min_length', $data))
+            $updateData['min_length'] = $data['min_length'];
+        if (array_key_exists('max_length', $data))
+            $updateData['max_length'] = $data['max_length'];
+        if (array_key_exists('min_value', $data))
+            $updateData['min_value'] = $data['min_value'];
+        if (array_key_exists('max_value', $data))
+            $updateData['max_value'] = $data['max_value'];
+        if (array_key_exists('pattern', $data))
+            $updateData['pattern'] = $data['pattern'];
+        if (array_key_exists('error_message', $data))
+            $updateData['error_message'] = $data['error_message'];
+        if (array_key_exists('is_active', $data))
+            $updateData['is_active'] = $data['is_active'];
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         if (empty($updateData)) {
