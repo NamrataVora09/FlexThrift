@@ -56,8 +56,12 @@ export function SystemProvider({ children }: { children: ReactNode }) {
         // Store app messages in a lookup map
         if (Array.isArray(res.data.app_messages)) {
           const msgMap: Record<string, string> = {};
-          res.data.app_messages.forEach((m: AppMessage) => {
-            msgMap[m.message_key] = m.message_value;
+          res.data.app_messages.forEach((m: any) => {
+            const k = m.key || m.message_key;
+            const v = m.message || m.message_value || '';
+            if (k) {
+              msgMap[k] = v;
+            }
           });
           setMessages(msgMap);
         }

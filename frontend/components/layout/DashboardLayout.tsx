@@ -7,7 +7,8 @@ import { api } from '@/lib/api';
 import DashboardTopbar from './DashboardTopbar';
 import DashboardSidebar from './DashboardSidebar';
 import { getDashboardPath } from '@/lib/navigation';
-import { showToast } from '@/lib/toast';
+import { showToast, useToast } from '@/lib/toast';
+import { useSystem } from '@/lib/system-context';
 
 import SeoManager from '@/components/shared/SeoManager';
 import GlobalLoader from '@/components/shared/GlobalLoader';
@@ -23,6 +24,8 @@ let globalSidebarOpen: boolean | null = null;
 
 export default function DashboardLayout({ children, requiredRoles, viewAs }: Props) {
   const { user, isLoading, isAuthenticated, } = useAuth();
+  const { getMsg } = useSystem();
+  const { toastError } = useToast();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -36,14 +39,14 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
   useEffect(() => {
     if (isSellerRestricted) {
       if (user && user.user_type === 'both') {
-        showToast.error("Your seller privileges have been restricted. Redirecting to browse market.");
+        toastError('seller_restricted_redirect_toast', "Your seller privileges have been restricted. Redirecting to browse market.");
         router.push('/buyer/browse');
       } else {
-        showToast.error("Your seller privileges have been restricted by the administrator.");
+        toastError('seller_restricted_toast', "Your seller privileges have been restricted by the administrator.");
       }
     }
     if (isBuyerRestricted) {
-      showToast.error("Your buyer privileges have been restricted by the administrator.");
+      toastError('buyer_restricted_toast', "Your buyer privileges have been restricted by the administrator.");
     }
   }, [isSellerRestricted, isBuyerRestricted, user?.id, router]);
 
@@ -171,20 +174,22 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
               <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
               </div>
-              <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Seller Access Restricted</h3>
+              <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>
+                {getMsg('seller_access_restricted_title', 'Seller Access Restricted')}
+              </h3>
               <p className="text-muted mb-4" style={{ lineHeight: 1.6 }}>
-                Your seller privileges have been restricted by the administrator. You are currently unable to upload new products or manage existing listings.
+                {getMsg('seller_access_restricted_message', 'Your seller privileges have been restricted by the administrator. You are currently unable to upload new products or manage existing listings.')}
               </p>
               <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem' }}>
                 <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
-                Please contact platform support for more information or to request a review of your account status.
+                {getMsg('access_restricted_support_note', 'Please contact platform support for more information or to request a review of your account status.')}
               </div>
               <button
                 onClick={() => router.push(user.role === 'admin' ? '/admin' : '/buyer/dashboard')}
                 className="btn btn-dark px-4 py-2"
                 style={{ borderRadius: 10, fontWeight: 600 }}
               >
-                Return to Dashboard
+                {getMsg('return_to_dashboard_btn', 'Return to Dashboard')}
               </button>
             </div>
           </div>
@@ -194,20 +199,22 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
               <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
               </div>
-              <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Buyer Access Restricted</h3>
+              <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>
+                {getMsg('buyer_access_restricted_title', 'Buyer Access Restricted')}
+              </h3>
               <p className="text-muted mb-4" style={{ lineHeight: 1.6 }}>
-                Your buyer privileges have been restricted by the administrator. You are currently unable to make purchases or view transactions.
+                {getMsg('buyer_access_restricted_message', 'Your buyer privileges have been restricted by the administrator. You are currently unable to make purchases or view transactions.')}
               </p>
               <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem' }}>
                 <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
-                Please contact platform support for more information or to request a review of your account status.
+                {getMsg('access_restricted_support_note', 'Please contact platform support for more information or to request a review of your account status.')}
               </div>
               <button
                 onClick={() => router.push(user?.role === 'admin' ? '/admin' : (user?.user_type === 'both' && Number(user?.blocked_seller) !== 1 ? '/seller' : '/buyer/dashboard'))}
                 className="btn btn-dark px-4 py-2"
                 style={{ borderRadius: 10, fontWeight: 600 }}
               >
-                Return to Dashboard
+                {getMsg('return_to_dashboard_btn', 'Return to Dashboard')}
               </button>
             </div>
           </div>

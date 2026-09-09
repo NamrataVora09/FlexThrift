@@ -86,7 +86,7 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, triggerRefresh } = useAuth();
-  const { settings } = useSystem();
+  const { settings, getMsg } = useSystem();
   const { toastSuccess, toastError, toastWarning, resolveMsg } = useToast();
   const imgRef = useRef<HTMLInputElement>(null);
   const billRef = useRef<HTMLInputElement>(null);
@@ -1178,20 +1178,22 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
             <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
               <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
             </div>
-            <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>Seller Access Restricted</h3>
+            <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15 }}>
+              {getMsg('seller_access_restricted_title', 'Seller Access Restricted')}
+            </h3>
             <p className="text-muted mb-4" style={{ lineHeight: 1.6 }}>
-              Your seller privileges have been restricted by the administrator. You are currently unable to upload new products or manage existing listings.
+              {getMsg('seller_access_restricted_message', 'Your seller privileges have been restricted by the administrator. You are currently unable to upload new products or manage existing listings.')}
             </p>
             <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #eee', fontSize: '0.9rem' }}>
               <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
-              Please contact platform support for more information or to request a review of your account status.
+              {getMsg('access_restricted_support_note', 'Please contact platform support for more information or to request a review of your account status.')}
             </div>
             <button
               onClick={() => router.push(redirectPath.includes('superadmin') ? '/superadmin' : '/seller')}
               className="btn btn-dark px-4 py-2"
               style={{ borderRadius: 10, fontWeight: 600 }}
             >
-              Return to Dashboard
+              {getMsg('return_to_dashboard_btn', 'Return to Dashboard')}
             </button>
           </div>
         </div>

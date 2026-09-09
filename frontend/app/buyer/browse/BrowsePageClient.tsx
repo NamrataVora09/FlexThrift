@@ -12,6 +12,7 @@ import Footer from '@/components/layout/Footer';
 import AdBanner, { VideoAdPlayer } from '@/components/shared/AdBanner';
 import { api } from '@/lib/api';
 import SeoManager from '@/components/shared/SeoManager';
+import { useSystem } from '@/lib/system-context';
 
 interface Product {
   id: number;
@@ -167,6 +168,7 @@ function getProductPrice(p: Product): number {
 
 export default function BrowsePage() {
   const { user, isAuthenticated } = useAuth();
+  const { getMsg } = useSystem();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -745,20 +747,22 @@ export default function BrowsePage() {
             <div className="mb-4" style={{ width: 80, height: 80, background: '#fee2e2', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
               <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.5rem', color: '#ef4444' }}></i>
             </div>
-            <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15, fontFamily: 'Manrope, sans-serif' }}>Buyer Access Restricted</h3>
+            <h3 style={{ fontWeight: 800, color: '#1a1a1a', marginBottom: 15, fontFamily: 'Manrope, sans-serif' }}>
+              {getMsg('buyer_access_restricted_title', 'Buyer Access Restricted')}
+            </h3>
             <p className="text-muted mb-4" style={{ lineHeight: 1.6, fontSize: '0.95rem' }}>
-              Your buyer privileges have been restricted by the administrator. You are currently unable to browse the marketplace or view product listings.
+              {getMsg('buyer_access_restricted_browse_message', 'Your buyer privileges have been restricted by the administrator. You are currently unable to browse the marketplace or view product listings.')}
             </p>
             <div className="p-3 mb-4" style={{ background: '#f9fafb', borderRadius: 12, border: '1px solid #f3f4f6', fontSize: '0.9rem' }}>
               <i className="bi bi-info-circle me-2" style={{ color: '#6b7280' }}></i>
-              Please contact platform support for more information or to request a review of your account status.
+              {getMsg('access_restricted_support_note', 'Please contact platform support for more information or to request a review of your account status.')}
             </div>
             <button
               onClick={() => router.push(user?.role === 'admin' ? '/admin' : (user?.user_type === 'both' && Number(user?.blocked_seller) !== 1 ? '/seller' : '/buyer/dashboard'))}
               className="btn btn-dark w-100 py-3"
               style={{ borderRadius: 12, fontWeight: 700, background: '#000', color: '#fff', border: 'none', transition: 'all 0.2s' }}
             >
-              Return to Dashboard
+              {getMsg('return_to_dashboard_btn', 'Return to Dashboard')}
             </button>
           </div>
         </div>
