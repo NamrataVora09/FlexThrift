@@ -11,9 +11,11 @@ export default function GeolocationBlocker({ children }: { children: React.React
   const [loading, setLoading] = useState(true);
   const [errorType, setErrorType] = useState<'denied' | 'unavailable' | 'timeout' | null>(null);
 
+  const userRole = user?.role;
+
   const checkLocation = useCallback(() => {
     // Admins and SuperAdmins bypass location checks
-    if (user?.role === 'admin' || user?.role === 'super_admin') {
+    if (userRole === 'admin' || userRole === 'super_admin') {
       setLoading(false);
       return;
     }
@@ -43,7 +45,7 @@ export default function GeolocationBlocker({ children }: { children: React.React
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
     // Check if restriction is enabled from landing-content or shared settings

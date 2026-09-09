@@ -41,21 +41,18 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
     if (isBuyerRestricted) {
       showToast.error("Your buyer privileges have been restricted by the administrator.");
     }
-  }, [isSellerRestricted, isBuyerRestricted, user, router]);
+  }, [isSellerRestricted, isBuyerRestricted, user?.id, router]);
 
   // Refresh user data when accessing seller/buyer pages to catch block status changes
   useEffect(() => {
     if (user && (user.user_type === 'both' || user.role === 'admin') && (isSellerPage || isBuyerPage)) {
       const refreshUserData = async () => {
         try {
-          const res = await fetch('/api/v1/auth/me', {
-            headers: { Authorization: `Bearer ${localStorage.getItem('flex_token')}` }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && data.data) {
-              localStorage.setItem('flex_user', JSON.stringify(data.data));
-              setUser(data.data);
+          const res = await api.get<any>('/auth/me');
+          if (res.success && res.data) {
+            if (JSON.stringify(res.data) !== JSON.stringify(user)) {
+              localStorage.setItem('flex_user', JSON.stringify(res.data));
+              setUser(res.data);
             }
           }
         } catch (e) {
@@ -64,7 +61,7 @@ export default function DashboardLayout({ children, requiredRoles, viewAs }: Pro
       };
       refreshUserData();
     }
-  }, [pathname, user, isSellerPage, isBuyerPage]);
+  }, [pathname, user?.id, user?.user_type, user?.role, isSellerPage, isBuyerPage]);
 
   // Initialize from global variable if it exists, otherwise default to true
   const [sidebarOpen, setSidebarOpen] = useState(() => {
