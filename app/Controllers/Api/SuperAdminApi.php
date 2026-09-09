@@ -112,7 +112,8 @@ class SuperAdminApi extends AdminApi
         if ($id) {
             $existing = $this->checkOverlappingRules('pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max'], $id);
             if ($existing) {
-                return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
+                $maxDisplay = $existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞';
+                return $this->respond(['success' => false, 'message' => getAppMessage('pricing_rule_overlap_detected', 'Overlap detected with existing rule (Range: {min} - {max})', ['min' => $existing['depreciation_range_min'], 'max' => $maxDisplay])], 400);
             }
             $db->table('pricing_rules')->where('id', $id)->update($row);
 
@@ -126,7 +127,8 @@ class SuperAdminApi extends AdminApi
         } else {
             $existing = $this->checkOverlappingRules('pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max']);
             if ($existing) {
-                return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
+                $maxDisplay = $existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞';
+                return $this->respond(['success' => false, 'message' => getAppMessage('pricing_rule_overlap_detected', 'Overlap detected with existing rule (Range: {min} - {max})', ['min' => $existing['depreciation_range_min'], 'max' => $maxDisplay])], 400);
             }
 
             // Sync deduction_threshold across all existing rows in the same filter group
@@ -219,7 +221,8 @@ class SuperAdminApi extends AdminApi
         if ($id) {
             $existing = $this->checkOverlappingRules('rental_pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max'], $id);
             if ($existing) {
-                return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
+                $maxDisplay = $existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞';
+                return $this->respond(['success' => false, 'message' => getAppMessage('pricing_rule_overlap_detected', 'Overlap detected with existing rule (Range: {min} - {max})', ['min' => $existing['depreciation_range_min'], 'max' => $maxDisplay])], 400);
             }
             $db->table('rental_pricing_rules')->where('id', $id)->update($row);
 
@@ -233,7 +236,8 @@ class SuperAdminApi extends AdminApi
         } else {
             $existing = $this->checkOverlappingRules('rental_pricing_rules', $filterType, $filterValue, $row['depreciation_range_min'], $row['depreciation_range_max']);
             if ($existing) {
-                return $this->respond(['success' => false, 'message' => "Overlap detected with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")"], 400);
+                $maxDisplay = $existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞';
+                return $this->respond(['success' => false, 'message' => getAppMessage('pricing_rule_overlap_detected', 'Overlap detected with existing rule (Range: {min} - {max})', ['min' => $existing['depreciation_range_min'], 'max' => $maxDisplay])], 400);
             }
             $db->table('rental_pricing_rules')->insert($row);
             $row['id'] = $db->insertID();
@@ -4579,7 +4583,12 @@ private function processImage($source, $subDir): ?string
                 $existing = $this->checkOverlappingRules($table, $filterType, $filterValue, $min, $max);
                 if ($existing) {
                     $skipped++;
-                    $errors[] = "Row {$row} overlaps with existing rule (Range: {$existing['depreciation_range_min']} - " . ($existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞') . ")";
+                    $maxDisplay = $existing['depreciation_range_max'] > 0 ? $existing['depreciation_range_max'] : '∞';
+                    $errors[] = getAppMessage(
+                        'bulk_rule_overlap_detected',
+                        'Row {row} overlaps with existing rule (Range: {min} - {max})',
+                        ['row' => $row, 'min' => $existing['depreciation_range_min'], 'max' => $maxDisplay]
+                    );
                     continue;
                 }
 
