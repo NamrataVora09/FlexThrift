@@ -1715,15 +1715,31 @@ class SharedApi extends BaseApiController
             $content[$r['setting_key']] = $r['setting_value'];
 
         // Fetch all app_messages to provide to SystemContext
-        $appMessages = $db->table('app_messages')->get()->getResultArray();
-        $content['app_messages'] = $appMessages;
+        $appMessages = [];
+        try {
+            $rawMessages = $db->table('app_messages')->get()->getResultArray();
+            foreach ($rawMessages as $m) {
+                $key = $m['message_key'] ?? $m['key'] ?? '';
+                $val = $m['message_value'] ?? $m['message'] ?? '';
+                $cat = $m['category'] ?? 'general';
+                $appMessages[] = [
+                    'id' => $m['id'] ?? 0,
+                    'message_key' => $key,
+                    'message_value' => $val,
+                    'key' => $key,
+                    'message' => $val,
+                    'category' => $cat
+                ];
 
-        // Override dashboard subtitles with specific values from app_messages if they exist
-        foreach ($appMessages as $m) {
-            if (in_array($m['message_key'], ['seller_dashboard_subtitle', 'buyer_dashboard_subtitle']) && !empty($m['message_value'])) {
-                $content[$m['message_key']] = $m['message_value'];
+                // Override dashboard subtitles with specific values from app_messages if they exist
+                if (in_array($key, ['seller_dashboard_subtitle', 'buyer_dashboard_subtitle']) && !empty($val)) {
+                    $content[$key] = $val;
+                }
             }
+        } catch (\Exception $e) {
+            $appMessages = [];
         }
+        $content['app_messages'] = $appMessages;
 
         return $this->respond(['success' => true, 'data' => $content]);
     }
