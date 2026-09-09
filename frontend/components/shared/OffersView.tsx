@@ -462,7 +462,8 @@ const CSS = `
   }
 `;
 
-/* ─────────────────────────── main component ────────────────── */
+/* ───────────
+──────────────── main component ────────────────── */
 
 export default function OffersView({ role, apiPath, perspective, noLayout, noHeader }: Props) {
   const { user } = useAuth();
@@ -1608,7 +1609,7 @@ function SellerView({ offers, settings, isRentalBlocked, getRentalConflict, onAc
                             <div>
                               <div className="fw-bold text-dark mb-1" style={{ fontSize: '0.85rem' }}>Offer Missed</div>
                               <div className="text-dark" style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>
-                                This offer expired on {expiryDate}. You did not respond within the acceptance window.
+                                {(offer as any).missed_message || `This offer expired on ${expiryDate}. You did not respond within the acceptance window.`}
                               </div>
                             </div>
                           </div>
@@ -1934,12 +1935,12 @@ function BuyerView({ offers, settings, role, isRentalConflict, getRentalConflict
                         </div>
                         <div style={{ fontSize: '0.85rem', color: '#555', lineHeight: '1.5' }}>
                           {o.status === 'missed'
-                            ? `This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: ${expiryDate}).`
+                            ? ((o as any).missed_message || `This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: ${expiryDate}).`)
                             : `This offer expired on ${expiryDate}. The seller did not respond within the acceptance window.`
                           }
                         </div>
                         <div className="mt-2" style={{ fontSize: '0.78rem', color: '#888' }}>
-                          You can browse the marketplace to find similar items and make a new offer.
+                          {(o as any).missed_message ? '' : 'You can browse the marketplace to find similar items and make a new offer.'}
                         </div>
                       </div>
                     </div>

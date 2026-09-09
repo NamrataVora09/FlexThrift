@@ -1014,7 +1014,15 @@ class SellerApi extends BaseApiController
         $days = max(1, (int) ceil((strtotime($newEnd) - strtotime($newStart)) / 86400) + 1); // inclusive
         $newPrice = $rentalCost * $days;
 
-        $msg = 'Seller suggests new dates: ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ($remarks ? '. Note: ' . $remarks : '');
+        $msg = getAppMessage(
+            'seller_suggests_new_dates',
+            'Seller suggests new dates: {start} to {end}{remarks}',
+            [
+                'start'   => date('d M Y', strtotime($newStart)),
+                'end'     => date('d M Y', strtotime($newEnd)),
+                'remarks' => ($remarks ? '. Note: ' . $remarks : ''),
+            ]
+        );
 
         $db->table('offers')->where('id', $id)->update([
             'status' => 'negotiating',
@@ -1044,8 +1052,17 @@ class SellerApi extends BaseApiController
         // Notify buyer
         $db->table('notifications')->insert([
             'user_id' => $offer['buyer_id'],
-            'title' => 'Seller Suggested New Dates',
-            'message' => getAppMessage('the_seller_has_suggested_new_rental_dates_for', 'The seller has suggested new rental dates for "') . ($product['title'] ?? '') . '": ' . date('d M Y', strtotime($newStart)) . ' to ' . date('d M Y', strtotime($newEnd)) . ' (Price: ₹' . number_format($newPrice, 2) . '). Please review and accept or decline.',
+            'title' => getAppMessage('seller_suggested_new_dates_title', 'Seller Suggested New Dates'),
+            'message' => getAppMessage(
+                'seller_suggested_new_dates_message',
+                'The seller has suggested new rental dates for "{product}": {start} to {end} (Price: ₹{price}). Please review and accept or decline.',
+                [
+                    'product' => ($product['title'] ?? ''),
+                    'start'   => date('d M Y', strtotime($newStart)),
+                    'end'     => date('d M Y', strtotime($newEnd)),
+                    'price'   => number_format($newPrice, 2),
+                ]
+            ),
             'type' => 'offer',
             'related_id' => $id,
             'is_read' => 0,

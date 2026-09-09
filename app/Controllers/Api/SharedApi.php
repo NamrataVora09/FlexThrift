@@ -504,7 +504,7 @@ class SharedApi extends BaseApiController
         ];
 
         // Load app messages
-        $appMessages = $db->table('app_messages')->orderBy('category', 'ASC')->orderBy('message_key', 'ASC')->get()->getResultArray();
+        $appMessages = $db->table('app_messages')->orderBy('key', 'ASC')->get()->getResultArray();
 
         return $this->respond(['success' => true, 'data' => ['config' => $config, 'groups' => $groups, 'app_messages' => $appMessages]]);
     }
@@ -522,7 +522,7 @@ class SharedApi extends BaseApiController
 
         $db = \Config\Database::connect();
         $data = $this->request->getJSON(true);
-        $value = trim($data['message_value'] ?? '');
+        $value = trim($data['message_value'] ?? $data['message'] ?? '');
 
         if ($value === '') {
             return $this->respond(['success' => false, 'message' => getAppMessage('message_value_required')], 400);
@@ -533,12 +533,12 @@ class SharedApi extends BaseApiController
             return $this->respond(['success' => false, 'message' => getAppMessage('error_message_not_found')], 404);
         }
 
-        $placeholderError = $this->validateMessagePlaceholders($existing['message_value'], $value);
+        $placeholderError = $this->validateMessagePlaceholders($existing['message'], $value);
         if ($placeholderError !== null) {
             return $this->respond(['success' => false, 'message' => $placeholderError], 400);
         }
 
-        $db->table('app_messages')->where('id', $id)->update(['message_value' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
+        $db->table('app_messages')->where('id', $id)->update(['message' => $value, 'updated_at' => date('Y-m-d H:i:s')]);
         return $this->respond(['success' => true, 'message' => getAppMessage('message_updated')]);
     }
 
@@ -1669,8 +1669,8 @@ class SharedApi extends BaseApiController
 
         // Override dashboard subtitles with specific values from app_messages if they exist
         foreach ($appMessages as $m) {
-            if (in_array($m['message_key'], ['seller_dashboard_subtitle', 'buyer_dashboard_subtitle']) && !empty($m['message_value'])) {
-                $content[$m['message_key']] = $m['message_value'];
+            if (in_array($m['key'], ['seller_dashboard_subtitle', 'buyer_dashboard_subtitle']) && !empty($m['message'])) {
+                $content[$m['key']] = $m['message'];
             }
         }
 

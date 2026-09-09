@@ -794,7 +794,7 @@ export default function Page() {
                           </div>
                           <div style={{ fontSize: '0.85rem', color: '#555', lineHeight: '1.5' }}>
                             {o.status === 'missed'
-                              ? `This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: ${expiryDate}).`
+                              ? ((o as any).missed_message || `This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: ${expiryDate}).`)
                               : `This offer expired on ${expiryDate}. The seller did not respond within the acceptance window.`
                             }
                           </div>

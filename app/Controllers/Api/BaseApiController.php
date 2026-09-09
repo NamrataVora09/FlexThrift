@@ -140,4 +140,29 @@ class BaseApiController extends ResourceController
             ]);
         }
     }
+
+    /**
+     * Validates that placeholders in $original (e.g. {start}, {deadline}) are present in $updated.
+     * Returns null if valid, or an error string if placeholders are missing.
+     */
+    protected function validateMessagePlaceholders(?string $original, ?string $updated): ?string
+    {
+        if (empty($original) || empty($updated)) {
+            return null;
+        }
+
+        preg_match_all('/\{([a-zA-Z0-9_]+)\}/', $original, $origMatches);
+        preg_match_all('/\{([a-zA-Z0-9_]+)\}/', $updated, $newMatches);
+
+        $origPlaceholders = array_unique($origMatches[1] ?? []);
+        $newPlaceholders  = array_unique($newMatches[1] ?? []);
+
+        $missing = array_diff($origPlaceholders, $newPlaceholders);
+        if (!empty($missing)) {
+            return 'Missing required placeholder(s): {' . implode('}, {', $missing) . '}';
+        }
+
+        return null;
+    }
 }
+

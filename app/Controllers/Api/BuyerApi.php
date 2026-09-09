@@ -533,8 +533,16 @@ class BuyerApi extends BaseApiController
 
         $historyModel = new \App\Models\OfferHistoryModel();
         foreach ($offers as &$o) {
-            if ($o['status'] === 'pending' && !empty($o['created_at']) && $o['created_at'] < $cutoff) {
+            if (($o['status'] === 'pending' && !empty($o['created_at']) && $o['created_at'] < $cutoff) || $o['status'] === 'missed') {
                 $o['status'] = 'missed';
+                $deadline = !empty($o['created_at'])
+                    ? date('d M Y', strtotime($o['created_at']) + (int) ($limitDays * 86400))
+                    : '—';
+                $o['missed_message'] = getAppMessage(
+                    'offer_missed_message',
+                    'This offer was marked as missed by the system. The seller did not respond within the allowed window (deadline: {deadline}). You can browse the marketplace to find similar items and make a new offer.',
+                    ['deadline' => $deadline]
+                );
             }
 
             $o['history'] = $historyModel->getHistoryByOffer($o['id']);
@@ -1082,7 +1090,11 @@ class BuyerApi extends BaseApiController
             $updateData['rental_end_date'] = $endDate;
             $updateData['offer_price'] = $newPrice;
             $updateData['deposit_amount'] = $product['rental_deposit'] ?? $offer['deposit_amount'];
-            $updateData['message'] = getAppMessage('rental_dates_updated_buyer_side', null, ['start' => date('d M Y', strtotime($startDate)), 'end' => date('d M Y', strtotime($endDate)), 'price' => $newPrice]);
+            $updateData['message'] = getAppMessage(
+                'rental_dates_updated_buyer_side',
+                'Buyer has proposed new dates: {start} to {end}. New total: ₹{price}',
+                ['start' => date('d M Y', strtotime($startDate)), 'end' => date('d M Y', strtotime($endDate)), 'price' => $newPrice]
+            );
         } else if ($newPrice !== null && $offer['status'] !== 'rejected') {
             $updateData['offer_price'] = $newPrice;
         }
@@ -1090,7 +1102,7 @@ class BuyerApi extends BaseApiController
         if (in_array($offer['status'], ['negotiating', 'rejected'])) {
             $updateData['status'] = 'pending';
             if ($offer['status'] === 'rejected' && !$isRent) {
-                $updateData['message'] = getAppMessage('offer_resubmitted_buyer_side');
+                $updateData['message'] = getAppMessage('offer_resubmitted_buyer_side', 'Offer resubmitted by buyer');
             }
         }
 
@@ -1115,8 +1127,12 @@ class BuyerApi extends BaseApiController
         $effectivePrice = $newPrice ?? $offer['offer_price'];
         $db->table('notifications')->insert([
             'user_id' => $offer['seller_id'],
-            'title' => getAppMessage('buyer_proposed_new_dates'),
-            'message' => getAppMessage('buyer_proposed_new_dates_message', null, ['buyer' => $buyer['name'] ?? 'The buyer', 'product' => $product['title'] ?? '', 'start' => date('d M Y', strtotime($startDate)), 'end' => date('d M Y', strtotime($endDate)), 'price' => $effectivePrice]),
+            'title' => getAppMessage('buyer_proposed_new_dates', 'Buyer Proposed New Dates'),
+            'message' => getAppMessage(
+                'buyer_proposed_new_dates_message',
+                '{buyer} proposed new dates for "{product}": {start} to {end} (New total: ₹{price}).',
+                ['buyer' => $buyer['name'] ?? 'The buyer', 'product' => $product['title'] ?? '', 'start' => date('d M Y', strtotime($startDate)), 'end' => date('d M Y', strtotime($endDate)), 'price' => $effectivePrice]
+            ),
             'type' => 'offer',
             'related_id' => $id,
             'is_read' => 0,

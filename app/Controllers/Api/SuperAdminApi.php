@@ -4928,11 +4928,37 @@ private function processImage($source, $subDir): ?string
     public function getAllErrorMessages()
     {
         $db = \Config\Database::connect();
-        $messages = $db->table('app_messages')
-            ->orderBy('category', 'ASC')
-            ->orderBy('message_key', 'ASC')
-            ->get()
-            ->getResultArray();
+        $builder = $db->table('app_messages');
+
+        $hasCategory = $db->fieldExists('category', 'app_messages');
+        $hasKey = $db->fieldExists('key', 'app_messages');
+
+        if ($hasCategory) {
+            $builder->orderBy('category', 'ASC');
+        }
+        if ($hasKey) {
+            $builder->orderBy('key', 'ASC');
+        } else {
+            $builder->orderBy('message_key', 'ASC');
+        }
+
+        $rows = $builder->get()->getResultArray();
+        $messages = array_map(function ($row) {
+            $key = $row['key'] ?? ($row['message_key'] ?? '');
+            $value = $row['message'] ?? ($row['message_value'] ?? '');
+            $category = $row['category'] ?? 'general';
+            return [
+                'id'            => (int) ($row['id'] ?? 0),
+                'key'           => $key,
+                'message_key'   => $key,
+                'message'       => $value,
+                'message_value' => $value,
+                'category'      => $category,
+                'created_at'    => $row['created_at'] ?? '',
+                'updated_at'    => $row['updated_at'] ?? '',
+            ];
+        }, $rows);
+
         return $this->respond(['success' => true, 'data' => $messages]);
     }
 
@@ -4958,7 +4984,7 @@ private function processImage($source, $subDir): ?string
         $data = $this->request->getPost() ?: $this->request->getJSON(true) ?: [];
 
         // Reject blank message_value
-        $messageValue = trim($data['message_value'] ?? '');
+        $messageValue = trim($data['message_value'] ?? ($data['message'] ?? ''));
         if ($messageValue === '') {
             return $this->respond(['success' => false, 'message' => getAppMessage('message_value_cannot_be_blank', 'Message value cannot be blank')], 400);
         }
@@ -4973,18 +4999,25 @@ private function processImage($source, $subDir): ?string
             return $this->respond(['success' => false, 'message' => getAppMessage('error_message_not_found', 'Error message not found')], 404);
         }
 
+        $origValue = $message['message'] ?? ($message['message_value'] ?? '');
         // Validate that all required placeholders in the existing message are retained
-        $placeholderError = $this->validateMessagePlaceholders($message['message_value'], $messageValue);
+        $placeholderError = $this->validateMessagePlaceholders($origValue, $messageValue);
         if ($placeholderError !== null) {
             return $this->respond(['success' => false, 'message' => $placeholderError], 400);
         }
 
-        // Only update message_value and category — message_key is immutable
         $updateData = [
-            'message_value' => $messageValue,
-            'category'      => $data['category'] ?? $message['category'],
-            'updated_at'    => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ];
+        if ($db->fieldExists('message', 'app_messages')) {
+            $updateData['message'] = $messageValue;
+        }
+        if ($db->fieldExists('message_value', 'app_messages')) {
+            $updateData['message_value'] = $messageValue;
+        }
+        if ($db->fieldExists('category', 'app_messages') && isset($data['category'])) {
+            $updateData['category'] = $data['category'];
+        }
 
         try {
             $db->table('app_messages')->where('id', $id)->update($updateData);
@@ -5012,11 +5045,30 @@ private function processImage($source, $subDir): ?string
     public function getErrorMessagesByCategory($category)
     {
         $db = \Config\Database::connect();
-        $messages = $db->table('app_messages')
-            ->where('category', $category)
-            ->orderBy('message_key', 'ASC')
-            ->get()
-            ->getResultArray();
+        $builder = $db->table('app_messages');
+        if ($db->fieldExists('category', 'app_messages')) {
+            $builder->where('category', $category);
+        }
+        if ($db->fieldExists('key', 'app_messages')) {
+            $builder->orderBy('key', 'ASC');
+        } else {
+            $builder->orderBy('message_key', 'ASC');
+        }
+        $rows = $builder->get()->getResultArray();
+        $messages = array_map(function ($row) {
+            $key = $row['key'] ?? ($row['message_key'] ?? '');
+            $value = $row['message'] ?? ($row['message_value'] ?? '');
+            return [
+                'id'            => (int) ($row['id'] ?? 0),
+                'key'           => $key,
+                'message_key'   => $key,
+                'message'       => $value,
+                'message_value' => $value,
+                'category'      => $row['category'] ?? 'general',
+                'created_at'    => $row['created_at'] ?? '',
+                'updated_at'    => $row['updated_at'] ?? '',
+            ];
+        }, $rows);
         return $this->respond(['success' => true, 'data' => $messages]);
     }
 
@@ -5032,12 +5084,29 @@ private function processImage($source, $subDir): ?string
             return $this->respond(['success' => false, 'message' => getAppMessage('search_query_is_required', 'Search query is required')], 400);
         }
 
-        $messages = $db->table('app_messages')
-            ->like('message_key', $query)
-            ->orLike('message_value', $query)
-            ->orderBy('message_key', 'ASC')
-            ->get()
-            ->getResultArray();
+        $builder = $db->table('app_messages');
+        $hasKey = $db->fieldExists('key', 'app_messages');
+        if ($hasKey) {
+            $builder->like('key', $query)->orLike('message', $query)->orderBy('key', 'ASC');
+        } else {
+            $builder->like('message_key', $query)->orLike('message_value', $query)->orderBy('message_key', 'ASC');
+        }
+
+        $rows = $builder->get()->getResultArray();
+        $messages = array_map(function ($row) {
+            $key = $row['key'] ?? ($row['message_key'] ?? '');
+            $value = $row['message'] ?? ($row['message_value'] ?? '');
+            return [
+                'id'            => (int) ($row['id'] ?? 0),
+                'key'           => $key,
+                'message_key'   => $key,
+                'message'       => $value,
+                'message_value' => $value,
+                'category'      => $row['category'] ?? 'general',
+                'created_at'    => $row['created_at'] ?? '',
+                'updated_at'    => $row['updated_at'] ?? '',
+            ];
+        }, $rows);
 
         return $this->respond(['success' => true, 'data' => $messages]);
     }
@@ -5420,25 +5489,6 @@ private function processImage($source, $subDir): ?string
         return $this->respond(['success' => true, 'message' => getAppMessage('seo_setting_deleted_successfully', 'SEO setting deleted successfully.')]);
     }
 
-    /**
-     * DELETE /api/v1/superadmin/seo-settings/{id}
-     */
-    public function deleteSeoSetting($id)
-    {
-        $jwtUser = $this->request->jwt_user;
-        if ($jwtUser['role'] !== 'super_admin') {
-            return $this->respond(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $seoModel = new \App\Models\SeoSettingModel();
-        $setting = $seoModel->find($id);
-        if (!$setting) {
-            return $this->respond(['success' => false, 'message' => 'SEO setting not found'], 404);
-        }
-
-        $seoModel->delete($id);
-        return $this->respond(['success' => true, 'message' => 'SEO setting deleted successfully.']);
-    }
 
     /**
      * GET /api/v1/superadmin/validation-rules

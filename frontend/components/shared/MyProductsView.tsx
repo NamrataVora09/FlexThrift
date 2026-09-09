@@ -387,7 +387,7 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
 
                           {/* Uploaded */}
                           <td style={tdStyle}>
-                            <span style={dateValStyle}>{new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                            <span style={dateValStyle} suppressHydrationWarning>{new Date(p.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                           </td>
 
                           {/* Actions */}
