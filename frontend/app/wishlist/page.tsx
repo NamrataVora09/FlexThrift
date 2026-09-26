@@ -75,7 +75,7 @@ export default function WishlistPage() {
             
         {/*Namrata 22nd Sep-bugUI.22 Start*/}
         {/*<Link className="navbar-brand-main" href="/">Flex Market</Link>*/}
-        <Link href={getDashboardPath(user.role)} className="topbar-brand">
+        <Link href={user ? getDashboardPath(user.role) : "/"} className="topbar-brand">
           <span className="topbar-brand-text">{settings.site_name}</span>
         </Link>
         {/*Namrata 22nd Sep-bugUI.22 End*/}
