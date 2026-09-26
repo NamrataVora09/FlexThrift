@@ -1430,6 +1430,7 @@ class SharedApi extends BaseApiController
             'expires_at' => $expiresAt,
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
+            'coupon_discount_applied' => $discount//Namrata 14th Sep-Bug208
         ], true);
 
         $this->recalibrateUserSubscriptions($jwtUser['user_id'], $plan['user_type']);
@@ -1866,9 +1867,24 @@ class SharedApi extends BaseApiController
         }
 
         // 2. Fetch Subscription specific data (for Plan Breakdown)
+        //Namrata 14th Sep-Bug203 Start
+        /*
         $subBuilder = $db->table('user_subscriptions us')
             ->select('us.*, sp.name as plan_name, sp.user_type as plan_user_type')
             ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left');
+        */
+        // 2. Fetch Subscription specific data (for Plan Breakdown & Discounts)
+        $subBuilder = $db->table('user_subscriptions us')
+            ->select('us.*, 
+                    sp.name as plan_name, 
+                    sp.user_type as plan_user_type, 
+                    sp.price as plan_price,
+                    c.discount_type as coupon_discount_type, 
+                    c.discount_value as coupon_discount_value, 
+                    c.max_discount as coupon_max_discount')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id', 'left')
+            ->join('coupons c', 'c.id = us.coupon_id', 'left');
+        //Namrata 14th Sep-Bug203 End
 
         if (!in_array($jwtUser['role'], ['super_admin', 'superadmin'])) {
             $subBuilder->where('us.user_id', $jwtUser['user_id']);
@@ -1944,13 +1960,22 @@ class SharedApi extends BaseApiController
                 'summary' => [
                     'total_subscriptions' => $totalTxs, // Renaming semantically in frontend if needed, but keeping key for compat
                     'total_spent' => $totalRevenue,
-                    'total_discount' => array_reduce($subs, fn($carry, $item) => $carry + (float)$item['referral_discount_applied'], 0),
+                    //Namrata 14th Sep-Bug203 Start
+                    //'total_discount' => array_reduce($subs, fn($carry, $item) => $carry + (float)$item['referral_discount_applied'], 0),
+                    'total_discount' => array_reduce($subs, fn($carry, $item) => $carry + $this->calculateSubscriptionDiscount($item), 0),
+                    //Namrata 14th Sep-Bug203 End
                     'total_plans' => $db->table('subscription_plans')->countAll(),
                 ],
                 'charts' => [
                     'amount_discount' => [
+                        //Namrata 14th Sep-Bug203 Start
+                        /*
                         'buyer' => ['spent' => $buyerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'buyer') ? (float)$i['referral_discount_applied'] : 0), 0)],
                         'seller' => ['spent' => $sellerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'seller') ? (float)$i['referral_discount_applied'] : 0), 0)],
+                        */
+                        'buyer' => ['spent' => $buyerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'buyer') ? $this->calculateSubscriptionDiscount($i) : 0), 0)],
+                        'seller' => ['spent' => $sellerSpent, 'discount' => array_reduce($subs, fn($c, $i) => $c + (($i['plan_user_type'] === 'seller') ? $this->calculateSubscriptionDiscount($i) : 0), 0)],
+                        //Namrata 14th Sep-Bug203 End
                     ],
                     'monthly_stats' => $this->getMonthlyStats($successfulTxs, $subs, $range),
                     'plan_breakdown' => [
@@ -1965,6 +1990,65 @@ class SharedApi extends BaseApiController
             ]
         ]);
     }
+
+    //Namrata 14th Sep-Bug208 Start
+    /*
+    //Namrata 14th Sep-Bug203 Start
+    private function calculateSubscriptionDiscount(array $s): float
+    {
+        $referralDisc = (float) ($s['referral_discount_applied'] ?? 0);
+        $couponDisc = 0.0;
+
+        if (!empty($s['coupon_discount_type']) && isset($s['coupon_discount_value'])) {
+            $basePrice = (float) ($s['plan_price'] ?? 0);
+            $type = $s['coupon_discount_type'];
+            $val = (float) $s['coupon_discount_value'];
+            $maxDisc = (isset($s['coupon_max_discount']) && $s['coupon_max_discount'] !== null) ? (float) $s['coupon_max_discount'] : 0.0;
+
+            if ($type === 'percentage') {
+                $couponDisc = ($basePrice * $val) / 100;
+                if ($maxDisc > 0 && $couponDisc > $maxDisc) {
+                    $couponDisc = $maxDisc;
+                }
+            } else {
+                $couponDisc = $val;
+            }
+        }
+
+        $totalCalculated = $couponDisc + $referralDisc;
+        if ($totalCalculated > 0) {
+            return $totalCalculated;
+        }
+
+        $planPrice = (float) ($s['plan_price'] ?? 0);
+        $amtPaid = (float) ($s['amount_paid'] ?? 0);
+        return ($planPrice > 0 && $amtPaid < $planPrice) ? ($planPrice - $amtPaid) : 0;
+
+    }
+    //Namrata 14th Sep-Bug203 End
+    */
+    private function calculateSubscriptionDiscount(array $s): float
+    {
+        $referralDisc = (float) ($s['referral_discount_applied'] ?? 0);
+        
+        // NEW LOGIC: Check if the column exists AND is strictly not null 
+        if (array_key_exists('coupon_discount_applied', $s) && $s['coupon_discount_applied'] !== null) {
+            $couponDisc = (float) $s['coupon_discount_applied'];
+            return $referralDisc + $couponDisc;
+        }
+
+        // LEGACY FALLBACK (For older transactions where the column is NULL)
+        $planPrice = (float) ($s['plan_price'] ?? 0);
+        $amtPaid = (float) ($s['amount_paid'] ?? 0);
+        
+        // Fallback math: If they paid less than the plan price, the difference is the discount
+        if ($planPrice > 0 && $amtPaid < $planPrice) {
+            return $planPrice - $amtPaid;
+        }
+
+        return $referralDisc;
+    }  
+    //Namrata 14th Sep-Bug208 End
 
     private function getMonthlyStats($transactions, $subs, $range = 'all_time')
     {
@@ -1996,14 +2080,21 @@ class SharedApi extends BaseApiController
                     }
                 }
 
+                $calculatedDiscount = $s ? $this->calculateSubscriptionDiscount($s) : 0;//Namrata 14th Sep-Bug203,Bug208
                 if ($s && $s['plan_user_type'] === 'seller') {
                     $stats[$label]['seller_spent'] += $amt;
                     $stats[$label]['seller_count']++;
-                    $stats[$label]['discount'] += (float)$s['referral_discount_applied'];
+                    //Namrata 14th Sep-Bug203,Bug208 Start
+                    //$stats[$label]['discount'] += (float)$s['referral_discount_applied'];
+                    $stats[$label]['discount'] += $calculatedDiscount;
+                    //Namrata 14th Sep-Bug203,Bug208 End
                 } else {
                     $stats[$label]['buyer_spent'] += $amt;
                     $stats[$label]['buyer_count']++;
-                    if ($s) $stats[$label]['discount'] += (float)$s['referral_discount_applied'];
+                    //Namrata 14th Sep-Bug203,Bug208 Start
+                    //if ($s) $stats[$label]['discount'] += (float)$s['referral_discount_applied'];
+                    if ($s) $stats[$label]['discount'] += $calculatedDiscount;
+                    //Namrata 14th Sep-Bug203,Bug208 End
                 }
             } else {
                 $stats[$label]['buyer_spent'] += $amt;

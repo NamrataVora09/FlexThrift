@@ -114,6 +114,7 @@ export default function ProductDetailClient({ product, images, similarProducts =
   const [autoPlay, setAutoPlay] = useState(true);
   const [showOffer, setShowOffer] = useState(false);
   const [showFullDesc, setShowFullDesc] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false); // Namrata 21st Sep-BugUI.14
   const [offerForm, setOfferForm] = useState({
     offer_price:
       product.listing_type === 'sell'
@@ -515,7 +516,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
           <div className='grid grid-cols-1 md:grid-cols-2 gap-18 mb-10'>
 
             {/* LEFT: Image gallery */}
-            <div className={`flex  xl:flex-row flex-col-reverse gap-10 w-fit h-full ${images.length > 1 ? '' : 'mx-auto px-20'}`}>
+            {/*Namrata 21st Sep-BugUI.14 Start*/} 
+             {/*<div className={`flex  xl:flex-row flex-col-reverse gap-10 w-fit h-full ${images.length > 1 ? '' : 'mx-auto px-20'}`}>*/} 
+             <div className="flex xl:flex-row flex-col-reverse gap-10 w-fit h-full">
+            {/*Namrata 21st Sep-BugUI.14 End*/}  
               {/* Vertical thumbnail list */}
               {images.length > 1 && (
                 <div className='flex flex-row  lg:flex-row! xl:flex-col! gap-3 flex-wrap  flex-shrink-0'>
@@ -537,6 +541,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
                 </div>
               )}
               {/* Main Product image */}
+              {/*Namrata 21st Sep-BugUI.14 start*/}
+              {/*
               <div
                 style={{
                   width: 'fit-content',
@@ -561,6 +567,33 @@ export default function ProductDetailClient({ product, images, similarProducts =
                   }}
                 />
               </div>
+              */}
+              <div
+                style={{
+                  width: 'fit-content',
+                  height: 'fit-content',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  position: 'relative',
+                  cursor: 'zoom-in'
+                }}
+                onMouseEnter={() => { setIsHovering(true); setAutoPlay(false); }}
+                onMouseLeave={() => { setIsHovering(false); setAutoPlay(true); }}
+                onMouseMove={handleMouseMove}
+                onClick={() => setIsFullScreen(true)}
+              >
+                <img
+                  src={getImageUrl(images[imgIdx]?.image_path)}
+                  alt={product.title}
+                  className='w-full md:w-[530px] h-full md:max-h-[600px] md:aspect-[4/5] object-cover rounded-xl'
+                  style={{
+                    transform: isHovering ? 'scale(1.05)' : 'scale(1)',
+                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                    transition: isHovering ? 'transform-origin 0.1s ease' : 'transform 0.4s ease',
+                  }}
+                />
+              </div>
+              {/*Namrata 21st Sep-BugUI.14 end*/}
             </div>
 
             {/* RIGHT: Product info */}
@@ -797,7 +830,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
 
           {/* TABS: Description + Specifications */}
           <div style={{ marginTop: 60 }}>
-            <div style={{ display: 'flex', gap: 40, borderBottom: '2px solid #e5e7eb', marginBottom: 30 }}>
+            {/*Namrata 22nd Sep-BugUI.25 Start*/}
+            {/*<div style={{ display: 'flex', gap: 40, borderBottom: '2px solid #e5e7eb', marginBottom: 30 }}>*/}
+              <div style={{ display: 'flex', gap: 40, borderBottom: '2px solid #e5e7eb', marginBottom: 16 }}>
+            {/*Namrata 22nd Sep-BugUI.25 End*/}
               {(['description', 'specifications'] as const).map(tab => (
                 <button
                   key={tab}
@@ -838,7 +874,10 @@ export default function ProductDetailClient({ product, images, similarProducts =
                   const displayText = (!isLong || showFullDesc) ? product.description : collapsedText;
                   return (
                     <div>
-                      <p style={{ color: '#6b7280', lineHeight: 1.8, fontSize: 16, margin: 0 }}>
+                      {/*Namrata 22nd Sep-BugUI.25 Start*/}
+                      {/*<p style={{ color: '#6b7280', lineHeight: 1.8, fontSize: 16, margin: 0 }}>*/}
+                      <p style={{ color: '#6b7280', lineHeight: 1.8, fontSize: 16, margin: 0, wordBreak: 'break-word' }}>
+                      {/*Namrata 22nd Sep-BugUI.25 End*/}
                         {displayText.split('\n').map((line, i, arr) => (
                           <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
                         ))}
@@ -859,7 +898,8 @@ export default function ProductDetailClient({ product, images, similarProducts =
                 )}
               </div>
             )}
-
+            {/*Namrata 21st Sep-BugUI.15 Start*/}
+            {/*
             {activeProductTab === 'specifications' && (
               <div>
                 <h3 style={{ fontSize: 24, fontWeight: 700, marginBottom: 30, fontFamily: "'Maven Pro', sans-serif", color: '#111827' }}>Product Specifications</h3>
@@ -1048,11 +1088,206 @@ export default function ProductDetailClient({ product, images, similarProducts =
                 )}
               </div>
             )}
+            */}
+
+            {activeProductTab === 'specifications' && (
+              <div>
+                <h3 style={{ fontSize: 24, fontWeight: 700, marginBottom: 30, fontFamily: "'Maven Pro', sans-serif", color: '#111827' }}>Product Specifications</h3>
+                <div style={{ display: 'grid', gap: 0, marginBottom: 20 }}>
+                  {product.product_number && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Product SKU</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.product_number}</span>
+                    </div>
+                  )}
+                  {(product.listing_type_name || product.listing_type) && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Listing Type</span>
+                      <span style={{ color: '#6b7280', textTransform: 'capitalize', wordBreak: 'break-word' }}>
+                        {product.listing_type_name || (product.listing_type === 'sell' ? 'Direct Purchase' : 'Rental')}
+                      </span>
+                    </div>
+                  )}
+                  {product.category && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Category</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.category}</span>
+                    </div>
+                  )}
+                  {product.size && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Size</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.size}</span>
+                    </div>
+                  )}
+                  {product.color && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Color</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.color}</span>
+                    </div>
+                  )}
+                  {genders.length > 0 && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Gender</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{genders.join(', ')}</span>
+                    </div>
+                  )}
+                  {product.product_type && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Product Type</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.product_type}</span>
+                    </div>
+                  )}
+                  {product.sub_category && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Sub Category</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.sub_category}</span>
+                    </div>
+                  )}
+                  {product.product_number && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Product Number</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.product_number}</span>
+                    </div>
+                  )}
+                  {(product.dispatch_city || product.dispatch_state) && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Dispatch Location</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{[product.dispatch_city, product.dispatch_state].filter(Boolean).join(', ')}</span>
+                    </div>
+                  )}
+                  {product.fitting_charge && parseFloat(product.fitting_charge) > 0 && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Fitting Charge</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>&#8377;{formatPrice(product.fitting_charge)}</span>
+                    </div>
+                  )}
+                  {usedTimes !== undefined && usedTimes !== '' && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Condition</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>
+                        {/*{usedTimes === '0' ? 'Brand New' : (product.usage_label ? `${usedTimes} ${product.usage_label}` : `Used ${usedTimes}×`)}*/}
+                        {usedTimes === '0' ? 'Brand New' : (product.usage_label ? `${usedTimes} ${product.usage_label.split('(')[0].trim()}` : `Used ${usedTimes}×`)}
+                      </span>
+                    </div>
+                  )}
+                  {(product.condition_description || product.description) && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Condition Notes</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.condition_description || product.description}</span>
+                    </div>
+                  )}
+                  {product.listing_type === 'rent' && product.allow_alter_fitting !== undefined && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Alteration</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{Number(product.allow_alter_fitting) === 1 ? 'Allowed' : 'Not Allowed'}</span>
+                    </div>
+                  )}
+                  {product.orignal_brand && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Original Brand</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.orignal_brand}</span>
+                    </div>
+                  )}
+                  {product.seller_brand && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Seller Brand</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.seller_brand}</span>
+                    </div>
+                  )}
+                  {!product.orignal_brand && !product.seller_brand && brandName && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Brand</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{brandName}</span>
+                    </div>
+                  )}
+                  {product.listing_type === 'sell' && product.original_price && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Original Price</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>&#8377;{formatPrice(product.original_price)}</span>
+                    </div>
+                  )}
+                  {Object.entries(specs).map(([key, val]) => val && (
+                    <div key={key} style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>{key}</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{val}</span>
+                    </div>
+                  ))}
+                  {Number(product.has_bill) === 1 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Original Bill</span>
+                        <div style={{ padding: '6px 14px', background: '#ecfdf5', color: '#059669', borderRadius: 50, fontSize: '0.85rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #d1fae5' }}>
+                          <i className="bi bi-patch-check-fill"></i> Verified Bill Included
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/*Namrata 22nd Sep-BugUI.27 Start*/}
+                  {/*
+                  {product.views_count !== undefined && product.views_count > 0 && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Views</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.views_count} times</span>
+                    </div>
+                  )}
+                  {product.seller_name && (
+                    <div style={{ display: 'flex', padding: '16px 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <span className="w-[130px] md:w-[200px] shrink-0" style={{ fontWeight: 600, color: '#111827' }}>Seller</span>
+                      <span style={{ color: '#6b7280', wordBreak: 'break-word' }}>{product.seller_name}</span>
+                    </div>
+                  )}*/}
+                  {/*Namrata 22nd Sep-BugUI.27 End*/}
+                </div>
+
+                {product.bill_image && (
+                  <div style={{ marginLeft: 0 }}>
+                    <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: 12, fontWeight: 500 }}>DOCUMENT PROOF:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                      {(() => {
+                        let billPaths: string[] = [];
+                        try {
+                          if (product.bill_image.startsWith('[')) {
+                            billPaths = JSON.parse(product.bill_image);
+                          } else {
+                            billPaths = [product.bill_image];
+                          }
+                        } catch {
+                          billPaths = [product.bill_image];
+                        }
+                        return billPaths.map((path, idx) => {
+                          const url = path.startsWith('http') ? path : `${BASE_URL}/${path}`;
+                          return (
+                            <div key={idx} style={{ position: 'relative', width: 140 }}>
+                              <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', textDecoration: 'none' }}>
+                                <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '2px solid #e5e7eb', transition: 'all 0.2s ease', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                                  <img
+                                    src={url}
+                                    alt={`Bill ${idx + 1}`}
+                                    style={{ width: '100%', height: 180, objectFit: 'cover', background: '#fff' }}
+                                  />
+                                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 40%)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '8px' }}>
+                                    <span style={{ color: '#fff', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>View Document</span>
+                                  </div>
+                                </div>
+                                <div style={{ marginTop: 6, fontSize: '11px', color: '#9ca3af', textAlign: 'center', fontWeight: 600 }}>BILL_{idx + 1}.JPG</div>
+                              </a>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {/*Namrata 21st Sep-BugUI.15 End*/}
           </div>
 
           {/* Related Products */}
+           {/*<div className=" md:my-0! sm:my-20 my-20" style={{ marginTop: 60 }}>*/}{/*Namrata 22nd Sep-BugUI.25 This line was first div inside similarProducts.length, but replaced it with current 1st div block*/}
           {similarProducts.length > 0 && (
-            <div className=" md:my-0! sm:my-20 my-20" style={{ marginTop: 60 }}>
+            <div className="mt-16 md:mt-24">
               <h2 style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 30, fontFamily: "'Maven Pro', sans-serif" }}>You May Also Like</h2>
 
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3  gap-24 mb-10'>
@@ -1355,6 +1590,62 @@ export default function ProductDetailClient({ product, images, similarProducts =
           </div>
         )}
 
+        {/*Namrata 21st Sep-BugUI.14 start*/}
+        {/* Full-Screen Image Modal */}
+        {isFullScreen && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.92)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 100000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={() => setIsFullScreen(false)}
+          >
+            <button
+              onClick={() => setIsFullScreen(false)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '30px',
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                color: '#fff',
+                fontSize: '28px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.2s',
+                zIndex: 100001
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+            >
+              &times;
+            </button>
+            <img
+              src={getImageUrl(images[imgIdx]?.image_path)}
+              alt="Full screen product"
+              style={{
+                maxWidth: '90vw',
+                maxHeight: '90vh',
+                objectFit: 'contain',
+                borderRadius: '8px',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+              }}
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
+        )}
+        {/*Namrata 21st Sep-BugUI.14 end*/}
 
         {/* Footer Banner Ad */}
         <div className="xl:px-28 px-8 my-10">

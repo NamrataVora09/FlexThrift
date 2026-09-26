@@ -129,7 +129,7 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                   onMouseLeave={() => { setShowMegaMenu(false); setMegaSearch(''); }}
                 >
                   {/* Search bar */}
-                  <div className="w-full px-10 pt-4 pb-2 mb-3 flex">
+                  <div className="w-full px-10 pt-4 pb-2 mb-3 flex gap-2">{/*Namrata 23rd Sep-BugUI.29 added gap of 2*/}
                     <div className="relative w-full">
                       <i className="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
                       <input
@@ -149,6 +149,13 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                         </button>
                       )}
                     </div>
+                    {/*Namrata 23rd Sep-BugUI.29 Start*/}
+                    <Link
+                      href="/buyer/browse"
+                      className="text-sm font-bold text-white bg-[#fdc003] hover:bg-[#fdc003] hover:text-[#111827] transition-all whitespace-nowrap px-6 py-2 rounded-lg flex items-center" onClick={() => { setShowMegaMenu(false); setMegaSearch(''); }}>
+                      View All Products <i className="bi bi-arrow-right ms-1"></i>
+                    </Link>
+                    {/*Namrata 23rd Sep-BugUI.29 End*/}
                   </div>
 
                   {/* Scrollable content */}
@@ -201,6 +208,8 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
             </li>
 
             {/* Listing type links */}
+            {/*Namrata 22nd Sep-BugUI.28 Start*/}
+            {/*
             {listingTypes.slice(0, 4).map(lt => (
               <li key={lt.id}>
                 <Link
@@ -211,7 +220,25 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                   {lt.type_name}
                 </Link>
               </li>
-            ))}
+            ))}*/}
+            {listingTypes.slice(0, 4).map(lt => {
+              const params = new URLSearchParams({
+                listing_type: lt.type_name,
+              });
+              
+              return (
+                <li key={lt.id}>
+                  <Link
+                    href={`/buyer/browse?${params.toString()}`}
+                    className="hover:text-gold transition-colors whitespace-nowrap"
+                    onClick={handleBuyerLinkClick}
+                  >
+                    {lt.type_name}
+                  </Link>
+                </li>
+              );
+            })}
+            {/*Namrata 22nd Sep-BugUI.28 End*/}
           </ul>
 
           {/* Auth Section */}
@@ -352,7 +379,8 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                 <Link href="/buyer/browse" className="block text-lg font-bold hover:text-gold transition-colors" onClick={(e) => handleBuyerLinkClick(e, () => setMobileNavOpen(false))}>
                   All Products
                 </Link>
-                {listingTypes.map(lt => (
+                {/*Namrata 22nd Sep-BugUI.28 Start*/}
+                {/*{listingTypes.map(lt => (
                   <Link
                     key={lt.id}
                     href={`/buyer/browse?listing_type=${lt.type_name.toLowerCase()}`}
@@ -361,7 +389,24 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                   >
                     {lt.type_name}
                   </Link>
-                ))}
+                ))}*/}
+                {listingTypes.map(lt => {
+                  const params = new URLSearchParams({
+                    listing_type: lt.type_name,
+                  });
+
+                  return (
+                    <Link
+                      key={lt.id}
+                      href={`/buyer/browse?${params.toString()}`}
+                      className="block text-lg font-bold hover:text-gold transition-colors"
+                      onClick={(e) => handleBuyerLinkClick(e, () => setMobileNavOpen(false))}
+                    >
+                      {lt.type_name}
+                    </Link>
+                  );
+                })}
+                {/*Namrata 22nd Sep-BugUI.28 End*/}
               </div>
             </div>
 
@@ -380,6 +425,8 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
             )}
 
             {isAuthenticated && (
+              <>{/*Namrata 20th Sep-BugUI.13 Start*/}
+              {/*
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-gray-400 font-black mb-4">Navigation</p>
                 <div className="space-y-4">
@@ -413,7 +460,41 @@ export default function LandingNavbar({ showAuth = false }: { showAuth?: boolean
                     Logout
                   </button>
                 </div>
+              </div>*/}
+              <div>
+                  <p className="text-[10px] uppercase tracking-widest text-gray-400 font-black mb-4">Navigation</p>
+                  <div className="space-y-4">
+                    {user && user.user_type === 'both' && user.role === 'buyer' && (
+                      <a
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); handleSwitch('seller'); }}
+                        className="block text-lg font-bold hover:text-gold transition-colors"
+                      >
+                        Switch to Seller <i className="bi bi-arrow-left-right" />
+                      </a>
+                    )}
+                    {user && user.user_type === 'both' && user.role === 'seller' && (
+                      <a
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); setMobileNavOpen(false); handleSwitch('buyer'); }}
+                        className="block text-lg font-bold hover:text-gold transition-colors"
+                      >
+                        Switch to Buyer <i className="bi bi-arrow-left-right" />
+                      </a>
+                    )}
+                    <Link href="/wishlist" className="block text-lg font-bold hover:text-gold transition-colors" onClick={() => setMobileNavOpen(false)}>
+                      My Wishlist <i className="bi bi-heart-fill" style={{ color: '#EF4444' }}/>
+                    </Link>
+                    <a
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); logout(); setMobileNavOpen(false); router.push('/'); }}
+                      className="block text-lg font-bold !text-red-500 hover:text-red-600 transition-colors"
+                    >
+                      Logout <i className="bi bi-box-arrow-right"/>
+                    </a>
+                </div>
               </div>
+              {/*Namrata 20th Sep-BugUI.13 End*/}</>
             )}
           </div>
 

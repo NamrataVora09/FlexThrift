@@ -1077,16 +1077,20 @@ export default function BrowsePage() {
 
               {/* Breadcrumb + sort row */}
               <section style={{ marginBottom: 48 }}>
+                {/*Namrata 20th Sep-BugUI.12 Start*/}
                 {/* Row 1: mobile filter + breadcrumbs + sort */}
+				{/*
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  {/* Left: mobile filter btn + breadcrumbs — all on one line */}
-                  <div className="em-type-bar" style={{ display: 'flex', flexWrap: 'nowrap', gap: 12, alignItems: 'center', overflow: 'hidden' }}>
-                    {/* Mobile filter toggle */}
-                    <button
-                      className="d-lg-none em-type-pill"
+                <div className="d-flex flex-wrap justify-content-between align-items-start align-items-md-center" style={{ gap: 12, marginBottom: 16 }}>  
+                   Left: mobile filter btn + breadcrumbs — all on one line 
+                    <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-2 gap-md-3"> 
+                  
+                     Mobile filter toggle 
+                    <button className="d-lg-none em-type-pill"
                       onClick={() => setShowFilters(true)}
                       style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
                     >
+
                       <i className="bi bi-sliders"></i> Filters
                       {activeChips.length > 0 && (
                         <span style={{ background: '#0c0f0f', color: '#FFC107', borderRadius: 9999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>
@@ -1095,7 +1099,7 @@ export default function BrowsePage() {
                       )}
                     </button>
 
-                    {/* Breadcrumbs */}
+                     Breadcrumbs
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', flexWrap: 'nowrap' }}>
                       <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none', textTransform: 'capitalize' }}>Home</Link>
 
@@ -1147,7 +1151,7 @@ export default function BrowsePage() {
                     </div>
                   </div>
 
-                  {/* Right: Sort only */}
+                  Right: Sort only 
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <select
                       className="em-sort-sel"
@@ -1168,8 +1172,192 @@ export default function BrowsePage() {
                     </span>
                   </div>
                 </div>
-
+				*/}
                 {/* Row 2: result count */}
+                {/* Row 1: mobile/tablet filter + breadcrumbs + sort */}
+                <div style={{ marginBottom: 16 }}>
+                  
+                  {/* --- DESKTOP/LAPTOP VIEW (Original exact structure, hidden on mobile & tablets) --- */}
+                  <div className="d-none d-lg-flex flex-wrap justify-content-between align-items-center w-100" style={{ gap: 12 }}>
+                    
+                    {/* Left: filter btn + breadcrumbs */}
+                    <div className="em-type-bar" style={{ display: 'flex', flexWrap: 'nowrap', gap: 12, alignItems: 'center', overflow: 'hidden' }}>
+                      <button
+                        className="d-lg-none em-type-pill"
+                        onClick={() => setShowFilters(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+                      >
+                        <i className="bi bi-sliders"></i> Filters
+                        {activeChips.length > 0 && (
+                          <span style={{ background: '#0c0f0f', color: '#FFC107', borderRadius: 9999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>
+                            {activeChips.length}
+                          </span>
+                        )}
+                      </button>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                        <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none', textTransform: 'capitalize' }}>Home</Link>
+
+                        {activeType && (
+                          <>
+                            <span style={{ color: '#acadad' }}>/</span>
+                            <span style={{ color: filters.productTypeIds.length === 0 && filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
+                              onClick={() => { const nf = { ...filters, productTypeIds: [], categoryIds: [], subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
+                              {activeType}
+                            </span>
+                          </>
+                        )}
+
+                        {filters.productTypeIds.length > 0 && (() => {
+                          const pt = taxonomy?.product_types.find(p => String(p.id) === filters.productTypeIds[0]);
+                          return pt ? (
+                            <>
+                              <span style={{ color: '#acadad' }}>/</span>
+                              <span style={{ color: filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
+                                onClick={() => { const nf = { ...filters, categoryIds: [], subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
+                                {pt.name}
+                              </span>
+                            </>
+                          ) : null;
+                        })()}
+
+                        {filters.categoryIds.length > 0 && (() => {
+                          const cat = taxonomy?.categories.find(c => String(c.id) === filters.categoryIds[0]);
+                          return cat ? (
+                            <>
+                              <span style={{ color: '#acadad' }}>/</span>
+                              <span style={{ color: filters.subCategoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
+                                onClick={() => { const nf = { ...filters, subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
+                                {cat.name || cat.category_name}
+                              </span>
+                            </>
+                          ) : null;
+                        })()}
+
+                        {filters.subCategoryIds.length > 0 && (() => {
+                          const sub = taxonomy?.sub_categories.find(s => String(s.id) === filters.subCategoryIds[0]);
+                          return sub ? (
+                            <>
+                              <span style={{ color: '#acadad' }}>/</span>
+                              <span style={{ color: '#0c0f0f', textTransform: 'capitalize' }} >{sub.name}</span>
+                            </>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Right: Sort only */}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <select
+                        className="em-sort-sel"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        style={{ padding: '8px 36px 8px 16px', border: '1px solid #e7e8e8', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600, background: '#fff', color: '#0c0f0f', boxShadow: 'none' }}
+                      >
+                        <option value="featured">Sort by: Recommended</option>
+                        <option value="newest">Sort by: Newest</option>
+                        <option value="price_asc">Sort by: Price (Low to High)</option>
+                        <option value="price_desc">Sort by: Price (High to Low)</option>
+                      </select>
+                      <span className="material-symbols-outlined" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#0c0f0f', fontSize: 20 }}>
+                        expand_more
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* --- MOBILE & TABLET VIEW (Stacked, hidden on desktop) --- */}
+                  <div className="d-flex d-lg-none flex-column w-100">
+                    
+                    {/* Top Row: Filters & Sort Level with each other */}
+                    <div className="d-flex justify-content-between align-items-center w-100 mb-3">
+                      <button
+                        className="em-type-pill"
+                        onClick={() => setShowFilters(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '8px 16px' }}
+                      >
+                        <i className="bi bi-sliders"></i> Filters
+                        {activeChips.length > 0 && (
+                          <span style={{ background: '#0c0f0f', color: '#FFC107', borderRadius: 9999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>
+                            {activeChips.length}
+                          </span>
+                        )}
+                      </button>
+
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <select
+                          className="em-sort-sel"
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value)}
+                          style={{ padding: '8px 36px 8px 16px', border: '1px solid #e7e8e8', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600, background: '#fff', color: '#0c0f0f', boxShadow: 'none' }}
+                        >
+                          <option value="featured">Sort by: Recommended</option>
+                          <option value="newest">Sort by: Newest</option>
+                          <option value="price_asc">Sort by: Price (Low to High)</option>
+                          <option value="price_desc">Sort by: Price (High to Low)</option>
+                        </select>
+                        <span className="material-symbols-outlined" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#0c0f0f', fontSize: 20 }}>
+                          expand_more
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Bottom Row: Perfectly Centered Breadcrumbs */}
+                    <div className="em-type-bar d-flex justify-content-center w-100" style={{ overflowX: 'auto', paddingBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600, color: '#0c0f0f', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                        <Link href="/buyer/browse" style={{ color: '#5a5c5c', textDecoration: 'none', textTransform: 'capitalize' }}>Home</Link>
+
+                        {activeType && (
+                          <>
+                            <span style={{ color: '#acadad' }}>/</span>
+                            <span style={{ color: filters.productTypeIds.length === 0 && filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
+                              onClick={() => { const nf = { ...filters, productTypeIds: [], categoryIds: [], subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
+                              {activeType}
+                            </span>
+                          </>
+                        )}
+
+                        {filters.productTypeIds.length > 0 && (() => {
+                          const pt = taxonomy?.product_types.find(p => String(p.id) === filters.productTypeIds[0]);
+                          return pt ? (
+                            <>
+                              <span style={{ color: '#acadad' }}>/</span>
+                              <span style={{ color: filters.categoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
+                                onClick={() => { const nf = { ...filters, categoryIds: [], subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
+                                {pt.name}
+                              </span>
+                            </>
+                          ) : null;
+                        })()}
+
+                        {filters.categoryIds.length > 0 && (() => {
+                          const cat = taxonomy?.categories.find(c => String(c.id) === filters.categoryIds[0]);
+                          return cat ? (
+                            <>
+                              <span style={{ color: '#acadad' }}>/</span>
+                              <span style={{ color: filters.subCategoryIds.length === 0 ? '#0c0f0f' : '#5a5c5c', cursor: 'pointer', textTransform: 'capitalize' }}
+                                onClick={() => { const nf = { ...filters, subCategoryIds: [], specs: {} }; setFilters(nf); navigate(activeType, search, nf); }}>
+                                {cat.name || cat.category_name}
+                              </span>
+                            </>
+                          ) : null;
+                        })()}
+
+                        {filters.subCategoryIds.length > 0 && (() => {
+                          const sub = taxonomy?.sub_categories.find(s => String(s.id) === filters.subCategoryIds[0]);
+                          return sub ? (
+                            <>
+                              <span style={{ color: '#acadad' }}>/</span>
+                              <span style={{ color: '#0c0f0f', textTransform: 'capitalize' }} >{sub.name}</span>
+                            </>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+                {/* Row 2: result count */}
+                 {/*Namrata 20th Sep-BugUI.12 End*/}
                 {!loading && data && (
                   <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#5a5c5c', margin: 0, fontWeight: 500 }}>
                     {data.pagination.total > 0

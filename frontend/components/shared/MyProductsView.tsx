@@ -20,6 +20,10 @@ interface Product {
   // Populated only when product is rejected at product level (e.g. brand block) AND
   // also has a separately-rejected edit request — so seller sees both reasons.
   edit_rejection_remarks?: string | null;
+  //Namrata 16th Sep-Bug205 Start
+  edit_price?: string | null;
+  edit_rental_cost?: string | null;
+  //Namrata 16th Sep-Bug205 End
 }
 
 interface Props { role: string; apiPath: string; uploadPath: string; }
@@ -80,7 +84,10 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
   const load = () => {
     setLoading(true);
     api.get<Product[]>(apiPath).then((r) => {
-      if (r.success && r.data) setProducts(r.data);
+      if (r.success && r.data) {
+        setProducts(r.data);
+        console.log("API Data:", r.data); // Namrata 15th Sep-Bug188
+      }
       setLoading(false);
     });
   };
@@ -109,7 +116,10 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
 
   const filtered = useMemo(() => {
     if (filter === 'all') return products;
-    if (filter === 'approved') return products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status) && p.edit_request !== 'pending');
+    //Namrata 16th Sep-Bug188 Start
+    //if (filter === 'approved') return products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status) && p.edit_request !== 'pending');
+    if (filter === 'approved') return products.filter(p => ['approved', 'sold', 'rented', 'active','changesRejected', 'changesPending'].includes(p.status));
+    //Namrata 16th Sep-Bug188 End
     if (filter === 'rejected') return products.filter(p => ['rejected', 'rejected_changes'].includes(p.status) || p.edit_request === 'rejected');
     if (filter === 'pending') return products.filter(p => p.status === 'pending' || p.edit_request === 'pending');
     return products.filter((p) => p.status === filter);
@@ -118,7 +128,10 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: products.length };
     c.pending = products.filter(p => p.status === 'pending' || p.edit_request === 'pending').length;
-    c.approved = products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status) && p.edit_request !== 'pending').length;
+    //Namrata 16th Sep-Bug188 Start
+    //c.approved = products.filter(p => ['approved', 'sold', 'rented', 'active'].includes(p.status) && p.edit_request !== 'pending').length;
+    c.approved = products.filter(p => ['approved', 'sold', 'rented', 'active','changesRejected', 'changesPending'].includes(p.status)).length;
+    //Namrata 16th Sep-Bug188 End
     c.rejected = products.filter(p => ['rejected', 'rejected_changes'].includes(p.status) || p.edit_request === 'rejected').length;
     c.inactive = products.filter(p => p.status === 'inactive').length;
     return c;
@@ -189,7 +202,7 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
             {loading ? (
               <div className="text-center py-5"><div className="spinner-border" style={{ color: '#ffc63a' }}></div></div>
             ) : filtered.length > 0 ? (
-              <div className="table-responsive">
+              <div className="table-responsive text-nowrap">{/*Namrata 19th Sep-BugUI.6 added text-nowrap*/}
                 <table className="table table-hover align-middle mb-0">
                   <thead><tr>
                     <th style={thStyle}>Preview</th>
@@ -197,7 +210,7 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                     <th style={thStyle}>Type</th>
                     <th style={thStyle}>Price</th>
                     <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Views</th>
+                    {/*<th style={thStyle}>Views</th>*/}{/*Namrata 17th Sep-Bug199*/}
                     <th style={thStyle}>Offers</th>
                     <th style={thStyle}>Images</th>
                     <th style={thStyle}>Uploaded</th>
@@ -235,15 +248,26 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                             </span>
                           </td>
 
+                          {/* Namrata 16th Sep-Bug205 Start */}
                           {/* Price */}
-                          <td style={tdStyle}>
+                          {/*<td style={tdStyle}>
                             <span style={priceValStyle}>
                               {p.listing_type === 'rent'
                                 ? `₹${Number(p.rental_cost || 0).toFixed(2)}/day`
                                 : `₹${Number(p.price || p.selling_price || p.original_price || 0).toFixed(2)}`
                               }
                             </span>
+                          </td>*/}
+                          {/* Price */}
+                          <td style={tdStyle}>
+                            <span style={priceValStyle}>
+                              {p.listing_type === 'rent'
+                                ? `₹${Number((p.edit_status === 'changesPending' && p.edit_rental_cost != null) ? p.edit_rental_cost : (p.rental_cost || 0)).toFixed(2)}/day`
+                                : `₹${Number((p.edit_status === 'changesPending' && p.edit_price != null) ? p.edit_price : (p.price || p.original_price || 0)).toFixed(2)}`
+                              }
+                            </span>
                           </td>
+                          {/* Namrata 16th Sep-Bug205 End */}
 
                           {/* Status */}
                           <td style={tdStyle}>
@@ -332,7 +356,7 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                           </td>
 
                           {/* Views */}
-                          <td style={{ ...tdStyle, color: '#374151', fontWeight: 500, fontSize: '0.82rem' }}>{p.views_count || '0'}</td>
+                          {/*<td style={{ ...tdStyle, color: '#374151', fontWeight: 500, fontSize: '0.82rem' }}>{p.views_count || '0'}</td>*/}{/*Namrata 17th Sep-Bug199*/}
 
                           {/* Offers */}
                           <td style={{ ...tdStyle, color: '#374151', fontWeight: 500, fontSize: '0.82rem' }}>
@@ -362,7 +386,18 @@ export default function MyProductsView({ role, apiPath, uploadPath }: Props) {
                               >
                                 <i className="bi bi-eye"></i> View
                               </Link>
-                              {isBlockedSeller ? (
+                              {/* Namrata 16th Sep-Bug189 - Start*/}
+                              {p.status === 'sold' ? (
+                                <button 
+                                  className="btn btn-sm" 
+                                  style={{ borderRadius: 8, background: '#e5e7eb', color: '#6b7280', cursor: 'not-allowed', border: 'none' }} 
+                                  disabled 
+                                  title="Sold products cannot be edited"
+                                >
+                                  <i className="bi bi-lock me-1"></i> Edit
+                                </button>
+                              ) : /* Namrata 16th Sep-Bug189 - End*/
+                              isBlockedSeller ? (
                                 <button className="btn btn-sm" style={{ borderRadius: 8, background: '#e5e7eb', color: '#9ca3af', cursor: 'not-allowed', border: 'none' }} disabled title="Your seller role is blocked">
                                   <i className="bi bi-pencil me-1"></i> Edit
                                 </button>

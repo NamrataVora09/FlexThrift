@@ -20,7 +20,7 @@ class AddDashboardSubtitlesToAppMessages extends Migration
             ],
             [
                 'message_key'   => 'buyer_dashboard_subtitle',
-                'message_value' => 'Browse millions of unique fashion gems and track your rental orders.',
+                'message_value' => 'Browse varities of unique fashion gems.',//Namrata 17th Sep-Bug207
                 'category'      => 'general',
                 'created_at'    => date('Y-m-d H:i:s'),
                 'updated_at'    => date('Y-m-d H:i:s'),

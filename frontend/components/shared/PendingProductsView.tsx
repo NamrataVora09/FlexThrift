@@ -506,7 +506,14 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
     </DashboardLayout>
   );
 
-  const newUploads = products.filter(p => !p.pending_reason || !['admin_edit', 'seller_edit', 'both_edit'].includes(p.pending_reason));
+  //Namrata 15th Sep-Bug209 Start
+  //const newUploads = products.filter(p => !p.pending_reason || !['admin_edit', 'seller_edit', 'both_edit'].includes(p.pending_reason));
+  const newUploads = products.filter(p => 
+    (!p.pending_reason || !['admin_edit', 'seller_edit', 'both_edit'].includes(p.pending_reason)) && 
+    String(p.edit_request) !== '1' && 
+    p.edit_request !== 'pending'
+  );
+  //Namrata 15th Sep-Bug209 End
   const adminEdits = products.filter(p => p.pending_reason === 'admin_edit');
   const sellerEdits = products.filter(p => p.pending_reason === 'seller_edit');
   const bothEdits = products.filter(p => p.pending_reason === 'both_edit');
@@ -1365,10 +1372,21 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                           );
                           return (
                             <div className="col-4" key={i}>
+                              {/*Namrata 15th Sep-Bug204 Start*/}
+                              {/*
                               <div style={{ position: 'relative', height: 80, border: isDeleted ? '2px solid #ef4444' : '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
                                 <img src={resolveUrl(img.image_path)} className="w-100 h-100" style={{ objectFit: 'cover', opacity: isDeleted ? 0.25 : 1 }} alt="" />
                                 {isDeleted && <span className="badge bg-danger position-absolute top-50 start-50 translate-middle" style={{ fontSize: '0.6rem' }}>DELETING</span>}
                               </div>
+                              */}
+                              <div onClick={() => window.open(resolveUrl(img.image_path), '_blank')} style={{ position: 'relative', height: 80, border: isDeleted ? '2px solid #ef4444' : '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', cursor: 'pointer' }}>
+                                <img src={resolveUrl(img.image_path)} className="w-100 h-100" style={{ objectFit: 'cover', opacity: isDeleted ? 0.25 : 1 }} alt="" />
+                                {isDeleted && <span className="badge bg-danger position-absolute top-50 start-50 translate-middle" style={{ fontSize: '0.6rem' }}>DELETING</span>}
+                                <div className="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-60 text-white text-center py-1 small" style={{ fontSize: '0.6rem', backdropFilter: 'blur(2px)' }}>
+                                  <i className="bi bi-eye me-1"></i>View Image
+                                </div>
+                              </div>
+                              {/*Namrata 15th Sep-Bug204 End*/}
                             </div>
                           );
                         })}
@@ -1496,10 +1514,21 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                                 <div className="row g-2">
                                   {tempImages.map((path: string, i: number) => (
                                     <div className="col-4" key={i}>
+                                      {/*Namrata 15th Sep-Bug204 Start*/}
+                                      {/*
                                       <div style={{ position: 'relative', height: 80, border: '2px solid #10b981', borderRadius: 8, overflow: 'hidden' }}>
                                         <img src={resolveUrl(path)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" />
                                         <span className="badge bg-success position-absolute top-0 end-0 m-1" style={{ fontSize: '0.5rem' }}>NEW</span>
                                       </div>
+                                      */}
+                                      <div onClick={() => window.open(resolveUrl(path), '_blank')} style={{ position: 'relative', height: 80, border: '2px solid #10b981', borderRadius: 8, overflow: 'hidden', cursor: 'pointer' }}>
+                                        <img src={resolveUrl(path)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" />
+                                        <span className="badge bg-success position-absolute top-0 end-0 m-1" style={{ fontSize: '0.5rem' }}>NEW</span>
+                                        <div className="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-60 text-white text-center py-1 small" style={{ fontSize: '0.6rem', backdropFilter: 'blur(2px)' }}>
+                                          <i className="bi bi-eye me-1"></i>View Image
+                                        </div>
+                                      </div>
+                                      {/*Namrata 15th Sep-Bug204 End*/}
                                     </div>
                                   ))}
                                 </div>
@@ -1531,9 +1560,19 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                                 <div className="row g-2">
                                   {allFinalImages.map((path: string, i: number) => (
                                     <div className="col-4" key={i}>
+                                      {/*Namrata 15th Sep-Bug204 Start*/}
+                                      {/*
                                       <div style={{ position: 'relative', height: 80, border: '2px solid #059669', borderRadius: 8, overflow: 'hidden' }}>
                                         <img src={resolveUrl(path)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" />
                                       </div>
+                                      */}
+                                      <div onClick={() => window.open(resolveUrl(path), '_blank')} style={{ position: 'relative', height: 80, border: '2px solid #059669', borderRadius: 8, overflow: 'hidden', cursor: 'pointer' }}>
+                                        <img src={resolveUrl(path)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" />
+                                        <div className="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-60 text-white text-center py-1 small" style={{ fontSize: '0.6rem', backdropFilter: 'blur(2px)' }}>
+                                          <i className="bi bi-eye me-1"></i>View Image
+                                        </div>
+                                      </div>
+                                      {/*Namrata 15th Sep-Bug204 End*/}
                                     </div>
                                   ))}
                                 </div>
@@ -1646,7 +1685,17 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                         <div className="row g-2">
                           {prevImages.map((img: any, i: number) => (
                             <div className="col-4" key={i}>
+                              {/*Namrata 15th Sep-Bug204 Start*/}
+                              {/*
                               <img src={resolveUrl(img)} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover' }} alt="" />
+                              */}
+                              <div onClick={() => window.open(resolveUrl(img), '_blank')} style={{ position: 'relative', height: 80, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', border: '1px solid #e2e8f0' }}>
+                                <img src={resolveUrl(img)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" />
+                                <div className="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-60 text-white text-center py-1 small" style={{ fontSize: '0.6rem', backdropFilter: 'blur(2px)' }}>
+                                  <i className="bi bi-eye me-1"></i>View Image
+                                </div>
+                              </div>
+                              {/*Namrata 15th Sep-Bug204 End*/}
                             </div>
                           ))}
                         </div>
@@ -1694,7 +1743,17 @@ export default function PendingProductsView({ role, apiPath, showRatings = false
                           <div className="row g-2">
                             {currImages.map((img: any, i: number) => (
                               <div className="col-4" key={i}>
+                              {/*Namrata 15th Sep-Bug204 Start*/}
+                              {/*
                                 <img src={resolveUrl(img)} className="w-100 rounded border" style={{ height: 80, objectFit: 'cover' }} alt="" />
+                              */}
+                              <div onClick={() => window.open(resolveUrl(img), '_blank')} style={{ position: 'relative', height: 80, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', border: '1px solid #e2e8f0' }}>
+                                <img src={resolveUrl(img)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" />
+                                <div className="position-absolute bottom-0 start-0 end-0 bg-dark bg-opacity-60 text-white text-center py-1 small" style={{ fontSize: '0.6rem', backdropFilter: 'blur(2px)' }}>
+                                  <i className="bi bi-eye me-1"></i>View Image
+                                </div>
+                              </div>
+                              {/*Namrata 15th Sep-Bug204 End*/}
                               </div>
                             ))}
                           </div>

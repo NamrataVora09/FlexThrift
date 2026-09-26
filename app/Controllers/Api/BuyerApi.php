@@ -390,7 +390,10 @@ class BuyerApi extends BaseApiController
 
         // 2. Fetch product details
         $product = $db->table('products p')
-            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, b.brand_name as seller_brand, lt.usage_label, lt.type_name as listing_type_name')
+            //Namrata 22nd Sep-bugUI.26 Start
+            //->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, b.brand_name as seller_brand, lt.usage_label, lt.type_name as listing_type_name')
+            ->select('p.*, u.name as seller_name, u.email as seller_email, u.mobile as seller_mobile, u.seller_rating_avg, u.seller_rating_count, ob.brand_name as orignal_brand, b.brand_name as seller_brand, p.usage_label, lt.type_name as listing_type_name')
+            //Namrata 22nd Sep-bugUI.26 End
             ->join('users u', 'u.id = p.seller_id', 'left')
             ->join('orignal_brands ob', 'ob.id = p.orignal_brand_id AND ob.is_active = 1 AND ob.is_blocked = 0', 'left')
             ->join('brands b', 'b.id = p.brand_id AND b.is_active = 1 AND b.is_blocked = 0', 'left')
@@ -2388,6 +2391,8 @@ class BuyerApi extends BaseApiController
      * POST /api/v1/buyer/apply-coupon
      * Validates a coupon code against a plan and returns the discount amount
      */
+    //Namrata 14th Sep-Bug203 Start
+    /*
     public function applyCoupon()
     {
         $jwtUser = $this->request->jwt_user;
@@ -2446,12 +2451,161 @@ class BuyerApi extends BaseApiController
             'data' => ['discount' => round($discountValue, 2)],
         ]);
     }
+    */
+    public function applyCoupon()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $data = $this->request->getJSON(true);
+        $db = \Config\Database::connect();
 
+        $code = strtoupper(trim($data['code'] ?? ''));
+        $planId = (int) ($data['plan_id'] ?? 0);
+
+        if (!$code)
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_code_is_required')], 400);
+
+        $plan = $db->table('subscription_plans')->where('id', $planId)->get()->getRowArray();
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => getAppMessage('plan_not_found')], 404);
+
+        $coupon = $db->table('coupons')->where(['code' => $code, 'is_active' => 1])->get()->getRowArray();
+        if (!$coupon)
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_has_expired')]);
+
+        $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
+        if ($cpnExpiresAt && strtotime($cpnExpiresAt) < time()) {
+            return $this->respond(['success' => false, 'message' => getAppMessage('coupon_has_expired')]);
+        }
+
+        // Per-user usage limit: check how many times THIS user has used this coupon
+        if ($coupon['usage_limit'] !== null && (int) $coupon['usage_limit'] > 0) {
+            $buyerUserId = $jwtUser['user_id'];
+            $userUsedCount = $db->table('coupon_usage')
+                ->where('coupon_id', $coupon['id'])
+                ->where('user_id', $buyerUserId)
+                ->countAllResults();
+            if ($userUsedCount >= (int) $coupon['usage_limit']) {
+                return $this->respond(['success' => false, 'message' => getAppMessage('coupon_limit_reached')]);
+            }
+        }
+
+        $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+        if ((float) $plan['price'] < $cpnMinPurchase) {
+            return $this->respond(['success' => false, 'message' => getAppMessage('minimum_purchase_coupon') . $cpnMinPurchase]);
+        }
+        // ── Referral + Coupon combined validation ────────────────────────────
+        $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
+        $refDiscount = 0.0;
+        if ($useReferral) {
+            $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            $referralBalance = (float) ($user['referral_balance'] ?? 0);
+            $expiry = $user['referral_expires_at'] ?? null;
+            if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+                $referralBalance = 0.0;
+            }
+
+            if ($referralBalance > 0 && (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time())) {
+                $settingsRows = $db->table('system_settings')
+                    ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+                    ->get()->getResultArray();
+                $cfg = [];
+                foreach ($settingsRows as $s)
+                    $cfg[$s['setting_key']] = $s['setting_value'];
+
+                $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+
+                $basePrice = (float) $plan['price'];
+                if ($basePrice >= $minPurchase) {
+                    $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                    $refDiscount = min($rawDiscount, $basePrice);
+                }
+            }
+        }
+                // Referral discount restriction: Check if user has active referral discount for this plan
+        $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
+        if ($useReferral) {
+            $user = $db->table('users')->where('id', $jwtUser['user_id'])->get()->getRowArray();
+            $referralBalance = (float) ($user['referral_balance'] ?? 0);
+            $expiry = $user['referral_expires_at'] ?? null;
+            if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+                $referralBalance = 0.0;
+            }
+
+            if ($referralBalance > 0) {
+                if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                    $settingsRows = $db->table('system_settings')
+                        ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+                        ->get()->getResultArray();
+                    $cfg = [];
+                    foreach ($settingsRows as $s) $cfg[$s['setting_key']] = $s['setting_value'];
+
+                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+
+                    $basePrice = (float) $plan['price'];
+                    if ($basePrice >= $minPurchase) {
+                        $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                        $refDiscount = min($rawDiscount, $basePrice);
+
+                        // Only block coupon when referral fully covers the plan price
+                        if ($refDiscount >= $basePrice && $basePrice > 0) {
+                            return $this->respond([
+                                'success' => false,
+                                'message' => 'Coupon code cannot be applied when referral discount covers the full plan price.'
+                            ], 400);
+                        }
+                        // Partial referral: coupon is allowed — both discounts will stack
+                    }
+                }
+            }
+        }
+
+
+        $discountValue = 0;
+        if ($coupon['discount_type'] === 'percentage') {
+            $discountValue = ($plan['price'] * $coupon['discount_value']) / 100;
+            if ($coupon['max_discount'] && $discountValue > $coupon['max_discount']) {
+                $discountValue = $coupon['max_discount'];
+            }
+        } else {
+            $discountValue = (float) $coupon['discount_value'];
+        }
+        $discountValue = round($discountValue, 2);
+
+        $basePrice = (float) $plan['price'];
+        $remainingPayable = max(0.0, $basePrice - $refDiscount);
+
+        // If referral alone covers full price, coupon cannot be applied
+        if ($refDiscount >= $basePrice && $basePrice > 0) {
+            return $this->respond([
+                'success' => false,
+                'message' => getAppMessage('coupon_code_cannot_be_applied_when_referral_discount_covers', 'Coupon code cannot be applied when referral discount covers the full plan price.')
+            ], 400);
+        }
+
+        // If coupon discount value exceeds remaining payable amount after referral, coupon cannot be applied
+        if ($discountValue > $remainingPayable) {
+            return $this->respond([
+                'success' => false,
+                'message' => getAppMessage('coupon_discount_exceeds_remaining_amount', 'Coupon code cannot be applied because the coupon discount exceeds the remaining plan price after referral credit.')
+            ], 400);
+        }
+
+        return $this->respond([
+            'success' => true,
+            'message' => getAppMessage('coupon_applied_successfully', 'Coupon applied successfully!'),
+            'data' => ['discount' => round($discountValue, 2)],
+        ]);
+    }
+    //Namrata 14th Sep-Bug203 End
     /**
      * POST /api/v1/buyer/initiate-payment
      * Creates a pending subscription record and initiates PhonePe checkout
      * Body: { plan_id, coupon_code?, callback_url }
      */
+    //Namrata 14th Sep-Bug203 Start
+    /*
     public function initiatePayment()
     {
         $jwtUser = $this->request->jwt_user;
@@ -2644,7 +2798,206 @@ class BuyerApi extends BaseApiController
             'debug' => $response,
         ]);
     }
+    */
+    public function initiatePayment()
+    {
+        $jwtUser = $this->request->jwt_user;
+        $userId = $jwtUser['user_id'];
+        $data = $this->request->getJSON(true);
+        $db = \Config\Database::connect();
 
+        $planId = (int) ($data['plan_id'] ?? 0);
+        $couponCode = strtoupper(trim($data['coupon_code'] ?? ''));
+        $callbackUrl = trim($data['callback_url'] ?? '');
+        $useReferral = isset($data['use_referral']) ? (bool) $data['use_referral'] : true;
+
+        $plan = $db->table('subscription_plans')
+            ->where(['id' => $planId, 'is_active' => 1, 'user_type' => 'buyer'])
+            ->get()->getRowArray();
+        if (!$plan)
+            return $this->respond(['success' => false, 'message' => getAppMessage('invalid_inactive_plan', 'Invalid or inactive plan.')], 404);
+
+        // Role validation: check if user can purchase this plan based on their role
+        $currentUser = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        $userRole = $currentUser['role'] ?? '';
+        $userType = $currentUser['user_type'] ?? '';
+        $isGlobalAdmin = in_array($userRole, ['admin', 'super_admin', 'superadmin']) || in_array($userType, ['admin', 'super_admin', 'superadmin']);
+
+        // 1. Account global block check
+        if (!empty($currentUser['is_blocked'])) {
+            return $this->respond(['success' => false, 'message' => getAppMessage('account_blocked_support', 'Your account is blocked. Please contact support.')], 403);
+        }
+
+        // 2. Check if buyer role is explicitly blocked by superadmin
+        if (!empty($currentUser['blocked_buyer'])) {
+            return $this->respond(['success' => false, 'message' => getAppMessage('buyer_role_blocked_purchase', 'Your buyer role is blocked by superadmin. You cannot purchase a buyer subscription plan.')], 403);
+        }
+
+        // 3. User role/type check (unblocked admins/superadmins are exempt from user_type restriction)
+        if (!$isGlobalAdmin) {
+            if ($userRole !== 'buyer' && $userType !== 'buyer' && $userType !== 'both') {
+                return $this->respond(['success' => false, 'message' => getAppMessage('buyer_subscription_requires_buyer_role', 'Buyer subscription plan requires buyer role. Please enable buyer role to purchase this plan.')], 403);
+            }
+        }
+
+        // Note: Allowing users to buy multiple subscriptions/stack them.
+        // The reveal logic will automatically pick the first valid active subscription.
+
+        $basePrice = (float) $plan['price'];
+        $chargeModel = new \App\Models\PlatformChargeModel();
+        $activeCharges = $chargeModel->getActiveCharges();
+        $totalCharges = 0;
+        foreach ($activeCharges as $charge) {
+            $totalCharges += $charge['charge_type'] === 'percentage'
+                ? ($basePrice * $charge['charge_value']) / 100
+                : (float) $charge['charge_value'];
+        }
+
+        // Coupon discount
+        $discount = 0;
+        $couponId = null;
+        if ($couponCode) {
+            $coupon = $db->table('coupons')->where(['code' => $couponCode, 'is_active' => 1])->get()->getRowArray();
+            $cpnMinPurchase = (float) ($coupon['min_order_amount'] ?? $coupon['min_purchase'] ?? 0);
+            $cpnExpiresAt = $coupon['valid_until'] ?? $coupon['expires_at'] ?? null;
+
+            // Per-user usage limit check
+            $cpnUserUsed = 0;
+            if ($coupon && $coupon['usage_limit'] !== null && (int) $coupon['usage_limit'] > 0) {
+                $cpnUserUsed = $db->table('coupon_usage')
+                    ->where('coupon_id', $coupon['id'])
+                    ->where('user_id', $userId)
+                    ->countAllResults();
+            }
+
+            if (
+                $coupon && $basePrice >= $cpnMinPurchase
+                && (!$cpnExpiresAt || strtotime($cpnExpiresAt) >= time())
+                && ($coupon['usage_limit'] === null || (int) $coupon['usage_limit'] <= 0 || $cpnUserUsed < (int) $coupon['usage_limit'])
+            ) {
+                if ($coupon['discount_type'] === 'percentage') {
+                    $discount = ($basePrice * $coupon['discount_value']) / 100;
+                    if ($coupon['max_discount'] && $discount > $coupon['max_discount'])
+                        $discount = $coupon['max_discount'];
+                } else {
+                    $discount = (float) $coupon['discount_value'];
+                }
+                $couponId = $coupon['id'];
+            }
+        }
+
+
+        // Referral discount (only if user chose to apply it)
+        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
+        $referralDiscountApplied = 0;
+        if ($useReferral) {
+            $referralBalance = (float) ($user['referral_balance'] ?? 0);
+            $expiry = $user['referral_expires_at'] ?? null;
+            if ($expiry && $expiry !== '0000-00-00 00:00:00' && strtotime($expiry) <= time()) {
+                $referralBalance = 0.0;
+            }
+
+            if ($referralBalance > 0) {
+                if (!$expiry || $expiry === '' || $expiry === '0000-00-00 00:00:00' || strtotime($expiry) > time()) {
+                    $settingsRows = $db->table('system_settings')
+                        ->whereIn('setting_key', ['referral_max_discount_percent', 'referral_min_purchase'])
+                        ->get()->getResultArray();
+                    $cfg = [];
+                    foreach ($settingsRows as $s)
+                        $cfg[$s['setting_key']] = $s['setting_value'];
+
+                    $maxPercent = (float) ((isset($cfg['referral_max_discount_percent']) && $cfg['referral_max_discount_percent'] !== '') ? $cfg['referral_max_discount_percent'] : 50);
+                    $minPurchase = (float) ((isset($cfg['referral_min_purchase']) && $cfg['referral_min_purchase'] !== '') ? $cfg['referral_min_purchase'] : 0);
+
+                    if ($basePrice >= $minPurchase) {
+                        // Referral Credit = (Rewards Earned * Max Discount Usage (%)) / 100
+                        $rawDiscount = round($referralBalance * $maxPercent / 100, 2);
+                        $referralDiscountApplied = min($rawDiscount, $basePrice);
+                    }
+                }
+            }
+        }
+        // When referral fully covers the plan base price, coupon is not applicable.
+        // When referral is partial, both referral + coupon discounts stack.
+        if ($referralDiscountApplied >= $basePrice && $basePrice > 0) {
+            $discount = 0;
+            $couponId = null;
+        }
+
+        $finalAmount = ($basePrice + $totalCharges) - $discount - $referralDiscountApplied;
+        $finalAmount = max(1, $finalAmount);
+        $amountInPaise = (int) ($finalAmount * 100);
+        $merchantOrderId = 'SUB-' . $userId . '-' . time();
+
+        // Build redirect URL — Next.js passes its own callback URL with {id} placeholder
+        $redirectUrl = $callbackUrl
+            ? str_replace('{id}', $merchantOrderId, $callbackUrl)
+            : base_url("buyer/subscriptionPaymentCallback?id={$merchantOrderId}");
+
+        $payload = [
+            'merchantOrderId' => $merchantOrderId,
+            'amount' => $amountInPaise,
+            'paymentFlow' => [
+                'type' => 'PG_CHECKOUT',
+                'merchantUrls' => ['redirectUrl' => $redirectUrl],
+            ],
+        ];
+
+        // Stacking Logic for pending record prediction
+        $latestActive = $db->table('user_subscriptions us')
+            ->join('subscription_plans sp', 'sp.id = us.plan_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', 1)
+            ->where('sp.user_type', 'buyer')
+            ->where('us.expires_at >', date('Y-m-d H:i:s'))
+            ->orderBy('us.expires_at', 'DESC')
+            ->get()->getRowArray();
+
+        $durationHours = (float) $plan['duration_hours'];
+        $startsAt = $latestActive ? $latestActive['expires_at'] : date('Y-m-d H:i:s');
+        $baseTime = $latestActive ? strtotime($latestActive['expires_at']) : time();
+        $expiresAt = $durationHours > 0
+            ? date('Y-m-d H:i:s', $baseTime + (int) round($durationHours * 3600))
+            : '2099-12-31 23:59:59';
+
+        // Persist pending subscription record
+        $db->table('user_subscriptions')->insert([
+            'user_id' => $userId,
+            'plan_id' => $planId,
+            'coupon_id' => $couponId,
+            'starts_at' => $startsAt,
+            'expires_at' => $expiresAt,
+            'usage_count' => 0,
+            'is_active' => 0,
+            'payment_status' => 'pending',
+            'amount_paid' => $finalAmount,
+            'referral_discount_applied' => $referralDiscountApplied,
+            'merchant_transaction_id' => $merchantOrderId,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+            'coupon_discount_applied' => $discount//Namrata 14th Sep-Bug208
+        ]);
+
+        $phonepe = new \App\Libraries\PhonePe();
+        $response = $phonepe->createPayment($payload);
+
+        if (isset($response['redirectUrl'])) {
+            return $this->respond([
+                'success' => true,
+                'data' => [
+                    'redirect_url' => $response['redirectUrl'],
+                    'merchant_order_id' => $merchantOrderId,
+                ],
+            ]);
+        }
+
+        return $this->respond([
+            'success' => false,
+            'message' => getAppMessage('payment_initiation_failed', 'Failed to initiate payment. Please try again.'),
+            'debug' => $response,
+        ]);
+    }
+    //Namrata 14th Sep-Bug203 End
     /**
      * GET /api/v1/buyer/verify-payment?id={merchantOrderId}
      * Checks PhonePe payment status and activates subscription on success

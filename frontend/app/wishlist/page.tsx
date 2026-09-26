@@ -8,14 +8,20 @@ import { getWishlistItems, removeFromWishlist, WishlistItem, clearWishlist } fro
 import { addToCart } from '@/lib/cart';
 import { confirmToast } from '@/lib/toast-utils';
 import { useToast } from '@/lib/toast';
+import { getDashboardPath } from '@/lib/navigation';//Namrata 22nd Sep-bugUI.22
+import { useSystem } from '@/lib/system-context';//Namrata 22nd Sep-bugUI.22
 
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080/';
+//Namrata 22nd Sep-BugUI.17 Start
+//const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080/';
+const BASE_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+//Namrata 22nd Sep-BugUI.17 End
 
 export default function WishlistPage() {
   const { user, isAuthenticated } = useAuth();
   const { toastSuccess } = useToast();
   const router = useRouter();
   const [items, setItems] = useState<WishlistItem[]>([]);
+  const { settings } = useSystem();//Namrata 22nd Sep-bugUI.22
 
   useEffect(() => {
     setItems(getWishlistItems());
@@ -48,46 +54,105 @@ export default function WishlistPage() {
     <>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet" />
       <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
-
-      <style jsx global>{`
+      {/*Namrata 22nd Sep-BugUI.20 Start*/}
+      {/*<style jsx global>{`
         .wishlist-page { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8f9fa; min-height: 100vh; }
         .navbar-main { background: rgba(255,255,255,0.85); backdrop-filter: blur(25px) saturate(180%); border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0.7rem 0; z-index: 1050; position: fixed; top: 0; left: 0; right: 0; }
         .navbar-brand-main { font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 800; color: #000 !important; letter-spacing: -1.5px; position: relative; text-decoration: none; }
         .navbar-brand-main::after { content: '.'; color: #ffc63a; font-size: 2.5rem; line-height: 0; position: absolute; bottom: 8px; }
+      `}</style>*/}
+      <style jsx global>{`
+        .wishlist-page { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #ffffff; min-height: 100vh; }
+        .navbar-main { background: rgba(255,255,255,0.85); backdrop-filter: blur(25px) saturate(180%); border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0.7rem 0; z-index: 1050; position: fixed; top: 0; left: 0; right: 0; }
+        .navbar-brand-main { font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 800; color: #000 !important; letter-spacing: -1.5px; position: relative; text-decoration: none; }
+        .navbar-brand-main::after { content: '.'; color: #ffc63a; font-size: 2.5rem; line-height: 0; position: absolute; bottom: 8px; }
       `}</style>
+      {/*Namrata 22nd Sep-BugUI.20 End*/}
 
       <div className="wishlist-page" style={{ paddingTop: 100 }}>
         <nav className="navbar-main">
           <div className="container-fluid px-lg-5 d-flex align-items-center justify-content-between">
-            <Link className="navbar-brand-main" href="/">Flex Market</Link>
+            
+        {/*Namrata 22nd Sep-bugUI.22 Start*/}
+        {/*<Link className="navbar-brand-main" href="/">Flex Market</Link>*/}
+        <Link href={getDashboardPath(user.role)} className="topbar-brand">
+          <span className="topbar-brand-text">{settings.site_name}</span>
+        </Link>
+        {/*Namrata 22nd Sep-bugUI.22 End*/}
             <div className="d-flex align-items-center gap-3">
-              <Link href="/buyer/browse" className="btn btn-outline-dark" style={{ borderRadius: 10, fontWeight: 600 }}>
+              {/*Namrata 22nd Sep-BugUI.21 start*/}
+              {/*<Link href="/buyer/browse" className="btn btn-outline-dark" style={{ borderRadius: 10, fontWeight: 600 }}>
                 <i className="bi bi-arrow-left me-1"></i> Back to Browse
+              </Link>*/}
+              <Link 
+                href="/buyer/browse" 
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 14px',
+                  border: '1px solid #3b82f6',
+                  borderRadius: '6px',
+                  color: '#3b82f6',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  backgroundColor: '#fff',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}
+              >
+                <i className="bi bi-arrow-left"></i> 
+                <span style={{ whiteSpace: 'nowrap' }}>Back to Browse</span>
               </Link>
+              {/*Namrata 22nd Sep-BugUI.21 End*/}
+              {/*Namrata 22nd Sep-BugUI.19 Start*/}
+              {/*
               <Link href="/cart" className="btn btn-dark position-relative" style={{ borderRadius: 10, fontWeight: 600 }}>
                 <i className="bi bi-cart me-1"></i> Cart
-              </Link>
+              </Link>*/}
+              {/*Namrata 22nd Sep-BugUI.19 End*/}
             </div>
           </div>
         </nav>
 
         <div className="container py-4">
-          <h2 style={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+          {/*Namrata 22nd Sep-BugUI.20 start*/}
+          {/*<h2 style={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
             <i className="bi bi-heart-fill me-2" style={{ color: '#ff4d4d' }}></i>
             My Wishlist ({items.length})
           </h2>
           <p className="text-muted mb-4">
             Items you've saved for later.
           </p>
+          */}
+          <h2 style={{ fontSize: '24px', fontWeight: 400, color: '#212529', marginBottom: '4px' }}>
+            <i className="bi bi-heart-fill me-2" style={{ color: '#ff4d4d' }}></i>
+            My Wishlist ({items.length})
+          </h2>
+          <p style={{ fontSize: '14px', color: '#6c757d', marginBottom: '24px' }}>
+            Items you've saved for later.
+          </p>
+          {/*Namrata 22nd Sep-BugUI.20 start*/}
 
           {items.length === 0 ? (
             <div className="text-center py-5">
               <i className="bi bi-heart" style={{ fontSize: '4rem', color: '#ddd' }}></i>
               <h4 className="mt-3 fw-bold">Your wishlist is empty</h4>
               <p className="text-muted">Save items you like to keep track of them.</p>
-              <Link href="/buyer/browse" className="btn btn-lg" style={{ background: '#ffc63a', borderRadius: 12, fontWeight: 700, padding: '12px 40px' }}>
+              {/*Namrata 22nd Sep-BugUI.24 Start*/}
+              {/*<Link href="/buyer/browse" className="btn btn-lg" style={{ background: '#ffc63a', borderRadius: 12, fontWeight: 700, padding: '12px 40px' }}>*/}
+              <Link href="/buyer/browse" style={{
+                              padding: '14px 48px', borderRadius: 8, fontSize: 15, fontWeight: 600,
+                              fontFamily: "'Maven Pro', sans-serif", cursor: 'pointer',
+                              transition: 'all 0.3s', border: 'none',
+                              background: '#FFC63A', color: '#fff',
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                            }}>
                 Start Exploring
               </Link>
+             {/*Namrata 22nd Sep-BugUI.24 End*/}
             </div>
           ) : (
             <>
@@ -96,11 +161,20 @@ export default function WishlistPage() {
                   <div key={item.id} className="col-md-6 col-lg-4">
                     <div className="card border-0 h-100" style={{ borderRadius: 16, boxShadow: '0 4px 15px rgba(0,0,0,0.06)' }}>
                       <div style={{ height: 200, background: '#f1f5f9', borderRadius: '16px 16px 0 0', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {/*Namrata 22nd Sep-BugUI.17 Start*/}
+                        {/*
                         {item.image ? (
                           <img src={item.image.startsWith('http') ? item.image : item.image.startsWith('uploads/') ? `${BASE_URL}${item.image}` : `${BASE_URL}uploads/products/${item.image}`} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                           <i className="bi bi-image" style={{ fontSize: '3rem', color: '#ccc' }}></i>
                         )}
+                         */}
+                        {item.image ? (
+                        <img src={item.image.startsWith('http') ? item.image : item.image.startsWith('uploads/') ? `${BASE_URL}/${item.image}` : `${BASE_URL}/uploads/products/${item.image}`} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <i className="bi bi-image" style={{ fontSize: '3rem', color: '#ccc' }}></i>
+                        )}
+                        {/*Namrata 22nd Sep-BugUI.17 End*/}
                       </div>
                       <div className="card-body d-flex flex-column">
                         <span className="badge mb-2" style={{ background: item.listing_type === 'rent' ? 'rgba(13,202,240,0.1)' : 'rgba(255,198,58,0.15)', color: item.listing_type === 'rent' ? '#0dcaf0' : '#b8860b', fontWeight: 700, fontSize: '0.7rem', width: 'fit-content' }}>
@@ -113,13 +187,30 @@ export default function WishlistPage() {
                           {item.listing_type === 'rent' && <small className="text-muted fw-normal">/day</small>}
                         </div>
                         <div className="mt-auto d-flex gap-2">
-                          <button
+                          {/*Namrata 22nd Sep-BugUI.18 Start*/}
+                          {/*<button
                             className="btn flex-grow-1"
                             style={{ background: '#ffc63a', borderRadius: 10, fontWeight: 700 }}
                             onClick={() => handleMoveToCart(item)}
                           >
                             <i className="bi bi-cart-plus me-1"></i> Move to Cart
+                          </button>*/}
+                          <button
+                            style={{
+                              flex: 1, padding: '12px 16px', borderRadius: 8, fontSize: 15, fontWeight: 600,
+                              fontFamily: "'Maven Pro', sans-serif", cursor: 'pointer',
+                              transition: 'all 0.3s', border: 'none',
+                              background: '#FFC63A', color: '#fff',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                            }}
+                            onClick={() => router.push(`/buyer/product/${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${item.id}`)}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1)'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = ''; }}
+                          >
+                          <i className="bi bi-eye-fill" style={{ color: '#fff' }}></i>
+                            View Details
                           </button>
+                          {/*Namrata 22nd Sep-BugUI.18 End*/}
                           <button
                             className="btn btn-outline-danger"
                             style={{ borderRadius: 10 }}
@@ -134,8 +225,10 @@ export default function WishlistPage() {
                 ))}
               </div>
 
-              <div className="mt-4 p-3 bg-white rounded-3 shadow-sm text-end">
-                <button 
+              {/*<div className="mt-4 p-3 bg-white rounded-3 shadow-sm text-end">*/}
+              <div className="mt-4 p-3 bg-white rounded-3 text-end">
+                {/*Namrata 22nd Sep-BugUI.23 Start*/}
+                {/*<button 
                   className="btn btn-outline-secondary" 
                   style={{ borderRadius: 10 }} 
                   onClick={() => { 
@@ -146,7 +239,19 @@ export default function WishlistPage() {
                   }}
                 >
                   <i className="bi bi-x-circle me-1"></i> Clear Wishlist
+                </button>*/}
+                <button 
+                  className="upgrade-btn" style={{ background: '#ef4444', color: '#fff ', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'none !important', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'opacity 0.2s', whiteSpace: 'nowrap' }}
+                  onClick={() => { 
+                    confirmToast('Are you sure you want to clear your wishlist?', () => {
+                      clearWishlist(); 
+                      setItems([]); 
+                    });
+                  }}
+                >
+                  <i className="bi bi-x-circle me-1"></i> Clear Wishlist
                 </button>
+                {/*Namrata 22nd Sep-BugUI.23 End*/}
               </div>
             </>
           )}

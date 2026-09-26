@@ -100,6 +100,7 @@ export default function SellerDashboardClient() {
     { icon: 'fa-solid fa-cart-shopping', label: 'Active Offers', value: String(data?.active_offers ?? 0) },
   ];
 
+
   return (
     <DashboardLayout requiredRoles={['seller', 'super_admin']}>
       <style jsx>{`
@@ -297,7 +298,8 @@ export default function SellerDashboardClient() {
 
 
             {/* Analytics Cards */}
-            <div className="row g-3 mb-4">
+            {/*Namrata 17th Sep-Bug208 Start*/}
+            {/*<div className="row g-3 mb-4">
               {statCards.map((card, i) => (
                 <div key={i} className="col-6 col-md-3">
                   <div className="metric-card">
@@ -316,6 +318,8 @@ export default function SellerDashboardClient() {
                 </div>
               ))}
             </div>
+            */}
+            {/*Namrata 17th Sep-Bug208 End*/}
 
             {/* Subscription Bar */}
             <div className="mb-4">
@@ -363,7 +367,7 @@ export default function SellerDashboardClient() {
                   <i className="fa-solid fa-layer-group me-2" style={{ color: '#ffc63a', fontSize: '1.5rem' }} />
                   Recent Products
                 </span>
-                <Link href="/seller/my-products" className="view-all underline!" style={{ fontSize: 14, color: 'blue' }}>View All Offers</Link>
+                <Link href="/seller/my-products" className="view-all underline!" style={{ fontSize: 14, color: 'blue' }}>View All Products</Link>{/*Namrata 17th Sep-Bug212*/}
               </div>
 
               <div className="table-responsive">

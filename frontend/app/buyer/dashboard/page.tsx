@@ -35,7 +35,7 @@ function getImageUrl(path?: string) {
   return `${BACKEND_URL}/uploads/products/${path}`;
 }
 
-const BUYER_DEFAULT_SUBTITLE = 'Browse millions of unique fashion gems and track your rental orders.';
+const BUYER_DEFAULT_SUBTITLE = 'Browse varities of unique fashion gems.';//Namrata 17th Sep-Bug207
 
 export default function BuyerDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -314,7 +314,8 @@ export default function BuyerDashboardPage() {
 
 
             {/* Analytics Cards */}
-            <div className="g-3 grid gap-3 grid-cols-1 sm:grid-cols-2  lg:grid-cols-3! xl:grid-cols-4! mb-4">
+            {/*Namrata 17th Feb-Bug208 Start*/}
+            {/*<div className="g-3 grid gap-3 grid-cols-1 sm:grid-cols-2  lg:grid-cols-3! xl:grid-cols-4! mb-4">
               {statCards.map((card, i) => (
                 <div key={i} className="w-full">
                   <div className="metric-card">
@@ -332,7 +333,8 @@ export default function BuyerDashboardPage() {
                   </div>
                 </div>
               ))}
-            </div>
+            </div>*/}
+            {/*Namrata 17th Feb-Bug208 End*/}
 
             {/* Subscription Bar */}
             <div className="mb-4">

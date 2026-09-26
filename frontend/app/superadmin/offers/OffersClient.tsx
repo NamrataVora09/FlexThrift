@@ -320,12 +320,18 @@ export default function OffersClient() {
                       <InfoRow label="Name" value={selected.buyer_name || '—'} />
                       <InfoRow label="Email" value={selected.buyer_email || '—'} />
                       <InfoRow label="Mobile" value={selected.buyer_mobile || '—'} />
+                      {/*Namrata 17th Sep-Bug215 Start*/}
+                          {/*`⭐ ${Number(selected.buyer_rating_avg).toFixed(1)} (${selected.buyer_rating_count} ratings)`*/}
+                      {/*Namrata 17th Sep-Bug215 End*/} 
                       <InfoRow label="Rating" value={
                         selected.buyer_rating_count && selected.buyer_rating_count > 0
-                          ? `⭐ ${Number(selected.buyer_rating_avg).toFixed(1)} (${selected.buyer_rating_count} ratings)`
+                          ? ` ${selected.buyer_rating_count} `
                           : 'No ratings yet'
                       } />
-                      <InfoRow label="Rated Buyer?" value={selected.seller_rated_buyer ? '✅ Yes' : 'Not yet'} />
+                      {/*Namrata 17th Sep-Bug215 Start*/}
+                      {/*<InfoRow label="Rated Buyer?" value={selected.seller_rated_buyer ? '✅ Yes' : 'Not yet'} />*/}
+                      <InfoRow label="Rated Buyer?" value={selected.seller_rated_buyer == 1 ? '✅ Yes' : 'Not yet'} />
+                      {/*Namrata 17th Sep-Bug215 End*/} 
                     </SectionCard>
                   </div>
 
@@ -335,12 +341,18 @@ export default function OffersClient() {
                       <InfoRow label="Name" value={selected.seller_name || '—'} />
                       <InfoRow label="Email" value={selected.seller_email || '—'} />
                       <InfoRow label="Mobile" value={selected.seller_mobile || '—'} />
+                      {/*Namrata 17th Sep-Bug215 Start*/}
+                          {/*`⭐ ${Number(selected.seller_rating_avg).toFixed(1)} (${selected.seller_rating_count} ratings)`*/}
+                      {/*Namrata 17th Sep-Bug215 End*/}
                       <InfoRow label="Rating" value={
                         selected.seller_rating_count && selected.seller_rating_count > 0
-                          ? `⭐ ${Number(selected.seller_rating_avg).toFixed(1)} (${selected.seller_rating_count} ratings)`
+                          ? ` ${selected.seller_rating_count} `
                           : 'No ratings yet'
                       } />
-                      <InfoRow label="Rated Seller?" value={selected.buyer_rated_seller ? '✅ Yes' : 'Not yet'} />
+                      {/*Namrata 17th Sep-Bug215 Start*/}
+                      {/*<InfoRow label="Rated Seller?" value={selected.buyer_rated_seller ? '✅ Yes' : 'Not yet'} />*/}
+                      <InfoRow label="Rated Seller?" value={selected.buyer_rated_seller == 1 ? '✅ Yes' : 'Not yet'} />
+                      {/*Namrata 17th Sep-Bug215 End*/} 
                     </SectionCard>
                   </div>
 

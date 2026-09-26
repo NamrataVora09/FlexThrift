@@ -2003,6 +2003,12 @@ class SuperAdminApi extends AdminApi
                 $updatedData['specifications'] = json_encode($updatedData['specifications']);
             }
 
+            //Namrata 15th Sep-Bug178 Start
+            if (isset($updatedData['has_bill']) && (int)$updatedData['has_bill'] === 0) {
+                $updatedData['bill_image'] = null; 
+            }
+            //Namrata 15th Sep-Bug178 End
+
             // Filter to only valid columns of the products table (excluding id and created_at)
             $allowedColumns = $db->getFieldNames('products');
             $productUpdateData = [];
@@ -2199,8 +2205,8 @@ class SuperAdminApi extends AdminApi
                     'product_type', 'category', 'sub_category', 'color', 'gender',
                     'used_times', 'original_price', 'price', 'rental_cost', 'rental_deposit',
                     'dispatch_address', 'dispatch_city', 'dispatch_state', 'dispatch_pin_code',
-                    'has_bill', 'allow_alter_fitting',
-                ];
+                    'has_bill', 'allow_alter_fitting','bill_image','condition_description',
+                ];//Added 'bill_image','condition_description' here //Namrata 15th Sep-Bug178
                 $updateData = [];
                 foreach ($restoreFields as $field) {
                     if (isset($previousData[$field])) {

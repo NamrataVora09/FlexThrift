@@ -561,6 +561,14 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
       }
     }
 
+    //Namrata 15th Sep-Bug178 Start
+    if (name === 'has_bill' && val === false) {
+      setExistingBills([]);
+      setBillFiles([]);
+      // billPreviews will auto-clear via existing useEffect
+    }
+    //Namrata 15th Sep-Bug178 End
+
     setF(prev => {
       const next = { ...prev, [name]: val };
 
@@ -904,6 +912,9 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
         if (k === 'gender' && fieldConfigs.gender === 'hidden') return;
         if (typeof v === 'boolean') { if (v) fd.append(key, '1'); } else fd.append(key, v);
       });
+
+      fd.set('has_bill', f.has_bill ? '1' : '0');//Namrata 15th Sep-Bug178
+
       files.forEach(file => fd.append('product_images[]', file));
       billFiles.forEach(file => fd.append('bill_images[]', file));
 
@@ -1160,8 +1171,12 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
     <DashboardLayout requiredRoles={[role]}>
       <div className="container-fluid px-2 py-4 px-md-3 py-md-5">
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
+          {/*Namrata 20th Sep-BugUI.10 Start*/}
+          {/*<div className="d-flex justify-content-between align-items-center mb-4">
+            <div>*/}
+            <div className="d-flex justify-content-center justify-content-md-between align-items-center mb-4">
+              <div className="text-center text-md-start">
+          {/*Namrata 20th Sep-BugUI.10 End*/}
               <h2 style={{ fontWeight: 800, margin: 0, color: '#1a1a1a' }}>
                 <i className={isEditMode ? "bi bi-pencil-square" : "bi bi-cloud-upload"} style={{ color: '#ffc63a', marginRight: 15 }}></i>
                 {isEditMode ? 'Edit Product' : 'Upload New Product'}
@@ -1212,17 +1227,34 @@ export default function UploadProductView({ role, apiBasePath, redirectPath }: P
               <h5 style={sectionTitle}><i className="bi bi-info-circle me-2"></i>Basic Details</h5>
 
               <div className="mb-4">
-                <div className="btn-group w-100" role="group">
+                {/*Namrata 20th Sep-BugUI.11 Start*/}
+                {/*<div className="btn-group w-100" role="group">*/}
+                <div className="btn-group w-100 d-none d-md-flex" role="group">
+                {/*Namrata 20th Sep-BugUI.11 End*/}
                   <input type="radio" className="btn-check" name="listing_type_radio" id="sell" value="sell" checked={isSell} onChange={() => setF(p => ({ ...p, listing_type: 'sell' }))} />
                   <label className="btn" htmlFor="sell" style={{ border: '1px solid #ddd', color: isSell ? '#fff' : '#666', background: isSell ? '#d96459' : '#fff', borderColor: isSell ? '#d96459' : '#ddd', fontWeight: 600 }}>
                     <i className="bi bi-currency-rupee me-1"></i> Sell
                   </label>
                   <input type="radio" className="btn-check" name="listing_type_radio" id="rent" value="rent" checked={!isSell} onChange={() => setF(p => ({ ...p, listing_type: 'rent' }))} />
-                  <label className="btn" htmlFor="rent" style={{ border: '1px solid #ddd', color: !isSell ? '#fff' : '#666', background: !isSell ? '#008080' : '#fff', borderColor: !isSell ? '#008080' : '#ddd', fontWeight: 600 }}>
+                  <label className="btn " htmlFor="rent" style={{ border: '1px solid #ddd', color: !isSell ? '#fff' : '#666', background: !isSell ? '#008080' : '#fff', borderColor: !isSell ? '#008080' : '#ddd', fontWeight: 600 }}>
                     <i className="bi bi-clock-history me-1"></i> Rent
                   </label>
                 </div>
               </div>
+              {/*Namrata 20th Sep-BugUI.11 Start*/}
+              {/* MOBILE VIEW: Stacked separated buttons (Hidden on desktop) */}
+                <div className="d-flex d-md-none flex-column w-100 gap-2 mb-4" role="group">
+                  <input type="radio" className="btn-check" name="listing_type_radio_mobile" id="sell_mobile" value="sell" checked={isSell} onChange={() => setF(p => ({ ...p, listing_type: 'sell' }))} />
+                  <label className="btn w-100" htmlFor="sell_mobile" style={{ border: '1px solid #ddd', color: isSell ? '#fff' : '#666', background: isSell ? '#d96459' : '#fff', borderColor: isSell ? '#d96459' : '#ddd', fontWeight: 600 }}>
+                    <i className="bi bi-currency-rupee me-1"></i> Sell
+                  </label>
+                  
+                  <input type="radio" className="btn-check" name="listing_type_radio_mobile" id="rent_mobile" value="rent" checked={!isSell} onChange={() => setF(p => ({ ...p, listing_type: 'rent' }))} />
+                  <label className="btn w-100" htmlFor="rent_mobile" style={{ border: '1px solid #ddd', color: !isSell ? '#fff' : '#666', background: !isSell ? '#008080' : '#fff', borderColor: !isSell ? '#008080' : '#ddd', fontWeight: 600 }}>
+                    <i className="bi bi-clock-history me-1"></i> Rent
+                  </label>
+                </div>
+              {/*Namrata 20th Sep-BugUI.11 End*/}
 
               <div className="row g-3">
                 <div className="col-md-6"><label className="form-label" style={labelStyle}>Product Title <span className="text-danger">*</span></label><input className="form-control" style={inputStyle} name="title" value={f.title} onChange={handleChange} />

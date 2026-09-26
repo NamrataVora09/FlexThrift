@@ -66,8 +66,10 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
   section: AotSection; isSuperAdmin: boolean; onEdit: () => void; onDelete: () => void;
 }) {
   return (
-    <section className="relative pb-16  bg-white w-full  ">
-
+    //Namrata 19th Sep-BugUI.1 Start
+    //<section className="relative pb-16  bg-white w-full  ">
+    <section className="relative pt-16 lg:pt-24 pb-16 bg-white w-full">
+    {/*Namrata 19th Sep-BugUI.1 End*/}
       {/* Superadmin controls */}
       {isSuperAdmin && (
         <div className="absolute top-4 right-6 flex gap-2">
@@ -81,9 +83,40 @@ function AotSectionBlock({ section, isSuperAdmin, onEdit, onDelete }: {
       )}
 
       <div className="w-full mx-auto px-2 sm:px-0 overflow-hidden">
-        {/* Heading */}
+        {/* Namrata 19th Sep-BugUI.1 Start*/}
+        {/*
         <h2 className="text-3xl font-bold  text-[80px]!  text-black text-center mb-3">{section.headline}</h2>
         <p className="text-gray-500 text-center text-[20px]! mb-[100px]! max-w-xl mx-auto mb-12">{section.subtitle}</p>
+        */}
+      <div className="w-full mx-auto mb-[96px]!">
+      <div className="flex items-center justify-center gap-3 mt-2 mb-8 opacity-70">
+            <div className="h-[1px] w-54 bg-gradient-to-r from-transparent to-[#d6b06b]" />
+            <div className="text-xs text-[#d6b06b] rotate-45 scale-200 select-none">✦
+            </div>
+            <div className="h-[1px] w-54 bg-gradient-to-l from-transparent to-[#d6b06b]" />
+      </div>
+      <div className="bg-#dddddd!  rounded-[2.5rem]  text-center flex flex-col items-center">
+          <div className="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-full bg-[#ef4444] mb-8">
+            <span className="text-white font-extrabold text-[11px] font-weight: 600px uppercase tracking-widest">
+              The Flex Thrift Way
+            </span>
+          </div>
+
+          <h2 className="font-['Playfair_Display'] text-4xl md:text-6xl font-normal italic text-[#008080]! mb-6 leading-[1.05] tracking-tighter">
+            {section.headline}
+          </h2>
+          
+          <p className="text-gray-500 text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-medium">
+            {section.subtitle}
+          </p>
+          <div className="flex items-center justify-center gap-3 mt-2 mb-8 opacity-70">
+            <div className="h-[1px] w-54 bg-gradient-to-r from-transparent to-[#d6b06b]" />
+            <div className="text-xs text-[#d6b06b] rotate-45 scale-200 select-none">✦</div>
+            <div className="h-[1px] w-54 bg-gradient-to-l from-transparent to-[#d6b06b]" />
+          </div>
+        </div>
+      </div>
+      {/*Namrata 19th Sep-BugUI.1 End*/}
 
         {/* All guides have no steps → show videos in a row */}
         {section.guides.every(g => g.steps.length === 0) ? (
@@ -744,6 +777,7 @@ export default function HomePageClient() {
   return (
     <>
       <main className=' sm:pt-10 sm:px-2  xl:px-28 '>
+
         <LandingNavbar />
 
         {/* Top Wide Banner Ad */}
@@ -940,6 +974,12 @@ export default function HomePageClient() {
                 <p style={{ fontSize: 16, fontFamily: 'Segoe UI' }} className='text-center'>
                   Are you a registered user?
                 </p>
+                {/*Namrata 19th Sep-BugUI.2 Start*/}
+                <p style={{ fontSize: 16, fontFamily: 'Segoe UI' }} className='text-center'>OR</p>  
+                <Link href="/register"  className="ml-1 text-center text-[16px] font-medium !text-blue-700 !underline">
+                    Register
+                </Link>
+                {/*Namrata 19th Sep-BugUI.2 End*/}
               </>
             )}
 
@@ -956,6 +996,7 @@ export default function HomePageClient() {
                     <input type={showLoginPassword ? 'text' : 'password'} placeholder="Password *" value={sidebarPassword}
                       className='border rounded-md! px-3 py-1.5 text-sm placeholder:text-[13px] w-full pr-10'
                       onChange={e => setSidebarPassword(e.target.value)} />
+
                     <button type='button' tabIndex={-1} onClick={() => setShowLoginPassword(v => !v)}
                       style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#666', display: 'flex', alignItems: 'center' }}>
                       {showLoginPassword ? (

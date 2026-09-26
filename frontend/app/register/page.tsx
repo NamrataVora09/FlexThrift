@@ -36,7 +36,10 @@ export default function RegisterPage() {
   }, []);
 
   const [formData, setFormData] = useState({
-    name: '', email: '', mobile: '', password: '', address: '', pin_code: '', state: '', city: '', user_type: 'buyer', referred_by: '',
+    //Namrata 19th Sep-BugUI.3 Start
+    //name: '', email: '', mobile: '', password: '', address: '', pin_code: '', state: '', city: '', user_type: 'buyer', referred_by: '',
+    name: '', email: '', mobile: '', password: '', address: '', pin_code: '', state: '', city: '', user_type: 'both', referred_by: '',
+    //Namrata 19th Sep-BugUI.3 End
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -188,7 +191,9 @@ export default function RegisterPage() {
 
           <div className="form-section">
             <span className="form-section-label">I want to...</span>
-            <div className="role-toggles">
+
+            {/*Namrata 19th Sep-BugUI.3 Start*/}
+            {/*<div className="role-toggles">
               {roles.map((r) => (
                 <div key={r.value} className={`role-toggle ${formData.user_type === r.value ? 'active' : ''}`}
                   onClick={() => setFormData(prev => ({ ...prev, user_type: r.value }))}>
@@ -196,7 +201,15 @@ export default function RegisterPage() {
                   {r.label}
                 </div>
               ))}
+            </div>*/}
+            <div className="role-toggles">
+              <div className="role-toggle active" style={{ width: '100%', cursor: 'default' }}>
+                <i className="bi bi-lock"></i> Buy 
+                <span style={{ margin: '0 8px', color: '#fff' }}>/</span> 
+                <i className="bi bi-shop"></i> Sell
+              </div>
             </div>
+            {/*Namrata 19th Sep-BugUI.3 End*/}
 
             <div className="input-group">
               <label>Full Name</label>

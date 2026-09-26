@@ -67,9 +67,25 @@ export default function PublicCmsPage() {
       
       <main className="flex-grow">
         {/* Header Section */}
-        <div className="bg-light py-5 border-bottom mb-5">
+        {/*Namrata 24th Sep-BugUI.30 Start*/}
+        {/*<div className="bg-light py-5 border-bottom mb-5">*/}
+        {/*Namrata 24th Sep-BugUI.30 End*/}
+        <div className="py-5 mb-5">
           <div className="container">
-            <h1 className="display-5 fw-bold mb-0" style={{ color: '#1e2022' }}>{page.title}</h1>
+            {/*Namrata 24th Sep-BugUI.30 Start*/}
+            {/*<h1 className="display-5 fw-bold mb-0" style={{ color: '#1e2022' }}>{page.title}</h1>*/}
+            <h1
+              style={{ 
+                fontFamily: 'Poppins, sans-serif', 
+                fontWeight: 500, 
+                fontSize: '26px', 
+                color: 'rgb(26, 26, 26)', 
+                marginBottom: '0.5rem' 
+              }}
+            >
+              {/*Namrata 24th Sep-BugUI.30 End*/}
+              {page.title}
+            </h1>
             <nav aria-label="breadcrumb">
               <ol className="breadcrumb mb-0 mt-2">
                 <li className="breadcrumb-item"><a href="/" className="text-decoration-none text-muted">Home</a></li>
@@ -81,8 +97,10 @@ export default function PublicCmsPage() {
 
         {/* Content Section */}
         <div className="container pb-5">
-          <div className="row justify-content-center">
-            <div className="col-lg-10">
+          {/*Namrata 24th Sep-BugUI.30 Start*/}
+          {/*<div className="row justify-content-center">
+            <div className="col-lg-10"> */}
+            {/*Namrata 24th Sep-BugUI.30 End*/}
               <div 
                 className="cms-content"
                 style={{ 
@@ -96,8 +114,10 @@ export default function PublicCmsPage() {
               <div className="mt-5 pt-4 border-top text-muted small">
                 Last updated: {new Date(page.updated_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </div>
-            </div>
-          </div>
+              {/*Namrata 24th Sep-BugUI.30 Start*/}
+            {/* </div>
+          </div> */}
+          {/*Namrata 24th Sep-BugUI.30 End*/}
         </div>
       </main>
 

@@ -225,13 +225,44 @@ export default function SubscriptionsView({ role, userType }: Props) {
     setCheckoutData(null);
   };
 
+  const basePrice = Number(checkoutData?.plan?.price ?? 0);
+  const totalCharges = checkoutData?.total_charges ?? 0;
+  const appliedReferral = checkoutData?.referral_discount ?? 0;
+  const referralDiscount = useReferral ? appliedReferral : 0;
+  const isReferralCovered = useReferral && referralDiscount >= basePrice && basePrice > 0;
+  const effectiveCouponDiscount = isReferralCovered ? 0 : couponDiscount;
+  const rawTotal = basePrice + totalCharges - referralDiscount - effectiveCouponDiscount;
+  const displayTotal = Math.max(0, rawTotal);
+
+  const isReferralActive = useReferral && referralDiscount > 0;
+  // Coupon is only disabled when referral fully covers the plan price (nothing left to discount)
+  const isCouponDisabled = isReferralCovered || couponLoading || paying;
+
+  const toggleReferral = () => {
+    setUseReferral(prev => {
+      const next = !prev;
+      if (next) {
+        // When switching referral ON, clear coupon only if referral will fully cover the price.
+        // For partial referral, coupon can remain applied.
+        const willCover = appliedReferral >= basePrice && basePrice > 0;
+        if (willCover) {
+          setAppliedCoupon('');
+          setCouponDiscount(0);
+          setCouponMsg(null);
+        }
+      }
+      return next;
+    });
+  };
+
   const applyCoupon = useCallback(async () => {
-    if (!couponCode.trim() || !selectedPlan) return;
+    if (!couponCode.trim() || !selectedPlan || isCouponDisabled) return;
     setCouponLoading(true);
     setCouponMsg(null);
     const res = await api.post<{ discount: number }>(`/${role}/apply-coupon`, {
       code: couponCode.trim().toUpperCase(),
       plan_id: selectedPlan.id,
+      use_referral: useReferral,
     });
     setCouponLoading(false);
     if (res.success && res.data) {
@@ -243,7 +274,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
       setAppliedCoupon('');
       setCouponMsg({ text: res.message || 'Invalid coupon', ok: false });
     }
-  }, [couponCode, selectedPlan, role]);
+  }, [couponCode, selectedPlan, role, useReferral, isCouponDisabled]);
 
   const processPayment = useCallback(async () => {
     if (!checkoutData || !selectedPlan) return;
@@ -263,12 +294,6 @@ export default function SubscriptionsView({ role, userType }: Props) {
       setModalOpen(false);
     }
   }, [checkoutData, selectedPlan, appliedCoupon, role, useReferral]);
-
-  const basePrice = Number(checkoutData?.plan?.price ?? 0);
-  const totalCharges = checkoutData?.total_charges ?? 0;
-  const appliedReferral = checkoutData?.referral_discount ?? 0;
-  const referralDiscount = useReferral ? appliedReferral : 0;
-  const displayTotal = Math.max(0, basePrice + totalCharges - referralDiscount - couponDiscount);
 
   if (loading) return (
     <DashboardLayout requiredRoles={[role, 'super_admin', 'admin']}>
@@ -405,18 +430,35 @@ export default function SubscriptionsView({ role, userType }: Props) {
               <div className="text-center py-5 bg-white rounded-4 border mb-5" style={{ borderRadius: '1.25rem' }}>
                 <i className="bi bi-gem opacity-25" style={{ fontSize: '5rem', color: '#adb5bd' }} />
                 <h3 className="mt-4 fw-bold" style={{ color: '#111' }}>No active plan found</h3>
-                <p className="text-muted">Unlock direct access to {userType === 'buyer' ? 'sellers' : 'buyers'} by subscribing to a plan.</p>
+                <p className="text-muted px-4">Unlock direct access to {userType === 'buyer' ? 'sellers' : 'buyers'} by subscribing to a plan.</p>
+                {/*Namrata 19th Sep-BugUI.7 Start*/}
                 <button
                   onClick={() => {
                     const el = document.getElementById('available-plans-section');
                     if (el) el.scrollIntoView({ behavior: 'smooth' });
                     else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                   }}
-                  className="btn px-5 rounded-pill mt-3"
+                  
+                  //className="btn px-5 rounded-pill mt-3"
+                  //style={{ width: 'auto', background: '#ffc63a', color: '#fff', border: 'none', padding: '12px 30px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                  className="btn px-5 rounded-pill mt-3 d-none d-sm-inline-block"
                   style={{ width: 'auto', background: '#ffc63a', color: '#fff', border: 'none', padding: '12px 30px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}
                 >
                   Explore Membership Plans
                 </button>
+                {/* Mobile Button (Hidden on Desktop) */}
+                <button
+                  onClick={() => {
+                    const el = document.getElementById('available-plans-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    else window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                  }}
+                  className="tier-btn-standard mt-4 mx-auto d-flex d-sm-none"
+                  style={{ maxWidth: '260px' }}
+                >
+                  Explore Membership Plans
+                </button>
+                {/*Namrata 19th Sep-BugUI.7 End*/}
               </div>
             );
           }
@@ -457,9 +499,9 @@ export default function SubscriptionsView({ role, userType }: Props) {
                 <div className={hasPremiumPlan ? 'bento-col-8' : 'bento-col-12'}>
                   <div style={{ background: '#fff', borderRadius: '1.25rem', padding: '2.5rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 280, border: '1px solid #f0f0f0', height: '100%' }}>
                     <div style={{ position: 'relative', zIndex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
-                        <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em' }}>Active {pType.toUpperCase()} Plan</span>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>
+                      <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-2 gap-md-3" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>{/*Namrata 19th Sep-BugUI.8 added flex-column flex-md-row align-items-start align-items-md-center*/}
+                        <span style={{ background: '#D7B467', color: '#fff', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.2em', whiteSpace: 'nowrap'}}>Active {pType.toUpperCase()} Plan</span>
+                        <span className="ms-2 ms-md-0" style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}> {/*Namrata 19th Sep-BugUI.8 added classname ms-2 ms-md-0*/}
                           Valid For {active.duration_hours > 0 ? `${active.duration_hours} hour/s` : 'Unlimited hours'}
                         </span>
                       </div>
@@ -473,7 +515,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                     </div>
                     <div style={{ position: 'relative', zIndex: 1 }}>
                       <div style={{ marginBottom: '0.6rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', whiteSpace: 'nowrap' }}>{/*Namrata 19th Sep-BugUI.8 Added whiteSpace: 'nowrap'*/}
                           <span style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111', lineHeight: 1 }}>{isQty ? remaining : <CountdownTimer expiryDate={active.expires_at} />}</span>
                           {isQty ? (
                             <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.1em' }}>/ {limit}</span>
@@ -865,16 +907,23 @@ export default function SubscriptionsView({ role, userType }: Props) {
                       </div>
                     )}
 
-                    {couponDiscount > 0 && (
+                    {effectiveCouponDiscount > 0 && (
                       <div className="price-row text-success">
                         <span className="fw-bold">Coupon ({appliedCoupon})</span>
-                        <span className="fw-bold">− ₹{couponDiscount.toFixed(2)}</span>
+                        <span className="fw-bold">− ₹{effectiveCouponDiscount.toFixed(2)}</span>
                       </div>
                     )}
 
                     <div className="price-total">
-                      <span>Total Payable</span>
-                      <span style={{ color: '#ffc63a' }}>₹{displayTotal.toFixed(2)}</span>
+                      <div className="d-flex flex-column">
+                        <span>Total Payable</span>
+                        {rawTotal <= 0 && (
+                          <span className="text-muted" style={{ fontSize: '0.68rem', fontWeight: 'normal' }}>
+                            (₹1.00 minimum payment gateway charge)
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ color: '#ffc63a' }}>₹{Math.max(1, displayTotal).toFixed(2)}</span>
                     </div>
 
                     {/* Referral Balance Toggle */}
@@ -912,7 +961,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                           </div>
                           {basePrice >= (checkoutData.referral_min_purchase || 0) && (
                             <button
-                              onClick={() => setUseReferral(prev => !prev)}
+                              onClick={toggleReferral}
                               style={{
                                 background: useReferral ? 'rgba(239,68,68,0.08)' : '#10b981',
                                 color: useReferral ? '#ef4444' : '#fff',
@@ -940,21 +989,24 @@ export default function SubscriptionsView({ role, userType }: Props) {
                         <input
                           type="text"
                           className="form-control coupon-input text-uppercase"
-                          placeholder="Enter code"
+                          placeholder={isReferralCovered ? "Coupon disabled (Referral covers price)" : "Enter code"}
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
-                          disabled={couponLoading || paying}
                         />
                         <button
                           className="btn btn-outline-secondary coupon-btn fw-bold"
                           onClick={applyCoupon}
-                          disabled={couponLoading || paying}
                         >
                           {couponLoading ? <span className="spinner-border spinner-border-sm" /> : 'Apply'}
                         </button>
                       </div>
-                      {couponMsg && (
+                      {isReferralCovered ? (
+                        <div className="small mt-1 text-warning d-flex align-items-center gap-1" style={{ fontSize: '0.75rem' }}>
+                          <i className="bi bi-info-circle" />
+                          Referral credit covers the full plan price. Coupon code cannot be applied.
+                        </div>
+                      ) : couponMsg && (
                         <div className={`small mt-1 ${couponMsg.ok ? 'text-success' : 'text-danger'}`}>
                           <i className={`bi ${couponMsg.ok ? 'bi-check-circle' : 'bi-exclamation-circle'} me-1`} />
                           {couponMsg.text}
@@ -976,7 +1028,7 @@ export default function SubscriptionsView({ role, userType }: Props) {
                       {paying ? (
                         <><span className="spinner-border spinner-border-sm" /> Redirecting to PhonePe…</>
                       ) : (
-                        <><i className="bi bi-wallet2 fs-5" /> Pay ₹{displayTotal.toFixed(2)}</>
+                        <><i className="bi bi-wallet2 fs-5" /> Pay ₹{Math.max(1, displayTotal).toFixed(2)}</>
                       )}
                     </button>
 

@@ -21,7 +21,8 @@ class UserSubscriptionModel extends Model
         'payment_status',
         'amount_paid',
         'referral_discount_applied',
-        'merchant_transaction_id'
+        'merchant_transaction_id',
+        'coupon_discount_applied'//Namrata 14th Sep-Bug208
     ];
 
     protected $useTimestamps = true;

@@ -377,7 +377,10 @@ export default function TransactionsReportsView({ role }: { role: string }) {
           <div className="col-md-4">
             <div className="metric-card">
               <i className="bi bi-currency-rupee metric-icon"></i>
-              <div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}</div>
+              {/* Namrata 14th Sep-Bug203 Start */}
+              {/*<div className="metric-value">₹{summaryData?.summary.total_discount.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}</div>*/}
+              <div className="metric-value">₹{Number(summaryData?.summary.total_discount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+              {/* Namrata 14th Sep-Bug203 End */}
               <div className="metric-label">Total Discounts Availed</div>
             </div>
           </div>
@@ -464,7 +467,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
             </div>
             <RangePicker value={historyRange} onChange={setHistoryRange} />
           </div>
-          <div className="table-responsive" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+          <div className="table-responsive text-nowrap" style={{ maxHeight: '600px', overflowY: 'auto' }}>{/*Namrata 19th Sep-BugUI.4 added text-nowrap*/}
             <DataTable columns={columns} data={historyData?.transactions || []} loading={false} emptyIcon="bi bi-receipt" emptyText="No transaction history for this period." />
           </div>
         </div>
