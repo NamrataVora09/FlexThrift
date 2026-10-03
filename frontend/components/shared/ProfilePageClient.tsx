@@ -464,7 +464,10 @@ export default function ProfilePageClient({ requiredRoles }: Props) {
                     {formatDate(user.created_at)}
                   </div>
                   {/* Plan badges */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                  {/*Namrata 3rd Oct-BugUI.35 Start*/}
+                  {/*<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>*/}
+                  <div className="d-flex flex-wrap justify-content-center justify-content-md-start" style={{ gap: '6px', marginTop: '10px' }}>
+                  {/*Namrata 3rd Oct-BugUI.35 End*/}  
                     {activeSellerPlan && (
                       <span className="plan-badge" style={{ background: '#008080' }}>
                         <i className="fa-solid fa-gem" />

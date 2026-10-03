@@ -152,7 +152,7 @@ export default function RegisterPage() {
         .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 
         .footer-text { text-align: center; margin-top: 32px; font-family: 'Inter', sans-serif; font-size: 0.9rem; color: #666; }
-        .footer-text a { color: #ffc63a; font-weight: 700; text-decoration: none; margin-left: 4px; }
+        .footer-text a { color: #ffc63a; font-weight: 700; text-decoration: none; margin-left: 4px; white-space: nowrap;}/*Namrata 3rd Oct-BugUI.31 added white-space: nowrap;*/
         .footer-text a:hover { text-decoration: underline; }
 
         .alert-error { padding: 14px; background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; border-radius: 12px; margin-bottom: 24px; font-family: 'Inter', sans-serif; font-size: 0.9rem; }

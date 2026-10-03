@@ -460,7 +460,7 @@ export default function TransactionsReportsView({ role }: { role: string }) {
         {/* History Table */}
         <div className="card-wrap mb-5">
           {historyLoading && <LoadingOverlay />}
-          <div className="p-4 d-flex justify-content-between align-items-center">
+          <div className="p-4 d-flex flex-column flex-sm-row justify-content-between align-items-center">{/*Namrata 3rd Oct-BugUI.32 added flex-column flex-sm-row*/}
             <div>
               <h6 className="fw-bold mb-1" style={{ color: '#1a1a1a' }}>Payment History</h6>
               <p className="text-muted small mb-0">Latest transactions for the selected range.</p>

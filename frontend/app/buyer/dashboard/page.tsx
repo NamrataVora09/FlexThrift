@@ -358,14 +358,18 @@ export default function BuyerDashboardPage() {
                   </>
                 ) : (
                   <>
-                    <div className="d-flex align-items-center gap-3">
-                      <i className="fa-solid fa-ban fs-4" style={{ color: '#ef4444', fontSize: '1.5rem' }} />
+                    {/*Namrata 3rd Oct-BugUI.34 Start*/}
+                    {/*<div className="d-flex align-items-center gap-3">*/}
+                    <div className="d-flex align-items-start gap-3">
+                      {/*<i className="fa-solid fa-ban fs-4" style={{ color: '#ef4444', fontSize: '1.5rem' }} />*/}
+                      <i className="fa-solid fa-ban" style={{ color: '#ef4444', fontSize: '1.5rem', marginTop: '2px'}} />
+                      {/*Namrata 3rd Oct-BugUI.34 End*/}
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '17.2px', color: '#1a1a1a', marginBottom: 3 }}>
                           No Active Plan
                         </div>
                         <div style={{ fontSize: '15px', color: '#374151' }}>
-                          You need an active subscription to reach buyers.
+                          You need an active subscription to reach sellers.
                         </div>
                       </div>
                     </div>
